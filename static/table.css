@@ -1,0 +1,45 @@
+td, th {
+    border: 1px solid #555;
+    padding: .2em;
+    width: 6em;
+    }
+
+table {
+    table-layout: fixed;
+    border-collapse: collapse;
+    white-space: nowrap;
+    margin: 0;
+    margin-bottom: 1em;
+    padding: 0;
+    }
+
+th {
+    background-color: #444;
+    }
+
+
+
+
+html, body {
+    margin: 0;
+    padding: 0;
+    }
+
+body {
+    font-family: sans-serif;
+    color: white;
+    background-color: #272822;
+    }
+
+.int {
+    text-align: right;
+    }
+
+em /* null */ {
+    color: #888;
+    font-size: smaller;
+    }
+
+.error {
+    color: red;
+}

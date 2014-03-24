@@ -1,0 +1,135 @@
+@import url("fontello/css/fontello.css");
+@import url("splitpanel.css");
+
+html,
+body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    }
+
+body {
+    font-family: sans;
+    }
+
+#leftpanel {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: .5em;
+    }
+
+.code-form {
+    display: flex;
+    position: relative;
+    }
+
+#exec-commands {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 10;
+    padding: .2em;
+    background-color: #333;
+    border-top-left-radius: .3em;
+    }
+
+.code {
+    display: block;
+    flex: 1;
+    }
+
+.result {
+    height: 200px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background-color: #272822;
+    }
+
+
+
+
+
+.hitarea {
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    line-height: 1em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    }
+
+.hitarea::-webkit-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+
+#exec-map::before { content: "map"; }
+#exec-table::before { content: "execute"; }
+.my-queries-item-del::before { content: "remove"; }
+
+.my-queries {
+    margin-bottom: 1em;
+    padding-left: 1em;
+}
+
+.my-queries-list {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    line-height: 1.5em;
+}
+
+.my-queries-item {
+    display: flex;
+    align-items: center;
+}
+
+.my-queries-item .action {
+    display: none;
+    }
+
+.my-queries-item:hover .action {
+    display: block;
+    }
+
+.my-queries-item-name {
+    flex: 1;
+    color: inherit;
+    display: block;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.my-queries-item-current {
+    font-weight: bold;
+}
+
+.action {
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-bottom: 1px dotted #eee;
+    color: inherit;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+    margin: .2em;
+}
+
+.action::-webkit-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+
+
+[class^="icon-"]:before,
+[class*=" icon-"]:before {
+    opacity: .7;
+}
