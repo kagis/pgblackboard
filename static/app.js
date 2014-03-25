@@ -1,17 +1,18 @@
 function sqlexec(options) {
     var req = new XMLHttpRequest;
     req.overrideMimeType('application/json');
-    req.open('GET', '/sql?format=json' +
-        '&database=' + options.database +
-        '&query=' + encodeURIComponent(options.query) +
-        (options.args || []).map(function (a) {
-            return '&arg=' + encodeURIComponent(a);
-        }).join(''), true);
+    req.open('POST', '/', true);
     req.onload = function () {
         var jsonResponse = JSON.parse(req.responseText);
         options.success.call(options.context || this, jsonResponse);
     };
-    req.send(null);
+    req.send('format=json' +
+        '&database=' + options.database +
+        '&query=' + encodeURIComponent(options.query) +
+        (options.args || []).map(function (a) {
+            return '&arg=' + encodeURIComponent(a);
+        }).join('')
+    );
 }
 
 function TreeNode(data, loadChildren) {

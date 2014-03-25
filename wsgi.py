@@ -1,6 +1,6 @@
 from itertools import chain
-from os import path
 from base64 import b64decode
+from urllib.parse import parse_qs
 import re
 import json
 
@@ -8,99 +8,82 @@ from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError, AuthenticationSpecificationError
 from sqlparse import split as split_sql_str
 
-from webob import Response, Request
-from webob.dec import wsgify
-from webob.exc import HTTPUnauthorized, HTTPNotFound, HTTPBadRequest
-from webob.static import FileApp, DirectoryApp
 
-from time import sleep
-from pprint import pprint
-
-base_dir = path.dirname(path.abspath(__file__))
-
-index_app = FileApp(path.join(base_dir, 'index.html'))
-
-def extract_database_from_query(query):
-    lines = query.splitlines()
-    if lines:
-        database = re.findall(r'^\s*\\connect\s+(\w+)\s*$', lines[0])[0]
-        query = '\n'.join(query_lines[1:])
+index_html = open('index.html', 'rb').read()
 
 
-_valid_credentials = dict()
+def application(environ, start_response):
+    path_info = environ['PATH_INFO']
+    if path_info != '/':
+        start_response('404 Not Found', [
+            ('Content-type', 'text/plain; charset=utf-8')
+        ])
+        yield path_info.encode() + b' not found'
+        return
 
-def credentials_are_valid(user, password, req):
-    if not(user and password):
-        return False
+    if environ['REQUEST_METHOD'] == 'GET':
+        start_response('200 OK', [
+            ('Content-type', 'text/html; charset=utf-8')
+        ])
+        yield index_html
+        return
+
     try:
-        if user in _valid_credentials:
-            return _valid_credentials[user] == password
-        else:
-            db = connect(
-                user=user,
-                password=password,
-                host=req.environ['postgresql.host'],
-                database='postgres',
-                port=int(req.environ['postgresql.port'])
-            )
-    except ClientCannotConnectError:
-        return False
-    else:
-        db.close()
-        _valid_credentials[user] = password
-        return True
+        auth = environ['HTTP_AUTHORIZATION']
+    except KeyError:
+        start_response('401 Unauthorized', [
+            ('Content-type', 'text/plain; charset=utf-8'),
+            ('WWW-Authenticate', 'Basic realm="main"')
+        ])
+        yield b'user name and password required.'
+        return
 
+    auth_scheme, b64cred = auth.split(' ', 1)
+    user, password = b64decode(b64cred).decode().split(':', 1)
 
+    params = parse_qs(environ['wsgi.input'].read().decode())
 
-@wsgify.middleware
-def authorize(req, app):
-    auth = req.authorization
-    b64cred = auth[1] if auth else ''
-    cred = b64decode(b64cred).decode('utf8').split(':', 1)
-    cred = cred if len(cred) == 2 else (None, None)
-    user, password = cred
-    if not credentials_are_valid(user, password, req):
-        return HTTPUnauthorized(
-            www_authenticate = 'Basic realm="main"'
-        )
-    req.environ['postgresql.user'] = user
-    req.environ['postgresql.password'] = password
-    return app
+    try:
+        query = params['query'][0]
+        format = params.get('format', ('html',))[0]
+        args = params.get('arg', ())
+        database = params.get('database', (None,))[0]
+    except LookupError:
+        start_response('400 Bad Request', [
+            ('Content-type', 'text/plain; charset=utf-8')
+        ])
+        yield b'bad requiest'
+        return
 
-
-@authorize
-@wsgify
-def application(req):
-    slug = req.path_info_peek()
-    if slug == 'sql':
-        req.path_info_pop()
-        return sql_app
-    elif not slug:
-        return index_app
-    else:
-        return HTTPNotFound()
-
-
-@wsgify
-def sql_app(req):
-    query = req.params['query']
-    format = req.params.get('format')
-    args = req.params.getall('arg')
-    database = req.params.get('database')
-    connect_match = re.match(r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)', query)
+    connect_match = re.match(
+        r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)',
+        query
+    )
     if connect_match:
         database, query = connect_match.groups()
-
     if not database:
-        return HTTPBadRequest()
+        start_response('400 Bad Request', [
+            ('Content-type', 'text/plain; charset=utf-8')
+        ])
+        yield b'database was not specified.'
+        return
 
-    db = connect(
-        user=req.environ['postgresql.user'],
-        password=req.environ['postgresql.password'],
-        host=req.environ['postgresql.host'],
-        port=int(req.environ['postgresql.port']),
-        database=database,
-    )
+    try:
+        conn = connect(
+            user=user,
+            password=password,
+            host=environ['postgresql.host'],
+            port=int(environ['postgresql.port']),
+            database=database,
+        )
+    except ClientCannotConnectError as ex:
+        print(ex)
+        start_response('401 Unauthorized', [
+            ('Content-type', 'text/plain; charset=utf-8'),
+            ('WWW-Authenticate', 'Basic realm="main"')
+        ])
+        yield b''
+        return
 
     statements = (
         (lambda: stmt.chunks(*args)
@@ -109,7 +92,7 @@ def sql_app(req):
         stmt.column_names,
         stmt.pg_column_types)
         for stmt in (
-            db.prepare(qry)
+            conn.prepare(qry)
             for qry in split_sql_str(query)
             if qry
         )
@@ -121,22 +104,43 @@ def sql_app(req):
         'json': (json_response, 'application/json'),
     }[format or 'html']
 
-    with db.xact():
-        return Response(
-            content_type=content_type,
-            app_iter=iter_utf8(iter_chunks(resp_func(statements)))
-        )
+    try:
+        with conn.xact():
+            start_response('200 OK', [
+                ('Content-type', content_type + '; charset=utf-8'),
+            ])
+            yield from iter_utf8(resp_func(statements))
+    finally:
+        conn.close()
+
+
+
 
 def json_response(statements):
     stmt = next(statements)
-    exec, colnames, _ = stmt
+    get_result, colnames, _ = stmt
     yield json.dumps(
         [dict(zip(colnames, row))
-        for rows in exec()
+        for rows in get_result()
         for row in rows],
         ensure_ascii=False
     )
 
+
+def yield_per_none(fun):
+    def wrapper(*args, **kw):
+        buff = []
+        for item in fun(*args, **kw):
+            if item is None:
+                yield ''.join(buff)
+                buff = []
+            else:
+                buff.append(item)
+        yield ''.join(buff)
+    return wrapper
+
+
+@yield_per_none
 def map_response(statements):
     yield ('<html>'
         '<head>'
@@ -150,10 +154,10 @@ def map_response(statements):
         '<script src="/map.js"></script>')
     yield None # flush
 
-    for i, (exec, colnames, coltypes) in enumerate(statements):
+    for i, (get_result, colnames, coltypes) in enumerate(statements):
         geomcol_ix = colnames.index('geom')
         propnames = colnames[:geomcol_ix] + colnames[geomcol_ix+1:]
-        for rows in exec():
+        for rows in get_result():
             yield '<script>addFeatureCollection('
             yield str(i)
             yield ','
@@ -176,6 +180,7 @@ def map_response(statements):
         '</html>')
 
 
+@yield_per_none
 def html_response(statements):
     yield '<html>'
     yield '<head>'
@@ -188,7 +193,7 @@ def html_response(statements):
     statements = iter(statements)
     while has_statements and not exception:
         try:
-            exec, colnames, coltypes = next(statements)
+            get_result, colnames, coltypes = next(statements)
         except StopIteration:
             has_statements = False
             continue
@@ -199,7 +204,7 @@ def html_response(statements):
         # execute non query
         if not colnames:
             try:
-                nonqry_result = exec()
+                nonqry_result = get_result()
             except Exception as ex:
                 exception = ex
             else:
@@ -224,7 +229,7 @@ def html_response(statements):
             for typ in coltypes
         ]
 
-        chunks = exec()
+        chunks = get_result()
         has_chunks = True
         while has_chunks and not exception:
             try:
@@ -257,18 +262,10 @@ def html_response(statements):
     yield '</html>'
 
 
-def iter_chunks(items):
-    buff = []
-    for item in items:
-        if item is None:
-            yield ''.join(buff)
-            buff = []
-        else:
-            buff.append(item)
-    yield ''.join(buff)
+
 
 
 def iter_utf8(items):
     for item in items:
-        yield item.encode('utf8')
+        yield item.encode()
 
