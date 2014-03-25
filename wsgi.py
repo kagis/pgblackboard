@@ -11,7 +11,7 @@ from sqlparse import split as split_sql_str
 
 index_html = open('index.html', 'r').read()
 
-def wsgi2(app):
+def wsgi_v2(app):
     def wsgi1(environ, start_response):
         status, headers, app_iter = app(environ)
         start_response(status, headers)
@@ -21,24 +21,27 @@ def wsgi2(app):
 def str_response(app):
     def wrapper(environ):
         status, headers, app_iter = app(environ)
+        headers_dict = dict(headers)
+        headers_dict['Content-type'] += '; charset=utf-8'
+        headers = list(headers_dict.items())
         return status, headers, (
             x.encode() for x in app_iter
         )
     return wrapper
 
-@wsgi2
+@wsgi_v2
 @str_response
 def application(environ):
     path_info = environ['PATH_INFO']
     if path_info != '/':
         return ('404 Not Found',
-            [('Content-type', 'text/plain; charset=utf-8')],
+            [('Content-type', 'text/plain')],
             [path_info + ' not found']
         )
 
     if environ['REQUEST_METHOD'] == 'GET':
         return ('200 OK',
-            [('Content-type', 'text/html; charset=utf-8')],
+            [('Content-type', 'text/html')],
             [index_html]
         )
 
@@ -46,7 +49,7 @@ def application(environ):
         auth = environ['HTTP_AUTHORIZATION']
     except KeyError:
         return ('401 Unauthorized',
-            [('Content-type', 'text/plain; charset=utf-8'),
+            [('Content-type', 'text/plain'),
              ('WWW-Authenticate', 'Basic realm="main"')],
             ['User name and password required.']
         )
@@ -55,7 +58,7 @@ def application(environ):
         user, password = b64decode(b64cred).decode().split(':', 1)
     except:
         return ('400 Bad Request',
-            [('Content-type', 'text/plain; charset=utf-8')],
+            [('Content-type', 'text/plain')],
             ['Unexpected credentials format.']
         )
 
@@ -67,7 +70,7 @@ def application(environ):
         database = params.get('database', (None,))[0]
     except LookupError:
         return ('400 Bad Request',
-            [('Content-type', 'text/plain; charset=utf-8')],
+            [('Content-type', 'text/plain')],
             ['Bad requiest']
         )
 
@@ -77,7 +80,7 @@ def application(environ):
         database, query = conn_m.groups()
     if not database:
         return ('400 Bad Request',
-            [('Content-type', 'text/plain; charset=utf-8')],
+            [('Content-type', 'text/plain')],
             ['Database was not specified.']
         )
 
@@ -92,7 +95,7 @@ def application(environ):
     except ClientCannotConnectError as ex:
         print(ex)
         return ('401 Unauthorized',
-            [('Content-type', 'text/plain; charset=utf-8'),
+            [('Content-type', 'text/plain'),
              ('WWW-Authenticate', 'Basic realm="main"')],
             ['Invalid user name or password.']
         )
@@ -103,7 +106,7 @@ def application(environ):
         'json': (json_response, 'application/json'),
     }[format or 'html']
     return ('200 OK',
-        [('Content-type', content_type + '; charset=utf-8'),
+        [('Content-type', content_type),
          ('uWSGI-Encoding', 'gzip')],
         process_sql(conn, resp_func, query, args)
     )
