@@ -9,64 +9,77 @@ from postgresql.exceptions import ClientCannotConnectError, AuthenticationSpecif
 from sqlparse import split as split_sql_str
 
 
-index_html = open('index.html', 'rb').read()
+index_html = open('index.html', 'r').read()
 
+def wsgi2(app):
+    def wsgi1(environ, start_response):
+        status, headers, app_iter = app(environ)
+        start_response(status, headers)
+        yield from app_iter
+    return wsgi1
 
-def application(environ, start_response):
+def str_response(app):
+    def wrapper(environ):
+        status, headers, app_iter = app(environ)
+        return status, headers, (
+            x.encode() for x in app_iter
+        )
+    return wrapper
+
+@wsgi2
+@str_response
+def application(environ):
     path_info = environ['PATH_INFO']
     if path_info != '/':
-        start_response('404 Not Found', [
-            ('Content-type', 'text/plain; charset=utf-8')
-        ])
-        yield path_info.encode() + b' not found'
-        return
+        return ('404 Not Found',
+            [('Content-type', 'text/plain; charset=utf-8')],
+            [path_info + ' not found']
+        )
 
     if environ['REQUEST_METHOD'] == 'GET':
-        start_response('200 OK', [
-            ('Content-type', 'text/html; charset=utf-8')
-        ])
-        yield index_html
-        return
+        return ('200 OK',
+            [('Content-type', 'text/html; charset=utf-8')],
+            [index_html]
+        )
 
     try:
         auth = environ['HTTP_AUTHORIZATION']
     except KeyError:
-        start_response('401 Unauthorized', [
-            ('Content-type', 'text/plain; charset=utf-8'),
-            ('WWW-Authenticate', 'Basic realm="main"')
-        ])
-        yield b'user name and password required.'
-        return
-
-    auth_scheme, b64cred = auth.split(' ', 1)
-    user, password = b64decode(b64cred).decode().split(':', 1)
+        return ('401 Unauthorized',
+            [('Content-type', 'text/plain; charset=utf-8'),
+             ('WWW-Authenticate', 'Basic realm="main"')],
+            ['User name and password required.']
+        )
+    try:
+        auth_scheme, b64cred = auth.split(' ', 1)
+        user, password = b64decode(b64cred).decode().split(':', 1)
+    except:
+        return ('400 Bad Request',
+            [('Content-type', 'text/plain; charset=utf-8')],
+            ['Unexpected credentials format.']
+        )
 
     params = parse_qs(environ['wsgi.input'].read().decode())
-
     try:
         query = params['query'][0]
         format = params.get('format', ('html',))[0]
         args = params.get('arg', ())
         database = params.get('database', (None,))[0]
     except LookupError:
-        start_response('400 Bad Request', [
-            ('Content-type', 'text/plain; charset=utf-8')
-        ])
-        yield b'bad requiest'
-        return
+        return ('400 Bad Request',
+            [('Content-type', 'text/plain; charset=utf-8')],
+            ['Bad requiest']
+        )
 
-    connect_match = re.match(
-        r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)',
-        query
-    )
-    if connect_match:
-        database, query = connect_match.groups()
+    connect_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)'
+    conn_m = re.match(connect_pattern, query)
+    if conn_m:
+        database, query = conn_m.groups()
     if not database:
-        start_response('400 Bad Request', [
-            ('Content-type', 'text/plain; charset=utf-8')
-        ])
-        yield b'database was not specified.'
-        return
+        return ('400 Bad Request',
+            [('Content-type', 'text/plain; charset=utf-8')],
+            ['Database was not specified.']
+        )
 
     try:
         conn = connect(
@@ -78,13 +91,24 @@ def application(environ, start_response):
         )
     except ClientCannotConnectError as ex:
         print(ex)
-        start_response('401 Unauthorized', [
-            ('Content-type', 'text/plain; charset=utf-8'),
-            ('WWW-Authenticate', 'Basic realm="main"')
-        ])
-        yield b''
-        return
+        return ('401 Unauthorized',
+            [('Content-type', 'text/plain; charset=utf-8'),
+             ('WWW-Authenticate', 'Basic realm="main"')],
+            ['Invalid user name or password.']
+        )
 
+    resp_func, content_type = {
+        'map': (map_response, 'text/html'),
+        'html': (html_response, 'text/html'),
+        'json': (json_response, 'application/json'),
+    }[format or 'html']
+    return ('200 OK',
+        [('Content-type', content_type + '; charset=utf-8')],
+        process_sql(conn, resp_func, query, args)
+    )
+
+
+def process_sql(conn, resp_func, query, args):
     statements = (
         (lambda: stmt.chunks(*args)
             if stmt.column_names
@@ -97,23 +121,11 @@ def application(environ, start_response):
             if qry
         )
     )
-
-    resp_func, content_type = {
-        'map': (map_response, 'text/html'),
-        'html': (html_response, 'text/html'),
-        'json': (json_response, 'application/json'),
-    }[format or 'html']
-
     try:
         with conn.xact():
-            start_response('200 OK', [
-                ('Content-type', content_type + '; charset=utf-8'),
-            ])
-            yield from iter_utf8(resp_func(statements))
+            yield from resp_func(statements)
     finally:
         conn.close()
-
-
 
 
 def json_response(statements):
@@ -260,12 +272,3 @@ def html_response(statements):
 
     yield '</body>'
     yield '</html>'
-
-
-
-
-
-def iter_utf8(items):
-    for item in items:
-        yield item.encode()
-
