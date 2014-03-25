@@ -156,9 +156,9 @@ def yield_per_none(fun):
 def map_response(statements):
     yield ('<html>'
         '<head>'
-        '<link href="//cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" rel="stylesheet" type="text/css" />'
+        '<link href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.css" rel="stylesheet" type="text/css" />'
         '<script>L_PREFER_CANVAS = true;</script>'
-        '<script src="//cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>'
+        '<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.js"></script>'
         '<link href="/map.css" rel="stylesheet" type="text/css" />'
         '</head>'
         '<body>'
