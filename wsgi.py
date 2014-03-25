@@ -103,7 +103,8 @@ def application(environ):
         'json': (json_response, 'application/json'),
     }[format or 'html']
     return ('200 OK',
-        [('Content-type', content_type + '; charset=utf-8')],
+        [('Content-type', content_type + '; charset=utf-8'),
+         ('uWSGI-Encoding', 'gzip')],
         process_sql(conn, resp_func, query, args)
     )
 
