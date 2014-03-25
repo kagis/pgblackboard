@@ -5,7 +5,7 @@ import re
 import json
 
 from postgresql.driver import connect
-from postgresql.exceptions import ClientCannotConnectError, AuthenticationSpecificationError
+from postgresql.exceptions import ClientCannotConnectError
 from sqlparse import split as split_sql_str
 
 
