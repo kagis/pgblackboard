@@ -1,8 +1,8 @@
 from itertools import chain
 from base64 import b64decode
 from urllib.parse import parse_qs
-import re
-import json
+from json import dumps as json_dumps, loads as json_loads
+from re import match
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
@@ -11,12 +11,14 @@ from sqlparse import split as split_sql_str
 
 index_html = open('index.html', 'r').read()
 
+
 def wsgi_v2(app):
     def wsgi1(environ, start_response):
         status, headers, app_iter = app(environ)
         start_response(status, headers)
         yield from app_iter
     return wsgi1
+
 
 def str_response(app):
     def wrapper(environ):
@@ -28,6 +30,7 @@ def str_response(app):
             x.encode() for x in app_iter
         )
     return wrapper
+
 
 @wsgi_v2
 @str_response
@@ -75,7 +78,7 @@ def application(environ):
         )
 
     connect_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)'
-    conn_m = re.match(connect_pattern, query)
+    conn_m = match(connect_pattern, query)
     if conn_m:
         database, query = conn_m.groups()
     if not database:
@@ -135,7 +138,7 @@ def process_sql(conn, resp_func, query, args):
 def json_response(statements):
     stmt = next(statements)
     get_result, colnames, _ = stmt
-    yield json.dumps(
+    yield json_dumps(
         [dict(zip(colnames, row))
         for rows in get_result()
         for row in rows],
@@ -177,11 +180,11 @@ def map_response(statements):
             yield '<script>addFeatureCollection('
             yield str(i)
             yield ','
-            yield json.dumps({
+            yield json_dumps({
                 'type': 'FeatureCollection',
                 'features': [{
                     'type': 'Feature',
-                    'geometry': json.loads(row[geomcol_ix] or 'null'),
+                    'geometry': json_loads(row[geomcol_ix] or 'null'),
                     'properties': dict(zip(
                         propnames,
                         (x for i, x in enumerate(row)
