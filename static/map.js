@@ -59,7 +59,7 @@ var overlayOptions = {
         layer.bindPopup(popupHtml(feature));
     },
     style: function (feature) {
-        var color = featureColors[feature._overlayKey];
+        var color = feature.properties.color || featureColors[feature._overlayKey];
         switch (feature.geometry.type) {
         case 'Point':
         case 'MultiPoint':

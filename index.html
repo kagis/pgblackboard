@@ -9,8 +9,8 @@
 <body class="splitpanel-h">
 
     <section id="leftpanel" class="panel scrollbox splitfix">
-        <section data-bind="template: { name: 'my-queries-tmpl' }"></section>
-        <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }"></section>
+        <!-- ko template: { name: 'my-queries-tmpl', data: queries } --><!-- /ko -->
+        <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
     </section>
 
     <div class="splitter"></div>
@@ -23,14 +23,20 @@
 
             <div id="exec-commands">
                 <button id="exec-map" class="action" title="Execute to map"
-                    type="submit" name="format" value="map"></button>
+                    accesskey="m" type="submit" name="format" value="map"></button>
                 <button id="exec-table" class="action" title="Ctrl+Shift+E"
-                    type="submit" name="format" value="html"></button>
+                    accesskey="e" type="submit" name="format" value="html"></button>
             </div>
         </form>
         <div class="splitter"></div>
         <iframe name="result" class="result scrollbox splitfix"></iframe>
     </section>
+
+
+    <template id="tree-tmpl">
+        <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }">
+        </section>
+    </template>
 
     <template id="tree-node-list-tmpl">
         <ul class="tree-node-list" data-bind="foreach: nodes">
@@ -38,12 +44,12 @@
                 <header class="tree-node-header">
                     <button class="hitarea tree-node-toggler"
                             data-bind="click: toggle"
-                            data-bind.tree-node-toggler_hidden="!hasChildren"
+                            data-bind.tree-node-toggler_hidden="!canExpand"
                             data-bind.tree-node-toggler_collapsed="!isExpanded"
                             data-bind.tree-node-toggler_expanded="isExpanded"
                             data-bind.tree-node-toggler_loading="childrenAreLoading"></button>
-                    <i data-bind="attr: { class: 'tree-node-icon icon-' + icon, title: icon }"></i>
-                    <span class="tree-node-name" data-bind="template: { name: nameTmpl }"></span>
+                    <span class="tree-node-name"
+                        data-bind="template: { name: obj.objType + '-tree-node-name-tmpl', data: obj }, click: open"></span>
                     <span class="tree-node-comment"></span>
                 </header>
                 <!-- ko template: { name: 'tree-node-list-tmpl', if: isExpanded } --><!-- /ko -->
@@ -51,18 +57,32 @@
         </ul>
     </template>
 
-    <template id="def-tree-node-name-tmpl">
-        <span data-bind="text: name"></span>
+    <template id="database-tree-node-name-tmpl">
+        <span class="icon-database tree-node-name" data-bind="text: name"></span>
+    </template>
+
+    <template id="schema-tree-node-name-tmpl">
+        <span class="icon-popup tree-node-name" data-bind="text: name"></span>
+    </template>
+
+    <template id="table-tree-node-name-tmpl">
+        <span class="icon-table tree-node-name" data-bind="text: name"></span>
+    </template>
+
+    <template id="func-tree-node-name-tmpl">
+        <span class="icon-code tree-node-name" data-bind="text: name"></span>
     </template>
 
     <template id="column-tree-node-name-tmpl">
-        <span data-bind="text: name"></span>
-        <span>:</span>
-        <span data-bind="text: dataType"></span>
+        <span class="icon-doc-text-1 tree-node-name">
+            <span data-bind="text: name"></span>
+            :
+            <span data-bind="text: dataType"></span>
+        </span>
     </template>
 
     <template id="my-queries-tmpl">
-        <section class="my-queries" data-bind="with: myQueries">
+        <section class="my-queries">
             <ul class="my-queries-list" data-bind="foreach: items">
                 <li class="my-queries-item"
                     data-bind.my-queries-item-current="isCurrent">
@@ -82,6 +102,8 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/knockout/3.1.0/knockout-min.js"></script>
     <script src="/knockout-es5.js" type="text/javascript"></script>
     <script src="/knockout-class.js" type="text/javascript"></script>
+    <script src="/tree.js" type="text/javascript"></script>
+    <script src="/queries.js" type="text/javascript"></script>
     <script src="/app.js" type="text/javascript"></script>
     <script src="/splitpanel.js" type="text/javascript"></script>
 </body>
