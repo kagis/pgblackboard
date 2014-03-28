@@ -1,7 +1,7 @@
 function Queries() {
-    this.items = [];
     this._currentItem = null;
     ko.track(this);
+    this.items = ko.observableArray();
 
     var itemsOwner = this;
 
@@ -12,8 +12,7 @@ function Queries() {
 
         this._isDirty = false;
         this._isBlank = true;
-        this._editSession = new ace.EditSession(content);
-        this._editSession.setMode('ace/mode/pgsql');
+        this._editSession = ace.createEditSession(content, 'ace/mode/pgsql');
         this._editSession.on('change', this._handleChange.bind(this));
         this._localStorageKey = localStorageKey;
         this._owner = itemsOwner;

@@ -38,6 +38,17 @@ body {
     }
 
 
+.ace_scrollbar-h,
+.ace_scrollbar-v,
+.scrollbox {
+    scrollbar-base-color: #1c1c1c;
+    scrollbar-3dlight-color: #222;
+    scrollbar-highlight-color: #222;
+    scrollbar-track-color: #222;
+    scrollbar-arrow-color: #888;
+    scrollbar-shadow-color: #222;
+    scrollbar-dark-shadow-color: #222;
+}
 
 .ace_scrollbar-v::-webkit-scrollbar-button:end:increment {
     height: 2em;

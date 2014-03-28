@@ -50,8 +50,10 @@
 .tree-node-toggler_expanded {
     -webkit-transform-origin: .35em .5em;
        -moz-transform-origin: .35em .5em;
+        -ms-transform-origin: .35em .5em;
     -webkit-transform: rotate(90deg);
        -moz-transform: rotate(90deg);
+        -ms-transform: rotate(90deg);
     }
 
 .tree-node-children {
@@ -67,8 +69,10 @@
     height: 1em;
     -webkit-transform-origin: center center;
        -moz-transform-origin: center center;
+        -ms-transform-origin: center center;
     -webkit-animation: spin .5s infinite linear;
        -moz-animation: spin .5s infinite linear;
+        -ms-animation: spin .5s infinite linear;
     }
 
 .tree-node-toggler_hidden {
@@ -76,7 +80,6 @@
     }
 
 .tree-node-name {
-    /*vertical-align: middle;*/
     text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
@@ -100,6 +103,11 @@
 @-moz-keyframes spin {
     from { -moz-transform: rotate(0deg); }
     to { -moz-transform: rotate(360deg); }
+    }
+
+@-ms-keyframes spin {
+    from { -ms-transform: rotate(0deg); }
+    to { -ms-transform: rotate(360deg); }
     }
 
 

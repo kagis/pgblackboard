@@ -9,7 +9,7 @@ body {
     }
 
 body {
-    font-family: sans;
+    font-family: 'DejaVu Sans', 'Verdana', sans;
     }
 
 #leftpanel {
@@ -118,8 +118,10 @@ body {
     color: inherit;
     background: none;
     font-family: inherit;
+    line-height: 1em;
     cursor: pointer;
     margin: .2em;
+    white-space: nowrap;
 }
 
 .action::-webkit-focus-inner {

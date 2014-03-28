@@ -1,3 +1,7 @@
+var shieldEl = document.createElement('div');
+shieldEl.className = 'shield';
+document.body.appendChild(shieldEl);
+
 (function () {
     var splitterEl = document.querySelector('.splitpanel-h > .splitter');
     var column = document.querySelector('.splitpanel-h > .splitfix');

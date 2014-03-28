@@ -5,6 +5,7 @@ function TreeNode(obj) {
     ko.track(this);
     this.canExpand = obj.canHaveChildren;
     this.obj = obj;
+    this.nameTmpl = obj.objType + '-tree-node-name-tmpl';
 }
 
 TreeNode.prototype.expand = function () {

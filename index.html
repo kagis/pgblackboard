@@ -8,7 +8,7 @@
 </head>
 <body class="splitpanel-h">
 
-    <section id="leftpanel" class="panel scrollbox splitfix">
+    <section id="leftpanel" class="scrollbox splitfix">
         <!-- ko template: { name: 'my-queries-tmpl', data: queries } --><!-- /ko -->
         <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
     </section>
@@ -22,10 +22,13 @@
             <input type="hidden" name="query" id="query-input" />
 
             <div id="exec-commands">
-                <button id="exec-map" class="action" title="Execute to map"
-                    accesskey="m" type="submit" name="format" value="map"></button>
-                <button id="exec-table" class="action" title="Ctrl+Shift+E"
-                    accesskey="e" type="submit" name="format" value="html"></button>
+                <button id="exec-map" class="action" title="Alt+M"
+                        accesskey="m" type="submit"
+                        name="format" value="map"></button>
+
+                <button id="exec-table" class="action" title="Alt+E"
+                        accesskey="e" type="submit"
+                        name="format" value="html"></button>
             </div>
         </form>
         <div class="splitter"></div>
@@ -33,12 +36,12 @@
     </section>
 
 
-    <template id="tree-tmpl">
+    <script type="text/html" id="tree-tmpl">
         <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }">
         </section>
-    </template>
+    </script>
 
-    <template id="tree-node-list-tmpl">
+    <script type="text/html" id="tree-node-list-tmpl">
         <ul class="tree-node-list" data-bind="foreach: nodes">
             <li class="tree-node">
                 <header class="tree-node-header">
@@ -49,39 +52,40 @@
                             data-bind.tree-node-toggler_expanded="isExpanded"
                             data-bind.tree-node-toggler_loading="childrenAreLoading"></button>
                     <span class="tree-node-name"
-                        data-bind="template: { name: obj.objType + '-tree-node-name-tmpl', data: obj }, click: open"></span>
+                          data-bind="template: { name: nameTmpl, data: obj },
+                                     click: open"></span>
                     <span class="tree-node-comment"></span>
                 </header>
                 <!-- ko template: { name: 'tree-node-list-tmpl', if: isExpanded } --><!-- /ko -->
             </li>
         </ul>
-    </template>
+    </script>
 
-    <template id="database-tree-node-name-tmpl">
-        <span class="icon-database tree-node-name" data-bind="text: name"></span>
-    </template>
+    <script type="text/html" id="database-tree-node-name-tmpl">
+        <span class="icon-database" data-bind="text: name"></span>
+    </script>
 
-    <template id="schema-tree-node-name-tmpl">
-        <span class="icon-popup tree-node-name" data-bind="text: name"></span>
-    </template>
+    <script type="text/html" id="schema-tree-node-name-tmpl">
+        <span class="icon-popup" data-bind="text: name"></span>
+    </script>
 
-    <template id="table-tree-node-name-tmpl">
-        <span class="icon-table tree-node-name" data-bind="text: name"></span>
-    </template>
+    <script type="text/html" id="table-tree-node-name-tmpl">
+        <span class="icon-table" data-bind="text: name"></span>
+    </script>
 
-    <template id="func-tree-node-name-tmpl">
-        <span class="icon-code tree-node-name" data-bind="text: name"></span>
-    </template>
+    <script type="text/html" id="func-tree-node-name-tmpl">
+        <span class="icon-code" data-bind="text: name"></span>
+    </script>
 
-    <template id="column-tree-node-name-tmpl">
-        <span class="icon-doc-text-1 tree-node-name">
+    <script type="text/html" id="column-tree-node-name-tmpl">
+        <span class="icon-doc-text-1">
             <span data-bind="text: name"></span>
             :
             <span data-bind="text: dataType"></span>
         </span>
-    </template>
+    </script>
 
-    <template id="my-queries-tmpl">
+    <script type="text/html" id="my-queries-tmpl">
         <section class="my-queries">
             <ul class="my-queries-list" data-bind="foreach: items">
                 <li class="my-queries-item"
@@ -94,7 +98,7 @@
             </ul>
             <button class="action" data-bind="click: add">new query</button>
         </section>
-    </template>
+    </script>
 
 
 
