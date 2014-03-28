@@ -7,9 +7,18 @@ sqleditor.setFontSize(20);
 
 sqleditor.commands.addCommand({
     name: 'execute',
-    bindKey: {win: 'F5',  mac: 'Ctrl-Shift-E'},
+    bindKey: {win: 'F5',  mac: 'F5'},
     exec: function() {
-        submitQuery()
+        submitQuery();
+    }
+});
+
+sqleditor.commands.addCommand({
+    name: 'share',
+    bindKey: {win: 'Ctrl-Shift-S',  mac: 'Ctrl-Shift-S'},
+    exec: function() {
+        prompt('Share this url', location.origin + location.pathname +
+            '#' + encodeURIComponent(sqleditor.getValue()));
     }
 });
 
@@ -43,3 +52,8 @@ ko.applyBindings(model);
 
 model.queries.load();
 model.tree.expand();
+
+
+if (location.hash) {
+    model.queries.addBlank(decodeURIComponent(location.hash.slice(1)));
+}
