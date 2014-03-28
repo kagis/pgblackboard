@@ -41,10 +41,10 @@ function submitQuery() {
 
 
 
-var model = ko.track({
+var model = {
     tree: new TreeNode(new Root()),
     queries: new Queries(),
-});
+};
 
 
 

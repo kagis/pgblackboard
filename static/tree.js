@@ -1,31 +1,33 @@
 function TreeNode(obj) {
-    this.nodes = null;
-    this.isExpanded = false;
-    this.childrenAreLoading = false;
-    ko.track(this);
-    this.canExpand = obj.canHaveChildren;
+    this.nodes = ko.observableArray();
+    this.isExpanded = ko.observable(false);
+    this.isCollapsed = ko.computed(function () {
+        return !this.isExpanded();
+    }, this);
+    this.childrenAreLoading = ko.observable(false);
+    this.isLeaf = !obj.canHaveChildren;
     this.obj = obj;
     this.nameTmpl = obj.objType + '-tree-node-name-tmpl';
 }
 
 TreeNode.prototype.expand = function () {
-    this.childrenAreLoading = true;
+    this.childrenAreLoading(true);
     var that = this;
     this.obj.loadChildren(function (children) {
-        that.isExpanded = true;
-        that.childrenAreLoading = false;
-        that.nodes = children.map(function (childObj) {
+        that.isExpanded(true);
+        that.childrenAreLoading(false);
+        that.nodes(children.map(function (childObj) {
             return new TreeNode(childObj);
-        });
+        }));
     });
 };
 
 TreeNode.prototype.collapse = function () {
-    this.isExpanded = false;
+    this.isExpanded(false);
 };
 
 TreeNode.prototype.toggle = function () {
-    if (this.isExpanded) {
+    if (this.isExpanded()) {
         this.collapse();
     } else {
         this.expand();

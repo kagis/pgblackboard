@@ -1,14 +1,12 @@
 function Queries() {
-    this._currentItem = null;
-    ko.track(this);
+    this._currentItem = ko.observable();
     this.items = ko.observableArray();
 
     var itemsOwner = this;
 
 
     function QueriesItem(localStorageKey, content) {
-        this.content = content;
-        ko.track(this);
+        this.content = ko.observable(content);
 
         this._isDirty = false;
         this._isBlank = true;
@@ -18,26 +16,26 @@ function Queries() {
         this._owner = itemsOwner;
 
         this.isCurrent = ko.computed(function () {
-            return this._owner._currentItem === this;
+            return this._owner._currentItem() === this;
         }, this);
 
 
         this.name = ko.computed(function () {
-            return this.content.substr(0, 15) || '(empty)';
+            return this.content().substr(0, 15) || '(empty)';
         }, this).extend({ rateLimit: 500 });
     }
 
     QueriesItem.prototype.open = function () {
-        if (this._owner._currentItem) {
-            this._owner._currentItem.ensureSave();
+        if (this._owner._currentItem()) {
+            this._owner._currentItem().ensureSave();
         }
-        this._owner._currentItem = this;
+        this._owner._currentItem(this);
         sqleditor.setSession(this._editSession);
     };
 
     QueriesItem.prototype.ensureSave = function () {
         if (!this._isBlank && this._isDirty) {
-            localStorage.setItem(this._localStorageKey, this.content);
+            localStorage.setItem(this._localStorageKey, this.content());
             this._isDirty = false;
         }
     };
@@ -54,7 +52,7 @@ function Queries() {
             this._isBlank = false;
             this._owner.items.push(this);
         }
-        this.content = this._editSession.getValue();
+        this.content(this._editSession.getValue());
         this._isDirty = true;
     };
 
