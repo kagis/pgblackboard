@@ -194,8 +194,18 @@ function sqlexec(options) {
     req.overrideMimeType('application/json');
     req.open('POST', '/', true);
     req.onload = function () {
-        var jsonResponse = JSON.parse(req.responseText);
-        options.success.call(options.context || this, jsonResponse);
+        var respArr = JSON.parse(req.responseText);
+        respArr = respArr.slice(1); // skip "json" elem
+        var lastItem = respArr.slice(-1)[0]
+        if (lastItem && lastItem.type === 'error') {
+            console.error(lastItem.body);
+        } else {
+            options.success.apply(options.context || this,
+                respArr.map(function(it) {
+                    return it.body;
+                })
+            );
+        }
     };
     req.send('format=json' +
         '&database=' + options.database +

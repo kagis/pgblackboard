@@ -282,16 +282,22 @@ class JsonRenderer:
     mime_type = 'application/json'
 
     def render_intro(self):
-        return ''
+        return '[ "json" '
 
     def render_outro(self):
-        return ''
+        return ']'
 
     def render_exception(self, exception):
-        raise exception
+        return ',' + json_dumps({
+            'type': 'error',
+            'body': str(exception)
+        })
 
     def render_nonquery(self, result):
-        return ''
+        return ',' + json_dumps({
+            'type': 'nonquery',
+            'body': str(result)
+        })
 
     def get_query_renderer(self, *args, **kw):
         return JsonQueryRenderer(*args, **kw)
@@ -303,10 +309,10 @@ class JsonQueryRenderer:
         self.first = True
 
     def render_intro(self):
-        return '['
+        return ', { "type": "query", "body": ['
 
     def render_outro(self):
-        return ']'
+        return ']}'
 
     @strjoin
     def render_rows(self, rows):
