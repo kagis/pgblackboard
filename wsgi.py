@@ -104,11 +104,11 @@ def application(environ):
             ['Invalid user name or password.']
         )
 
-    Renderer = RENDERERS.get(format, RegularRenderer)
+    renderer = RENDERERS.get(format, RegularRenderer)
     return ('200 OK',
-        [('Content-type', Renderer.mime_type),
+        [('Content-type', renderer.mime_type),
          ('uWSGI-Encoding', 'gzip')],
-        process_sql(conn, query, args, Renderer())
+        process_sql(conn, query, args, renderer)
     )
 
 
@@ -121,11 +121,12 @@ def process_sql(conn, query, args, renderer):
     yield renderer.render_intro()
     try:
         with conn.xact():
-            for stmt in statements:
+            for stmt_index, stmt in enumerate(statements):
                 if stmt.column_names:
                     query_renderer = renderer.get_query_renderer(
                         stmt.column_names,
-                        stmt.pg_column_types
+                        stmt.pg_column_types,
+                        stmt_index
                     )
                     yield query_renderer.render_intro()
                     try:
@@ -174,7 +175,7 @@ class RegularRenderer:
 
 
 class TableRenderer:
-    def __init__(self, colnames, coltypes):
+    def __init__(self, colnames, coltypes, stmt_index):
         self.colnames = colnames
         self.coltypes = coltypes
         self.colclasses = [
@@ -209,9 +210,6 @@ class TableRenderer:
 class MapRenderer:
     mime_type = 'text/html'
 
-    def __init__(self):
-        self._querynum = 0
-
     def render_intro(self):
         return (
             '<html>'
@@ -241,15 +239,14 @@ class MapRenderer:
         )
 
     def get_query_renderer(self, *args, **kw):
-        self._querynum += 1
-        return GeoJsonRenderer(*args, num=self._querynum, **kw)
+        return GeoJsonRenderer(*args, **kw)
 
 
 class GeoJsonRenderer:
-    def __init__(self, colnames, coltypes, num):
+    def __init__(self, colnames, coltypes, stmt_index):
         self.colnames = colnames
         self.coltypes = coltypes
-        self.num = num
+        self.stmt_index = stmt_index
         self.geomcol_ix = geomcol_ix = colnames.index('geom')
         self.propnames = colnames[:geomcol_ix] + colnames[geomcol_ix+1:]
 
@@ -262,7 +259,7 @@ class GeoJsonRenderer:
     @strjoin
     def render_rows(self, rows):
         yield '<script>addFeatureCollection('
-        yield str(self.num)
+        yield str(self.stmt_index)
         yield ','
         yield json_dumps({
             'type': 'FeatureCollection',
@@ -304,7 +301,7 @@ class JsonRenderer:
         return JsonQueryRenderer(*args, **kw)
 
 class JsonQueryRenderer:
-    def __init__(self, colnames, coltypes):
+    def __init__(self, colnames, coltypes, stmt_index):
         self.colnames = colnames
         self.coltypes = coltypes
         self.first = True
@@ -329,7 +326,7 @@ class JsonQueryRenderer:
 
 
 RENDERERS = {
-    'map': MapRenderer,
-    'html': RegularRenderer,
-    'json': JsonRenderer,
+    'map': MapRenderer(),
+    'html': RegularRenderer(),
+    'json': JsonRenderer(),
 }
