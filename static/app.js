@@ -1,8 +1,5 @@
 var sqleditor = ace.edit('code');
-sqleditor.setOptions({
-    enableBasicAutocompletion: true
-});
-sqleditor.setTheme("ace/theme/monokai");
+sqleditor.setTheme('ace/theme/monokai');
 sqleditor.setFontSize(20);
 
 sqleditor.commands.addCommand({

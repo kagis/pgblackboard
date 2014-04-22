@@ -53,7 +53,7 @@ def application(environ):
     except KeyError:
         return ('401 Unauthorized',
             [('Content-type', 'text/plain'),
-             ('WWW-Authenticate', 'Basic realm="main"')],
+             ('WWW-Authenticate', 'Basic realm="postgresql"')],
             ['User name and password required.']
         )
     try:
@@ -74,7 +74,7 @@ def application(environ):
     except LookupError:
         return ('400 Bad Request',
             [('Content-type', 'text/plain')],
-            ['Bad requiest']
+            ['Invalid params.']
         )
 
     connect_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)'
@@ -96,18 +96,19 @@ def application(environ):
             database=database,
         )
     except ClientCannotConnectError as ex:
+        # have no idea how detect auth error only
         print(ex)
         return ('401 Unauthorized',
             [('Content-type', 'text/plain'),
-             ('WWW-Authenticate', 'Basic realm="main"')],
+             ('WWW-Authenticate', 'Basic realm="postgresql"')],
             ['Invalid user name or password.']
         )
 
-    renderer = RENDERERS.get(format, RegularRenderer)
+    Renderer = RENDERERS.get(format, RegularRenderer)
     return ('200 OK',
         [('Content-type', renderer.mime_type),
          ('uWSGI-Encoding', 'gzip')],
-        process_sql(conn, query, args, renderer)
+        process_sql(conn, query, args, Renderer())
     )
 
 
@@ -328,7 +329,7 @@ class JsonQueryRenderer:
 
 
 RENDERERS = {
-    'map': MapRenderer(),
-    'html': RegularRenderer(),
-    'json': JsonRenderer(),
+    'map': MapRenderer,
+    'html': RegularRenderer,
+    'json': JsonRenderer,
 }

@@ -190,11 +190,9 @@ Root.prototype.loadChildren = function (complete) {
 
 
 function sqlexec(options) {
-    var req = new XMLHttpRequest;
-    req.overrideMimeType('application/json');
-    req.open('POST', '/', true);
-    req.onload = function () {
-        var respArr = JSON.parse(req.responseText);
+    var req = new XMLHttpRequest();
+    req.onload = function (e) {
+        var respArr = e.target.response;
         respArr = respArr.slice(1); // skip "json" elem
         var lastItem = respArr.slice(-1)[0]
         if (lastItem && lastItem.type === 'error') {
@@ -206,7 +204,14 @@ function sqlexec(options) {
                 })
             );
         }
-    };
+    };/*
+    var form = new FormData();
+    form.appen('format', 'json');
+    form.append('database', options.database);
+    form.append('query', options.query);
+    form.append();*/
+    req.open('POST', '');
+    req.responseType = 'json';
     req.send('format=json' +
         '&database=' + options.database +
         '&query=' + encodeURIComponent(options.query) +
