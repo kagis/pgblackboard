@@ -106,7 +106,7 @@ def application(environ):
 
     Renderer = RENDERERS.get(format, RegularRenderer)
     return ('200 OK',
-        [('Content-type', renderer.mime_type),
+        [('Content-type', Renderer.mime_type),
          ('uWSGI-Encoding', 'gzip')],
         process_sql(conn, query, args, Renderer())
     )
