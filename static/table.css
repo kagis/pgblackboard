@@ -2,11 +2,23 @@ td, th {
     border: 1px solid #555;
     padding: .2em;
     width: 6em;
-    white-space: pre;
     }
 
+td {
+    white-space: pre;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    max-width: 50em;
+    vertical-align: top;
+    }
+
+td.expanded {
+    overflow-wrap: break-word;
+    }
+
+
+
 table {
-    table-layout: fixed;
     border-collapse: collapse;
     white-space: nowrap;
     margin: 0;
@@ -18,7 +30,9 @@ th {
     background-color: #444;
     }
 
-
+tr:nth-child(even) {
+    opacity: .7;
+    }
 
 
 html, body {
@@ -28,7 +42,7 @@ html, body {
 
 body {
     font-family: sans-serif;
-    color: white;
+    color: #eee;
     background-color: #272822;
     }
 
@@ -43,4 +57,4 @@ em /* null */ {
 
 .error {
     color: red;
-}
+    }

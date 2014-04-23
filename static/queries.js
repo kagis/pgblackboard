@@ -87,4 +87,4 @@ Queries.prototype.load = function () {
             this.items.push(item);
         }
     }
-}
+};

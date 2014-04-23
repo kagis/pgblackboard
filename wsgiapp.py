@@ -1,4 +1,3 @@
-from itertools import chain
 from base64 import b64decode
 from urllib.parse import parse_qs
 from json import dumps as json_dumps, loads as json_loads
@@ -7,9 +6,6 @@ from re import match
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
 from sqlparse import split as split_sql_str
-
-
-index_html = open('index.html', 'r').read()
 
 
 def wsgi_v2(app):
@@ -35,19 +31,6 @@ def str_response(app):
 @wsgi_v2
 @str_response
 def application(environ):
-    path_info = environ['PATH_INFO']
-    if path_info != '/':
-        return ('404 Not Found',
-            [('Content-type', 'text/plain')],
-            [path_info + ' not found']
-        )
-
-    if environ['REQUEST_METHOD'] == 'GET':
-        return ('200 OK',
-            [('Content-type', 'text/html')],
-            [index_html]
-        )
-
     try:
         auth = environ['HTTP_AUTHORIZATION']
     except KeyError:
@@ -185,7 +168,7 @@ class TableRenderer:
 
     @strjoin
     def render_intro(self):
-        yield '<table>'
+        yield '<table onclick="event.target.classList.add(\'expanded\')">'
         yield '<tr>'
         for name in self.colnames:
             yield '<th>'
@@ -202,7 +185,7 @@ class TableRenderer:
             yield '<tr>'
             for val, class_ in zip(row, self.colclasses):
                 yield '<td class="' + class_ + '">'
-                yield '<em>null</em>' if val is None else str(val)[:100]
+                yield '<em>null</em>' if val is None else str(val)
                 yield '</td>'
             yield '</tr>'
 
