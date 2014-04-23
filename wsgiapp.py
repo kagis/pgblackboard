@@ -168,7 +168,7 @@ class TableRenderer:
 
     @strjoin
     def render_intro(self):
-        yield '<table onclick="event.target.classList.add(\'expanded\')">'
+        yield '<table onclick="event.target.classList.toggle(\'expanded\')">'
         yield '<tr>'
         for name in self.colnames:
             yield '<th>'
