@@ -56,6 +56,9 @@ Database.prototype.loadChildren = function (complete) {
         query: "\
             select nspname as name, oid \
             from pg_namespace \
+            where nspname not like e'pg\_temp\_%' \
+                and nspname not like e'pg\_toast_temp\_%' \
+                and nspname != 'pg_toast' \
             order by name",
         success: function (result) {
             complete(result.map(function (it) {
@@ -178,7 +181,7 @@ Root.prototype.canHaveChildren = true;
 Root.prototype.loadChildren = function (complete) {
     sqlexec({
         database: 'postgres',
-        query: "select datname as name from pg_database",
+        query: "select datname as name from pg_database where not datistemplate",
         success: function (result) {
             complete(result.map(function (it) {
                 return new Database(it.name);
