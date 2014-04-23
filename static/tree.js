@@ -53,12 +53,12 @@ Database.prototype.loadChildren = function (complete) {
     sqlexec({
         database: databaseName,
         query: "\
-            select schema_name as name \
-            from information_schema.schemata \
+            select nspname as name, oid \
+            from pg_namespace \
             order by name",
         success: function (result) {
             complete(result.map(function (it) {
-                return new Schema(it.name, databaseName);
+                return new Schema(it.oid, it.name, databaseName);
             }));
         }
 
@@ -66,7 +66,8 @@ Database.prototype.loadChildren = function (complete) {
 };
 
 
-function Schema(name, databaseName) {
+function Schema(oid, name, databaseName) {
+    this.oid = oid;
     this.name = name;
     this.databaseName = databaseName;
 }
@@ -75,27 +76,25 @@ Schema.prototype.objType = 'schema';
 Schema.prototype.canHaveChildren = true;
 
 Schema.prototype.loadChildren = function (complete) {
-    var databaseName = this.databaseName,
-        schemaName = this.name;
-
+    var databaseName = this.databaseName;
     sqlexec({
         database: databaseName,
-        args: [schemaName],
+        args: [this.oid],
         query: " \
-            (select 'table' as typ, table_name as name \
-            from information_schema.tables \
-            where table_schema = $1 \
+            (select 'table' as typ, oid, relname as name \
+            from pg_class \
+            where relnamespace = $1 and relkind in ('r', 'v', 'm', 'f') \
             order by name) \
             union all \
-            (select 'func' as typ, routine_name as name \
-            from information_schema.routines \
-            where routine_schema = $1 \
+            (select 'func' as typ, oid, format('%s(%s)',  proname, array_to_string(proargtypes::regtype[], ', ')) as name \
+            from pg_proc \
+            where pronamespace = $1 \
             order by name)",
         success: function (result) {
             complete(result.map(function (it) {
                 switch(it.typ) {
-                case 'table': return new Table(it.name, databaseName, schemaName);
-                case 'func': return new Func(it.name, databaseName, schemaName);
+                case 'table': return new Table(it.oid, it.name, databaseName);
+                case 'func': return new Func(it.oid, it.name, databaseName);
                 }
             }));
         }
@@ -103,9 +102,9 @@ Schema.prototype.loadChildren = function (complete) {
 };
 
 
-function Table(name, databaseName, schemaName) {
+function Table(oid, name, databaseName) {
+    this.oid = oid;
     this.name = name;
-    this.schemaName = schemaName;
     this.databaseName = databaseName;
 }
 
@@ -113,21 +112,19 @@ Table.prototype.objType = 'table';
 Table.prototype.canHaveChildren = true;
 
 Table.prototype.loadChildren = function (complete) {
-     var databaseName = this.databaseName,
-         schemaName = this.schemaName,
-         tableName = this.name;
-
+    var databaseName = this.databaseName,
+        tableOid = this.oid;
     sqlexec({
         database: databaseName,
-        args: [schemaName,  tableName],
+        args: [tableOid],
         query: "\
-            select column_name as name, data_type \
-            from information_schema.columns \
-            where table_schema = $1 and table_name = $2",
+            select attname as name, format_type(atttypid, null) as datatype \
+            from pg_attribute \
+            where attrelid = $1 and attnum > 0 \
+            order by attnum",
         success: function (result) {
             complete(result.map(function (it) {
-                return new Column(it.name, it.data_type,
-                    databaseName, schemaName, tableName);
+                return new Column(it.name, it.datatype, tableOid, databaseName);
             }));
         }
     });
@@ -135,9 +132,9 @@ Table.prototype.loadChildren = function (complete) {
 };
 
 
-function Func(name, databaseName, schemaName) {
+function Func(oid, name, databaseName) {
+    this.oid = oid;
     this.name = name;
-    this.schemaName = schemaName;
     this.databaseName = databaseName;
 }
 
@@ -148,8 +145,8 @@ Func.prototype.open = function (complete) {
     var databaseName = this.databaseName;
     sqlexec({
         database: this.databaseName,
-        args: [this.schemaName + '.' + this.name],
-        query: "select pg_get_functiondef(($1::text)::regproc) as def",
+        args: [this.oid],
+        query: "select pg_get_functiondef($1) as def",
         success: function (result) {
             complete('\\connect ' + databaseName + '\n\n' + result[0].def);
         }
@@ -157,11 +154,10 @@ Func.prototype.open = function (complete) {
 };
 
 
-function Column(name, dataType, databaseName, schemaName, tableName) {
+function Column(name, dataType, tableOid, databaseName) {
     this.name = name;
     this.dataType = dataType;
-    this.tableName = tableName;
-    this.schemaName = schemaName;
+    this.tableOid = tableOid;
     this.databaseName = databaseName;
 }
 
@@ -215,8 +211,6 @@ function sqlexec(options) {
     req.send('format=json' +
         '&database=' + options.database +
         '&query=' + encodeURIComponent(options.query) +
-        (options.args || []).map(function (a) {
-            return '&arg=' + encodeURIComponent(a);
-        }).join('')
+        (options.args ? '&args=' + JSON.stringify(options.args) : '')
     );
 }

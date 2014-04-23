@@ -52,7 +52,7 @@ def application(environ):
     try:
         query = params['query'][0]
         format = params.get('format', ('html',))[0]
-        args = params.get('arg', ())
+        args = json_loads(params.get('args', ('[]',))[0])
         database = params.get('database', (None,))[0]
     except LookupError:
         return ('400 Bad Request',
