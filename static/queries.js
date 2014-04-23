@@ -59,7 +59,11 @@ function Queries() {
     this._Item = QueriesItem;
 
     this.addBlank('');
+
+    window.addEventListener('beforeunload', this._handlePageUnload.bind(this));
 }
+
+
 
 Queries.prototype.add = function () {
     this.addBlank("\\connect postgres\nselect 'awesome';");
@@ -86,5 +90,11 @@ Queries.prototype.load = function () {
             item._isBlank = false;
             this.items.push(item);
         }
+    }
+};
+
+Queries.prototype._handlePageUnload = function () {
+    if (this._currentItem()) {
+        this._currentItem().ensureSave();
     }
 };
