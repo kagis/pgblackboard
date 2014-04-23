@@ -9,7 +9,7 @@ function Queries() {
         this.content = ko.observable(content);
 
         this._isDirty = false;
-        this._isBlank = true;
+        this._isBlank = true; // blank queries are not in list
         this._editSession = ace.createEditSession(content, 'ace/mode/pgsql');
         this._editSession.on('change', this._handleChange.bind(this));
         this._localStorageKey = localStorageKey;

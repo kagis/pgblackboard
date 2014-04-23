@@ -1,4 +1,4 @@
-@import url("fontello/css/fontello.css");
+@import url("fontello/css/fontello-embedded.css");
 @import url("splitpanel.css");
 
 html,
@@ -74,19 +74,19 @@ body {
 .my-queries {
     margin-bottom: 1em;
     padding-left: 1em;
-}
+    }
 
 .my-queries-list {
     margin: 0;
     padding: 0;
     list-style-type: none;
     line-height: 1.5em;
-}
+    }
 
 .my-queries-item {
     display: flex;
     align-items: center;
-}
+    }
 
 .my-queries-item .action {
     display: none;
@@ -104,11 +104,11 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
+    }
 
 .my-queries-item-current {
     font-weight: bold;
-}
+    }
 
 .action {
     margin: 0;
@@ -122,7 +122,7 @@ body {
     cursor: pointer;
     margin: .2em;
     white-space: nowrap;
-}
+    }
 
 .action::-webkit-focus-inner {
     border: 0;
@@ -134,4 +134,4 @@ body {
 [class^="icon-"]:before,
 [class*=" icon-"]:before {
     opacity: .7;
-}
+    }
