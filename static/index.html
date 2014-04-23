@@ -53,10 +53,14 @@
                                             'tree-node-toggler_expanded': isExpanded,
                                             'tree-node-toggler_loading': childrenAreLoading,
                                        }"></button>
-                    <span class="tree-node-name"
-                          data-bind="template: { name: nameTmpl, data: obj },
-                                     click: open"></span>
-                    <span class="tree-node-comment"></span>
+                    <a class="tree-node-name-and-comment"
+                       data-bind="click: open, attr: { title: comment }">
+
+                        <span class="tree-node-name"
+                            data-bind="template: { name: nameTmpl, data: obj }"></span>
+                        <small class="tree-node-comment"
+                            data-bind="text: comment"></small>
+                    </a>
                 </header>
                 <!-- ko template: { name: 'tree-node-list-tmpl', if: isExpanded } --><!-- /ko -->
             </li>

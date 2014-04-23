@@ -7,6 +7,7 @@ function TreeNode(obj) {
     this.childrenAreLoading = ko.observable(false);
     this.isLeaf = !obj.canHaveChildren;
     this.obj = obj;
+    this.comment = obj.comment;
     this.nameTmpl = obj.objType + '-tree-node-name-tmpl';
 }
 
@@ -119,12 +120,13 @@ Table.prototype.loadChildren = function (complete) {
         args: [tableOid],
         query: "\
             select attname as name, format_type(atttypid, null) as datatype \
+                ,col_description(attrelid, attnum) as comment \
             from pg_attribute \
             where attrelid = $1 and attnum > 0 \
             order by attnum",
         success: function (result) {
             complete(result.map(function (it) {
-                return new Column(it.name, it.datatype, tableOid, databaseName);
+                return new Column(it.name, it.comment, it.datatype, tableOid, databaseName);
             }));
         }
     });
@@ -154,8 +156,9 @@ Func.prototype.open = function (complete) {
 };
 
 
-function Column(name, dataType, tableOid, databaseName) {
+function Column(name, comment, dataType, tableOid, databaseName) {
     this.name = name;
+    this.comment = comment;
     this.dataType = dataType;
     this.tableOid = tableOid;
     this.databaseName = databaseName;

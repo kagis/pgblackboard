@@ -79,7 +79,7 @@
     visibility: hidden;
     }
 
-.tree-node-name {
+.tree-node-name-and-comment {
     text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
@@ -90,7 +90,15 @@
     padding-right: .1em;
     }
 
-.tree-node-name:hover {
+.tree-node-name {
+
+    }
+
+.tree-node-comment {
+    opacity: .7;
+    }
+
+.tree-node-name-and-comment:hover {
     background-color: rgba(0,0,0,.1);
     /*outline: thin solid rgba(0,0,0,.3);*/
     }
