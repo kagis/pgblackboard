@@ -2,7 +2,7 @@ function TreeNode(obj) {
     this.nodes = ko.observable();
     this.isExpanded = ko.observable(false);
     this.childrenAreLoading = ko.observable(false);
-    this.isLeaf = !obj.canHaveChildren;
+    this.isLeaf = !obj.childrenQuery;
     this.obj = obj;
     this.comment = obj.comment;
     this.nameTmpl = obj.objType + '-tree-node-name-tmpl';
@@ -64,7 +64,7 @@ function Database(name) {
 }
 
 Database.prototype.objType = 'database';
-Database.prototype.canHaveChildren = true;
+Database.prototype.fontelloIcon = 'database';
 Database.prototype.childrenQuery = sqlQueries.databaseChildren;
 Database.prototype.childrenQueryArgs = [];
 Database.prototype.createChildFromTuple = function (tup) {
@@ -79,7 +79,7 @@ function Schema(oid, name, databaseName) {
 }
 
 Schema.prototype.objType = 'schema';
-Schema.prototype.canHaveChildren = true;
+Schema.prototype.fontelloIcon = 'popup';
 Schema.prototype.childrenQuery = sqlQueries.schemaChildren;
 Schema.prototype.createChildFromTuple = function (tup) {
     switch(tup.typ) {
@@ -96,11 +96,11 @@ function Table(oid, name, databaseName) {
 }
 
 Table.prototype.objType = 'table';
-Table.prototype.canHaveChildren = true;
+Table.prototype.fontelloIcon = 'table';
 Table.prototype.definitionQuery = sqlQueries.tableDef;
 Table.prototype.childrenQuery = sqlQueries.tableChildren;
 Table.prototype.createChildFromTuple = function (tup) {
-    return new Column(tup.name, tup.comment, tup.datatype,
+    return new Column(tup.name, tup.comment,
         this.oid, this.databaseName);
 };
 
@@ -112,28 +112,25 @@ function Func(oid, name, databaseName) {
 }
 
 Func.prototype.objType = 'func';
-Func.prototype.canHaveChildren = false;
+Func.prototype.fontelloIcon = 'code';
 Func.prototype.definitionQuery = sqlQueries.funcDef;
 
 
-function Column(name, comment, dataType, tableOid, databaseName) {
+function Column(name, comment, tableOid, databaseName) {
     this.name = name;
     this.comment = comment;
-    this.dataType = dataType;
     this.tableOid = tableOid;
     this.databaseName = databaseName;
 }
 
 Column.prototype.objType = 'column';
-Column.prototype.canHaveChildren = false;
-
+Column.prototype.fontelloIcon = 'doc-text-1';
 
 function Root() {
 
 }
 
 Root.prototype.objType = 'root';
-Root.prototype.canHaveChildren = true;
 Root.prototype.databaseName = 'postgres';
 Root.prototype.childrenQuery = sqlQueries.databases;
 Root.prototype.childrenQueryArgs = [];

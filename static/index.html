@@ -55,40 +55,16 @@
                                             'tree-node-toggler_loading': childrenAreLoading,
                                        }"></button>
                     <a class="tree-node-name-and-comment"
-                       data-bind="click: open, attr: { title: comment }">
-
-                        <span class="tree-node-name"
-                            data-bind="template: { name: nameTmpl, data: obj }"></span>
-                        <small class="tree-node-comment"
-                            data-bind="text: comment"></small>
+                       data-bind="click: open, attr: {
+                            title: comment,
+                            class: 'tree-node-name-and-comment icon-' + obj.fontelloIcon }"
+                        ><span class="tree-node-name" data-bind="text: obj.name"></span>
+                        <small class="tree-node-comment" data-bind="text: comment"></small>
                     </a>
                 </header>
                 <!-- ko template: { name: 'tree-node-list-tmpl', if: isExpanded } --><!-- /ko -->
             </li>
         </ul>
-    </script>
-
-    <script type="text/html" id="database-tree-node-name-tmpl">
-        <span class="icon-database" data-bind="text: name"></span>
-    </script>
-
-    <script type="text/html" id="schema-tree-node-name-tmpl">
-        <span class="icon-popup" data-bind="text: name"></span>
-    </script>
-
-    <script type="text/html" id="table-tree-node-name-tmpl">
-        <span class="icon-table" data-bind="text: name"></span>
-    </script>
-
-    <script type="text/html" id="func-tree-node-name-tmpl">
-        <span class="icon-code" data-bind="text: name"></span>
-    </script>
-
-    <script type="text/html" id="column-tree-node-name-tmpl">
-        <span class="icon-doc-text-1">
-            <span data-bind="text: name"></span>
-            : <span data-bind="text: dataType"></span>
-        </span>
     </script>
 
     <script type="text/html" id="my-queries-tmpl">

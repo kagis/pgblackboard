@@ -34,8 +34,7 @@ order by name)
 
 
 ---tableChildren---
-select attname as name
-    ,format_type(atttypid, null) as datatype
+select format('%s : %s', attname, format_type(atttypid, null)) as name
     ,col_description(attrelid, attnum) as comment
 from pg_attribute
 where attrelid = $1 and attnum > 0
