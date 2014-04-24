@@ -1,4 +1,4 @@
-all: static/dist/app.js static/dist/index.html static/dist/style.css static/dist/map.js static/dist/map.css static/dist/table.js static/dist/table.css
+all: static/dist/app.js static/dist/index.html static/dist/style.css static/dist/map.js static/dist/map.css static/dist/table.js static/dist/table.css static/dist/favicon.ico
 
 static/dist/app.js: static/sqlqueries.sql static/main.js static/splitpanel.js static/tree.js static/queries.js
 	{ \
@@ -38,3 +38,6 @@ static/dist/table.js: static/table.js
 
 static/dist/table.css: static/table.css
 	cp static/table.css static/dist/table.css
+
+static/dist/favicon.ico: static/favicon.ico
+	cp static/favicon.ico static/dist/favicon.ico
