@@ -98,7 +98,7 @@ function Table(oid, name, databaseName) {
 Table.prototype.objType = 'table';
 Table.prototype.canHaveChildren = true;
 Table.prototype.definitionQuery = sqlQueries.tableDef;
-Table.prototype.childrenQuery = sqlQueries.columns;
+Table.prototype.childrenQuery = sqlQueries.tableChildren;
 Table.prototype.createChildFromTuple = function (tup) {
     return new Column(tup.name, tup.comment, tup.datatype,
         this.oid, this.databaseName);
