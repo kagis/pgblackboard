@@ -1,9 +1,6 @@
 function TreeNode(obj) {
-    this.nodes = ko.observableArray();
+    this.nodes = ko.observable();
     this.isExpanded = ko.observable(false);
-    this.isCollapsed = ko.computed(function () {
-        return !this.isExpanded();
-    }, this);
     this.childrenAreLoading = ko.observable(false);
     this.isLeaf = !obj.canHaveChildren;
     this.obj = obj;
@@ -12,19 +9,29 @@ function TreeNode(obj) {
 }
 
 TreeNode.prototype.expand = function () {
+    this.isExpanded(true);
     this.childrenAreLoading(true);
-    var that = this;
-    this.obj.loadChildren(function (children) {
-        that.isExpanded(true);
-        that.childrenAreLoading(false);
-        that.nodes(children.map(function (childObj) {
-            return new TreeNode(childObj);
-        }));
+    sqlexec({
+        database: this.obj.databaseName,
+        args: this.obj.childrenQueryArgs || [this.obj.oid],
+        query: this.obj.childrenQuery,
+        context: this,
+        success: this._onChildrenLoaded
     });
+};
+
+TreeNode.prototype._onChildrenLoaded = function (tuples) {
+    this.childrenAreLoading(false);
+    this.nodes(tuples.map(this._createChildNode, this));
+};
+
+TreeNode.prototype._createChildNode = function (objTuple) {
+    return new TreeNode(this.obj.createChildFromTuple(objTuple));
 };
 
 TreeNode.prototype.collapse = function () {
     this.isExpanded(false);
+    this.nodes(null);
 };
 
 TreeNode.prototype.toggle = function () {
@@ -36,37 +43,32 @@ TreeNode.prototype.toggle = function () {
 };
 
 TreeNode.prototype.open = function () {
-    this.obj.open(function (code) {
-        model.queries.addBlank(code);
+    sqlexec({
+        database: this.obj.databaseName,
+        args: [this.obj.oid],
+        query: this.obj.definitionQuery,
+        context: this,
+        success: this._onDefinitionLoaded
     });
+};
+
+TreeNode.prototype._onDefinitionLoaded = function (tuples) {
+    var header = '\\connect ' + this.obj.databaseName + '\n\n';
+    model.queries.addBlank(header + tuples[0].def);
 };
 
 
 function Database(name) {
     this.name = name;
+    this.databaseName = name;
 }
 
 Database.prototype.objType = 'database';
 Database.prototype.canHaveChildren = true;
-
-Database.prototype.loadChildren = function (complete) {
-    var databaseName = this.name;
-    sqlexec({
-        database: databaseName,
-        query: "\
-            select nspname as name, oid \
-            from pg_namespace \
-            where nspname not like e'pg\_temp\_%' \
-                and nspname not like e'pg\_toast_temp\_%' \
-                and nspname != 'pg_toast' \
-            order by name",
-        success: function (result) {
-            complete(result.map(function (it) {
-                return new Schema(it.oid, it.name, databaseName);
-            }));
-        }
-
-    });
+Database.prototype.childrenQuery = sqlQueries.databaseChildren;
+Database.prototype.childrenQueryArgs = [];
+Database.prototype.createChildFromTuple = function (tup) {
+    return new Schema(tup.oid, tup.name, this.databaseName);
 };
 
 
@@ -78,31 +80,12 @@ function Schema(oid, name, databaseName) {
 
 Schema.prototype.objType = 'schema';
 Schema.prototype.canHaveChildren = true;
-
-Schema.prototype.loadChildren = function (complete) {
-    var databaseName = this.databaseName;
-    sqlexec({
-        database: databaseName,
-        args: [this.oid],
-        query: " \
-            (select 'table' as typ, oid, relname as name \
-            from pg_class \
-            where relnamespace = $1 and relkind in ('r', 'v', 'm', 'f') \
-            order by name) \
-            union all \
-            (select 'func' as typ, oid, format('%s(%s)',  proname, array_to_string(proargtypes::regtype[], ', ')) as name \
-            from pg_proc \
-            where pronamespace = $1 \
-            order by name)",
-        success: function (result) {
-            complete(result.map(function (it) {
-                switch(it.typ) {
-                case 'table': return new Table(it.oid, it.name, databaseName);
-                case 'func': return new Func(it.oid, it.name, databaseName);
-                }
-            }));
-        }
-    });
+Schema.prototype.childrenQuery = sqlQueries.schemaChildren;
+Schema.prototype.createChildFromTuple = function (tup) {
+    switch(tup.typ) {
+    case 'table': return new Table(tup.oid, tup.name, this.databaseName);
+    case 'func': return new Func(tup.oid, tup.name, this.databaseName);
+    }
 };
 
 
@@ -114,26 +97,11 @@ function Table(oid, name, databaseName) {
 
 Table.prototype.objType = 'table';
 Table.prototype.canHaveChildren = true;
-
-Table.prototype.loadChildren = function (complete) {
-    var databaseName = this.databaseName,
-        tableOid = this.oid;
-    sqlexec({
-        database: databaseName,
-        args: [tableOid],
-        query: "\
-            select attname as name, format_type(atttypid, null) as datatype \
-                ,col_description(attrelid, attnum) as comment \
-            from pg_attribute \
-            where attrelid = $1 and attnum > 0 \
-            order by attnum",
-        success: function (result) {
-            complete(result.map(function (it) {
-                return new Column(it.name, it.comment, it.datatype, tableOid, databaseName);
-            }));
-        }
-    });
-
+Table.prototype.definitionQuery = sqlQueries.tableDef;
+Table.prototype.childrenQuery = sqlQueries.columns;
+Table.prototype.createChildFromTuple = function (tup) {
+    return new Column(tup.name, tup.comment, tup.datatype,
+        this.oid, this.databaseName);
 };
 
 
@@ -145,18 +113,7 @@ function Func(oid, name, databaseName) {
 
 Func.prototype.objType = 'func';
 Func.prototype.canHaveChildren = false;
-
-Func.prototype.open = function (complete) {
-    var databaseName = this.databaseName;
-    sqlexec({
-        database: this.databaseName,
-        args: [this.oid],
-        query: "select pg_get_functiondef($1) as def",
-        success: function (result) {
-            complete('\\connect ' + databaseName + '\n\n' + result[0].def);
-        }
-    });
-};
+Func.prototype.definitionQuery = sqlQueries.funcDef;
 
 
 function Column(name, comment, dataType, tableOid, databaseName) {
@@ -177,34 +134,22 @@ function Root() {
 
 Root.prototype.objType = 'root';
 Root.prototype.canHaveChildren = true;
-
-Root.prototype.loadChildren = function (complete) {
-    sqlexec({
-        database: 'postgres',
-        query: "select datname as name from pg_database where not datistemplate",
-        success: function (result) {
-            complete(result.map(function (it) {
-                return new Database(it.name);
-            }));
-        }
-    });
+Root.prototype.databaseName = 'postgres';
+Root.prototype.childrenQuery = sqlQueries.databases;
+Root.prototype.childrenQueryArgs = [];
+Root.prototype.createChildFromTuple = function (tup) {
+    return new Database(tup.name);
 };
 
 
 function sqlexec(options) {
     var req = new XMLHttpRequest();
     req.onload = function (e) {
-        var respArr = e.target.response;
-        respArr = respArr.slice(1); // skip "json" elem
-        var lastItem = respArr.slice(-1)[0]
-        if (lastItem && lastItem.type === 'error') {
-            console.error(lastItem.body);
+        var response = e.target.response;
+        if (response.error) {
+            console.error(response.error);
         } else {
-            options.success.apply(options.context || this,
-                respArr.map(function(it) {
-                    return it.body;
-                })
-            );
+            options.success.apply(options.context, response.results);
         }
     };/*
     var form = new FormData();

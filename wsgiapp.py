@@ -103,22 +103,26 @@ def process_sql(conn, query, args, renderer):
     )
     yield renderer.render_intro()
     try:
-        with conn.xact():
-            for stmt_index, stmt in enumerate(statements):
-                if stmt.column_names:
-                    query_renderer = renderer.get_query_renderer(
-                        stmt.column_names,
-                        stmt.pg_column_types,
-                        stmt_index
-                    )
-                    yield query_renderer.render_intro()
-                    try:
-                        for rows in stmt.chunks(*args):
-                            yield query_renderer.render_rows(rows)
-                    finally:
-                        yield query_renderer.render_outro()
-                else:
-                    yield renderer.render_nonquery(stmt.first(*args))
+        yield renderer.render_before_results()
+        try:
+            with conn.xact():
+                for stmt_index, stmt in enumerate(statements):
+                    if stmt.column_names:
+                        query_renderer = renderer.get_query_renderer(
+                            stmt.column_names,
+                            stmt.pg_column_types,
+                            stmt_index
+                        )
+                        yield query_renderer.render_intro()
+                        try:
+                            for rows in stmt.chunks(*args):
+                                yield query_renderer.render_rows(rows)
+                        finally:
+                            yield query_renderer.render_outro()
+                    else:
+                        yield renderer.render_nonquery(stmt.first(*args), stmt_index)
+        finally:
+            yield renderer.render_after_results()
     except Exception as ex:
         yield renderer.render_exception(ex)
     yield renderer.render_outro()
@@ -147,10 +151,16 @@ class RegularRenderer:
             '</body>'
             '</html>')
 
+    def render_before_results(self):
+        return ''
+
+    def render_after_results(self):
+        return ''
+
     def render_exception(self, exception):
         return '<pre class="error">{0}</pre>'.format(exception)
 
-    def render_nonquery(self, result):
+    def render_nonquery(self, result, stmt_index):
         return '<p class="non-query-result">{0}</p>'.format(result)
 
     def get_query_renderer(self, *args, **kw):
@@ -211,12 +221,18 @@ class MapRenderer:
             '</body>'
             '</html>')
 
+    def render_before_results(self):
+        return ''
+
+    def render_after_results(self):
+        return ''
+
     def render_exception(self, exception):
         return '<script>console.error({0!r})</script>'.format(
             str(exception)
         )
 
-    def render_nonquery(self, result):
+    def render_nonquery(self, result, stmt_index):
         return '<script>console.log({0!r})</script>'.format(
             str(result)
         )
@@ -263,22 +279,25 @@ class JsonRenderer:
     mime_type = 'application/json'
 
     def render_intro(self):
-        return '[ "json" '
+        return '{'
 
     def render_outro(self):
+        return '}'
+
+    def render_before_results(self):
+        return '"results":['
+
+    def render_after_results(self):
         return ']'
 
     def render_exception(self, exception):
-        return ',' + json_dumps({
-            'type': 'error',
-            'body': str(exception)
-        })
+        return ',"error":' + json_dumps(str(exception))
 
-    def render_nonquery(self, result):
-        return ',' + json_dumps({
-            'type': 'nonquery',
-            'body': str(result)
-        })
+    @strjoin
+    def render_nonquery(self, result, stmt_index):
+        if stmt_index > 0:
+            yield ','
+        yield json_dumps(str(result))
 
     def get_query_renderer(self, *args, **kw):
         return JsonQueryRenderer(*args, **kw)
@@ -288,12 +307,16 @@ class JsonQueryRenderer:
         self.colnames = colnames
         self.coltypes = coltypes
         self.first = True
+        self.stmt_index = stmt_index
 
+    @strjoin
     def render_intro(self):
-        return ', { "type": "query", "body": ['
+        if self.stmt_index > 0:
+            yield ','
+        yield '['
 
     def render_outro(self):
-        return ']}'
+        return ']'
 
     @strjoin
     def render_rows(self, rows):
