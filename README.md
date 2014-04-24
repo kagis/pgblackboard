@@ -1,6 +1,6 @@
-#GIS enabled admin interface for PostgreSQL
+# GIS enabled admin interface for PostgreSQL
 
-##TODO
+## TODO
 Digest auth
 Table editing
 Map editing

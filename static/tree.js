@@ -58,8 +58,9 @@ TreeNode.prototype._onDefinitionLoaded = function (tuples) {
 };
 
 
-function Database(name) {
+function Database(name, comment) {
     this.name = name;
+    this.comment = comment;
     this.databaseName = name;
 }
 
@@ -68,13 +69,14 @@ Database.prototype.fontelloIcon = 'database';
 Database.prototype.childrenQuery = sqlQueries.databaseChildren;
 Database.prototype.childrenQueryArgs = [];
 Database.prototype.createChildFromTuple = function (tup) {
-    return new Schema(tup.oid, tup.name, this.databaseName);
+    return new Schema(tup.oid, tup.name, tup.comment, this.databaseName);
 };
 
 
-function Schema(oid, name, databaseName) {
+function Schema(oid, name, comment, databaseName) {
     this.oid = oid;
     this.name = name;
+    this.comment = comment;
     this.databaseName = databaseName;
 }
 
@@ -82,16 +84,17 @@ Schema.prototype.objType = 'schema';
 Schema.prototype.fontelloIcon = 'popup';
 Schema.prototype.childrenQuery = sqlQueries.schemaChildren;
 Schema.prototype.createChildFromTuple = function (tup) {
-    switch(tup.typ) {
-    case 'table': return new Table(tup.oid, tup.name, this.databaseName);
-    case 'func': return new Func(tup.oid, tup.name, this.databaseName);
-    }
+    var Child = (tup.typ === 'table' ? Table :
+                 tup.typ === 'func' ? Func : null);
+    return new Child(tup.oid, tup.name,  tup.comment,
+        this.databaseName);
 };
 
 
-function Table(oid, name, databaseName) {
+function Table(oid, name, comment, databaseName) {
     this.oid = oid;
     this.name = name;
+    this.comment = comment;
     this.databaseName = databaseName;
 }
 
@@ -105,9 +108,10 @@ Table.prototype.createChildFromTuple = function (tup) {
 };
 
 
-function Func(oid, name, databaseName) {
+function Func(oid, name, comment, databaseName) {
     this.oid = oid;
     this.name = name;
+    this.comment = comment;
     this.databaseName = databaseName;
 }
 
@@ -135,7 +139,7 @@ Root.prototype.databaseName = 'postgres';
 Root.prototype.childrenQuery = sqlQueries.databases;
 Root.prototype.childrenQueryArgs = [];
 Root.prototype.createChildFromTuple = function (tup) {
-    return new Database(tup.name);
+    return new Database(tup.name, tup.comment);
 };
 
 

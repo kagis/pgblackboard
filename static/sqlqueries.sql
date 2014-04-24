@@ -1,11 +1,14 @@
 ---databases---
 select datname as name
+    ,shobj_description(oid, 'pg_database') as comment
 from pg_database
 where not datistemplate
 
 
 ---databaseChildren---
-select nspname as name, oid
+select nspname as name
+    ,oid
+    ,obj_description(oid, 'pg_namespace') as comment
 from pg_namespace
 where nspname not like 'pg\_temp\_%'
     and nspname not like 'pg\_toast_temp\_%'
@@ -17,6 +20,7 @@ order by name
 (select 'table' as typ
     ,oid
     ,relname as name
+    ,obj_description(oid, 'pg_class') as comment
 from pg_class
 where relnamespace = $1 and
     relkind in ('r', 'v', 'm', 'f')
@@ -28,6 +32,7 @@ select 'func' as typ
         ,proname
         ,array_to_string(proargtypes::regtype[], ', ')
     ) as name
+    ,obj_description(oid, 'pg_proc') as comment
 from pg_proc
 where pronamespace = $1
 order by name)
