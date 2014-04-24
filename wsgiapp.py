@@ -2,6 +2,8 @@ from base64 import b64decode
 from urllib.parse import parse_qs
 import re
 import json
+import cgi
+import io
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
@@ -48,12 +50,15 @@ def application(environ):
             ['Unexpected credentials format.']
         )
 
-    params = parse_qs(environ['wsgi.input'].read().decode())
+    ctype, pdict = cgi.parse_header(environ['CONTENT_TYPE'])
+    pdict['boundary'] = pdict['boundary'].encode()
+    params = cgi.parse_multipart(environ['wsgi.input'], pdict)
+
     try:
-        query = params['query'][0]
-        format = params.get('format', ('html',))[0]
-        args = json.loads(params.get('args', ('[]',))[0])
-        database = params.get('database', (None,))[0]
+        query = params['query'][0].decode()
+        format = params.get('format', ['html'])[0].decode()
+        args = json.loads(params.get('args', [b'[]'])[0].decode())
+        database = params.get('database', [b''])[0].decode()
     except LookupError:
         return ('400 Bad Request',
             [('Content-type', 'text/plain')],

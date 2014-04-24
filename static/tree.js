@@ -152,17 +152,15 @@ function sqlexec(options) {
         } else {
             options.success.apply(options.context, response.results);
         }
-    };/*
+    };
     var form = new FormData();
-    form.appen('format', 'json');
+    form.append('format', 'json');
     form.append('database', options.database);
     form.append('query', options.query);
-    form.append();*/
+    if (options.args) {
+        form.append('args', JSON.stringify(options.args));
+    }
     req.open('POST', '');
     req.responseType = 'json';
-    req.send('format=json' +
-        '&database=' + options.database +
-        '&query=' + encodeURIComponent(options.query) +
-        (options.args ? '&args=' + JSON.stringify(options.args) : '')
-    );
+    req.send(form);
 }
