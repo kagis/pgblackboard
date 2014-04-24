@@ -105,22 +105,21 @@ def process_sql(conn, query, args, renderer):
     try:
         yield renderer.render_before_results()
         try:
-            with conn.xact():
-                for stmt_index, stmt in enumerate(statements):
-                    if stmt.column_names:
-                        query_renderer = renderer.get_query_renderer(
-                            stmt.column_names,
-                            stmt.pg_column_types,
-                            stmt_index
-                        )
-                        yield query_renderer.render_intro()
-                        try:
-                            for rows in stmt.chunks(*args):
-                                yield query_renderer.render_rows(rows)
-                        finally:
-                            yield query_renderer.render_outro()
-                    else:
-                        yield renderer.render_nonquery(stmt.first(*args), stmt_index)
+            for stmt_index, stmt in enumerate(statements):
+                if stmt.column_names:
+                    query_renderer = renderer.get_query_renderer(
+                        stmt.column_names,
+                        stmt.pg_column_types,
+                        stmt_index
+                    )
+                    yield query_renderer.render_intro()
+                    try:
+                        for rows in stmt.chunks(*args):
+                            yield query_renderer.render_rows(rows)
+                    finally:
+                        yield query_renderer.render_outro()
+                else:
+                    yield renderer.render_nonquery(stmt.first(*args), stmt_index)
         finally:
             yield renderer.render_after_results()
     except Exception as ex:
