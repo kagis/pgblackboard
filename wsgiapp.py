@@ -1,12 +1,12 @@
 from base64 import b64decode
 from urllib.parse import parse_qs
-from json import dumps as json_dumps, loads as json_loads
-from re import match
+import re
+import json
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
 from sqlparse import split as split_sql_str
-
+from shapely import wkb
 
 def wsgi_v2(app):
     def wsgi1(environ, start_response):
@@ -52,7 +52,7 @@ def application(environ):
     try:
         query = params['query'][0]
         format = params.get('format', ('html',))[0]
-        args = json_loads(params.get('args', ('[]',))[0])
+        args = json.loads(params.get('args', ('[]',))[0])
         database = params.get('database', (None,))[0]
     except LookupError:
         return ('400 Bad Request',
@@ -61,7 +61,7 @@ def application(environ):
         )
 
     connect_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)'
-    conn_m = match(connect_pattern, query)
+    conn_m = re.match(connect_pattern, query)
     if conn_m:
         database, query = conn_m.groups()
     if not database:
@@ -240,6 +240,12 @@ class MapRenderer:
         return GeoJsonRenderer(*args, **kw)
 
 
+def hex_ewkb_mapping(hex_ewkb):
+    if hex_ewkb:
+        return wkb.loads(hex_ewkb, hex=True).__geo_interface__
+    else:
+        return None
+
 class GeoJsonRenderer:
     def __init__(self, colnames, coltypes, stmt_index):
         self.colnames = colnames
@@ -259,18 +265,18 @@ class GeoJsonRenderer:
         yield '<script>addFeatureCollection('
         yield str(self.stmt_index)
         yield ','
-        yield json_dumps({
+        yield json.dumps({
             'type': 'FeatureCollection',
             'features': [{
                 'type': 'Feature',
-                'geometry': json_loads(row[self.geomcol_ix] or 'null'),
+                'geometry': hex_ewkb_mapping(row[self.geomcol_ix]),
                 'properties': dict(zip(
                     self.propnames,
                     (x for i, x in enumerate(row)
                         if i != self.geomcol_ix)
                 ))
             } for row in rows]
-        }, ensure_ascii=False)
+        }, ensure_ascii=False, default=str)
         yield ')</script>'
 
 
@@ -290,13 +296,13 @@ class JsonRenderer:
         return ']'
 
     def render_exception(self, exception):
-        return ',"error":' + json_dumps(str(exception))
+        return ',"error":' + json.dumps(str(exception))
 
     @strjoin
     def render_nonquery(self, result, stmt_index):
         if stmt_index > 0:
             yield ','
-        yield json_dumps(str(result))
+        yield json.dumps(str(result))
 
     def get_query_renderer(self, *args, **kw):
         return JsonQueryRenderer(*args, **kw)
@@ -324,7 +330,7 @@ class JsonQueryRenderer:
                 self.first = False
             else:
                 yield ','
-            yield json_dumps(
+            yield json.dumps(
                 dict(zip(self.colnames, row)),
                 ensure_ascii=False
             )
