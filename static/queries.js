@@ -11,7 +11,7 @@ function Queries() {
         this._isDirty = false;
         this._isBlank = true; // blank queries are not in list
         this._editSession = ace.createEditSession(content, 'ace/mode/pgsql');
-        this._editSession.on('change', this._handleChange.bind(this));
+        this._editSession.on('change', this._onChange.bind(this));
         this._localStorageKey = localStorageKey;
         this._owner = itemsOwner;
 
@@ -34,7 +34,7 @@ function Queries() {
     };
 
     QueriesItem.prototype.ensureSave = function () {
-        if (!this._isBlank && this._isDirty) {
+        if (this._isDirty) {
             localStorage.setItem(this._localStorageKey, this.content());
             this._isDirty = false;
         }
@@ -47,7 +47,7 @@ function Queries() {
         this._owner.addBlank('');
     };
 
-    QueriesItem.prototype._handleChange = function () {
+    QueriesItem.prototype._onChange = function () {
         if (this._isBlank) {
             this._isBlank = false;
             this._owner.items.push(this);
@@ -60,7 +60,7 @@ function Queries() {
 
     this.addBlank('');
 
-    window.addEventListener('beforeunload', this._handlePageUnload.bind(this));
+    window.addEventListener('beforeunload', this._onPageUnload.bind(this));
 }
 
 
@@ -72,6 +72,7 @@ Queries.prototype.add = function () {
 Queries.prototype.addBlank = function (content) {
     var blank = this._createBlank(content);
     blank.open();
+    return blank;
 };
 
 Queries.prototype._createBlank = function (content) {
@@ -93,7 +94,7 @@ Queries.prototype.load = function () {
     }
 };
 
-Queries.prototype._handlePageUnload = function () {
+Queries.prototype._onPageUnload = function () {
     if (this._currentItem()) {
         this._currentItem().ensureSave();
     }

@@ -10,7 +10,7 @@ window.main = function () {
 
     sqleditor.commands.addCommand({
         name: 'execute',
-        bindKey: {win: 'F5',  mac: 'F5'},
+        bindKey: {win: 'F5', mac: 'F5'},
         exec: function() {
             submitQuery();
         }
@@ -44,8 +44,12 @@ window.main = function () {
 
 
     model = {
-        tree: treeRoot(),
+        tree: new TreeNode({
+            childquery: 'databases',
+            database: 'postgres'
+        }),
         queries: new Queries(),
+        queryIsOpening: ko.observable(false)
     };
 
     ko.applyBindings(model);

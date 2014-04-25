@@ -46,26 +46,31 @@ TreeNode.prototype.toggle = function () {
 };
 
 TreeNode.prototype.open = function () {
+    if (!this._definitionQuery) {
+        return;
+    }
+
+    model.queryIsOpening(true);
+    model.queries.addBlank('');
     sqlexec({
         database: this.database,
         args: [this.id],
         query: this._definitionQuery,
         context: this,
-        success: this._onDefinitionLoaded
+        success: this._onDefinitionLoadSuccess,
+        onfail: this._onDefinitionLoadFailed
     });
 };
 
-TreeNode.prototype._onDefinitionLoaded = function (tuples) {
+TreeNode.prototype._onDefinitionLoadSuccess = function (tuples) {
     var header = '\\connect ' + this.database + '\n\n';
     model.queries.addBlank(header + tuples[0].def);
+    model.queryIsOpening(false);
 };
-
-function treeRoot() {
-    return new TreeNode({
-        childquery: 'databases',
-        database: 'postgres'
-    });
-}
+/*
+TreeNode.prototype._onDefinitionLoadFailed = function (err) {
+};
+*/
 
 function sqlexec(options) {
     var req = new XMLHttpRequest();

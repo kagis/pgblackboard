@@ -171,7 +171,7 @@
 
 .tree-node-icon[data-type=view]::after {
     content: '\e80b';
-    background-color: purple;
+    background-color: #a20000;
     }
 
 .tree-node-icon[data-type=matview]::after {
@@ -181,7 +181,7 @@
 
 .tree-node-icon[data-type=foreigntable]::after {
     content: '\e809';
-    background-color: gray;
+    background-color: purple;
     }
 
 

@@ -7,5 +7,4 @@ Map editing
 Map drawing wkt/geojson
 Extensions in tree
 Firefox and IE support
-Code spinner
 Tree node icon title
