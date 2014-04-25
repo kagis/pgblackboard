@@ -107,21 +107,6 @@
 
 
 
-sub[class^="icon-"],
-sub[class*=" icon-"] {
-    vertical-align: baseline;
-    position: relative;
-    bottom:
-    }
-
-sub[class^="icon-"]:before,
-sub[class*=" icon-"]:before {
-    background-color: purple;
-    border-radius: 50%;
-    margin-left: -1em;
-    }
-
-
 .tree-node-icon {
     position: relative;
     }
@@ -190,7 +175,7 @@ sub[class*=" icon-"]:before {
     }
 
 .tree-node-icon[data-type=matview]::after {
-    content: '\e802';
+    content: '\e80b';
     background-color: green;
     }
 
@@ -203,3 +188,11 @@ sub[class*=" icon-"]:before {
 .tree-node-icon[data-type=column]::before {
     content: '\e80d';
     }
+
+.tree-node-icon[data-type=pk_column]::before {
+    content: '\e80a';
+}
+
+.tree-node-icon[data-type=fk_column]::before {
+    content: '\e80c';
+}
