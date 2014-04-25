@@ -4,8 +4,9 @@ function TreeNode(obj) {
     this.childrenAreLoading = ko.observable(false);
     this.isLeaf = !obj.childrenQuery;
     this.obj = obj;
+    this.name = obj.name;
+    this.type = obj.type;
     this.comment = obj.comment;
-    this.nameTmpl = obj.objType + '-tree-node-name-tmpl';
 }
 
 TreeNode.prototype.expand = function () {
@@ -64,7 +65,7 @@ function Database(name, comment) {
     this.databaseName = name;
 }
 
-Database.prototype.objType = 'database';
+Database.prototype.type = 'database';
 Database.prototype.fontelloIcon = 'database';
 Database.prototype.childrenQuery = sqlQueries.databaseChildren;
 Database.prototype.childrenQueryArgs = [];
@@ -80,25 +81,28 @@ function Schema(oid, name, comment, databaseName) {
     this.databaseName = databaseName;
 }
 
-Schema.prototype.objType = 'schema';
+Schema.prototype.type = 'schema';
 Schema.prototype.fontelloIcon = 'popup';
 Schema.prototype.childrenQuery = sqlQueries.schemaChildren;
 Schema.prototype.createChildFromTuple = function (tup) {
     var Child = (tup.typ === 'table' ? Table :
                  tup.typ === 'func' ? Func : null);
-    return new Child(tup.oid, tup.name,  tup.comment,
-        this.databaseName);
+    return new Child(tup, this.databaseName);
 };
 
 
-function Table(oid, name, comment, databaseName) {
-    this.oid = oid;
-    this.name = name;
-    this.comment = comment;
+function Table(tup, databaseName) {
+    this.oid = tup.oid;
+    this.name = tup.name;
+    this.comment = tup.comment;
+    this.type = (tup.relkind === 'r' ? 'table' :
+                tup.relkind === 'v' ? 'view' :
+                tup.relkind === 'f' ? 'foreigntable' :
+                tup.relkind === 'm' ? 'matview' : null);
     this.databaseName = databaseName;
 }
 
-Table.prototype.objType = 'table';
+Table.prototype.type = 'table';
 Table.prototype.fontelloIcon = 'table';
 Table.prototype.definitionQuery = sqlQueries.tableDef;
 Table.prototype.childrenQuery = sqlQueries.tableChildren;
@@ -108,14 +112,14 @@ Table.prototype.createChildFromTuple = function (tup) {
 };
 
 
-function Func(oid, name, comment, databaseName) {
-    this.oid = oid;
-    this.name = name;
-    this.comment = comment;
+function Func(tup, databaseName) {
+    this.oid = tup.oid;
+    this.name = tup.name;
+    this.comment = tup.comment;
     this.databaseName = databaseName;
 }
 
-Func.prototype.objType = 'func';
+Func.prototype.type = 'func';
 Func.prototype.fontelloIcon = 'code';
 Func.prototype.definitionQuery = sqlQueries.funcDef;
 
@@ -127,14 +131,14 @@ function Column(name, comment, tableOid, databaseName) {
     this.databaseName = databaseName;
 }
 
-Column.prototype.objType = 'column';
+Column.prototype.type = 'column';
 Column.prototype.fontelloIcon = 'doc-text-1';
 
 function Root() {
 
 }
 
-Root.prototype.objType = 'root';
+Root.prototype.type = 'root';
 Root.prototype.databaseName = 'postgres';
 Root.prototype.childrenQuery = sqlQueries.databases;
 Root.prototype.childrenQueryArgs = [];

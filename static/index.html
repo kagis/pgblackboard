@@ -55,11 +55,9 @@
                                             'tree-node-toggler_expanded': isExpanded,
                                             'tree-node-toggler_loading': childrenAreLoading,
                                        }"></button>
-                    <a class="tree-node-name-and-comment"
-                       data-bind="click: open, attr: {
-                            title: comment,
-                            class: 'tree-node-name-and-comment icon-' + obj.fontelloIcon }"
-                        ><span class="tree-node-name" data-bind="text: obj.name"></span>
+                    <a class="tree-node-link tree-node-icon"
+                       data-bind="click: open, attr: { title: comment, 'data-type': type }"
+                        ><!-- ko text: name --><!-- /ko -->
                         <small class="tree-node-comment" data-bind="text: comment"></small>
                     </a>
                 </header>

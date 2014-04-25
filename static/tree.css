@@ -3,13 +3,6 @@
 .tree-node-list {
     padding: 0;
     margin: 0;
-    }
-
-.tree-node-icon {
-    opacity: .7;
-    }
-
-.tree-node {
     list-style-type: none;
     line-height: 1.5em;
     white-space: nowrap;
@@ -65,8 +58,6 @@
     border-top-color: transparent;
     border-left-color: transparent;
     border-radius: 50%;
-    width: 1em;
-    height: 1em;
     -webkit-transform-origin: center center;
        -moz-transform-origin: center center;
         -ms-transform-origin: center center;
@@ -79,10 +70,9 @@
     visibility: hidden;
     }
 
-.tree-node-name-and-comment {
+.tree-node-link {
     text-decoration: none;
     cursor: pointer;
-    white-space: nowrap;
     flex: 1;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -90,15 +80,11 @@
     padding-right: .1em;
     }
 
-.tree-node-name {
-
-    }
-
 .tree-node-comment {
     opacity: .7;
     }
 
-.tree-node-name-and-comment:hover {
+.tree-node-link:hover {
     background-color: rgba(0,0,0,.1);
     /*outline: thin solid rgba(0,0,0,.3);*/
     }
@@ -116,4 +102,104 @@
 @-ms-keyframes spin {
     from { -ms-transform: rotate(0deg); }
     to { -ms-transform: rotate(360deg); }
+    }
+
+
+
+
+sub[class^="icon-"],
+sub[class*=" icon-"] {
+    vertical-align: baseline;
+    position: relative;
+    bottom:
+    }
+
+sub[class^="icon-"]:before,
+sub[class*=" icon-"]:before {
+    background-color: purple;
+    border-radius: 50%;
+    margin-left: -1em;
+    }
+
+
+.tree-node-icon {
+    position: relative;
+    }
+
+.tree-node-icon::before,
+.tree-node-icon::after {
+    font-family: 'fontello';
+    font-style: normal;
+    font-weight: normal;
+    speak: none;
+
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    margin-right: .2em;
+    text-align: center;
+
+    /* For safety - reset parent styles, that can break glyph codes*/
+    font-variant: normal;
+    text-transform: none;
+
+    /* fix buttons height, for twitter bootstrap */
+    line-height: 1em;
+
+    /* Animation center compensation - margins should be symmetric */
+    /* remove if not needed */
+    margin-left: .2em;
+
+    /* you can be more comfortable with increased icons size */
+    /* font-size: 120%; */
+
+    /* Uncomment for 3D effect */
+    /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+    }
+
+.tree-node-icon::after {
+    border-radius: 50%;
+    position: absolute;
+    left: .6em;
+    font-size: .8em;
+    bottom: .2em;
+    }
+
+.tree-node-icon[data-type=database]::before {
+    content: '\e801';
+    }
+
+.tree-node-icon[data-type=schema]::before {
+    content: '\e806';
+    }
+
+.tree-node-icon[data-type=func]::before {
+    content: '\e80b';
+    }
+
+.tree-node-icon[data-type=table]::before,
+.tree-node-icon[data-type=view]::before,
+.tree-node-icon[data-type=matview]::before,
+.tree-node-icon[data-type=foreigntable]::before {
+    content: '\e800';
+    }
+
+.tree-node-icon[data-type=view]::after {
+    content: '\e80b';
+    background-color: purple;
+    }
+
+.tree-node-icon[data-type=matview]::after {
+    content: '\e802';
+    background-color: green;
+    }
+
+.tree-node-icon[data-type=foreigntable]::after {
+    content: '\e809';
+    background-color: gray;
+    }
+
+
+.tree-node-icon[data-type=column]::before {
+    content: '\e80d';
     }

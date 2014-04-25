@@ -337,7 +337,8 @@ class JsonQueryRenderer:
                 yield ','
             yield json.dumps(
                 dict(zip(self.colnames, row)),
-                ensure_ascii=False
+                ensure_ascii=False,
+                default=str
             )
 
 

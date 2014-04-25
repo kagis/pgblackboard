@@ -1,6 +1,7 @@
 ---databases---
 select datname as name
     ,shobj_description(oid, 'pg_database') as comment
+    ,'databaseChildren' as childquery
 from pg_database
 where not datistemplate
 
@@ -21,6 +22,7 @@ order by name
     ,oid
     ,relname as name
     ,obj_description(oid, 'pg_class') as comment
+    ,relkind::text
 from pg_class
 where relnamespace = $1 and
     relkind in ('r', 'v', 'm', 'f')
@@ -33,6 +35,7 @@ select 'func' as typ
         ,array_to_string(proargtypes::regtype[], ', ')
     ) as name
     ,obj_description(oid, 'pg_proc') as comment
+    ,null as relkind
 from pg_proc
 where pronamespace = $1
 order by name)
