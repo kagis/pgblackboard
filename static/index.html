@@ -11,7 +11,7 @@
 <body class="splitpanel-h">
 
   <section id="leftpanel" class="scrollbox splitfix">
-    <!-- ko template: { name: 'my-queries-tmpl', data: queries } --><!-- /ko -->
+    <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
     <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
   </section>
 
@@ -74,16 +74,16 @@
     </ul>
   </script>
 
-  <script type="text/html" id="my-queries-tmpl">
-    <section class="my-queries">
-      <ul class="my-queries-list" data-bind="foreach: items">
-        <li class="my-queries-item"
-          data-bind="css: { 'my-queries-item-current': isCurrent }">
+  <script type="text/html" id="queries-tmpl">
+    <section class="queries">
+      <ul class="queries-list" data-bind="foreach: items">
+        <li class="queries-item"
+          data-bind="css: { 'queries-item-current': isCurrent }">
 
-          <a href="#" class="icon-code my-queries-item-name"
+          <a href="#" class="icon-code queries-item-name"
             data-bind="click: open, text: name"></a>
 
-          <button class="action my-queries-item-del"
+          <button class="action queries-item-del"
             data-bind="click: remove"></button>
 
         </li>

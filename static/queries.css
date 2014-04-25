@@ -1,29 +1,29 @@
-.my-queries {
+.queries {
     margin-bottom: 1em;
     padding-left: 1em;
     }
 
-.my-queries-list {
+.queries-list {
     margin: 0;
     padding: 0;
     list-style-type: none;
     line-height: 1.5em;
     }
 
-.my-queries-item {
+.queries-item {
     display: flex;
     align-items: center;
     }
 
-.my-queries-item .action {
+.queries-item .action {
     display: none;
     }
 
-.my-queries-item:hover .action {
+.queries-item:hover .action {
     display: block;
     }
 
-.my-queries-item-name {
+.queries-item-name {
     flex: 1;
     color: inherit;
     display: block;
@@ -33,6 +33,6 @@
     text-overflow: ellipsis;
     }
 
-.my-queries-item-current {
+.queries-item-current {
     font-weight: bold;
     }
