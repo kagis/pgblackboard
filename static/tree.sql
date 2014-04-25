@@ -1,55 +1,69 @@
 ---databases---
 select datname as name
     ,shobj_description(oid, 'pg_database') as comment
-    ,'databaseChildren' as childquery
+    ,datname as database
+    ,'schemas_in_db' as childquery
+    ,'database' as type
 from pg_database
 where not datistemplate
 
 
----databaseChildren---
+---schemas_in_db---
 select nspname as name
     ,oid
     ,obj_description(oid, 'pg_namespace') as comment
+    ,current_database() as database
+    ,'rels_and_funcs_in_schema' as childquery
+    ,'schema' as type
 from pg_namespace
 where nspname not like 'pg\_temp\_%'
-    and nspname not like 'pg\_toast_temp\_%'
+    and nspname not like 'pg\_toast\_temp\_%'
     and nspname != 'pg_toast'
 order by name
 
 
----schemaChildren---
-(select 'table' as typ
-    ,oid
-    ,relname as name
+---rels_and_funcs_in_schema---
+(select relname as name
     ,obj_description(oid, 'pg_class') as comment
-    ,relkind::text
+    ,oid
+    ,current_database() as database
+    ,'rel_def' as defquery
+    ,'columns_in_rel' as childquery
+    ,case relkind when 'r' then 'table'
+                  when 'v' then 'view'
+                  when 'f' then 'foreigntable'
+                  when 'm' then 'matview'
+                  end as type
 from pg_class
-where relnamespace = $1 and
-    relkind in ('r', 'v', 'm', 'f')
+where relnamespace = $1 and relkind in ('r', 'v', 'm', 'f')
 order by name
 ) union all (
-select 'func' as typ
-    ,oid
-    ,format('%s(%s)'
+select format('%s(%s)'
         ,proname
         ,array_to_string(proargtypes::regtype[], ', ')
     ) as name
     ,obj_description(oid, 'pg_proc') as comment
-    ,null as relkind
+    ,oid
+    ,current_database() as database
+    ,'func_def' as defquery
+    ,null as childquery
+    ,'func' as type
 from pg_proc
 where pronamespace = $1
 order by name)
 
 
----tableChildren---
+---columns_in_rel---
 select format('%s : %s', attname, format_type(atttypid, null)) as name
     ,col_description(attrelid, attnum) as comment
+    ,'column' as type
+    ,current_database() as database
 from pg_attribute
 where attrelid = $1 and attnum > 0
 order by attnum
 
 
----tableDef---
+---rel_def---
 select format(e'select %s \nfrom %s \nlimit 1000;'
     ,string_agg(quote_ident(attname), e',\n    ' order by attnum)
     ,$1::int::regclass) as def
@@ -57,5 +71,5 @@ from pg_attribute
 where attrelid = $1 and attnum > 0
 
 
----funcDef---
+---func_def---
 select pg_get_functiondef($1) as def

@@ -44,7 +44,7 @@ window.main = function () {
 
 
     model = {
-        tree: new TreeNode(new Root()),
+        tree: treeRoot(),
         queries: new Queries(),
     };
 

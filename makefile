@@ -1,12 +1,12 @@
 all: static/dist/app.js static/dist/index.html static/dist/style.css static/dist/map.js static/dist/map.css static/dist/table.js static/dist/table.css static/dist/favicon.ico
 
-static/dist/app.js: static/sqlqueries.sql static/main.js static/splitpanel.js static/tree.js static/queries.js
+static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/tree.js static/queries.js
 	{ \
 		echo '(function (undefined) {'; \
 		python3 -c "import json; \
 			import itertools; \
-			parts = open('static/sqlqueries.sql').read().split('---')[1:]; \
-			print('var sqlQueries = ', json.dumps(dict(zip(parts[::2], parts[1::2]))), ';');"; \
+			parts = open('static/tree.sql').read().split('---')[1:]; \
+			print('var treesql = ', json.dumps(dict(zip(parts[::2], parts[1::2]))), ';');"; \
 		cat static/splitpanel.js; \
 		cat static/tree.js; \
 		cat static/queries.js; \
