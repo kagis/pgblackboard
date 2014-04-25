@@ -1,88 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <title>pgBlackboard</title>
-    <link href="style.css" rel="stylesheet" />
-    <script src="app.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/knockout/3.1.0/knockout-min.js"></script>
+  <meta charset="utf-8" />
+  <title>pgBlackboard</title>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/knockout/3.1.0/knockout-min.js"></script>
+  <link href="style.css" rel="stylesheet" />
+  <script src="app.js"></script>
 </head>
 <body class="splitpanel-h">
 
-    <section id="leftpanel" class="scrollbox splitfix">
-        <!-- ko template: { name: 'my-queries-tmpl', data: queries } --><!-- /ko -->
-        <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
-    </section>
+  <section id="leftpanel" class="scrollbox splitfix">
+    <!-- ko template: { name: 'my-queries-tmpl', data: queries } --><!-- /ko -->
+    <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
+  </section>
 
+  <div class="splitter"></div>
+
+  <section class="splitstretch splitpanel-v">
+    <form id="code-form" method="POST" action="" target="result"
+      class="code-form splitstretch" enctype="multipart/form-data">
+
+      <code id="code" class="code"></code>
+      <input type="hidden" name="query" id="query-input" />
+
+      <div id="exec-commands">
+        <button id="exec-map" class="action" title="Alt+M"
+          accesskey="m" type="submit"
+          name="format" value="map"></button>
+
+        <button id="exec-table" class="action" title="Alt+E"
+          accesskey="e" type="submit"
+          name="format" value="html"></button>
+      </div>
+    </form>
     <div class="splitter"></div>
+    <iframe name="result" class="result scrollbox splitfix"></iframe>
+  </section>
 
-    <section class="splitstretch splitpanel-v">
-        <form id="code-form" method="POST" action="" target="result"
-            class="code-form splitstretch" enctype="multipart/form-data">
-            <code id="code" class="code"></code>
-            <input type="hidden" name="query" id="query-input" />
 
-            <div id="exec-commands">
-                <button id="exec-map" class="action" title="Alt+M"
-                        accesskey="m" type="submit"
-                        name="format" value="map"></button>
-
-                <button id="exec-table" class="action" title="Alt+E"
-                        accesskey="e" type="submit"
-                        name="format" value="html"></button>
-            </div>
-        </form>
-        <div class="splitter"></div>
-        <iframe name="result" class="result scrollbox splitfix"></iframe>
+  <script type="text/html" id="tree-tmpl">
+    <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }">
     </section>
+  </script>
 
+  <script type="text/html" id="tree-node-list-tmpl">
+    <ul class="tree-node-list" data-bind="foreach: nodes">
+      <li class="tree-node">
 
-    <script type="text/html" id="tree-tmpl">
-        <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }">
-        </section>
-    </script>
+        <header class="tree-node-header">
 
-    <script type="text/html" id="tree-node-list-tmpl">
-        <ul class="tree-node-list" data-bind="foreach: nodes">
-            <li class="tree-node">
-                <header class="tree-node-header">
-                    <button class="hitarea tree-node-toggler"
-                            data-bind="click: toggle,
-                                       css: {
-                                            'tree-node-toggler_hidden': isLeaf,
-                                            'tree-node-toggler_collapsed': !isExpanded(),
-                                            'tree-node-toggler_expanded': isExpanded,
-                                            'tree-node-toggler_loading': childrenAreLoading,
-                                       }"></button>
-                    <a class="tree-node-link tree-node-icon"
-                       data-bind="click: open, attr: { title: comment, 'data-type': type }"
-                        ><!-- ko text: name --><!-- /ko -->
-                        <small class="tree-node-comment" data-bind="text: comment"></small>
-                    </a>
-                </header>
-                <!-- ko template: { name: 'tree-node-list-tmpl', if: isExpanded } --><!-- /ko -->
-            </li>
-        </ul>
-    </script>
+          <button class="hitarea tree-node-toggler"
+            data-bind="click: toggle, css: {
+              'tree-node-toggler_hidden': isLeaf,
+              'tree-node-toggler_collapsed': !isExpanded(),
+              'tree-node-toggler_expanded': isExpanded,
+              'tree-node-toggler_loading': childrenAreLoading }"></button>
 
-    <script type="text/html" id="my-queries-tmpl">
-        <section class="my-queries">
-            <ul class="my-queries-list" data-bind="foreach: items">
-                <li class="my-queries-item"
-                    data-bind="css: { 'my-queries-item-current': isCurrent }">
+          <a class="tree-node-link tree-node-icon"
+             data-bind="click: open, attr: { title: comment, 'data-type': type }"
+            ><!-- ko text: name --><!-- /ko -->
+            <small class="tree-node-comment" data-bind="text: comment"></small>
+          </a>
 
-                    <a href="#" class="icon-code my-queries-item-name"
-                       data-bind="click: open, text: name"></a>
+        </header>
 
-                    <button class="action my-queries-item-del"
-                            data-bind="click: remove"></button>
-                </li>
-            </ul>
-            <button class="action" data-bind="click: add">new query</button>
-        </section>
-    </script>
+        <!-- ko template: {
+          name: 'tree-node-list-tmpl',
+          if: isExpanded
+        } --><!-- /ko -->
 
-    <script>main()</script>
+      </li>
+    </ul>
+  </script>
+
+  <script type="text/html" id="my-queries-tmpl">
+    <section class="my-queries">
+      <ul class="my-queries-list" data-bind="foreach: items">
+        <li class="my-queries-item"
+          data-bind="css: { 'my-queries-item-current': isCurrent }">
+
+          <a href="#" class="icon-code my-queries-item-name"
+            data-bind="click: open, text: name"></a>
+
+          <button class="action my-queries-item-del"
+            data-bind="click: remove"></button>
+
+        </li>
+      </ul>
+      <button class="action" data-bind="click: add">new query</button>
+    </section>
+  </script>
+
+  <script>main()</script>
 </body>
 </html>
