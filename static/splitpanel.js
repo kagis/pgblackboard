@@ -1,6 +1,6 @@
 function makeSplitPanels() {
     var shieldEl = document.createElement('div');
-    shieldEl.className = 'shield';
+    shieldEl.className = 'splitshield';
     document.body.appendChild(shieldEl);
 
     (function () {

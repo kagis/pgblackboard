@@ -1,6 +1,6 @@
 body {
     background-color: #333;
-    color: #eee;
+    color: #ddd;
     }
 
 #leftpanel {
@@ -65,6 +65,7 @@ body {
     }
 
 
-.queries-item:hover {
+.sideitem-opened,
+.sideitem:hover {
     background-color: rgba(255,255,255,.1);
     }

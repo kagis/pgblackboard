@@ -11,8 +11,8 @@
 
 .splitpanel-h > * {
     height: 100%;
-    box-sizing: border-box;
     -moz-box-sizing: border-box;
+         box-sizing: border-box;
     }
 
 .splitpanel-h > .splitter {
@@ -26,8 +26,8 @@
 
 .splitpanel-v > * {
     width: 100%;
-    box-sizing: border-box;
     -moz-box-sizing: border-box;
+         box-sizing: border-box;
     }
 
 .splitpanel-v > .splitter {
@@ -43,13 +43,13 @@
     }
 
 
-.shield {
+.splitshield {
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
-    display: none;
+    visibility: hidden;
 }
 
 
@@ -63,6 +63,6 @@
     pointer-events: none;
     }
 
-.splitting .shield {
-    display: block;
+.splitting .splitshield {
+    visibility: visible;
 }

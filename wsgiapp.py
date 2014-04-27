@@ -56,7 +56,7 @@ def application(environ):
 
     try:
         query = params['query'][0].decode()
-        format = params.get('format', ['html'])[0].decode()
+        format = params.get('format', [b'html'])[0].decode()
         args = json.loads(params.get('args', [b'[]'])[0].decode())
         database = params.get('database', [b''])[0].decode()
     except LookupError:

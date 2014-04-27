@@ -34,7 +34,9 @@
           name="format" value="html"></button>
       </div>
 
-      <div class="spinner-shield" data-bind="css: { visible: queryIsOpening }"></div>
+      <div class="spinner-shield"
+        data-bind="css: { visible: treeNodeQueryIsLoading() }"></div>
+
     </form>
     <div class="splitter"></div>
     <iframe name="result" class="result scrollbox splitfix"></iframe>
@@ -59,8 +61,10 @@
               'tree-node-toggler_expanded': isExpanded,
               'tree-node-toggler_loading': childrenAreLoading }"></button>
 
-          <a class="tree-node-link tree-node-icon"
-             data-bind="click: open, attr: { title: comment, 'data-type': type }"
+          <a class="sideitem tree-node-link tree-node-icon"
+            data-bind="click: $root.openTreeNode.bind($root),
+                       css: { 'sideitem-opened': isOpened },
+                       attr: { title: comment, 'data-type': type }"
             ><!-- ko text: name --><!-- /ko -->
             <small class="tree-node-comment" data-bind="text: comment"></small>
           </a>
@@ -79,18 +83,18 @@
   <script type="text/html" id="queries-tmpl">
     <section class="queries">
       <ul class="queries-list" data-bind="foreach: items">
-        <li class="queries-item"
-          data-bind="css: { 'queries-item-current': isCurrent }">
+        <li class="queries-item sideitem"
+          data-bind="css: { 'sideitem-opened': isOpened }">
 
           <a href="#" class="icon-code queries-item-name"
-            data-bind="click: open, text: name"></a>
+            data-bind="click: $root.openStoredQuery.bind($root), text: name"></a>
 
           <button class="action queries-item-del"
-            data-bind="click: remove"></button>
+            data-bind="click: $root.removeStoredQuery.bind($root)"></button>
 
         </li>
       </ul>
-      <button class="action" data-bind="click: add">new query</button>
+      <!-- <button class="action" data-bind="click: add">new query</button> -->
     </section>
   </script>
 

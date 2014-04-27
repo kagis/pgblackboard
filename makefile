@@ -1,6 +1,6 @@
 all: static/dist/app.js static/dist/index.html static/dist/style.css static/dist/map.js static/dist/map.css static/dist/table.js static/dist/table.css static/dist/favicon.ico
 
-static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/tree.js static/queries.js
+static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/model.js
 	{ \
 		echo '(function (undefined) {'; \
 		python3 -c "import json; \
@@ -8,8 +8,7 @@ static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/t
 			parts = open('static/tree.sql').read().split('---')[1:]; \
 			print('var treesql = ', json.dumps(dict(zip(parts[::2], parts[1::2]))), ';');"; \
 		cat static/splitpanel.js; \
-		cat static/tree.js; \
-		cat static/queries.js; \
+		cat static/model.js; \
 		cat static/main.js; \
 		echo '})()'; \
 	} > static/dist/app.js
@@ -17,13 +16,12 @@ static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/t
 static/dist/index.html: static/index.html
 	cp static/index.html static/dist/index.html
 
-static/dist/style.css: static/fontello/css/fontello-embedded.css static/layout.css static/tree.css static/splitpanel.css static/queries.css static/dark.css
+static/dist/style.css: static/fontello/css/fontello-embedded.css static/layout.css static/sidebar.css static/splitpanel.css static/dark.css
 	{ \
 		cat static/fontello/css/fontello-embedded.css; \
 		cat static/layout.css; \
-		cat static/tree.css; \
+		cat static/sidebar.css; \
 		cat static/splitpanel.css; \
-		cat static/queries.css; \
 		cat static/dark.css; \
 	} > static/dist/style.css
 

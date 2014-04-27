@@ -42,20 +42,8 @@ window.main = function () {
         codeForm.submit();
     }
 
-
-    model = {
-        tree: new TreeNode({
-            childquery: 'databases',
-            database: 'postgres'
-        }),
-        queries: new Queries(),
-        queryIsOpening: ko.observable(false)
-    };
-
+    var model = window.model = new AppModel(sqleditor);
     ko.applyBindings(model);
-
-    model.queries.load();
-    model.tree.expand();
 
 
     if (location.hash) {
@@ -63,3 +51,6 @@ window.main = function () {
     }
 
 }
+
+
+
