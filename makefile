@@ -16,13 +16,11 @@ static/dist/app.js: static/tree.sql static/main.js static/splitpanel.js static/m
 static/dist/index.html: static/index.html
 	cp static/index.html static/dist/index.html
 
-static/dist/style.css: static/fontello/css/fontello-embedded.css static/layout.css static/sidebar.css static/splitpanel.css static/dark.css
+static/dist/style.css: static/fontello/css/fontello-embedded.css static/main.css static/splitpanel.css
 	{ \
 		cat static/fontello/css/fontello-embedded.css; \
-		cat static/layout.css; \
-		cat static/sidebar.css; \
+		cat static/main.css; \
 		cat static/splitpanel.css; \
-		cat static/dark.css; \
 	} > static/dist/style.css
 
 static/dist/map.js: static/map.js

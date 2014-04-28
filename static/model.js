@@ -39,7 +39,7 @@ AppModel.prototype.removeStoredQuery = function (removingStoredQuery) {
     }
 };
 
-AppModel.prototype.treeNodeQueryIsLoading = function () {
+AppModel.prototype.queryTextIsLoading = function () {
     return this._loadingContext() &&
         this._loadingContext().isLoading();
 };

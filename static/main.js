@@ -4,7 +4,7 @@ window.main = function () {
 
     makeSplitPanels();
 
-    var sqleditor = window.sqleditor = ace.edit('code');
+    var sqleditor = window.sqleditor = ace.edit('editor');
     sqleditor.setTheme('ace/theme/monokai');
     sqleditor.setFontSize(20);
 
@@ -25,21 +25,21 @@ window.main = function () {
         }
     });
 
-    var codeForm = document.getElementById('code-form');
+    var queryForm = document.getElementById('queryform');
 
-    codeForm.onsubmit = function () {
+    queryForm.onsubmit = function () {
         syncQueryInput();
         return true;
     };
 
     function syncQueryInput() {
-        document.getElementById('query-input').value =
+        document.getElementById('queryinput').value =
             sqleditor.getSelectedText() || sqleditor.getValue();
     }
 
     function submitQuery() {
         syncQueryInput();
-        codeForm.submit();
+        queryForm.submit();
     }
 
     var model = window.model = new AppModel(sqleditor);

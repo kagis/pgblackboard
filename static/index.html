@@ -12,67 +12,56 @@
 
   <section id="leftpanel" class="scrollbox splitfix">
     <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
-    <!-- ko template: { name: 'tree-node-list-tmpl', data: tree } --><!-- /ko -->
+    <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
   </section>
 
   <div class="splitter"></div>
 
   <section class="splitstretch splitpanel-v">
-    <form id="code-form" method="POST" action="" target="result"
-      class="code-form splitstretch" enctype="multipart/form-data">
+    <form id="queryform" method="POST" action="" target="result"
+      class="splitstretch" enctype="multipart/form-data">
 
-      <code id="code" class="code"></code>
-      <input type="hidden" name="query" id="query-input" />
+      <code id="editor"></code>
+      <input type="hidden" name="query" id="queryinput" />
 
-      <div id="exec-commands">
-        <button id="exec-map" class="action" title="Alt+M"
-          accesskey="m" type="submit"
-          name="format" value="map"></button>
+      <div id="execbar">
+        <button type="submit" title="Alt+M" accesskey="m"
+          name="format" value="map">map</button>
 
-        <button id="exec-table" class="action" title="Alt+E"
-          accesskey="e" type="submit"
-          name="format" value="html"></button>
+        <button type="submit" title="Alt+E" accesskey="e"
+          name="format" value="html">execute</button>
       </div>
 
       <div class="spinner-shield"
-        data-bind="css: { visible: treeNodeQueryIsLoading() }"></div>
+        data-bind="visible: queryTextIsLoading()">
+        <div class="spinner"></div>
+      </div>
 
     </form>
     <div class="splitter"></div>
-    <iframe name="result" class="result scrollbox splitfix"></iframe>
+    <iframe id="result" name="result" class="scrollbox splitfix"></iframe>
   </section>
 
-
   <script type="text/html" id="tree-tmpl">
-    <section class="tree" data-bind="template: { name: 'tree-node-list-tmpl' }">
-    </section>
-  </script>
+    <ul data-bind="foreach: nodes">
+      <li class="treenode" data-bind="css: { 'current': isOpened }">
 
-  <script type="text/html" id="tree-node-list-tmpl">
-    <ul class="tree-node-list" data-bind="foreach: nodes">
-      <li class="tree-node">
+        <button data-bind="click: toggle, visible: !isLeaf, css: {
+              'treenode-toggler-collapsed': !isExpanded(),
+              'treenode-toggler-expanded': isExpanded,
+              'spinner': childrenAreLoading }"></button>
 
-        <header class="tree-node-header">
-
-          <button class="hitarea tree-node-toggler"
-            data-bind="click: toggle, css: {
-              'tree-node-toggler_hidden': isLeaf,
-              'tree-node-toggler_collapsed': !isExpanded(),
-              'tree-node-toggler_expanded': isExpanded,
-              'tree-node-toggler_loading': childrenAreLoading }"></button>
-
-          <a class="sideitem tree-node-link tree-node-icon"
-            data-bind="click: $root.openTreeNode.bind($root),
-                       css: { 'sideitem-opened': isOpened },
-                       attr: { title: comment, 'data-type': type }"
+        <header>
+          <a class="treenode-icon"
+             data-bind="click: $root.openTreeNode.bind($root),
+                        attr: { title: comment, 'data-type': type }"
             ><!-- ko text: name --><!-- /ko -->
-            <small class="tree-node-comment" data-bind="text: comment"></small>
+            <small data-bind="text: comment"></small>
           </a>
-
         </header>
 
         <!-- ko template: {
-          name: 'tree-node-list-tmpl',
+          name: 'tree-tmpl',
           if: isExpanded
         } --><!-- /ko -->
 
@@ -81,21 +70,18 @@
   </script>
 
   <script type="text/html" id="queries-tmpl">
-    <section class="queries">
-      <ul class="queries-list" data-bind="foreach: items">
-        <li class="queries-item sideitem"
-          data-bind="css: { 'sideitem-opened': isOpened }">
+    <ul data-bind="foreach: items">
+      <li data-bind="css: { current: isOpened }">
+        <header>
+          <a class="icon-code"
+            data-bind="click: $root.openStoredQuery.bind($root),
+                       text: name"></a>
 
-          <a href="#" class="icon-code queries-item-name"
-            data-bind="click: $root.openStoredQuery.bind($root), text: name"></a>
+          <button data-bind="click: $root.removeStoredQuery.bind($root)">remove</button>
 
-          <button class="action queries-item-del"
-            data-bind="click: $root.removeStoredQuery.bind($root)"></button>
-
-        </li>
-      </ul>
-      <!-- <button class="action" data-bind="click: add">new query</button> -->
-    </section>
+        </header>
+      </li>
+    </ul>
   </script>
 
   <script>main()</script>
