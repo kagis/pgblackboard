@@ -12,6 +12,7 @@ function AppModel(editor) {
     this._openedItem.subscribe(this._onItemOpening, this);
 
     this._loadingContext = ko.observable();
+    this._trackBlankEditSession(editor.getSession());
 }
 
 AppModel.prototype._onItemClosing = function (closingItem) {
