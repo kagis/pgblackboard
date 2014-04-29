@@ -103,7 +103,7 @@ def process_sql(conn, query, args, renderer):
                 if stmt.column_names:
                     query_renderer = renderer.get_query_renderer(
                         stmt.column_names,
-                        stmt.pg_column_types,
+                        stmt.sql_column_types,
                         stmt_index
                     )
                     yield query_renderer.render_intro()
@@ -135,7 +135,7 @@ class RegularRenderer:
         return (
             '<html>'
             '<head>'
-            '<link href="/table.css" rel="stylesheet" type="text/css" />'
+            '<link href="table.css" rel="stylesheet" type="text/css" />'
             '</head>'
             '<body>')
 
@@ -160,12 +160,20 @@ class RegularRenderer:
         return TableRenderer(*args, **kw)
 
 
+def render_html_json(s):
+    return json.dumps(json.loads(s), ensure_ascii=False, indent=4)
+
+
 class TableRenderer:
     def __init__(self, colnames, coltypes, stmt_index):
         self.colnames = colnames
         self.coltypes = coltypes
-        self.colclasses = [
-            'int' if typ == 23 else 'str'
+        self.colisnum = [
+            typ in ('INTEGER', 'BIGINT', 'NUMERIC')
+            for typ in coltypes
+        ]
+        self.colrenderers = [
+            render_html_json if typ == '"pg_catalog"."json"' else str
             for typ in coltypes
         ]
 
@@ -186,9 +194,12 @@ class TableRenderer:
     def render_rows(self, rows):
         for row in rows:
             yield '<tr>'
-            for val, class_ in zip(row, self.colclasses):
-                yield '<td class="' + class_ + '">'
-                yield '<em>null</em>' if val is None else str(val)
+            for val, isnum, render in zip(row, self.colisnum, self.colrenderers):
+                yield '<td'
+                if isnum:
+                    yield ' class="num"'
+                yield '>'
+                yield '<em>null</em>' if val is None else render(val)
                 yield '</td>'
             yield '</tr>'
 
@@ -203,11 +214,11 @@ class MapRenderer:
             '<link href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.css" rel="stylesheet" type="text/css" />'
             '<script>L_PREFER_CANVAS = true;</script>'
             '<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.js"></script>'
-            '<link href="/map.css" rel="stylesheet" type="text/css" />'
+            '<link href="map.css" rel="stylesheet" type="text/css" />'
             '</head>'
             '<body>'
             '<div id="map"></div>'
-            '<script src="/map.js"></script>')
+            '<script src="map.js"></script>')
 
     def render_outro(self):
         return (

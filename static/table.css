@@ -5,7 +5,6 @@ td, th {
     }
 
 td {
-    white-space: pre;
     overflow-x: hidden;
     text-overflow: ellipsis;
     max-width: 50em;
@@ -13,6 +12,7 @@ td {
     }
 
 td.expanded {
+    white-space: pre;
     overflow-wrap: break-word;
     }
 
@@ -46,7 +46,7 @@ body {
     background-color: #272822;
     }
 
-.int {
+.num {
     text-align: right;
     }
 
