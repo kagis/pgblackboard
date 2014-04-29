@@ -30,6 +30,7 @@ function splitpanel(splitpanelEl, orientation) {
             document.body.classList.remove('splitting');
             editor.resize();
         }
+
         document.body.classList.add('splitting');
         document.addEventListener('mousemove', handleSplitterMove);
         document.addEventListener('mouseup', handleSplitComplete);
@@ -37,6 +38,3 @@ function splitpanel(splitpanelEl, orientation) {
 }
 
 var shieldEl = document.createElement('div');
-
-
-

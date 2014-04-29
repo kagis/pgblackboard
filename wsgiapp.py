@@ -1,14 +1,13 @@
 from base64 import b64decode
 from urllib.parse import parse_qs
-import re
 import json
 import cgi
-import io
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
 from sqlparse import split as split_sql_str
 from shapely import wkb
+
 
 def wsgi_v2(app):
     def wsgi1(environ, start_response):
@@ -56,23 +55,13 @@ def application(environ):
 
     try:
         query = params['query'][0].decode()
+        database = params['database'][0].decode()
         format = params.get('format', [b'html'])[0].decode()
         args = json.loads(params.get('args', [b'[]'])[0].decode())
-        database = params.get('database', [b''])[0].decode()
     except LookupError:
         return ('400 Bad Request',
             [('Content-type', 'text/plain')],
             ['Invalid params.']
-        )
-
-    connect_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) \s* (.*)'
-    conn_m = re.match(connect_pattern, query)
-    if conn_m:
-        database, query = conn_m.groups()
-    if not database:
-        return ('400 Bad Request',
-            [('Content-type', 'text/plain')],
-            ['Database was not specified.']
         )
 
     try:

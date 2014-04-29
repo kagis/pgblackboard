@@ -87,7 +87,7 @@ li.current > header {
     }
 
 li.current > header {
-    text-shadow: 0 0 1px;
+    font-weight: bold;
     }
 
 a > small {
