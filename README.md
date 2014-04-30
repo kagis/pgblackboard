@@ -1,6 +1,6 @@
 # Minimalistic GIS enabled interface for PostgreSQL
 
-![screen_map](//raw.github.com/exe-dealer/pgblackboard/master/screenshot.png)
+![screen_map](//raw.githubusercontent.com/exe-dealer/pgblackboard/master/screenshot.png)
 
 ## TODO
     - Digest auth
