@@ -1,7 +1,4 @@
-from base64 import b64decode
-from urllib.parse import parse_qs
-import json
-import cgi
+import base64, json, cgi, io
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
@@ -42,23 +39,28 @@ def application(environ):
         )
     try:
         auth_scheme, b64cred = auth.split(' ', 1)
-        user, password = b64decode(b64cred).decode().split(':', 1)
+        user, password = base64.b64decode(b64cred).decode().split(':', 1)
     except:
         return ('400 Bad Request',
             [('Content-type', 'text/plain')],
             ['Unexpected credentials format.']
         )
 
-    ctype, pdict = cgi.parse_header(environ['CONTENT_TYPE'])
-    pdict['boundary'] = pdict['boundary'].encode()
-    params = cgi.parse_multipart(environ['wsgi.input'], pdict)
+    params = cgi.FieldStorage(
+        fp=io.TextIOWrapper(
+            io.BytesIO(environ['wsgi.input'].read()),
+            encoding='utf-8',
+            newline='\n'
+        ),
+        environ=environ,
+        keep_blank_values=True
+    )
 
-    try:
-        query = params['query'][0].decode()
-        database = params['database'][0].decode()
-        format = params.get('format', [b'html'])[0].decode()
-        args = json.loads(params.get('args', [b'[]'])[0].decode())
-    except LookupError:
+    query = params.getfirst('query')
+    database = params.getfirst('database')
+    format = params.getfirst('format', 'html')
+    args = json.loads(params.getfirst('args', '[]'))
+    if not (query and database):
         return ('400 Bad Request',
             [('Content-type', 'text/plain')],
             ['Invalid params.']
