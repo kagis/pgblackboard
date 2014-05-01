@@ -2,7 +2,7 @@ function initEditor() {
     var editor = ace.edit('editor');
     editor.getSession().setMode('ace/mode/pgsql');
     editor.setTheme('ace/theme/monokai');
-    editor.setValue("\\connect postgres\nselect 'hello, ' || current_user");
+    editor.setValue("\\connect postgres\nselect 'hello, ' || current_user;\n", 1);
     editor.setFontSize(20);
 
     editor.commands.addCommand({

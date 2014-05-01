@@ -4,7 +4,8 @@ window.main = function () {
 
     makeSplitPanels();
 
-    window.editor = initEditor();
+    var editor = window.editor = initEditor();
+    editor.focus();
 
     var model = window.model = new AppModel(editor);
     ko.applyBindings(model);
