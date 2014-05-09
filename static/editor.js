@@ -26,7 +26,7 @@ function initEditor() {
     if (location.hash) {
         var encodedQueryText = location.hash.slice(1); // trim #
         var queryText = decodeURIComponent(encodedQueryText);
-        editor.setValue(queryText);
+        editor.setValue(queryText, 1);
     }
 
     function submitQuery() {
