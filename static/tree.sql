@@ -73,7 +73,7 @@ from pg_attribute
     left outer join pg_index on indrelid = attrelid and
                                 attnum = any(indkey) and
                                 indisprimary
-where attrelid = $1 and attnum > 0
+where attrelid = $1 and attnum > 0 and not attisdropped
 order by attnum
 
 
