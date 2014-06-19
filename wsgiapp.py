@@ -2,7 +2,7 @@ import base64, json, cgi, io
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
-from sqlparse import split as split_sql_str
+from sqlsplit import sqlsplit
 from shapely import wkb
 
 
@@ -94,7 +94,7 @@ def application(environ):
 def process_sql(conn, query, args, renderer):
     statements = (
         conn.prepare(qry)
-        for qry in split_sql_str(query)
+        for qry in sqlsplit(query)
         if qry
     )
     yield renderer.render_intro()
