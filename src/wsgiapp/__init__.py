@@ -2,8 +2,9 @@ import base64, json, cgi, io
 
 from postgresql.driver import connect
 from postgresql.exceptions import ClientCannotConnectError
-from sqlsplit import sqlsplit
 from shapely import wkb
+
+from .sqlsplit import sqlsplit
 
 
 def wsgi_v2(app):
@@ -137,7 +138,7 @@ class RegularRenderer:
         return (
             '<html>'
             '<head>'
-            '<link href="table.css" rel="stylesheet" type="text/css" />'
+            '<link href="assets/table.css" rel="stylesheet" type="text/css" />'
             '</head>'
             '<body>')
 
@@ -216,11 +217,11 @@ class MapRenderer:
             '<link href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.css" rel="stylesheet" type="text/css" />'
             '<script>L_PREFER_CANVAS = true;</script>'
             '<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.2/leaflet.js"></script>'
-            '<link href="map.css" rel="stylesheet" type="text/css" />'
+            '<link href="assets/map.css" rel="stylesheet" type="text/css" />'
             '</head>'
             '<body>'
             '<div id="map"></div>'
-            '<script src="map.js"></script>')
+            '<script src="assets/map.js"></script>')
 
     def render_outro(self):
         return (

@@ -1,10 +1,4 @@
-function makeSplitPanels() {
-    shieldEl.className = 'splitshield';
-    document.body.appendChild(shieldEl);
-
-    splitpanel(document.querySelector('.splitpanel-h'), 'horizontal');
-    splitpanel(document.querySelector('.splitpanel-v'), 'vertical');
-}
+(function () {
 
 function splitpanel(splitpanelEl, orientation) {
     var splitterEl = splitpanelEl.querySelector('.splitter');
@@ -38,3 +32,10 @@ function splitpanel(splitpanelEl, orientation) {
 }
 
 var shieldEl = document.createElement('div');
+shieldEl.className = 'splitshield';
+document.body.appendChild(shieldEl);
+
+splitpanel(document.querySelector('.splitpanel-h'), 'horizontal');
+splitpanel(document.querySelector('.splitpanel-v'), 'vertical');
+
+})();

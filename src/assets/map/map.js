@@ -1,4 +1,4 @@
-var map = L.map(document.getElementById('map'), {
+var map = L.map('map', {
     center: [43.260535, 76.945493],
     zoom: 5,
     zoomControl: false,
