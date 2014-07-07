@@ -1,4 +1,6 @@
 __pycache__
-/env
+/pyvenv
+/build
+/dist
+/pgblackboard.egg-info
 /uwsgidev.ini
-/static/dist

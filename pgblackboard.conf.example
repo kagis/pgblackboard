@@ -1,0 +1,8 @@
+{
+"postgresql_host" : "localhost",
+"postgresql_port" : 5432,
+"http_host"       : "0.0.0.0",
+"http_port"       : 7890,
+"ssl_certificate" : "path/to/crt",
+"ssl_private_key" : "path/to/key"
+}
