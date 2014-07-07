@@ -1,4 +1,4 @@
-import cgi, io, re, json
+import cgi, io, re, json, logging
 
 from . import sqlsplit, regview, mapview
 
@@ -23,13 +23,11 @@ class QueryDatabaseAppHandler:
         self._view = self._views.get(form.getfirst('view'),
                                      self._views['regular'])
         psql_query = form.getfirst('query')
-        print(psql_query)
         psql_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) (.*)'
         psql_match = re.match(psql_pattern, psql_query)
         if psql_match:
             self.database, query = psql_match.groups()
             self._query = query
-
             self._statements = sqlsplit.sqlsplit(query)
 
 

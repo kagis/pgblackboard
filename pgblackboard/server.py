@@ -1,6 +1,6 @@
 #~/usr/bin/env python3
 
-import optparse, json
+import optparse, json, logging
 
 import cherrypy
 
@@ -17,9 +17,12 @@ options, _ = parser.parse_args()
 
 
 def app(environ, start_response):
+    logging.info('{REMOTE_ADDR} {HTTP_USER_AGENT} - {REQUEST_METHOD} '
+                  '{PATH_INFO}?{QUERY_STRING}'.format(**environ))
     environ['postgresql.port'] = conf['postgresql_port']
     environ['postgresql.host'] = conf['postgresql_host']
     yield from pgblackboard.application(environ, start_response)
+
 
 
 conf = {
@@ -42,6 +45,8 @@ if 'ssl_certificate' in conf and 'ssl_private_key' in conf:
         'server.ssl_certificate': conf['ssl_certificate'],
         'server.ssl_private_key': conf['ssl_private_key']
     })
+
+logging.basicConfig(level=logging.INFO)
 
 cherrypy.tree.graft(app, '/')
 cherrypy.engine.start()

@@ -1,6 +1,9 @@
 td, th {
     border: 1px solid #555;
     padding: .2em;
+    }
+
+th + th {
     width: 6em;
     }
 
