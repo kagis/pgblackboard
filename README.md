@@ -1,5 +1,7 @@
 # Minimalistic GIS enabled interface for PostgreSQL
 
+[TRY DEMO](http://guest:guest@46.8.22.2:7890)
+
 ![screenshot](https://raw.githubusercontent.com/exe-dealer/pgblackboard/master/screenshot.png)
 
 
