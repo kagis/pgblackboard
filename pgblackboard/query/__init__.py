@@ -1,6 +1,6 @@
-import cgi, io, re, json, logging
+import urllib.parse, re, json
 
-from . import sqlsplit, regview, mapview
+from . import sql, regview, mapview
 
 class QueryDatabaseAppHandler:
     mimetype = 'text/html'
@@ -11,24 +11,17 @@ class QueryDatabaseAppHandler:
     }
 
     def __init__(self, environ):
-        form = cgi.FieldStorage(
-            fp=io.TextIOWrapper(
-                io.BytesIO(environ['wsgi.input'].read()),
-                encoding='utf-8',
-                newline='\n'
-            ),
-            environ=environ,
-            keep_blank_values=True
-        )
-        self._view = self._views.get(form.getfirst('view'),
-                                     self._views['regular'])
-        psql_query = form.getfirst('query')
+        form = urllib.parse.parse_qs(environ['wsgi.input'].read().decode())
+        self._view = self._views.get(form.get('view', ['regular'])[0])
+        psql_query = form['query'][0]
+        #selection_start = form.get('selection_start', [0])[0]
+        #selection_end = form.get('selection_end', [len(psql_query) - 1])[0]
         psql_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) (.*)'
         psql_match = re.match(psql_pattern, psql_query)
         if psql_match:
             self.database, query = psql_match.groups()
             self._query = query
-            self._statements = sqlsplit.sqlsplit(query)
+            self._statements = sql.split(query)
 
 
     def get_response(self, cursor):
@@ -41,7 +34,7 @@ class QueryDatabaseAppHandler:
         yield self._view.render_body_start()
         position_offset = 0
         for stmt in self._statements:
-            if stmt.strip():
+            if sql.isnotempty(stmt):
                 yield from self._exec_stmt(cursor, stmt, position_offset)
             position_offset += len(stmt)
         yield ('</body>'
@@ -71,8 +64,10 @@ class QueryDatabaseAppHandler:
         else:
             columns = cursor.description
             if columns:
-                colnames = [colname for colname, *_ in columns]
-                coltypes = [coltype for _, coltype, *_ in columns]
+                colnames, coltypes = zip(*[
+                    (colname, coltype)
+                    for colname, coltype, *_ in columns
+                ])
                 rowset_renderer = self._view.get_rowset_renderer(colnames,
                                                                  coltypes)
                 yield from rowset_renderer.render_intro()
@@ -93,6 +88,7 @@ class QueryDatabaseAppHandler:
                             rowscount += len(rows)
                 yield from rowset_renderer.render_outro()
                 if fetch_err:
+                    print(fetch_err)
                     yield from rowset_renderer.render_exception(fetch_err)
             else:
                 yield self._view.render_nonquery(cursor.statusmessage)

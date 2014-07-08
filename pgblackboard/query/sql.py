@@ -1,4 +1,7 @@
-def sqlsplit(sql):
+import re
+
+
+def split(sql):
     open_close_esc = (
         ("e'", "'", '\\'),
         ("E'", "'", '\\'),
@@ -51,3 +54,8 @@ def sqlsplit(sql):
 
     if statement:
         yield statement
+
+def isnotempty(sql):
+    sql = re.sub(r'(?s)/\*.*?\*/', '', sql)
+    sql = re.sub(r'--.*', '', sql)
+    return bool(sql.strip())

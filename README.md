@@ -30,7 +30,7 @@ python3 -m pgblackboard.server
 
 Open http://yourserver:7890 in browser.
 
-## Configurate
+## Configure
 
 Create configuration file
 
