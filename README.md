@@ -36,7 +36,7 @@ Create configuration file
 
 ```bash
 sudo wget -O /etc/pgblackboard.conf https://raw.githubusercontent.com/exe-dealer/pgblackboard/master/pgblackboard.conf.example
-sudo nano wget /etc/pgblackboard.conf
+sudo nano /etc/pgblackboard.conf
 ```
 
 DO specify SSL certificate to prevent passwords and data capture by man in the middle.
