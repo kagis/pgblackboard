@@ -4,6 +4,14 @@
 
 ![screenshot](https://raw.githubusercontent.com/exe-dealer/pgblackboard/master/screenshot.png)
 
+## Features
+
+- Multistatement queries support
+- Spatial data visualization by [Leaflet](http://leafletjs.com/)
+- Powerfull SQL editor by [Ace](http://ace.c9.io)
+- Handy list of manually written queries
+- Data oriented tree with materialized views and foreign tables support
+
 
 ## Install
 
@@ -31,6 +39,8 @@ sudo wget -O /etc/pgblackboard.conf https://raw.githubusercontent.com/exe-dealer
 sudo nano wget /etc/pgblackboard.conf
 ```
 
+DO specify SSL certificate to prevent passwords and data capture by man in the middle.
+
 Run pgBlackboard with configuration file
 
 ```bash
@@ -38,8 +48,6 @@ python3 -m pgblackboard.server --conf /etc/pgblackboard.conf
 ```
 
 ## Run on boot
-
-
 
 ```bash
 # Create linux user for server process
@@ -54,9 +62,10 @@ sudo start pgblackboard
 
 ## TODO
 
-    - Digest auth
-    - Table editing
-    - Map editing
-    - Map drawing wkt/geojson
-    - Extensions in tree
-    - Tree node icon title
+- Digest auth
+- Table editing
+- Map editing
+- Map drawing wkt/geojson
+- Extensions in tree
+- Tree node icon title
+- Connection pooling
