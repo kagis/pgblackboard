@@ -66,6 +66,5 @@ sudo start pgblackboard
 - Table editing
 - Map editing
 - Map drawing wkt/geojson
-- Extensions in tree
 - Tree node icon title
 - Connection pooling

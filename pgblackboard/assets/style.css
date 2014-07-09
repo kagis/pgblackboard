@@ -187,6 +187,10 @@ a > small {
     content: '\e806';
     }
 
+.treenode-icon[data-type=extension]::before {
+    content: '\e808';
+    }
+
 .treenode-icon[data-type=func]::before {
     content: '\e80b';
     }
@@ -365,5 +369,3 @@ a > small {
 .ace_scrollbar-h::-webkit-scrollbar-button:end:increment {
     width: 5em;
     }
-
-

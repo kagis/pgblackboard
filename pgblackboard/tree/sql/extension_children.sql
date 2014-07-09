@@ -1,16 +1,4 @@
 (
-    select extname as name
-          ,obj_description(oid, 'pg_extension') as comment
-          ,oid
-          ,current_database() as database
-          ,null as defquery
-          ,'extension_children' as childquery
-          ,'extension' as type
-    from pg_extension
-    where extnamespace = %(oid)s
-    order by extname
-
-) union all (
     select relname as name
         ,obj_description(c.oid, 'pg_class') as comment
         ,c.oid
@@ -28,9 +16,9 @@
                       end as type
     from pg_class as c
         left outer join pg_depend as dep on c.oid = dep.objid
-                                      and dep.classid = 'pg_class'::regclass
-                                      and dep.deptype = 'e'
-    where relnamespace = %(oid)s and relkind in ('r', 'v', 'm', 'f') and dep is null
+                                          and dep.classid = 'pg_class'::regclass
+                                          and dep.deptype = 'e'
+    where dep.refobjid = %(oid)s and relkind in ('r', 'v', 'm', 'f')
     order by name
 
 ) union all (
@@ -48,6 +36,6 @@
         left outer join pg_depend as dep on p.oid = dep.objid
                                           and dep.classid = 'pg_proc'::regclass
                                           and dep.deptype = 'e'
-    where pronamespace = %(oid)s and dep is null
+    where dep.refobjid = %(oid)s
     order by name
 )
