@@ -14,10 +14,22 @@ class QueryDatabaseAppHandler:
     def __init__(self, environ):
         form = urllib.parse.parse_qs(environ['wsgi.input'].read().decode())
         self._view = self._views.get(form.get('view', ['regular'])[0])
-        self._psql_query = form['query'][0]
-        #selection_start = form.get('selection_start', [0])[0]
+        psql_query = form['query'][0]
+        lines = psql_query.splitlines()
+        psql_query = '\n'.join(lines)
+        self._psql_query = psql_query
+
+        selection = json.loads(form.get('selection', ['null'])[0])
         #selection_end = form.get('selection_end', [len(psql_query) - 1])[0]
-        self.database, query, self._querypos = sql.extract_connect(self._psql_query)
+        self.database, query, self._querypos = sql.extract_connect(psql_query)
+        if selection:
+            sel_start, sel_end = [
+                sum(len(ln) + 1 for ln in lines[:row]) + col
+                for row, col in selection
+            ]
+            query = psql_query[sel_start:sel_end]
+            self._querypos = sel_start
+
         self._statements = sql.split(query)
 
     def on_connect_error(self, start_response, ex):

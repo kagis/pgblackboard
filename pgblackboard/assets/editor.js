@@ -37,7 +37,11 @@ pgbb.initEditor = function () {
 
     function onSubmit() {
         pgbb.clearQueryAnnotations();
-        queryForm.elements.query.value = editor.getSelectedText() || editor.getValue();
+        queryForm.elements.query.value = editor.getValue();
+        var selRange = editor.getSelectionRange();
+        queryForm.elements.selection.value = selRange.isEmpty() ? null :
+            JSON.stringify([[selRange.start.row, selRange.start.column],
+                            [selRange.end.row, selRange.end.column]]);
     }
 
     var queryForm = document.getElementById('queryform');
