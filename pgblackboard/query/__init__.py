@@ -1,6 +1,7 @@
-import urllib.parse, re, json
+import urllib.parse, json
 
 from . import sql, regview, mapview
+
 
 class QueryDatabaseAppHandler:
     mimetype = 'text/html'
@@ -13,16 +14,21 @@ class QueryDatabaseAppHandler:
     def __init__(self, environ):
         form = urllib.parse.parse_qs(environ['wsgi.input'].read().decode())
         self._view = self._views.get(form.get('view', ['regular'])[0])
-        psql_query = form['query'][0]
+        self._psql_query = form['query'][0]
         #selection_start = form.get('selection_start', [0])[0]
         #selection_end = form.get('selection_end', [len(psql_query) - 1])[0]
-        psql_pattern = r'(?ixs)^ \s* \\connect \s+ (\w+) (.*)'
-        psql_match = re.match(psql_pattern, psql_query)
-        if psql_match:
-            self.database, query = psql_match.groups()
-            self._query = query
-            self._statements = sql.split(query)
+        self.database, query, self._querypos = sql.extract_connect(self._psql_query)
+        self._statements = sql.split(query)
 
+    def on_connect_error(self, start_response, ex):
+        start_response('200 OK', [
+            ('Content-type', 'text/html; charset=utf-8')
+        ])
+        yield ('<!doctype html>'
+               '<html>'
+               '<head></head>'
+               '<body><pre style="color: red">{0}</pre></body>'
+               '</html>').format(ex)
 
     def get_response(self, cursor):
         yield ('<!doctype html>'
@@ -32,7 +38,7 @@ class QueryDatabaseAppHandler:
         yield ('</head>'
                '<body>')
         yield self._view.render_body_start()
-        position_offset = 0
+        position_offset = self._querypos
         for stmt in self._statements:
             if sql.isnotempty(stmt):
                 yield from self._exec_stmt(cursor, stmt, position_offset)
@@ -48,9 +54,9 @@ class QueryDatabaseAppHandler:
             try:
                 errpos = int(ex.diag.statement_position)
             except:
-                errpos = re.search(r'\S', stmt).start()
+                errpos = sql.notemptypos(stmt)
             errpos += position_offset
-            errrow = self._query.count('\n', 0, errpos)
+            errrow = self._psql_query.count('\n', 0, errpos)
             errscript = ('<script>'
                          'parent.pgbb.addQueryAnnotation({0});'
                          '</script>')

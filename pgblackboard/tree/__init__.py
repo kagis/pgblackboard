@@ -10,6 +10,16 @@ class TreeDatabaseAppHandler:
         self._oid = int(qs.get('oid', ['0'])[0])
         self.database = qs['database'][0]
 
+    def on_connect_error(self, start_response, ex):
+        start_response('500 Internal Server Error', [
+            ('Content-type', 'text/html; charset=utf-8')
+        ])
+        yield ('<!doctype html>'
+               '<html>'
+               '<head></head>'
+               '<body><pre style="color: red">{0}</pre></body>'
+               '</html>').format(ex)
+
     def get_response(self, cursor):
         cursor.execute(self._sql, { 'oid': self._oid })
         colnames = [colname for colname, *_ in cursor.description]

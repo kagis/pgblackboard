@@ -39,13 +39,15 @@ class DatabaseApp:
                 database=handler.database
             )
         except Exception as ex:
-            # have no idea how detect auth error only
-            print(ex)
-            start_response('401 Unauthorized', [
-                ('Content-type', 'text/plain'),
-                ('WWW-Authenticate', 'Basic realm="postgresql"')
-            ])
-            yield b'Invalid user name or password.'
+            if str(ex) == 'ERROR:  Auth failed\n':
+                start_response('401 Unauthorized', [
+                    ('Content-type', 'text/plain'),
+                    ('WWW-Authenticate', 'Basic realm="postgresql"')
+                ])
+                yield b'Invalid user name or password.'
+                return
+
+            yield from handler.on_connect_error(start_response, ex)
             return
 
         start_response('200 OK', [

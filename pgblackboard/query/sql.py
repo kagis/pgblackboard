@@ -55,7 +55,19 @@ def split(sql):
     if statement:
         yield statement
 
+
 def isnotempty(sql):
     sql = re.sub(r'(?s)/\*.*?\*/', '', sql)
     sql = re.sub(r'--.*', '', sql)
     return bool(sql.strip())
+
+
+def notemptypos(sql):
+    return re.search(r'\S', sql).start()
+
+
+def extract_connect(sql):
+    m = re.match(r'(?ixs)^ \s* \\connect \s+ (\w+) (.*)', sql)
+    if m:
+        db, query = m.groups()
+        return db, query, m.start(2)
