@@ -14,7 +14,7 @@ td {
     vertical-align: top;
     }
 
-td.expanded {
+td:focus {
     white-space: pre;
     overflow-wrap: break-word;
     }
@@ -40,7 +40,7 @@ th {
     }
 
 tr:nth-child(even) {
-    opacity: .7;
+    color: #aaa;
     }
 
 
@@ -55,12 +55,10 @@ body {
     background-color: #272822;
     }
 
-.num {
-    text-align: right;
-    }
-
-em /* null */ {
+.null::before {
+    content: 'null';
     color: #888;
+    font-style: italic;
     font-size: smaller;
     }
 

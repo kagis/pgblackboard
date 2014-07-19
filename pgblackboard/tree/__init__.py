@@ -10,23 +10,16 @@ class TreeDatabaseAppHandler:
         self._oid = int(qs.get('oid', ['0'])[0])
         self.database = qs['database'][0]
 
-    def on_connect_error(self, start_response, ex):
-        start_response('500 Internal Server Error', [
-            ('Content-type', 'text/html; charset=utf-8')
-        ])
-        yield ('<!doctype html>'
-               '<html>'
-               '<head></head>'
-               '<body><pre style="color: red">{0}</pre></body>'
-               '</html>').format(ex)
+    def on_connect_error(self, ex):
+        yield json.dumps(str(ex))
 
-    def get_response(self, cursor):
+    def handle(self, cursor):
         cursor.execute(self._sql, { 'oid': self._oid })
         colnames = [colname for colname, *_ in cursor.description]
-        yield json.dumps([
+        return '200 OK', [json.dumps([
             dict(zip(colnames, row))
             for row in cursor.fetchall()
-        ])
+        ])]
 
 _queries = { nm: pkgutil.get_data('pgblackboard.tree',
                                   'sql/{0}.sql'.format(nm)) for nm in [

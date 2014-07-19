@@ -11,7 +11,7 @@
 - Powerfull SQL editor by [Ace](http://ace.c9.io)
 - Handy list of manually written queries
 - Data oriented tree with materialized views and foreign tables support
-
+- Query permalink sharing
 
 ## Install
 

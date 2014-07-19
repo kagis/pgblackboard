@@ -10,7 +10,7 @@ ko.utils.extend(pgbb.StoredQueriesList.prototype, {
     _load: function () {
         for (var i = 0; i < localStorage.length; i++) {
             var key = localStorage.key(i);
-            if (/^pgblackboard_query_\d+/.exec(key)) {
+            if (/^pgblackboard_query_\d+$/.exec(key)) {
                 var queryText = localStorage.getItem(key);
                 var editSession = ace.createEditSession(queryText, 'ace/mode/pgsql');
                 var item = new pgbb.StoredQuery(key, editSession);

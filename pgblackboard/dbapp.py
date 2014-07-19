@@ -47,16 +47,20 @@ class DatabaseApp:
                 yield b'Invalid user name or password.'
                 return
 
-            yield from handler.on_connect_error(start_response, ex)
+            start_response('500 Internal Server Error', [
+                ('Content-type', handler.mimetype + '; charset=utf-8')
+            ])
+            yield from (x.encode() for x in handler.on_connect_error(ex))
             return
 
-        start_response('200 OK', [
-            ('Content-type', handler.mimetype + '; charset=utf-8'),
-            ('uWSGI-Encoding', 'gzip')
-        ])
+
         with conn:
             conn.autocommit = True
             with conn.cursor() as cursor:
                 cursor.arraysize = 50;
-                resp = handler.get_response(cursor)
-                yield from (x.encode() for x in resp)
+                status, app_iter = handler.handle(cursor)
+                start_response(status, [
+                    ('Content-type', handler.mimetype + '; charset=utf-8'),
+                    ('uWSGI-Encoding', 'gzip')
+                ])
+                yield from (x.encode() for x in app_iter)

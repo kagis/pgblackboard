@@ -1,12 +1,13 @@
 import psycopg2
 
-from . import fileapp, dbapp, query, tree
+from . import fileapp, dbapp, query, tree, editing
 
 
 _apps = {
     ('GET', ''): fileapp.ResourceFileApp('index.html'),
     ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler),
-    ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler)
+    ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler),
+    ('POST', 'edit'): dbapp.DatabaseApp(psycopg2, editing.EditDatabaseAppHandler),
 }
 
 _apps.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [

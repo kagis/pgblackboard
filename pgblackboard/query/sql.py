@@ -1,4 +1,4 @@
-import re
+import re, sqlparse
 
 
 def split(sql):
@@ -57,9 +57,7 @@ def split(sql):
 
 
 def isnotempty(sql):
-    sql = re.sub(r'(?s)/\*.*?\*/', '', sql)
-    sql = re.sub(r'--.*', '', sql)
-    return bool(sql.strip())
+    return bool(_strip_comments(sql).strip())
 
 
 def notemptypos(sql):
@@ -71,3 +69,40 @@ def extract_connect(sql):
     if m:
         db, query = m.groups()
         return db, query, m.start(2)
+
+
+def parse_select(sql):
+    sql = _strip_comments(sql).rstrip(' ;').strip()
+    try:
+        stmt, = sqlparse.parse(sql)
+    except:
+        return
+
+    tokens = (t for t in stmt.tokens if not t.is_whitespace())
+    try:
+        select, columns, from_, table, *where = tokens
+    except:
+        return
+
+    if (select.is_keyword and select.value == 'select' and
+        isinstance(columns, (sqlparse.sql.Identifier, sqlparse.sql.IdentifierList)) and
+        from_.is_keyword and from_.value == 'from' and
+        isinstance(table, sqlparse.sql.Identifier) and
+        (not where or (len(where) == 1 and isinstance(where[0], sqlparse.sql.Where)))
+        ):
+
+        columns_idents = ([columns]
+            if isinstance(columns, sqlparse.sql.Identifier)
+            else columns.get_identifiers()
+        )
+
+        sqlid_re = r'((\w+|"[^"]+")\.)?(\w+|"[^"]+")'
+        return table.value, [
+            ident.value if re.fullmatch(sqlid_re, ident.value) else None
+            for ident in columns_idents
+        ]
+
+def _strip_comments(sql):
+    return re.sub(r'--.*', '',
+        re.sub(r'(?s)/\*.*?\*/', '', sql)
+    )

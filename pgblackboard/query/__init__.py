@@ -20,7 +20,6 @@ class QueryDatabaseAppHandler:
         self._psql_query = psql_query
 
         selection = json.loads(form.get('selection', ['null'])[0])
-        #selection_end = form.get('selection_end', [len(psql_query) - 1])[0]
         self.database, query, self._querypos = sql.extract_connect(psql_query)
         if selection:
             sel_start, sel_end = [
@@ -32,20 +31,21 @@ class QueryDatabaseAppHandler:
 
         self._statements = sql.split(query)
 
-    def on_connect_error(self, start_response, ex):
-        start_response('200 OK', [
-            ('Content-type', 'text/html; charset=utf-8')
-        ])
+    def on_connect_error(self, ex):
         yield ('<!doctype html>'
                '<html>'
                '<head></head>'
                '<body><pre style="color: red">{0}</pre></body>'
                '</html>').format(ex)
 
+    def handle(self, cursor):
+        return '200 OK', self.get_response(cursor)
+
     def get_response(self, cursor):
         yield ('<!doctype html>'
                '<html>'
-               '<head>')
+               '<head>'
+               '<meta charset="utf-8" />')
         yield self._view.render_head()
         yield ('</head>'
                '<body>')
@@ -59,6 +59,37 @@ class QueryDatabaseAppHandler:
                '</html>')
 
     def _exec_stmt(self, cursor, stmt, position_offset):
+        query_parse_res = sql.parse_select(stmt)
+        editable = False
+        if query_parse_res:
+            tablename, colnames = query_parse_res
+            try:
+                cursor.execute(
+                    'select attname from pg_index join pg_attribute '
+                    'on attrelid = indrelid and attnum = any(indkey) '
+                    'where pg_index.indrelid = %s::regclass and indisprimary',
+                    [tablename]
+                )
+            except Exception as ex:
+                print(ex)
+            else:
+                pk = {col for col, in cursor.fetchall()}
+                pkmask = [colnm in pk for colnm in colnames]
+                editable = bool(pk & set(colnames))
+
+            try:
+                cursor.execute(
+                    'select nspname, relname '
+                    'from pg_class join pg_namespace '
+                    'on pg_class.relnamespace = pg_namespace.oid '
+                    'where pg_class.oid = %s::regclass;',
+                    [tablename]
+                )
+            except Exception as ex:
+                print(ex)
+            else:
+                schemaname, tablename = cursor.fetchone()
+
         try:
             cursor.execute(stmt)
         except Exception as ex:
@@ -80,18 +111,25 @@ class QueryDatabaseAppHandler:
             }))
 
         else:
-            columns = cursor.description
-            if columns:
-                colnames, coltypes = zip(*[
-                    (colname, coltype)
-                    for colname, coltype, *_ in columns
+            if cursor.description:
+                colaliases, coltypes = zip(*[(al, typ)
+                    for al, typ, *_ in cursor.description
                 ])
-                rowset_renderer = self._view.get_rowset_renderer(colnames,
-                                                                 coltypes)
+                if editable:
+                    pass
+                else:
+                    colnames = [None] * len(colaliases)
+                    pkmask = [False] * len(colaliases)
+                    tablename = None
+                    schemaname = None
+                rowset_renderer = self._view.get_rowset_renderer(
+                    list(zip(colaliases, colnames, coltypes, pkmask)),
+                    tablename, schemaname, self.database
+                )
                 yield from rowset_renderer.render_intro()
                 unfetched_rows_exist = True
                 fetch_err = None
-                rowscount = 0
+                prev_rows_count = 0
                 while unfetched_rows_exist and not fetch_err:
                     try:
                         rows = cursor.fetchmany()
@@ -101,9 +139,10 @@ class QueryDatabaseAppHandler:
                         unfetched_rows_exist = bool(rows)
                         if rows:
                             yield ''.join(
-                                rowset_renderer.render_rows(rows, rowscount)
+                                rowset_renderer.render_rows(rows,
+                                                            prev_rows_count)
                             )
-                            rowscount += len(rows)
+                            prev_rows_count += len(rows)
                 yield from rowset_renderer.render_outro()
                 if fetch_err:
                     print(fetch_err)
