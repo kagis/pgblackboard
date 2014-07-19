@@ -26,7 +26,6 @@ td:first-child {
     font-weight: bold;
     }
 
-
 table {
     border-collapse: collapse;
     white-space: nowrap;
@@ -35,9 +34,15 @@ table {
     padding: 0;
     }
 
+tbody                  { counter-reset: rownum; }
+tbody tr               { counter-increment: rownum; }
+td:first-child::before { content: counter(rownum); }
+
 th {
     background-color: #444;
     }
+
+
 
 tr:nth-child(even) {
     color: #aaa;

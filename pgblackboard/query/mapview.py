@@ -45,7 +45,7 @@ class MapView:
         def render_outro(self):
             return []
 
-        def render_rows(self, rows, offset):
+        def render_rows(self, rows):
             yield '<script>addFeatures('
             yield json.dumps({
                 'type': 'FeatureCollection',

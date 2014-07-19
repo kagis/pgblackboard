@@ -71,12 +71,10 @@ class RegularView:
             yield ('</tbody>'
                    '</table>')
 
-        def render_rows(self, rows, offset):
-            for i, row in enumerate(rows, 1):
+        def render_rows(self, rows):
+            for row in rows:
                 yield '<tr>'
-                yield '<td>'
-                yield str(i + offset)
-                yield '</td>'
+                yield '<td></td>' #rownum
                 for val, render in zip(row, self._colrenderers):
                     yield '<td contenteditable="plaintext-only"'
                     if val is None:

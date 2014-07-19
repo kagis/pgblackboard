@@ -129,7 +129,6 @@ class QueryDatabaseAppHandler:
                 yield from rowset_renderer.render_intro()
                 unfetched_rows_exist = True
                 fetch_err = None
-                prev_rows_count = 0
                 while unfetched_rows_exist and not fetch_err:
                     try:
                         rows = cursor.fetchmany()
@@ -139,10 +138,8 @@ class QueryDatabaseAppHandler:
                         unfetched_rows_exist = bool(rows)
                         if rows:
                             yield ''.join(
-                                rowset_renderer.render_rows(rows,
-                                                            prev_rows_count)
+                                rowset_renderer.render_rows(rows)
                             )
-                            prev_rows_count += len(rows)
                 yield from rowset_renderer.render_outro()
                 if fetch_err:
                     print(fetch_err)
