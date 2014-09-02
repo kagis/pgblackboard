@@ -16,7 +16,7 @@ class EditDatabaseAppHandler:
         yield json.dumps(str(ex))
 
     def _update_query(self):
-        return 'update {0}.{1} set {2} where {3}'.format(
+        return 'update {0}.{1} set {2} where {3} returning *'.format(
             quote_ident(self._schema),
             quote_ident(self._table),
             ','.join(map(col_eq_val, *zip(*self._form['changes'].items()))),
@@ -25,7 +25,7 @@ class EditDatabaseAppHandler:
 
     def _insert_query(self):
         cols, vals = zip(*self._form['changes'].items())
-        return 'insert into {0}.{1} ({2}) values({3})'.format(
+        return 'insert into {0}.{1} ({2}) values({3}) returning *'.format(
             quote_ident(self._schema),
             quote_ident(self._table),
             ','.join(map(quote_ident, cols)),
@@ -33,7 +33,7 @@ class EditDatabaseAppHandler:
         )
 
     def _delete_query(self):
-        return 'delete from {0}.{1} where {2}'.format(
+        return 'delete from {0}.{1} where {2} returning *'.format(
             quote_ident(self._schema),
             quote_ident(self._table),
             ' and '.join(map(col_eq_val, *zip(*self._form['where'].items())))
@@ -51,7 +51,11 @@ class EditDatabaseAppHandler:
             return '400 Bad Request', [json.dumps(str(ex))]
         else:
             if cursor.rowcount == 1:
-                return '200 OK', ['"ok"']
+                returning_row = dict(zip(
+                    (colname for colname, *_ in cursor.description),
+                    cursor.fetchone()
+                ))
+                return '200 OK', [json.dumps(returning_row)]
             elif cursor.rowcount == 0:
                 return '400 Bad Request', ['"No rows affected."']
             elif cursor.rowcount > 1:

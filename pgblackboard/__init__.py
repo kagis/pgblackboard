@@ -31,6 +31,7 @@ _apps.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [
     'assets/fontello/fontello-embedded.css',
 ]})
 
+
 def application(environ, start_response):
     pathinfo = environ['PATH_INFO'].strip('/')
     method = environ['REQUEST_METHOD']

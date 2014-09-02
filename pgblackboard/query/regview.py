@@ -21,6 +21,7 @@ class RegularView:
     class get_rowset_renderer:
         def __init__(self, columns, table, schema, database):
             self._database = database
+            self._can_insert = bool(table)
             self._table = table
             self._schema = schema
             self._columns = columns
@@ -40,46 +41,48 @@ class RegularView:
                 for i, isnum in enumerate(self._colisnum, 2)
                 if isnum
             )
-            yield '<style>'
+            yield tagopen('style')
             yield numeric_td_selector
             yield '{text-align:right}'
-            yield '</style>'
+            yield tagclose('style')
 
-            yield '<table id="' + table_elem_id + '"'
-            if self._table and self._schema and self._database:
-                yield ' data-table="' + self._table + '"'
-                yield ' data-schema="' + self._schema + '"'
-                yield ' data-database="' + self._database + '"'
-            yield ('>'
-                   '<thead>'
-                   '<tr>'
-                   '<th>#</th>')
-            for alias, name, typ, iskey in self._columns:
-                yield '<th'
-                if name:
-                    yield ' data-name="' + name + '"'
-                if iskey:
-                    yield ' data-key="true"'
-                yield '>'
-                yield alias
-                yield '</th>'
-            yield ('</tr>'
-                   '</thead>'
-                   '<tbody>')
+            yield tagopen('table', {
+                'id': table_elem_id,
+                'data-table': self._table,
+                'data-schema': self._schema,
+                'data-database': self._database
+            })
+
+            yield tagopen('thead')
+            yield tagopen('tr')
+            yield tag('th', '')
+            yield from (tag('th', alias, {
+                'data-name': name,
+                'data-key': iskey or None
+            }) for alias, name, type_, iskey in self._columns)
+            yield tagclose('tr')
+            yield tagclose('thead')
+
+            yield tagopen('tbody', {
+                'class': self._can_insert and 'has-blankrow'
+            })
 
         def render_outro(self):
-            yield ('</tbody>'
-                   '</table>')
+            if self._can_insert:
+                yield tagopen('tr')
+                yield tag('td', '')
+                editable_td = tag('td', '', {'contenteditable': 'plaintext-only'})
+                yield editable_td * len(self._columns)
+                yield tagclose('tr')
+            yield tagclose('tbody')
+            yield tagclose('table')
 
         def render_rows(self, rows):
             for row in rows:
                 yield '<tr>'
                 yield '<td></td>' #rownum
                 for val, render in zip(row, self._colrenderers):
-                    yield '<td contenteditable="plaintext-only"'
-                    if val is None:
-                        yield ' class="null"'
-                    yield '>'
+                    yield '<td>'
                     if val is not None:
                         yield html.escape(render(val))
                     yield '</td>'
@@ -87,3 +90,40 @@ class RegularView:
 
 def render_json(obj):
     return json.dumps(obj, ensure_ascii=False, indent=2, default=str)
+
+
+
+import html
+
+
+def strbuilder(fun):
+    def wrapper(*args, **kw):
+        return ''.join(fun(*args, **kw))
+    return wrapper
+
+
+@strbuilder
+def tagopen(tagname, attrs=dict()):
+    yield '<'
+    yield tagname
+    for attname, attval in attrs.items():
+        if attval:
+            yield ' '
+            yield attname
+            yield '='
+            yield html.escape(str(attval))
+    yield '>'
+
+
+@strbuilder
+def tagclose(tagname):
+    yield '</'
+    yield tagname
+    yield '>'
+
+
+@strbuilder
+def tag(tagname, content, attrs=dict()):
+    yield tagopen(tagname, attrs)
+    yield html.escape(str(content))
+    yield tagclose(tagname)

@@ -1,95 +1,111 @@
+// submit dirty row when switch to another row
 window.addEventListener('blur', function (e) {
-    var oldEl = e.target;
-    if (isTd(oldEl)) {
+    if (e.target instanceof HTMLTableCellElement
+        && e.target.parentNode/*TR*/.dataset.dirtycells)
+    {
+        var blurredEl = e.target;
         setTimeout(function () {
-            onActiveElChanged(oldEl, document.activeElement);
-        }, 1);
+            var focusedEl = document.activeElement;
+            if (blurredEl.parentNode/*TR*/ !== focusedEl.parentNode/*TR*/) {
+                submitDirtyRow(blurredEl.parentNode);
+            }
+        }, 10);
     }
 }, true);
 
+// save original value of cell before editing
 window.addEventListener('focus', function (e) {
-    var el = e.target;
-    if (isTd(el) && el.dataset.origval === undefined) {
-        el.dataset.origval = el.textContent;
+    if (e.target instanceof HTMLTableCellElement
+        && !('origval' in e.target.dataset))
+    {
+        e.target.dataset.origval = e.target.textContent;
     }
 }, true);
 
+
+// fix blank row when input
 window.addEventListener('input', function (e) {
-    var tdEl = e.target;
-    if (isTd(tdEl)) {
-        tdEl.classList.toggle('null', !tdEl.textContent.length);
+    if (e.target instanceof HTMLTableCellElement) {
+        var row = e.target.parentNode;
+        var tBody = row.parentNode;
+        if (tBody.classList.contains('has-blankrow') && tBody.lastChild === row) {
+            row.dataset.inserting = true;
+            var newBlankRow = document.createElement('TR');
+            for (var i = 0; i < row.cells.length; i++) {
+                newBlankRow.appendChild(document.createElement('TD'));
+            }
+            tBody.appendChild(newBlankRow);
+        }
+
+        var cell = e.target;
+        var cellWasDirty = !!cell.dataset.dirty;
+        var cellNowDirty = (cell.dataset.origval !== cell.textContent);
+        cell.dataset.dirty = cellNowDirty || '';
+        row.dataset.dirtycells = (+(row.dataset.dirtycells || 0) + (cellNowDirty - cellWasDirty)) || '';
+    }
+});
+
+// make cell editable on click
+// instead of using contenteditable attribute in html
+// to reduce response size
+window.addEventListener('click', function (e) {
+    if (e.target.nodeName === 'TD'
+        && e.target.contentEditable !== 'plaintext-only'
+        && e.target.cellIndex > 0)
+    {
+        for (var i = 1; i < e.target.parentNode.cells.length; i++) {
+            e.target.parentNode.cells[i].contentEditable = 'plaintext-only';
+        }
+
+        e.target.focus();
     }
 }, true);
 
-function onActiveElChanged(oldEl, newEl) {
-    if (!isTd(oldEl) ||
-        tdElsAreInTheSameRow(newEl, oldEl) ||
-        !rowIsDirty(oldEl.parentNode)) { return; }
+function submitDirtyRow(row) {
+    var cells = row.cells;
+    var table = row.parentNode/*TBODY*/.parentNode/*TABLE*/;
+    var headcells = table.tHead.rows[0].cells;
 
-    var trEl = oldEl.parentNode;
-    var tdEls = trEl.childNodes;
-    var tableEl = trEl.parentNode /* tbody */
-                      .parentNode /* table */;
-    var thEls = tableEl.childNodes[0 /* thead */]
-                       .childNodes[0 /* tr */].childNodes;
-    var colsCount = thEls.length;
     var changes = {};
     var key = {};
-    for (var i = 1 /* skip # row header */; i < colsCount; i++) {
-        var tdEl = tdEls[i];
-        var thEl = thEls[i];
-        if (thEl.dataset.key) {
-            key[thEl.dataset.name] = cellOrigVal(tdEl);
+    for (var i = 1 /* skip # row header */; i < cells.length; i++) {
+        var cell = cells[i];
+        var headcell = headcells[i];
+        if (headcell.dataset.key) {
+            key[headcell.dataset.name] = cell.dataset.origval || cell.textContent || null;
         }
-        if (cellIsDirty(tdEl)) {
-            changes[thEl.dataset.name] = cellVal(tdEl);
+        if (cell.dataset.dirty) {
+            changes[headcell.dataset.name] = cell.textContent || null;
         }
     }
-    console.log(key, changes);
 
     var req = new XMLHttpRequest();
     req.open('POST', 'edit');
+    req.responseType = 'json';
+
     req.onload = function (e) {
         if (e.target.status === 200) {
-            Array.prototype.forEach.call(tdEls, function (tdEl) {
-                delete tdEl.dataset.origval;
-            });
+            delete row.dataset.inserting;
+            delete row.dataset.dirtycells;
+            for (var i = 1; i < cells.length; i++) {
+                delete cells[i].dataset.origval;
+                delete cells[i].dataset.dirty;
+                var returnedVal = e.target.response[headcells[i].dataset.name]
+                if (returnedVal !== undefined) {
+                    cells[i].textContent = returnedVal;
+                }
+            }
         } else {
             alert(e.target.response);
         }
     };
-    req.responseType = 'json';
+
     req.send(JSON.stringify({
-        database: tableEl.dataset.database,
-        table: tableEl.dataset.table,
-        schema: tableEl.dataset.schema,
-        action: 'update',
-        changes: changes,
-        where: key
+        action   : row.dataset.inserting ? 'insert' : 'update',
+        database : table.dataset.database,
+        table    : table.dataset.table,
+        schema   : table.dataset.schema,
+        changes  : changes,
+        where    : key
     }));
-}
-
-function isTd(el) {
-    return el && el.nodeName === 'TD';
-}
-
-function tdElsAreInTheSameRow(tdEl1, tdEl2) {
-    return tdEl1.parentNode === tdEl2.parentNode;
-}
-
-function rowIsDirty(trEl) {
-    return Array.prototype.some.call(trEl.childNodes, cellIsDirty);
-}
-
-function cellIsDirty(tdEl) {
-    return tdEl.dataset.origval !== undefined &&
-        tdEl.dataset.origval !== tdEl.textContent;
-}
-
-function cellOrigVal(tdEl) {
-    return cellIsDirty(tdEl) ? tdEl.dataset.origval : cellVal(tdEl);
-}
-
-function cellVal(tdEl) {
-    return tdEl.textContent.length === 0 ? null : tdEl.textContent;
 }

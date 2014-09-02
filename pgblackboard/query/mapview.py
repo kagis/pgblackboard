@@ -27,9 +27,9 @@ class MapView:
         )
 
     class get_rowset_renderer:
-        def __init__(self, colnames, coltypes):
-            self.colnames = colnames
-            self.coltypes = coltypes
+        def __init__(self, columns, table, schema, database):
+            self._columns = columns
+            colnames = [name for name, *_ in columns]
             if 'geom' in colnames:
                 self._geomcol_ix = geomcol_ix = colnames.index('geom')
                 self._propnames = colnames[:geomcol_ix] + colnames[geomcol_ix+1:]

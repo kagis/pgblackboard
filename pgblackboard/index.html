@@ -9,8 +9,6 @@
   <link href="assets/splitpanel/splitpanel.css" rel="stylesheet" />
   <link href="assets/fontello/fontello-embedded.css" rel="stylesheet" />
 
-  <script src="//cdn.jsdelivr.net/ace/1.1.4/min/ace.js"></script>
-  <script src="//cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
 
   <script id="tree-tmpl" type="text/html">
     <ul data-bind="foreach: nodes">
@@ -64,8 +62,12 @@
   <div class="splitter"></div>
 
   <section class="splitstretch splitpanel-v">
-    <form id="queryform" method="POST" action="" target="result"
-          class="splitstretch" enctype="application/x-www-form-urlencoded">
+    <form id="queryform"
+          method="POST"
+          action=""
+          target="result"
+          class="splitstretch"
+          enctype="application/x-www-form-urlencoded">
 
       <code id="editor"></code>
 
@@ -73,15 +75,24 @@
       <input type="hidden" name="selection" />
 
       <div id="execbar">
-        <button type="submit" title="Alt+M" accesskey="m"
-                name="view" value="map">map</button>
+        <button type="submit"
+                title="Alt+M"
+                accesskey="m"
+                name="view"
+                value="map">
+          map
+        </button>
 
-        <button type="submit" title="Alt+E" accesskey="e"
-                name="view" value="regular">execute</button>
+        <button type="submit"
+                title="Alt+E"
+                accesskey="e"
+                name="view"
+                value="regular">
+          execute
+        </button>
       </div>
 
-      <div class="spinner-shield"
-           data-bind="visible: queryTextIsLoading()">
+      <div class="spinner-shield" data-bind="visible: queryTextIsLoading()">
         <div class="spinner"></div>
       </div>
 
@@ -89,6 +100,10 @@
     <div class="splitter"></div>
     <iframe id="result" name="result" class="scrollbox splitfix"></iframe>
   </section>
+
+
+  <script src="//cdn.jsdelivr.net/ace/1.1.4/min/ace.js"></script>
+  <script src="//cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
 
   <script>window.pgbb = {};</script>
   <script src="assets/splitpanel/splitpanel.js"></script>

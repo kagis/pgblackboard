@@ -3,9 +3,12 @@ td, th {
     padding: .2em;
     }
 
+/* 6em width for all columns except row number */
 th + th {
     width: 6em;
     }
+
+
 
 td {
     overflow-x: hidden;
@@ -20,6 +23,10 @@ td:focus {
     }
 
 /* row number */
+th:first-child::before {
+    content: '#';
+    }
+
 td:first-child {
     text-align: right;
     background-color: #444;
@@ -32,11 +39,17 @@ table {
     margin: 0;
     margin-bottom: 1em;
     padding: 0;
+
     }
 
-tbody                  { counter-reset: rownum; }
-tbody tr               { counter-increment: rownum; }
-td:first-child::before { content: counter(rownum); }
+tbody {
+    counter-reset: rownum;
+    }
+
+td:first-child::before {
+    counter-increment: rownum;
+    content: counter(rownum);
+    }
 
 th {
     background-color: #444;
@@ -60,7 +73,7 @@ body {
     background-color: #272822;
     }
 
-.null::before {
+td + td:empty::before {
     content: 'null';
     color: #888;
     font-style: italic;
@@ -70,4 +83,12 @@ body {
 .error {
     color: red;
     margin-left: 1em;
+    }
+
+.has-blankrow > tr:last-child > td {
+    border-color: #333;
+    }
+
+.has-blankrow > tr:last-child > td:first-child::before {
+    content: '*';
     }

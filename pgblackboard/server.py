@@ -13,6 +13,11 @@ parser.add_option('-c', '--conf',
     help="Configuration file"
 )
 
+parser.add_option('-p', '--postgres',
+    dest='postgres',
+    help="Postgres server HOST:PORT"
+)
+
 options, _ = parser.parse_args()
 
 
@@ -34,6 +39,15 @@ conf = {
 
 if options.confpath:
     conf.update(json.loads(open(options.confpath).read()))
+
+if options.postgres:
+    if ':' in options.postgres:
+        pghost, pgportstr = options.postgres.split(':')
+        conf['postgresql_host'] = pghost
+        conf['postgresql_port'] = int(pgportstr)
+    else:
+        conf['postgresql_host'] = options.postgres
+
 
 cherrypy.config.update({
     'server.socket_port': conf['http_port'],
