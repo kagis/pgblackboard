@@ -60,7 +60,6 @@ class QueryDatabaseAppHandler:
 
     def _exec_stmt(self, cursor, stmt, position_offset):
         query_parse_res = sql.parse_select(stmt)
-        print(query_parse_res)
         editable = False
         if query_parse_res:
             tablename, colnames = query_parse_res
@@ -143,7 +142,6 @@ class QueryDatabaseAppHandler:
                             )
                 yield from rowset_renderer.render_outro()
                 if fetch_err:
-                    print(fetch_err)
                     yield from rowset_renderer.render_exception(fetch_err)
             else:
                 yield self._view.render_nonquery(cursor.statusmessage)

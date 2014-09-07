@@ -88,6 +88,11 @@ class RegularView:
                     yield '</td>'
                 yield '</tr>'
 
+        def render_exception(self, ex):
+            yield '<pre style="color: red">'
+            yield str(ex)
+            yield '</pre>'
+
 def render_json(obj):
     return json.dumps(obj, ensure_ascii=False, indent=2, default=str)
 
