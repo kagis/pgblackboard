@@ -50,6 +50,10 @@ window.addEventListener('input', function (e) {
 // to reduce response size
 window.addEventListener('click', function (e) {
     if (e.target.nodeName === 'TD'
+        && e.target.parentNode/*TR*/
+                .parentNode/*TBODY*/
+                .parentNode/*TABLE*/
+                .dataset.table /* if TABLE elem has data-table attribute, then it is editable */
         && e.target.contentEditable !== 'plaintext-only'
         && e.target.cellIndex > 0)
     {
