@@ -53,7 +53,7 @@ class EditDatabaseAppHandler:
             if cursor.rowcount == 1:
                 returning_row = dict(zip(
                     (colname for colname, *_ in cursor.description),
-                    cursor.fetchone()
+                    map(lambda x: '' if x is None else str(x), cursor.fetchone())
                 ))
                 return '200 OK', [json.dumps(returning_row)]
             elif cursor.rowcount == 0:
