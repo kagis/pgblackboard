@@ -59,7 +59,7 @@ class QueryDatabaseAppHandler:
                '</html>')
 
     def _exec_stmt(self, cursor, stmt, position_offset):
-        query_parse_res = sql.parse_select(stmt)
+        query_parse_res = sql.parse_updatable_query(stmt)
         editable = False
         if query_parse_res:
             tablename, colnames = query_parse_res

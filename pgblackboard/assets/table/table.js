@@ -1,6 +1,6 @@
 // submit dirty row when switch to another row
 window.addEventListener('blur', function (e) {
-    if (e.target instanceof HTMLTableCellElement
+    if (e.target.nodeName === 'TD'
         && e.target.parentNode/*TR*/.dataset.dirtycells)
     {
         var blurredEl = e.target;
@@ -13,19 +13,10 @@ window.addEventListener('blur', function (e) {
     }
 }, true);
 
-// save original value of cell before editing
-window.addEventListener('focus', function (e) {
-    if (e.target instanceof HTMLTableCellElement
-        && !('origval' in e.target.dataset))
-    {
-        e.target.dataset.origval = e.target.textContent;
-    }
-}, true);
-
 
 // fix blank row when input
 window.addEventListener('input', function (e) {
-    if (e.target instanceof HTMLTableCellElement) {
+    if (e.target.nodeName === 'TD') {
         var row = e.target.parentNode;
         var tBody = row.parentNode;
         if (tBody.classList.contains('has-blankrow') && tBody.lastChild === row) {
@@ -45,22 +36,19 @@ window.addEventListener('input', function (e) {
     }
 });
 
-// make cell editable on click
+// make row editable on click and save original values
 // instead of using contenteditable attribute in html
 // to reduce response size
 window.addEventListener('click', function (e) {
     if (e.target.nodeName === 'TD'
-        && e.target.parentNode/*TR*/
-                .parentNode/*TBODY*/
-                .parentNode/*TABLE*/
-                .dataset.table /* if TABLE elem has data-table attribute, then it is editable */
         && e.target.contentEditable !== 'plaintext-only'
-        && e.target.cellIndex > 0)
+        && e.target.cellIndex > 0
+        && e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table /* is editable */)
     {
-        for (var i = 1; i < e.target.parentNode.cells.length; i++) {
-            e.target.parentNode.cells[i].contentEditable = 'plaintext-only';
-        }
-
+        Array.prototype.forEach.call(e.target.parentNode.cells, function (cell) {
+            cell.contentEditable = 'plaintext-only';
+            cell.dataset.origval = cell.textContent;
+        });
         e.target.focus();
     }
 }, true);
@@ -76,7 +64,7 @@ function submitDirtyRow(row) {
         var cell = cells[i];
         var headcell = headcells[i];
         if (headcell.dataset.key) {
-            key[headcell.dataset.name] = cell.dataset.origval || cell.textContent || null;
+            key[headcell.dataset.name] = cell.dataset.origval || null;
         }
         if (cell.dataset.dirty) {
             changes[headcell.dataset.name] = cell.textContent || null;
@@ -94,6 +82,7 @@ function submitDirtyRow(row) {
             for (var i = 1; i < cells.length; i++) {
                 delete cells[i].dataset.origval;
                 delete cells[i].dataset.dirty;
+                cells[i].contentEditable = false;
                 var returnedVal = e.target.response[headcells[i].dataset.name]
                 if (returnedVal !== undefined) {
                     cells[i].textContent = returnedVal;

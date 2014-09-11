@@ -1,5 +1,4 @@
-import re, sqlparse
-
+import re
 
 def split(sql):
     open_close_esc = (
@@ -71,36 +70,33 @@ def extract_connect(sql):
         return db, query, m.start(2)
 
 
-def parse_select(sql):
-    sql = _strip_comments(sql).rstrip(' ;').strip()
-    try:
-        stmt, = sqlparse.parse(sql)
-    except:
-        return
 
-    tokens = (t for t in stmt.tokens if not t.is_whitespace())
-    try:
-        select, columns, from_, table, *where = tokens
-    except:
-        return
+_symbol    = r'(?: \w+ | (?: "[^"]*")+              )'
+_ident     = r'(?: (?:{symbol}\.)?({symbol})        )'.format(symbol=_symbol)
+_identlist = r'(?: {ident} (?: \s*,\s* {ident} )*   )'.format(ident=_ident)
+_query     = r'''SELECT \s+ (?P<columns>\*|{identlist})
+                 \s+ FROM   \s+ (?P<table>{ident})
+                 (?: \s+ (?:WHERE|LIMIT|OFFSET) .* )?'''.format(
+                    identlist=_identlist,
+                    ident=_ident)
 
-    if (select.is_keyword and select.value == 'select' and
-        isinstance(columns, (sqlparse.sql.Identifier, sqlparse.sql.IdentifierList)) and
-        from_.is_keyword and from_.value == 'from' and
-        isinstance(table, sqlparse.sql.Identifier) and
-        (not where or (len(where) == 1 and isinstance(where[0], sqlparse.sql.Where)))
-        ):
+_updatable_query_pattern = re.compile(r'(?ixs)^{query}$'.format(query=_query))
+_ident_pattern = re.compile(r'(?ixs){ident}'.format(ident=_ident))
 
-        columns_idents = ([columns]
-            if isinstance(columns, sqlparse.sql.Identifier)
-            else columns.get_identifiers()
-        )
 
-        sqlid_re = r'((\w+|"[^"]+")\.)?(\w+|"[^"]+")'
-        return table.value, [
-            ident.value if re.fullmatch(sqlid_re, ident.value) else None
-            for ident in columns_idents
-        ]
+def parse_updatable_query(q):
+    match = _updatable_query_pattern.match(q.strip(';\n '))
+    return match and (
+        match.group('table'),
+        list(map(_unquote_ident, _ident_pattern.findall(match.group('columns'))))
+    )
+
+
+def _unquote_ident(ident):
+    return ident[1:-1].replace('""', '"') \
+        if ident.startswith('"') and ident.endswith('"') \
+        else ident
+
 
 def _strip_comments(sql):
     return re.sub(r'--.*', '',
