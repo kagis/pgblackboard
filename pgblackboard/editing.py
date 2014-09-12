@@ -71,4 +71,6 @@ def quote_ident(unquoted):
 
 
 def quote_literal(obj):
-    return 'null' if obj is None else 'e' + repr(str(obj))
+    return 'null' \
+        if obj is None \
+        else "'" + str(obj).replace("'", "''") + "'"
