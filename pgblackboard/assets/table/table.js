@@ -1,15 +1,21 @@
-// submit dirty row when switch to another row
-window.addEventListener('blur', function (e) {
+'use strict';
+
+// make row editable on click and save original values
+// instead of using contenteditable attribute in html
+// to reduce response size
+window.addEventListener('click', function (e) {
     if (e.target.nodeName === 'TD'
-        && e.target.parentNode/*TR*/.dataset.dirtycells)
+        && e.target.contentEditable !== 'plaintext-only'
+        && e.target.cellIndex > 0
+        && e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table /* is editable */)
     {
-        var blurredEl = e.target;
-        setTimeout(function () {
-            var focusedEl = document.activeElement;
-            if (blurredEl.parentNode/*TR*/ !== focusedEl.parentNode/*TR*/) {
-                submitDirtyRow(blurredEl.parentNode);
-            }
-        }, 10);
+        var cells = e.target.parentNode.cells;
+        for (var i = 1 /* skip # cell */; i < cells.length; i++) {
+            var cell = cells[i];
+            cell.contentEditable = 'plaintext-only';
+            cell.dataset.origval = cell.textContent;
+        }
+        e.target.focus();
     }
 }, true);
 
@@ -36,22 +42,23 @@ window.addEventListener('input', function (e) {
     }
 });
 
-// make row editable on click and save original values
-// instead of using contenteditable attribute in html
-// to reduce response size
-window.addEventListener('click', function (e) {
+
+// submit dirty row when switch to another row
+window.addEventListener('blur', function (e) {
     if (e.target.nodeName === 'TD'
-        && e.target.contentEditable !== 'plaintext-only'
-        && e.target.cellIndex > 0
-        && e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table /* is editable */)
+        && e.target.parentNode/*TR*/.dataset.dirtycells)
     {
-        Array.prototype.forEach.call(e.target.parentNode.cells, function (cell) {
-            cell.contentEditable = 'plaintext-only';
-            cell.dataset.origval = cell.textContent;
-        });
-        e.target.focus();
+        var blurredEl = e.target;
+        setTimeout(function () {
+            var focusedEl = document.activeElement;
+            if (blurredEl.parentNode/*TR*/ !== focusedEl.parentNode/*TR*/) {
+                submitDirtyRow(blurredEl.parentNode);
+            }
+        }, 10);
     }
 }, true);
+
+
 
 function submitDirtyRow(row) {
     var cells = row.cells;
@@ -80,9 +87,10 @@ function submitDirtyRow(row) {
             delete row.dataset.inserting;
             delete row.dataset.dirtycells;
             for (var i = 1; i < cells.length; i++) {
-                delete cells[i].dataset.origval;
-                delete cells[i].dataset.dirty;
-                cells[i].contentEditable = false;
+                var cell = cells[i]
+                delete cell.dataset.origval;
+                delete cell.dataset.dirty;
+                cell.contentEditable = false;
                 var returnedVal = e.target.response[headcells[i].dataset.name]
                 if (returnedVal !== undefined) {
                     cells[i].textContent = returnedVal;
