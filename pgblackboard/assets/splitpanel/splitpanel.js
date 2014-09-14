@@ -1,41 +1,63 @@
-(function () {
+pgbb.extend = ko.utils.extend;
 
-function splitpanel(splitpanelEl, orientation) {
-    var splitterEl = splitpanelEl.querySelector('.splitter');
-    var fixedPanelEl = splitpanelEl.querySelector('.splitfix');
-    splitterEl.addEventListener('mousedown', function (e) {
-        var start;
-        var handleSplitterMove;
-        if (orientation === 'horizontal') {
-            start = fixedPanelEl.offsetWidth - e.clientX;
-            handleSplitterMove = function (e) {
-                fixedPanelEl.style.width = start + e.clientX + 'px';
-            }
-        } else {
-            start = fixedPanelEl.offsetHeight + e.clientY;
-            handleSplitterMove = function (e) {
-                fixedPanelEl.style.height = start - e.clientY + 'px';
-            }
-        }
+pgbb.SplitPanel = function (el, orientation) {
+    this._resizeFixedPanel = orientation === 'horizontal' ?
+        this._resizeFixedPanelHorizontal : this._resizeFixedPanelVertical;
 
-        function handleSplitComplete() {
-            document.removeEventListener('mousemove', handleSplitterMove);
-            document.removeEventListener('mouseup', handleSplitComplete);
-            document.body.classList.remove('splitting');
-            pgbb.editor.resize();
-        }
+    this._el = el;
+    this._fixedPanelEl = el.querySelector('.splitfix');
+
+    this._panel1 = el.children[0];
+    this._panel2 = el.children[2];
+
+    el.querySelector('.splitter').addEventListener('mousedown', this._onSplitterMouseDown.bind(this));
+};
+
+pgbb.extend(pgbb.SplitPanel.prototype, {
+    _resizeEvent: new Event('resize'),
+
+    _fireResize: function () {
+        this._panel1.dispatchEvent(this._resizeEvent);
+        this._panel2.dispatchEvent(this._resizeEvent);
+    },
+
+    _onSplitterMouseDown: function (e) {
+        this._startX = this._fixedPanelEl.offsetWidth - e.clientX;
+        this._startY = this._fixedPanelEl.offsetHeight + e.clientY;
+        this._onSplitterMouseUpBinded = this._onSplitterMouseUp.bind(this);
+        this._onSplitterMouseMoveBinded = this._onSplitterMouseMove.bind(this);
 
         document.body.classList.add('splitting');
-        document.addEventListener('mousemove', handleSplitterMove);
-        document.addEventListener('mouseup', handleSplitComplete);
-    });
-}
+        document.addEventListener('mousemove', this._onSplitterMouseMoveBinded);
+        document.addEventListener('mouseup', this._onSplitterMouseUpBinded);
+    },
+
+    _onSplitterMouseUp: function (e) {
+        document.removeEventListener('mouseup', this._onSplitterMouseUpBinded);
+        document.removeEventListener('mousemove', this._onSplitterMouseMoveBinded);
+        document.body.classList.remove('splitting');
+        this._fireResize();
+    },
+
+    _onSplitterMouseMove: function (e) {
+        this._resizeFixedPanel(e.clientX, e.clientY);
+        this._fireResize();
+    },
+
+    _resizeFixedPanelVertical: function (_, y) {
+        this._fixedPanelEl.style.height = (this._startY - y) + 'px';
+    },
+
+    _resizeFixedPanelHorizontal: function (x, _) {
+       this._fixedPanelEl.style.width = (this._startX + x) + 'px';
+    }
+
+});
 
 var shieldEl = document.createElement('div');
 shieldEl.className = 'splitshield';
 document.body.appendChild(shieldEl);
 
-splitpanel(document.querySelector('.splitpanel-h'), 'horizontal');
-splitpanel(document.querySelector('.splitpanel-v'), 'vertical');
 
-})();
+new pgbb.SplitPanel(document.querySelector('.splitpanel-h'), 'horizontal');
+new pgbb.SplitPanel(document.querySelector('.splitpanel-v'), 'vertical');

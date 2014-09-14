@@ -93,7 +93,7 @@ function submitDirtyRow(row) {
                 cell.contentEditable = false;
                 var returnedVal = e.target.response[headcells[i].dataset.name]
                 if (returnedVal !== undefined) {
-                    cells[i].textContent = returnedVal;
+                    cell.textContent = returnedVal;
                 }
             }
         } else {

@@ -27,8 +27,6 @@ _apps.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [
 
     'assets/map/map.js',
     'assets/map/map.css',
-
-    'assets/fontello/fontello-embedded.css',
 ]})
 
 

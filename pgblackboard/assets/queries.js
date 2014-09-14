@@ -12,7 +12,7 @@ ko.utils.extend(pgbb.StoredQueriesList.prototype, {
             var key = localStorage.key(i);
             if (/^pgblackboard_query_\d+$/.exec(key)) {
                 var queryText = localStorage.getItem(key);
-                var editSession = ace.createEditSession(queryText, 'ace/mode/pgsql');
+                var editSession = new CodeMirror.Doc(queryText, "text/x-mysql");
                 var item = new pgbb.StoredQuery(key, editSession);
                 item.isDirty = false;
                 this.items.push(item);

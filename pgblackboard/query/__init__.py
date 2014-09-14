@@ -101,14 +101,9 @@ class QueryDatabaseAppHandler:
             errpos += position_offset
             errrow = self._psql_query.count('\n', 0, errpos)
             errscript = ('<script>'
-                         'parent.pgbb.addQueryAnnotation({0});'
+                         'parent.pgbb.setError({0}, {1});'
                          '</script>')
-            yield errscript.format(json.dumps({
-                'row': errrow,
-                'column': 0,
-                'text': str(ex),
-                'type': 'error'
-            }))
+            yield errscript.format(errrow, json.dumps(str(ex)))
 
         else:
             if cursor.description:

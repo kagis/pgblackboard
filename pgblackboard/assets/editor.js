@@ -1,63 +1,56 @@
+// load query from hash
+if (location.hash) {
+    document.getElementById('query').value =
+        decodeURIComponent(location.hash.slice(1));
+}
+
+// show share link on alt+x
+document.getElementById('share-action').addEventListener('click', function () {
+    prompt('Share this url', location.origin + location.pathname +
+        '#' + encodeURIComponent(pgbb.editor.getValue()));
+});
+
+
 pgbb.initEditor = function () {
-    var editor = ace.edit('editor');
-    editor.getSession().setMode('ace/mode/pgsql');
-    editor.setTheme('ace/theme/monokai');
-    editor.setValue("\\connect postgres\nselect 'hello, ' || current_user;\n", 1);
-    editor.setFontSize(20);
-
-    editor.commands.addCommand({
-        name: 'execute',
-        bindKey: { win: 'F5', mac: 'F5' },
-        exec: function() {
-            submitQuery();
-        }
+    var editor = CodeMirror.fromTextArea(document.getElementById('query'), {
+        lineNumbers: true,
+        matchBrackets: true,
+        showCursorWhenSelecting: true,
+        autoCloseBrackets: true,
+        autofocus: true,
+        mode: 'text/x-mysql',
+        keyMap: 'sublime',
+        theme: 'monokai',
+        gutters: ['CodeMirror-linenumbers', 'errors-gutter']
     });
-
-    editor.commands.addCommand({
-        name: 'share',
-        bindKey: { win: 'Ctrl-Shift-S',  mac: 'Ctrl-Shift-S' },
-        exec: function() {
-            prompt('Share this url', location.origin + location.pathname +
-                '#' + encodeURIComponent(editor.getValue()));
-        }
-    });
-
-    // load query from hash
-    if (location.hash) {
-        var encodedQueryText = location.hash.slice(1); // trim #
-        var queryText = decodeURIComponent(encodedQueryText);
-        editor.setValue(queryText, 1);
-    }
-
-    function submitQuery() {
-        if (onSubmit()) {
-            queryForm.submit();
-        }
-    }
 
     function onSubmit() {
-        pgbb.clearQueryAnnotations();
-        queryForm.elements.query.value = editor.getValue();
-        var selRange = editor.getSelectionRange();
-        queryForm.elements.selection.value = selRange.isEmpty() ? null :
-            JSON.stringify([[selRange.start.row, selRange.start.column],
-                            [selRange.end.row, selRange.end.column]]);
+        editor.clearGutter('errors-gutter');
+        var selStart = editor.getCursor(true),
+            selEnd   = editor.getCursor(false);
+        queryform.elements.selection.value = editor.somethingSelected() ?
+            JSON.stringify([[selStart.line, selStart.ch],
+                            [  selEnd.line,   selEnd.ch]]) : null;
     }
 
-    var queryForm = document.getElementById('queryform');
-    queryForm.onsubmit = onSubmit;
+    var queryform = document.getElementById('queryform');
+    queryform.onsubmit = onSubmit;
+    function fitEditorSize() {
+        editor.setSize(queryform.clientWidth, queryform.clientHeight);
+    }
+    queryform.addEventListener('resize', fitEditorSize);
+    queryform.parentNode.addEventListener('resize', fitEditorSize);
+    window.addEventListener('resize', fitEditorSize);
+
+    fitEditorSize();
 
     return editor;
 };
 
-pgbb.queryAnnotations = [];
 
-pgbb.addQueryAnnotation = function (anno) {
-    pgbb.queryAnnotations.push(anno);
-    pgbb.editor.renderer.setAnnotations(pgbb.queryAnnotations);
-};
-
-pgbb.clearQueryAnnotations = function () {
-    pgbb.queryAnnotations = [];
-    pgbb.editor.renderer.setAnnotations([]);
+pgbb.setError = function (line, message) {
+    var marker = document.createElement('div');
+    marker.className = 'gutter-marker-error';
+    marker.dataset.title = message;
+    pgbb.editor.setGutterMarker(line, 'errors-gutter', marker);
 };

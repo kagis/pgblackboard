@@ -5,10 +5,13 @@
   <link rel="shortcut icon" href="favicon.ico" type="image/vnd.microsoft.icon" />
   <title>pgBlackboard</title>
 
-  <link href="assets/style.css" rel="stylesheet" />
-  <link href="assets/splitpanel/splitpanel.css" rel="stylesheet" />
-  <link href="assets/fontello/fontello-embedded.css" rel="stylesheet" />
 
+  <link href="assets/splitpanel/splitpanel.css" rel="stylesheet" />
+
+  <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/codemirror.min.css"  rel="stylesheet" />
+  <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/theme/monokai.min.css" rel="stylesheet" />
+
+  <link href="assets/style.css" rel="stylesheet" />
 
   <script id="tree-tmpl" type="text/html">
     <ul data-bind="foreach: nodes">
@@ -69,23 +72,24 @@
           class="splitstretch"
           enctype="application/x-www-form-urlencoded">
 
-      <code id="editor"></code>
+      <textarea id="query" name="query"
+        >\connect postgres&#13;&#10;select 'hello, ' || current_user; -- Alt + X to execute</textarea>
 
-      <input type="hidden" name="query" />
       <input type="hidden" name="selection" />
 
       <div id="execbar">
         <button type="submit"
-                title="Alt+M"
+                title="alt-m"
                 accesskey="m"
                 name="view"
                 value="map">
           map
         </button>
 
-        <button type="submit"
-                title="Alt+E"
-                accesskey="e"
+        <button class="execute-action"
+                type="submit"
+                title="alt-x"
+                accesskey="x"
                 name="view"
                 value="regular">
           execute
@@ -102,8 +106,17 @@
   </section>
 
 
-  <script src="//cdn.jsdelivr.net/ace/1.1.4/min/ace.js"></script>
+  <button id="share-action" accesskey="s" style="display:none"></button>
+
+
   <script src="//cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/codemirror.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/mode/sql/sql.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/addon/search/searchcursor.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/keymap/sublime.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/addon/edit/matchbrackets.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.5.0/addon/edit/closebrackets.min.js"></script>
 
   <script>window.pgbb = {};</script>
   <script src="assets/splitpanel/splitpanel.js"></script>
@@ -111,5 +124,7 @@
   <script src="assets/queries.js"></script>
   <script src="assets/editor.js"></script>
   <script src="assets/appmodel.js"></script>
+
+
 </body>
 </html>

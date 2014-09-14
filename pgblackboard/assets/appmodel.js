@@ -1,4 +1,7 @@
 pgbb.AppModel = function (editor) {
+    this._onBlankEditSessionChangedBinded =
+        this._onBlankEditSessionChanged.bind(this);
+
     this._editor = editor;
     this.queries = new pgbb.StoredQueriesList();
     this.tree = new pgbb.TreeNode({
@@ -12,7 +15,7 @@ pgbb.AppModel = function (editor) {
     this._openedItem.subscribe(this._onItemOpening, this);
 
     this._loadingContext = ko.observable();
-    this._trackBlankEditSession(editor.getSession());
+    this._trackBlankEditSession(editor.getDoc());
 };
 
 ko.utils.extend(pgbb.AppModel.prototype, {
@@ -29,8 +32,8 @@ ko.utils.extend(pgbb.AppModel.prototype, {
     },
 
     openStoredQuery: function (openingStoredQuery) {
-        var editSession = openingStoredQuery.getEditSession();
-        this._editor.setSession(editSession);
+        var doc = openingStoredQuery.getEditSession();
+        this._editor.swapDoc(doc);
         this._openedItem(openingStoredQuery);
     },
 
@@ -49,8 +52,8 @@ ko.utils.extend(pgbb.AppModel.prototype, {
     openTreeNode: function (treeNode) {
         this._openedItem(treeNode);
 
-        var editSession = ace.createEditSession('', 'ace/mode/pgsql');
-        this._editor.setSession(editSession);
+        var doc = new CodeMirror.Doc('', 'text/x-mysql');
+        this._editor.swapDoc(doc);
 
         var loadingContext = {
             isLoading: ko.observable(true)
@@ -58,32 +61,33 @@ ko.utils.extend(pgbb.AppModel.prototype, {
         this._loadingContext(loadingContext);
 
         treeNode.getDefinition(function (def) {
-            editSession.setValue(def);
-            this._trackBlankEditSession(editSession);
+            doc.setValue(def);
+            this._trackBlankEditSession(doc);
             loadingContext.isLoading(false);
         }, this);
     },
 
     openBlank: function () {
-        var editSession = ace.createEditSession('', 'ace/mode/pgsql');
-        this._editor.setSession(editSession);
-        this._trackBlankEditSession(editSession);
+        var doc = new CodeMirror.Doc('' /*, 'ace/mode/pgsql'*/);
+        this._editor.swapDoc(doc);
+        this._trackBlankEditSession(doc);
         this._openedItem(null);
     },
 
     _trackBlankEditSession: function (editSession) {
-        editSession.once('change', this._onBlankEditSessionChanged.bind(this));
+        editSession.on('change', this._onBlankEditSessionChangedBinded);
     },
 
-    _onBlankEditSessionChanged: function (_, editSession) {
-        var newStoredQuery = this.queries.newQuery(editSession);
+    _onBlankEditSessionChanged: function (doc) {
+        doc.off('change', this._onBlankEditSessionChangedBinded)
+
+        var newStoredQuery = this.queries.newQuery(doc);
         this.openStoredQuery(newStoredQuery);
     }
 });
 
 
 pgbb.editor = pgbb.initEditor();
-pgbb.editor.focus();
 
 pgbb.model = new pgbb.AppModel(pgbb.editor);
 ko.applyBindings(pgbb.model);

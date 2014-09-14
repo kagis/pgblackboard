@@ -8,7 +8,7 @@
 
 - Multistatement queries support
 - Spatial data visualization by [Leaflet](http://leafletjs.com/)
-- Powerfull SQL editor by [Ace](http://ace.c9.io)
+- Powerfull SQL editor by [Code Mirror](http://codemirror.net/)
 - Handy list of manually written queries
 - Data oriented tree with materialized views and foreign tables support
 - Query permalink sharing
