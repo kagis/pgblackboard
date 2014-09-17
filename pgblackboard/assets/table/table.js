@@ -1,5 +1,18 @@
 'use strict';
 
+// focus readonly cell expanding oversized content
+window.addEventListener('click', function (e) {
+    if (e.target.nodeName === 'TD'
+        && e.target.cellIndex > 0
+        && !e.target.tabindex
+        && !e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table /* is not editable */)
+    {
+        e.target.tabIndex = -1;
+        e.target.focus();
+    }
+}, true);
+
+
 // make row editable on click and save original values
 // instead of using contenteditable attribute in html
 // to reduce response size
