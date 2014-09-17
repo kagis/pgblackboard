@@ -21,10 +21,10 @@
                       when 'f' then 'table_def'
                       end as defquery
         ,'columns_in_rel' as childquery
-        ,case relkind when 'r' then 'table'
-                      when 'v' then 'view'
-                      when 'f' then 'foreigntable'
-                      when 'm' then 'matview'
+        ,case relkind when 'r' then 'table rel'
+                      when 'v' then 'view rel'
+                      when 'f' then 'foreigntable rel'
+                      when 'm' then 'matview rel'
                       end as type
     from pg_class as c
         left outer join pg_depend as dep on c.oid = dep.objid
