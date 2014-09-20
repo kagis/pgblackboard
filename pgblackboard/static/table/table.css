@@ -8,7 +8,12 @@ th + th {
     width: 6em;
     }
 
-
+.coltype {
+    color: #aaa;
+    text-transform: uppercase;
+    display: block;
+    font-size: .5em;
+    }
 
 td {
     overflow-x: hidden;
@@ -17,6 +22,7 @@ td {
     vertical-align: top;
     }
 
+/* expand cell content on focus */
 td:focus {
     white-space: pre;
     overflow-wrap: break-word;
@@ -33,6 +39,11 @@ td:first-child {
     font-weight: bold;
     }
 
+td:first-child::before {
+    counter-increment: rownum;
+    content: counter(rownum);
+    }
+
 table {
     border-collapse: collapse;
     white-space: nowrap;
@@ -46,10 +57,6 @@ tbody {
     counter-reset: rownum;
     }
 
-td:first-child::before {
-    counter-increment: rownum;
-    content: counter(rownum);
-    }
 
 th {
     background-color: #444;

@@ -4,31 +4,18 @@ from . import fileapp, dbapp, query, tree, editing
 
 
 _apps = {
-    ('GET', ''): fileapp.ResourceFileApp('index.html'),
+    ('GET', ''): fileapp.ResourceFileApp('static/index.html'),
+    ('GET', 'favicon.ico'): fileapp.ResourceFileApp('static/favicon.ico'),
+    ('GET', 'script.js'): fileapp.ResourceFileApp('static/script.js'),
+    ('GET', 'style.css'): fileapp.ResourceFileApp('static/style.css'),
+    ('GET', 'assets/table/table.js'): fileapp.ResourceFileApp('static/table/table.js'),
+    ('GET', 'assets/table/table.css'): fileapp.ResourceFileApp('static/table/table.css'),
+    ('GET', 'assets/map/map.js'): fileapp.ResourceFileApp('static/map/map.js'),
+    ('GET', 'assets/map/map.css'): fileapp.ResourceFileApp('static/map/map.css'),
     ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler),
     ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler),
     ('POST', 'edit'): dbapp.DatabaseApp(psycopg2, editing.EditDatabaseAppHandler),
 }
-
-_apps.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [
-    'favicon.ico',
-
-    'assets/appmodel.js',
-    'assets/editor.js',
-    'assets/queries.js',
-    'assets/tree.js',
-    'assets/style.css',
-
-    'assets/splitpanel/splitpanel.js',
-    'assets/splitpanel/splitpanel.css',
-
-    'assets/table/table.js',
-    'assets/table/table.css',
-
-    'assets/map/map.js',
-    'assets/map/map.css',
-]})
-
 
 def application(environ, start_response):
     pathinfo = environ['PATH_INFO'].strip('/')

@@ -21,7 +21,7 @@ class TreeDatabaseAppHandler:
             for row in cursor.fetchall()
         ])]
 
-_queries = { nm: pkgutil.get_data('pgblackboard.tree',
+_queries = { nm: pkgutil.get_data('pgblackboard',
                                   'sql/{0}.sql'.format(nm)) for nm in [
     'columns_in_rel',
     'databases',

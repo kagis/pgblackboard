@@ -13,7 +13,6 @@ setup(name='pgblackboard',
     packages=['pgblackboard', 'pgblackboard.tree', 'pgblackboard.query'],
     keywords=['PostgreSQL', 'Postgres'],
     package_data={
-        'pgblackboard': ['index.html', 'favicon.ico', 'assets/*.*', 'assets/*/*'],
-        'pgblackboard.tree': ['sql/*']
+        'pgblackboard': ['static/*.*', 'static/*/*', 'sql/*']
     },
 )
