@@ -1,5 +1,8 @@
 (
-  select format('%%s : %%s', attname, format_type(atttypid, null)) as name
+  select format('%%s : %%s %%s', attname,
+                case when not attnotnull then 'nullable' end,
+                format_type(atttypid, null)
+                ) as name
       ,col_description(attrelid, attnum) as comment
       ,case when indisprimary then 'pk_column column'
             when exists(select 1
