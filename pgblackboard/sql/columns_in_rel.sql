@@ -1,5 +1,6 @@
 (
-  select format('%%s : %%s %%s', attname,
+  select null as oid
+      ,format('%%s : %%s %%s', attname,
                 case when not attnotnull then 'nullable' end,
                 format_type(atttypid, null)
                 ) as name
@@ -13,28 +14,48 @@
             else 'column'
             end as type
       ,current_database() as database
+      ,null as defquery
   from pg_attribute
       left outer join pg_index on indrelid = attrelid and
                                   attnum = any(indkey) and
                                   indisprimary
   where attrelid = %(oid)s and attnum > 0 and not attisdropped
   order by attnum
+
+
+) union all (
+  select oid
+        ,conname as name
+        ,obj_description(oid, 'pg_constraint') as comment
+        ,case contype when 'f' then 'foreignkey constraint'
+                      when 'u' then 'unique constraint'
+                      when 'c' then 'check constraint'
+                      end as type
+        ,current_database() as database
+        ,'constraint_def' as defquery
+  from pg_constraint
+  where contype in ('c', 'f', 'u')
+      and conrelid = %(oid)s
 ) union all (
 
-  select relname as name
+  select pg_class.oid
+        ,relname as name
         ,obj_description(pg_class.oid, 'pg_class') as comment
         ,'index' as type
         ,current_database() as database
+        ,'index_def' as defquery
   from pg_index join pg_class on indexrelid = oid
   where indrelid = %(oid)s
       and not indisprimary
 
 ) union all (
 
-  select tgname as name
+  select oid
+        ,tgname as name
         ,obj_description(oid, 'pg_trigger') as comment
         ,'trigger' as type
         ,current_database() as database
+        ,'trigger_def' as defquery
   from pg_trigger
   where tgrelid = %(oid)s
       and tgconstraint = 0
