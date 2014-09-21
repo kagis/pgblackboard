@@ -1,5 +1,6 @@
 import json
 
+from . import pgtypes
 
 class EditDatabaseAppHandler:
     mimetype = 'application/json'
@@ -52,8 +53,12 @@ class EditDatabaseAppHandler:
         else:
             if cursor.rowcount == 1:
                 returning_row = dict(zip(
-                    (colname for colname, *_ in cursor.description),
-                    map(lambda x: '' if x is None else str(x), cursor.fetchone())
+                    (colname for colname, typid, *_ in cursor.description),
+                    (
+                        '' if x is None else pgtypes.get_type_renderer(typid)(x)
+                        for x, (_, typid, *__)
+                        in zip(cursor.fetchone(), cursor.description)
+                    )
                 ))
                 return '200 OK', [json.dumps(returning_row)]
             elif cursor.rowcount == 0:
