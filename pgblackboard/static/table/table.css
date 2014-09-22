@@ -87,10 +87,6 @@ td + td:empty::before {
     font-size: smaller;
     }
 
-.error {
-    color: red;
-    margin-left: 1em;
-    }
 
 .has-blankrow > tr:last-child > td {
     border-color: #333;
@@ -98,4 +94,21 @@ td + td:empty::before {
 
 .has-blankrow > tr:last-child > td:first-child::before {
     content: '*';
+    }
+
+
+p.non-query-result,
+.error {
+    background: #444;
+    border-left: 5px solid #333;
+    padding: .3rem .5rem .3rem .5rem;
+    margin-left: .5rem;
+    margin-right: 1rem;
+    font-size: .8rem;
+    font-weight: bold;
+    /* font-family: ubuntu; */
+    }
+
+.error {
+    color: #ff4c4c;
     }
