@@ -99,8 +99,8 @@ td + td:empty::before {
 
 p.non-query-result,
 .error {
-    background: #444;
-    border-left: 5px solid #333;
+    background: #1d1d1d;
+    border-left: 5px solid #181818;
     padding: .3rem .5rem .3rem .5rem;
     margin-left: .5rem;
     margin-right: 1rem;
