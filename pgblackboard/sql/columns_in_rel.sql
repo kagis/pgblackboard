@@ -38,15 +38,17 @@
       and conrelid = %(oid)s
 ) union all (
 
-  select pg_class.oid
+  select indexrelid
         ,relname as name
-        ,obj_description(pg_class.oid, 'pg_class') as comment
+        ,obj_description(indexrelid, 'pg_class') as comment
         ,'index' as type
         ,current_database() as database
         ,'index_def' as defquery
-  from pg_index join pg_class on indexrelid = oid
+  from pg_index
+      join pg_class on indexrelid = oid
+      left outer join pg_constraint on conindid = indexrelid
   where indrelid = %(oid)s
-      and not indisprimary
+      and pg_constraint is null
 
 ) union all (
 
