@@ -15,11 +15,7 @@
         ,obj_description(c.oid, 'pg_class') as comment
         ,c.oid
         ,current_database() as database
-        ,case relkind when 'r' then 'table_def'
-                      when 'v' then 'view_def'
-                      when 'm' then 'matview_def'
-                      when 'f' then 'table_def'
-                      end as defquery
+        ,'table_def' as defquery
         ,'columns_in_rel' as childquery
         ,case relkind when 'r' then 'table rel'
                       when 'v' then 'view rel'
