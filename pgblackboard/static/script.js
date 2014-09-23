@@ -87,7 +87,7 @@ pgbb.TreeNode = function (tuple) {
     this.name = tuple.name;
     this.type = tuple.type;
     this.comment = tuple.comment;
-    this.id = tuple.oid;
+    this.nodekey = tuple.node;
     this._childrenQuery = tuple.childquery;
     this._definitionQuery = tuple.defquery;
 
@@ -174,7 +174,7 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         };
         req.open('GET', 'tree?database=' + this.database +
                              '&q=' + options.query +
-                             (this.id ? '&oid=' + this.id : ''));
+                             (this.nodekey ? '&node=' + this.nodekey : ''));
         req.responseType = 'json';
         req.send();
     }

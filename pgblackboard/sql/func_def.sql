@@ -7,4 +7,4 @@ select concat_ws(e'\n'
     ,pg_get_functiondef(oid)
 ) as def
 from pg_proc as p
-where oid = %(oid)s
+where oid = %(node)s

@@ -1,7 +1,7 @@
 with attrs_cte as (
     select pg_attribute.*, max(length(quote_ident(attname))) over() as max_attname_len
     from pg_attribute join pg_class on pg_class.oid = attrelid
-    where attrelid = %(oid)s and attnum > 0 and not attisdropped
+    where attrelid = %(node)s and attnum > 0 and not attisdropped
 ),
 attrs_def_cte as (
     select string_agg(
@@ -20,7 +20,7 @@ constraints_def_cte as (
     with constraints_with_maxnamelen as (
         select max(length(quote_ident(conname))) over() as maxnamelen, oid, *
         from pg_constraint
-        where conrelid = %(oid)s
+        where conrelid = %(node)s
     )
     select string_agg(
         format('CONSTRAINT %%s %%s'
@@ -59,13 +59,13 @@ table_def_cte as (
         else ''
     end as table_def
     from pg_class
-    where oid = %(oid)s
+    where oid = %(node)s
 ),
 select_stmt_cte as (
     select format(
         e'SELECT %%s\n  FROM %%s\n WHERE true\n LIMIT 1000;'
         ,string_agg(quote_ident(attname), e'\n      ,' order by attnum)
-        ,%(oid)s::regclass
+        ,%(node)s::regclass
     ) as select_stmt
     from attrs_cte
 )

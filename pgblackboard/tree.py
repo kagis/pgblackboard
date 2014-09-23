@@ -7,14 +7,14 @@ class TreeDatabaseAppHandler:
     def __init__(self, environ):
         qs = urllib.parse.parse_qs(environ['QUERY_STRING'])
         self._sql = _queries[qs['q'][0]]
-        self._oid = int(qs.get('oid', ['0'])[0])
-        self.database = qs['database'][0]
+        self._node, = qs.get('node', [None])
+        self.database, = qs['database']
 
     def on_connect_error(self, ex):
         yield json.dumps(str(ex))
 
     def handle(self, cursor):
-        cursor.execute(self._sql, { 'oid': self._oid })
+        cursor.execute(self._sql, { 'node': self._node })
         colnames = [colname for colname, *_ in cursor.description]
         return '200 OK', [json.dumps([
             dict(zip(colnames, row))
@@ -33,4 +33,5 @@ _queries = { nm: pkgutil.get_data('pgblackboard',
     'index_def',
     'trigger_def',
     'constraint_def',
+    'column_def',
 ]}

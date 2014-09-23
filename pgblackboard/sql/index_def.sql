@@ -14,4 +14,4 @@ select format(
 ) as def
 from pg_class
 where relkind = 'i'
-    and oid = %(oid)s
+    and oid = %(node)s

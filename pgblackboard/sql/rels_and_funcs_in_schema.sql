@@ -1,19 +1,19 @@
 (
     select extname as name
           ,obj_description(oid, 'pg_extension') as comment
-          ,oid
+          ,oid as node
           ,current_database() as database
           ,null as defquery
           ,'extension_children' as childquery
           ,'extension' as type
     from pg_extension
-    where extnamespace = %(oid)s
+    where extnamespace = %(node)s
     order by extname
 
 ) union all (
     select relname as name
         ,obj_description(c.oid, 'pg_class') as comment
-        ,c.oid
+        ,c.oid as node
         ,current_database() as database
         ,'table_def' as defquery
         ,'columns_in_rel' as childquery
@@ -26,7 +26,7 @@
         left outer join pg_depend as dep on c.oid = dep.objid
                                       and dep.classid = 'pg_class'::regclass
                                       and dep.deptype = 'e'
-    where relnamespace = %(oid)s and relkind in ('r', 'v', 'm', 'f') and dep is null
+    where relnamespace = %(node)s and relkind in ('r', 'v', 'm', 'f') and dep is null
     order by name
 
 ) union all (
@@ -35,7 +35,7 @@
             ,array_to_string(proargtypes::regtype[], ', ')
         ) as name
         ,obj_description(p.oid, 'pg_proc') as comment
-        ,p.oid
+        ,p.oid as node
         ,current_database() as database
         ,'func_def' as defquery
         ,null as childquery
@@ -44,6 +44,6 @@
         left outer join pg_depend as dep on p.oid = dep.objid
                                           and dep.classid = 'pg_proc'::regclass
                                           and dep.deptype = 'e'
-    where pronamespace = %(oid)s and dep is null
+    where pronamespace = %(node)s and dep is null
     order by name
 )

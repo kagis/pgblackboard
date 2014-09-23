@@ -14,4 +14,4 @@ select format(
     ,pg_get_triggerdef(oid)
 ) as def
 from pg_trigger
-where oid = %(oid)s
+where oid = %(node)s

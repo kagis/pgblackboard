@@ -11,7 +11,7 @@ select format(
         ,'ROLLBACK;'
     )
     ,conrelid::regclass
-    ,pg_get_constraintdef(%(oid)s::oid)
+    ,pg_get_constraintdef(%(node)s::oid)
     ,conname
 ) as def
-from pg_constraint where oid = %(oid)s::oid
+from pg_constraint where oid = %(node)s::oid

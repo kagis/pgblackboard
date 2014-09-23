@@ -1,7 +1,7 @@
 (
     select relname as name
         ,obj_description(c.oid, 'pg_class') as comment
-        ,c.oid
+        ,c.oid as node
         ,current_database() as database
         ,case relkind when 'r' then 'table_def'
                       when 'v' then 'view_def'
@@ -18,7 +18,7 @@
         left outer join pg_depend as dep on c.oid = dep.objid
                                           and dep.classid = 'pg_class'::regclass
                                           and dep.deptype = 'e'
-    where dep.refobjid = %(oid)s and relkind in ('r', 'v', 'm', 'f')
+    where dep.refobjid = %(node)s and relkind in ('r', 'v', 'm', 'f')
     order by name
 
 ) union all (
@@ -27,7 +27,7 @@
             ,array_to_string(proargtypes::regtype[], ', ')
         ) as name
         ,obj_description(p.oid, 'pg_proc') as comment
-        ,p.oid
+        ,p.oid as node
         ,current_database() as database
         ,'func_def' as defquery
         ,null as childquery
@@ -36,6 +36,6 @@
         left outer join pg_depend as dep on p.oid = dep.objid
                                           and dep.classid = 'pg_proc'::regclass
                                           and dep.deptype = 'e'
-    where dep.refobjid = %(oid)s
+    where dep.refobjid = %(node)s
     order by name
 )

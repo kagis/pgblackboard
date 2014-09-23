@@ -1,5 +1,5 @@
 select nspname as name
-    ,oid
+    ,oid as node
     ,obj_description(oid, 'pg_namespace') as comment
     ,current_database() as database
     ,'rels_and_funcs_in_schema' as childquery
