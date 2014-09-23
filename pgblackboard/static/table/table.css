@@ -76,7 +76,7 @@ html, body {
 
 body {
     font-family: sans-serif;
-    color: #eee;
+    color: #ddd;
     background-color: #272822;
     }
 
@@ -99,14 +99,10 @@ td + td:empty::before {
 
 p.non-query-result,
 .error {
-    background: #1d1d1d;
-    border-left: 5px solid #181818;
     padding: .3rem .5rem .3rem .5rem;
-    margin-left: .5rem;
-    margin-right: 1rem;
     font-size: .8rem;
     font-weight: bold;
-    /* font-family: ubuntu; */
+    border-bottom: 1px solid #333;
     }
 
 .error {
