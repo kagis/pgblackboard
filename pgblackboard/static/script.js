@@ -98,20 +98,26 @@ pgbb.TreeNode = function (tuple) {
 
 ko.utils.extend(pgbb.TreeNode.prototype, {
     expand: function () {
-        this.isExpanded(true);
         this.childrenAreLoading(true);
         this._sqlexec({
             query: this._childrenQuery,
-            success: this._onChildrenLoaded
+            success: this._onChildrenLoaded,
+            error: this._onChildrenLoadError
         });
     },
 
     _onChildrenLoaded: function (tuples) {
+        this.isExpanded(true);
         this.childrenAreLoading(false);
         var ctor = this.constructor;
         this.nodes(tuples.map(function (tuple) {
             return new ctor(tuple);
         }));
+    },
+
+    _onChildrenLoadError: function () {
+        this.childrenAreLoading(false);
+        alert('ERROR while loading child tree nodes.');
     },
 
     collapse: function () {
@@ -145,6 +151,9 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
                         '\\connect ' + this.database +
                         '\n\n' + tuples[0].def
                     );
+                },
+                error: function () {
+                    onComplete.call(context, '/*\n  ERROR while loading definition.\n*/');
                 }
             });
         }
@@ -154,12 +163,14 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         var req = new XMLHttpRequest();
         var context = this;
         req.onload = function (e) {
-            var response = e.target.response;
-            if (response.error) {
-                console.error(response.error);
+            if (e.target.status === 200) {
+                options.success.call(context, e.target.response);
             } else {
-                options.success.call(context, response);
+                options.error.call(context);
             }
+        };
+        req.onerror = function (e) {
+            options.error.call(context);
         };
         req.open('GET', 'tree?database=' + this.database +
                              '&q=' + options.query +
