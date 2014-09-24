@@ -10,7 +10,7 @@ setup(name='pgblackboard',
     author_email='exe-dealer@yandex.ru',
     url='https://github.com/exe-dealer/pgblackboard',
     install_requires=['psycopg2', 'shapely', 'cherrypy'],
-    packages=['pgblackboard', 'pgblackboard.tree', 'pgblackboard.query'],
+    packages=['pgblackboard'],
     keywords=['PostgreSQL', 'Postgres'],
     package_data={
         'pgblackboard': ['static/*.*', 'static/*/*', 'sql/*']
