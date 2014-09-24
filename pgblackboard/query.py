@@ -20,28 +20,44 @@ class QueryDatabaseAppHandler:
         self._psql_query = psql_query
 
         selection = json.loads(form.get('selection', ['null'])[0])
-        self.database, query, self._querypos = sql.extract_connect(psql_query)
-        if selection:
-            sel_start, sel_end = [
-                sum(len(ln) + 1 for ln in lines[:row]) + col
-                for row, col in selection
-            ]
-            query = psql_query[sel_start:sel_end]
-            self._querypos = sel_start
+        dbname_extraction_result = sql.extract_dbname(psql_query)
+        if dbname_extraction_result:
+            self.database, query, self._querypos = dbname_extraction_result
+            if selection:
+                sel_start, sel_end = [
+                    sum(len(ln) + 1 for ln in lines[:row]) + col
+                    for row, col in selection
+                ]
+                query = psql_query[sel_start:sel_end]
+                self._querypos = sel_start
 
-        self._statements = sql.split(query)
+            self._statements = sql.split(query)
+
+    def on_database_missing(self):
+        yield from self._render_doc_intro()
+        yield from self._view.render_exception(
+            'Missing \connect database command on first line'
+        )
+        yield from self._render_doc_outro()
 
     def on_connect_error(self, ex):
-        yield ('<!doctype html>'
-               '<html>'
-               '<head></head>'
-               '<body><pre style="color: red">{0}</pre></body>'
-               '</html>').format(ex)
+        yield from self._render_doc_intro()
+        yield from self._view.render_exception(ex)
+        yield from self._render_doc_outro()
 
     def handle(self, cursor):
         return '200 OK', self.get_response(cursor)
 
     def get_response(self, cursor):
+        yield from self._render_doc_intro()
+        position_offset = self._querypos
+        for stmt in self._statements:
+            if sql.isnotempty(stmt):
+                yield from self._exec_stmt(cursor, stmt, position_offset)
+            position_offset += len(stmt)
+        yield from self._render_doc_outro()
+
+    def _render_doc_intro(self):
         yield ('<!doctype html>'
                '<html>'
                '<head>'
@@ -50,11 +66,8 @@ class QueryDatabaseAppHandler:
         yield ('</head>'
                '<body>')
         yield self._view.render_body_start()
-        position_offset = self._querypos
-        for stmt in self._statements:
-            if sql.isnotempty(stmt):
-                yield from self._exec_stmt(cursor, stmt, position_offset)
-            position_offset += len(stmt)
+
+    def _render_doc_outro(self):
         yield ('</body>'
                '</html>')
 

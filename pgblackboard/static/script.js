@@ -134,10 +134,16 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
     },
 
     getDefinition: function (onComplete, context) {
+        var quotedDatabase = this.database;
+            if (quotedDatabase.indexOf('"') !== -1) {
+                quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
+            }
+
         if (!this._definitionQuery) {
             if (this.type === 'database') {
+
                 onComplete.call(context,
-                    "\\connect " + this.database +
+                    "\\connect " + quotedDatabase +
                     "\nselect 'awesome';"
                 );
             } else {
@@ -148,7 +154,7 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
                 query: this._definitionQuery,
                 success: function (tuples) {
                     onComplete.call(context,
-                        '\\connect ' + this.database +
+                        '\\connect ' + quotedDatabase +
                         '\n\n' + tuples[0].def
                     );
                 },

@@ -63,11 +63,13 @@ def notemptypos(sql):
     return re.search(r'\S', sql).start()
 
 
-def extract_connect(sql):
-    m = re.match(r'(?ixs)^ \s* \\connect \s+ (\w+) (.*)', sql)
+def extract_dbname(sql):
+    m = re.match(r'''(?ixs)^ \s* \\c(?:onnect)? \s+
+                    ({symbol}) [ \t]* \n (.*)'''
+                    .format(symbol=_symbol), sql)
     if m:
         db, query = m.groups()
-        return db, query, m.start(2)
+        return _unquote_symbol(db), query, m.start(2)
 
 
 
@@ -88,11 +90,11 @@ def parse_updatable_query(q):
     match = _updatable_query_pattern.match(q.strip(';\n '))
     return match and (
         match.group('table'),
-        list(map(_unquote_ident, _ident_pattern.findall(match.group('columns'))))
+        list(map(_unquote_symbol, _ident_pattern.findall(match.group('columns'))))
     )
 
 
-def _unquote_ident(ident):
+def _unquote_symbol(ident):
     return ident[1:-1].replace('""', '"') \
         if ident.startswith('"') and ident.endswith('"') \
         else ident

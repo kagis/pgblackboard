@@ -30,6 +30,13 @@ class DatabaseApp:
 
         handler = self._handler_factory(environ)
 
+        if not handler.database:
+            start_response('400 Bad Request', [
+                ('Content-type', handler.mimetype + '; charset=utf-8')
+            ])
+            yield from (x.encode() for x in handler.on_database_missing())
+            return
+
         try:
             conn = self._dbapi20.connect(
                 user=user,
