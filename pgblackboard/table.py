@@ -17,6 +17,9 @@ class TableView:
     def render_nonquery(self, result):
         return '<p class="non-query-result">{0}</p>'.format(result)
 
+    def render_notice(self, notice):
+        return self.render_nonquery(notice)
+
     class get_rowset_renderer:
         def __init__(self, columns, table, schema, database):
             self._database = database

@@ -140,3 +140,7 @@ class QueryDatabaseAppHandler:
                     yield from rowset_renderer.render_exception(fetch_err)
             else:
                 yield self._view.render_nonquery(cursor.statusmessage)
+
+            while cursor.connection.notices:
+                yield self._view.render_notice(
+                    cursor.connection.notices.pop())

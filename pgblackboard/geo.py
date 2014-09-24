@@ -26,6 +26,9 @@ class MapView:
             str(result)
         )
 
+    def render_notice(self, notice):
+        return self.render_nonquery(notice)
+
     class get_rowset_renderer:
         def __init__(self, columns, table, schema, database):
             self._columns = columns
