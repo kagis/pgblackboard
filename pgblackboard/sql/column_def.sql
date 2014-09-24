@@ -11,9 +11,10 @@ common_cte as (
         left outer join pg_attrdef on adrelid = attrelid and adnum = attnum
 )
 select concat_ws(e'\n'
-    ,'SELECT DISTINCT ' || attident
-    ,'FROM ' || attrelid::regclass
-    ,'LIMIT 1000;'
+    ,'  SELECT ' || attident || ', COUNT(*)'
+    ,'    FROM ' || attrelid::regclass
+    ,'GROUP BY ' || attident
+    ,'   LIMIT 1000;'
     ,''
     ,'/*'
 
