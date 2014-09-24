@@ -3,7 +3,7 @@
           ,obj_description(oid, 'pg_extension') as comment
           ,oid as node
           ,current_database() as database
-          ,null as defquery
+          ,'extension_def' as defquery
           ,'extension_children' as childquery
           ,'extension' as type
     from pg_extension
