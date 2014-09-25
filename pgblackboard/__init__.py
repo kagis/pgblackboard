@@ -1,6 +1,8 @@
+import functools
+
 import psycopg2
 
-from . import fileapp, dbapp, query, tree, editing
+from . import fileapp, dbapp, query, table, geo, tree, editing
 
 
 _apps = {
@@ -12,9 +14,15 @@ _apps = {
     ('GET', 'assets/table/table.css'): fileapp.ResourceFileApp('static/table/table.css'),
     ('GET', 'assets/map/map.js'): fileapp.ResourceFileApp('static/map/map.js'),
     ('GET', 'assets/map/map.css'): fileapp.ResourceFileApp('static/map/map.css'),
-    ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler),
     ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler),
+
     ('POST', 'edit'): dbapp.DatabaseApp(psycopg2, editing.EditDatabaseAppHandler),
+    ('POST', ''): dbapp.DatabaseApp(psycopg2, functools.partial(
+                        query.QueryDatabaseAppHandler,
+                        table.TableView())),
+    ('POST', 'map'): dbapp.DatabaseApp(psycopg2, functools.partial(
+                    query.QueryDatabaseAppHandler,
+                    geo.MapView())),
 }
 
 def application(environ, start_response):

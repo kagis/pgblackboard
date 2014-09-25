@@ -1,19 +1,15 @@
 import urllib.parse, json
 
-from . import sql, table, geo
+from . import sql
 
 
 class QueryDatabaseAppHandler:
     mimetype = 'text/html'
     database = None
-    _views = {
-        'map': geo.MapView(),
-        'table': table.TableView()
-    }
 
-    def __init__(self, environ):
+    def __init__(self, view, environ):
+        self._view = view
         form = urllib.parse.parse_qs(environ['wsgi.input'].read().decode())
-        self._view = self._views.get(form.get('view', ['table'])[0])
         psql_query = form['query'][0]
         lines = psql_query.splitlines()
         psql_query = '\n'.join(lines)
