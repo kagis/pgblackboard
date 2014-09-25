@@ -357,6 +357,10 @@ a > small {
     background-color: #2F3129;
     }
 
+.cm-s-monokai .cm-builtin {
+    color: rgb(139, 218, 255);
+    }
+
 .CodeMirror {
     font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
     font-size: 20px;
