@@ -52,6 +52,8 @@ window.addEventListener('input', function (e) {
         var cellNowDirty = (cell.dataset.origval !== cell.textContent);
         cell.dataset.dirty = cellNowDirty || '';
         row.dataset.dirtycells = (+(row.dataset.dirtycells || 0) + (cellNowDirty - cellWasDirty)) || '';
+
+        row.classList.remove('invalid-row');
     }
 });
 
@@ -97,6 +99,7 @@ function submitDirtyRow(row) {
 
     req.onload = function (e) {
         if (e.target.status === 200) {
+            row.classList.remove('invalid-row');
             delete row.dataset.inserting;
             delete row.dataset.dirtycells;
             for (var i = 1; i < cells.length; i++) {
@@ -110,6 +113,7 @@ function submitDirtyRow(row) {
                 }
             }
         } else {
+            row.classList.add('invalid-row');
             alert(e.target.response);
         }
     };

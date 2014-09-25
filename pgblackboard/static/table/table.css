@@ -96,6 +96,10 @@ td + td:empty::before {
     content: '*';
     }
 
+.invalid-row td {
+    background-color: #551414;
+}
+
 
 p.non-query-result,
 .error {
