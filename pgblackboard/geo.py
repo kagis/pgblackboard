@@ -38,8 +38,8 @@ class MapView:
                 self._propnames = colnames[:geomcol_ix] + colnames[geomcol_ix+1:]
             else:
                 self.render_intro = \
-                self.render_outro = lambda: []
-                self.render_rows = lambda _, __: []
+                self.render_outro = lambda *_, **__: []
+                self.render_rows = lambda *_, **__: []
 
 
         def render_intro(self):
