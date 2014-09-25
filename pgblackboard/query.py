@@ -100,7 +100,12 @@ class QueryDatabaseAppHandler:
                 schemaname, tablename = cursor.fetchone()
 
         try:
-            cursor.execute(stmt)
+            try:
+                cursor.execute(stmt)
+            finally:
+                while cursor.connection.notices:
+                    yield self._view.render_notice(
+                        cursor.connection.notices.pop())
         except Exception as ex:
             yield self._view.render_exception(ex)
             try:
@@ -150,6 +155,4 @@ class QueryDatabaseAppHandler:
             else:
                 yield self._view.render_nonquery(cursor.statusmessage)
 
-        while cursor.connection.notices:
-            yield self._view.render_notice(
-                cursor.connection.notices.pop())
+
