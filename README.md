@@ -1,7 +1,5 @@
 # Minimalistic GIS enabled interface for PostgreSQL
 
-[TRY DEMO](http://guest:guest@46.8.22.2:7890)
-
 ![screenshot](https://raw.githubusercontent.com/exe-dealer/pgblackboard/master/screenshot.png)
 
 ## Features
@@ -25,27 +23,24 @@ sudo pip3 install git+https://github.com/exe-dealer/pgblackboard.git
 By default pgBlackboard expects PostgreSQL is listening on localhost:5432.
 
 ```bash
-python3 -m pgblackboard.server
+python3 -m pgblackboard
 ```
 
 Open http://yourserver:7890 in browser.
 
-## Configure
+Command line arguments
 
-Create configuration file
-
-```bash
-sudo wget -O /etc/pgblackboard.conf https://raw.githubusercontent.com/exe-dealer/pgblackboard/master/pgblackboard.conf.example
-sudo nano /etc/pgblackboard.conf
+```
+--http-host     HTTP host to listen, default is 0.0.0.0
+--http-port     HTTP port to listen, default is 7890
+--pg-host       PostgreSQL server host, default is localhost
+--pg-port       PostgreSQL server port, default is 5432
+--ssl-cert      SSL certificate filename (*.crt)
+--ssl-privkey   SSL private key filename (*.key)
 ```
 
 DO specify SSL certificate to prevent passwords and data capture by man in the middle.
 
-Run pgBlackboard with configuration file
-
-```bash
-python3 -m pgblackboard.server --conf /etc/pgblackboard.conf
-```
 
 ## Run on boot
 
@@ -59,12 +54,3 @@ sudo wget -O /etc/init/pgblackboard.conf https://raw.githubusercontent.com/exe-d
 # Start server
 sudo start pgblackboard
 ```
-
-## TODO
-
-- Digest auth
-- Table editing
-- Map editing
-- Map drawing wkt/geojson
-- Tree node icon title
-- Connection pooling
