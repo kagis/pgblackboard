@@ -383,7 +383,7 @@ a > small {
     line-height: 1.2em;
     font-size: .8em;
     content: '\e802';
-    color: red;
+    color: #ff4848;
     font-family: "fontello";
     font-style: normal;
     font-weight: normal;
