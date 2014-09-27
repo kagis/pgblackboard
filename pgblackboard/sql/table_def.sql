@@ -1,4 +1,7 @@
-with attrs_cte as (
+with params_cte as (
+    select %(node)s::oid as oid
+),
+attrs_cte as (
     select pg_attribute.*, max(length(quote_ident(attname))) over() as max_attname_len
     from pg_attribute join pg_class on pg_class.oid = attrelid
     where attrelid = %(node)s and attnum > 0 and not attisdropped
@@ -62,10 +65,20 @@ table_def_cte as (
     where oid = %(node)s
 ),
 select_stmt_cte as (
-    select format(
-        e'SELECT %%s\n  FROM %%s\n WHERE true\n LIMIT 1000;'
-        ,string_agg(quote_ident(attname), e'\n      ,' order by attnum)
-        ,%(node)s::regclass
+    with pk_cols as (
+        select quote_ident(attname) as attident
+        from params_cte, pg_constraint
+            join pg_attribute on contype = 'p'
+                                and attnum = any(conkey)
+                                and attrelid = conrelid
+        where conrelid = params_cte.oid
+    )
+    select concat_ws(e'\n'
+        ,'  SELECT ' || string_agg(quote_ident(attname), e'\n        ,' order by attnum)
+        ,'    FROM ' || (select oid::regclass from params_cte)
+        ,'   WHERE true'
+        ,'ORDER BY ' || (select string_agg(attident, ', ') from pk_cols)
+        ,'   LIMIT 1000;'
     ) as select_stmt
     from attrs_cte
 )
