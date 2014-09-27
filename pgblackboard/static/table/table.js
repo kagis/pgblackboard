@@ -148,7 +148,7 @@ function submitDirtyRow(row) {
                 // refresh cell with actual inserted/updated value
                 var returnedVal = e.target.response[headcells[i].dataset.name];
                 if (returnedVal !== undefined) {
-                    cell.textContent = returnedVal;
+                    cell.innerHTML = returnedVal;
                 }
             }
         } else {
