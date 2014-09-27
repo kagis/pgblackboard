@@ -11,6 +11,7 @@ class ResourceFileApp:
 
     def __call__(self, environ, start_response):
         start_response('200 OK', [
-            ('Content-type', self._contenttype)
+            ('Content-type', self._contenttype),
+            ('Cache-Control', 'max-age=86400, public')
         ])
         yield self._content
