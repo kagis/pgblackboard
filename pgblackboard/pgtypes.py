@@ -56,7 +56,7 @@ def render_json(val):
 
 
 def render_text(val):
-    return html.escape(str(val))
+    return html.escape(str(val)).replace(' ', '&nbsp;')
 
 
 
