@@ -2,11 +2,11 @@ import functools
 
 import psycopg2
 
-from . import fileapp, dbapp, query, table, geo, tree, editing
+from . import index, fileapp, dbapp, query, table, geo, tree, editing
 
 
 _apps = {
-    ('GET', ''): fileapp.ResourceFileApp('static/index.html'),
+    ('GET', ''): dbapp.DatabaseApp(psycopg2, index.IndexDatabaseAppHandler),
     ('GET', 'favicon.ico'): fileapp.ResourceFileApp('static/favicon.ico'),
     ('GET', 'script.js'): fileapp.ResourceFileApp('static/script.js'),
     ('GET', 'style.css'): fileapp.ResourceFileApp('static/style.css'),

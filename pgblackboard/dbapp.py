@@ -46,8 +46,10 @@ class DatabaseApp:
                 database=handler.database
             )
         except Exception as ex:
-            if str(ex) == 'ERROR:  Auth failed\n' or \
-               str(ex).startswith('FATAL:  password authentication failed for user'):
+            errmsg = str(ex)
+            if errmsg == 'ERROR:  Auth failed\n' or \
+               errmsg == 'fe_sendauth: no password supplied\n' or \
+               errmsg.startswith('FATAL:  password authentication failed for user'):
                 start_response('401 Unauthorized', [
                     ('Content-type', 'text/plain'),
                     ('WWW-Authenticate', 'Basic realm="postgresql"')

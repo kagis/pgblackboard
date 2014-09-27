@@ -371,17 +371,17 @@ pgbb.setError = function (line, message) {
     APPMODEL
 */
 
-pgbb.AppModel = function (editor) {
+pgbb.AppModel = function (editor, initialData) {
     this._onBlankEditSessionChangedBinded =
         this._onBlankEditSessionChanged.bind(this);
 
     this._editor = editor;
     this.queries = new pgbb.StoredQueriesList();
-    this.tree = new pgbb.TreeNode({
-        childquery: 'databases',
-        database: 'postgres',
-        expanded: true
-    });
+    this.tree = {
+        nodes: initialData.databases.map(function (options) {
+            return new pgbb.TreeNode(options);
+        })
+    };
 
     this._openedItem = ko.observable();
     this._openedItem.subscribe(this._onItemClosing, this, 'beforeChange');
@@ -462,5 +462,8 @@ ko.utils.extend(pgbb.AppModel.prototype, {
 
 pgbb.editor = pgbb.initEditor();
 
-pgbb.model = new pgbb.AppModel(pgbb.editor);
-ko.applyBindings(pgbb.model);
+pgbb.main = function (initialData) {
+    pgbb.model = new pgbb.AppModel(pgbb.editor, initialData);
+    ko.applyBindings(pgbb.model);
+};
+
