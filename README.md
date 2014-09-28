@@ -14,8 +14,8 @@
 ## Install
 
 ```bash
-sudo apt-get install git python3-pip libpq-dev
-sudo pip3 install git+https://github.com/exe-dealer/pgblackboard.git
+sudo apt-get install python3-pip libpq-dev
+sudo pip3 install https://github.com/exe-dealer/pgblackboard/archive/master.zip
 ```
 
 ## Run
