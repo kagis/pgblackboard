@@ -5,8 +5,8 @@
 ## Features
 
 - Multistatement queries support
-- Spatial data visualization by [Leaflet](http://leafletjs.com/)
-- Powerfull SQL editor by [Code Mirror](http://codemirror.net/)
+- Spatial data visualization
+- Powerfull SQL editor
 - Handy list of manually written queries
 - Data oriented tree with materialized views and foreign tables support
 - Query permalink sharing
@@ -28,7 +28,7 @@ python3 -m pgblackboard
 
 Open http://yourserver:7890 in browser.
 
-Command line arguments
+## Command line arguments
 
 ```
 --http-host     HTTP host to listen, default is 0.0.0.0
@@ -40,7 +40,6 @@ Command line arguments
 ```
 
 DO specify SSL certificate to prevent passwords and data capture by man in the middle.
-
 
 ## Run on boot
 
