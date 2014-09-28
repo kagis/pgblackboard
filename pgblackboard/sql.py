@@ -1,6 +1,12 @@
 import re
 
+
 def split(sql):
+    """
+    Splits multistatement query by semicolon
+    which is not within literal, quoted identifier or comment
+    """
+
     open_close_esc = (
         ("e'", "'", '\\'),
         ("E'", "'", '\\'),
@@ -64,6 +70,11 @@ def notemptypos(sql):
 
 
 def extract_dbname(sql):
+    """
+    Extracts database name from `\connect database` on first line
+    and returns tuple (database, query, query_position)
+    """
+
     m = re.match(r'''(?ixs)^ \s* \\c(?:onnect)? \s+
                     ({symbol}) [ \t]* \n (.*)'''
                     .format(symbol=_symbol), sql)
@@ -78,7 +89,7 @@ _ident     = r'(?: (?:{symbol}\.)?({symbol})        )'.format(symbol=_symbol)
 _identlist = r'(?: {ident} (?: \s*,\s* {ident} )*   )'.format(ident=_ident)
 _query     = r'''SELECT \s+ (?P<columns>\*|{identlist})
                  \s+ FROM   \s+ (?P<table>{ident})
-                 (?: \s+ (?:WHERE|LIMIT|OFFSET) .* )?'''.format(
+                 (?: \s+ (?:WHERE|ORDER\s+BY|LIMIT|OFFSET) .* )?'''.format(
                     identlist=_identlist,
                     ident=_ident)
 
@@ -86,11 +97,19 @@ _updatable_query_pattern = re.compile(r'(?ixs)^{query}$'.format(query=_query))
 _ident_pattern = re.compile(r'(?ixs){ident}'.format(ident=_ident))
 
 
-def parse_updatable_query(q):
+def parse_updatable(q):
+    """
+    Returns tuple (table, columns) if query is
+    simple enough and result rowset can be modified.
+    Otherwise returns None.
+    """
     match = _updatable_query_pattern.match(q.strip(';\n '))
     return match and (
         match.group('table'),
-        list(map(_unquote_symbol, _ident_pattern.findall(match.group('columns'))))
+        '*' if match.group('columns') == '*' else list(map(
+            _unquote_symbol,
+            _ident_pattern.findall(match.group('columns'))
+        ))
     )
 
 
