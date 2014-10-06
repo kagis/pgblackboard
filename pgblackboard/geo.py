@@ -7,14 +7,13 @@ class MapView:
 
     def render_head(self):
         return (
-            '<link href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css" rel="stylesheet" type="text/css" />'
+            '<link href="static/lib-src/leaflet/0.7.3/leaflet.css" rel="stylesheet" type="text/css" />'
+            '<link href="static/map.css" rel="stylesheet" />'
             '<script>L_PREFER_CANVAS = true;</script>'
-            '<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>'
-            '<link href="assets/map/map.css" rel="stylesheet" />')
+            '<script src="static/lib-src/leaflet/0.7.3/leaflet.js"></script>')
 
     def render_body_start(self):
-        return ('<div id="map"></div>'
-                '<script src="assets/map/map.js"></script>')
+        return '<script src="static/map.js"></script>'
 
     def render_exception(self, exception):
         return '<script>console.error({0!r})</script>'.format(

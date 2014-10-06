@@ -5,8 +5,8 @@ from . import pgtypes
 
 class TableView:
     def render_head(self):
-        return ('<link href="assets/table/table.css" rel="stylesheet" />'
-                '<script src="assets/table/table.js" async="async"></script>')
+        return ('<link href="static/table.css" rel="stylesheet" />'
+                '<script src="static/table.js"></script>')
 
     def render_body_start(self):
         return ''
@@ -52,7 +52,8 @@ class TableView:
                 'id': table_elem_id,
                 'data-table': self._table,
                 'data-schema': self._schema,
-                'data-database': self._database
+                'data-database': self._database,
+                'class': 'rowset'
             })
 
 
@@ -136,3 +137,5 @@ def tag(tagname, content, attrs=dict()):
     yield tagopen(tagname, attrs)
     yield html.escape(str(content))
     yield tagclose(tagname)
+
+

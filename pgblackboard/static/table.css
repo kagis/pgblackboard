@@ -1,10 +1,11 @@
-td, th {
+.rowset td,
+.rowset th {
     border: 1px solid #555;
     padding: .2em;
     }
 
 /* 6em width for all columns except row number */
-th + th {
+.rowset th + th {
     width: 6em;
     }
 
@@ -15,7 +16,7 @@ th + th {
     font-size: .5em;
     }
 
-td {
+.rowset td {
     overflow-x: hidden;
     text-overflow: ellipsis;
     max-width: 50em;
@@ -23,28 +24,28 @@ td {
     }
 
 /* expand cell content on focus */
-td:focus {
+.rowset td:focus {
     white-space: pre;
     overflow-wrap: break-word;
     }
 
 /* row number */
-th:first-child::before {
+.rowset th:first-child::before {
     content: '#';
     }
 
-td:first-child {
+.rowset td:first-child {
     text-align: right;
     background-color: #444;
     font-weight: bold;
     }
 
-td:first-child::before {
+.rowset td:first-child::before {
     counter-increment: rownum;
     content: counter(rownum);
     }
 
-table {
+.rowset {
     border-collapse: collapse;
     white-space: nowrap;
     margin: 0;
@@ -53,18 +54,18 @@ table {
 
     }
 
-tbody {
+.rowset tbody {
     counter-reset: rownum;
     }
 
 
-th {
+.rowset th {
     background-color: #444;
     }
 
 
 
-tr:nth-child(even) {
+.rowset tr:nth-child(even) {
     color: #aaa;
     }
 
@@ -74,13 +75,15 @@ html, body {
     padding: 0;
     }
 
+
+
 body {
     font-family: sans-serif;
     color: #ddd;
     background-color: #272822;
     }
 
-td + td:empty::before {
+.rowset td + td:empty::before {
     content: 'null';
     color: #888;
     font-style: italic;
@@ -134,3 +137,10 @@ p.non-query-result,
 .error {
     color: #ff4c4c;
     }
+
+
+
+
+
+
+

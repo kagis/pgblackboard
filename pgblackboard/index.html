@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <link rel="shortcut icon" href="favicon.ico" type="image/vnd.microsoft.icon" />
+  <link rel="shortcut icon" href="static/favicon.ico" type="image/vnd.microsoft.icon" />
   <title>pgBlackboard</title>
 
   <script type="text/javascript">
@@ -11,10 +11,10 @@
     }
   </script>
 
-  <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.css"  rel="stylesheet" />
-  <link href="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/theme/monokai.min.css" rel="stylesheet" />
+  <link href="static/lib-src/codemirror/4.6.0/codemirror.css" rel="stylesheet" />
+  <link href="static/lib-src/codemirror/4.6.0/theme/monokai.css" rel="stylesheet" />
 
-  <link href="style.css" rel="stylesheet" />
+  <link href="static/app.css" rel="stylesheet" />
 
   <script id="tree-tmpl" type="text/html">
     <ul data-bind-foreach="nodes">
@@ -116,18 +116,19 @@
   <button id="share-action" accesskey="s" style="display:none"></button>
 
 
-  <script src="//cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
-  <script src="//exe-dealer.github.io/knockout-flatBindingProvider/dist/knockout-flatBindingProvider.js"></script>
+  <script src="static/lib-src/knockout/3.2.0/knockout.js"></script>
+  <script src="static/lib-src/knockout-flatBindingProvider/1.0.0/knockout-flatBindingProvider.js"></script>
   <script>ko.bindingProvider.instance = new ko.flatBindingProvider();</script>
 
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/codemirror.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/mode/sql/sql.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/search/searchcursor.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/keymap/sublime.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/matchbrackets.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/4.6.0/addon/edit/closebrackets.min.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/codemirror.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/mode/sql/sql.js"></script>
+  <script src="static/codemirror-pgsql.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/addon/search/searchcursor.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/keymap/sublime.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/addon/edit/matchbrackets.js"></script>
+  <script src="static/lib-src/codemirror/4.6.0/addon/edit/closebrackets.js"></script>
 
-  <script src="script.js"></script>
+  <script src="static/app.js"></script>
   <script>pgbb.main(/*INITIAL_DATA_PLACEHOLDER*/);</script>
 </body>
 </html>

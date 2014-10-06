@@ -78,9 +78,11 @@ def extract_dbname(sql):
     m = re.match(r'''(?ixs)^ \s* \\c(?:onnect)? \s+
                     ({symbol}) [ \t]* \n (.*)'''
                     .format(symbol=_symbol), sql)
-    if m:
-        db, query = m.groups()
-        return _unquote_symbol(db), query, m.start(2)
+    return m and (
+        _unquote_symbol(m.group(1)),
+        m.group(2),
+        m.start(2)
+    )
 
 
 
@@ -97,7 +99,7 @@ _updatable_query_pattern = re.compile(r'(?ixs)^{query}$'.format(query=_query))
 _ident_pattern = re.compile(r'(?ixs){ident}'.format(ident=_ident))
 
 
-def parse_updatable(q):
+def try_get_selecting_table_and_cols(q):
     """
     Returns tuple (table, columns) if query is
     simple enough and result rowset can be modified.
@@ -123,3 +125,20 @@ def _strip_comments(sql):
     return re.sub(r'--.*', '',
         re.sub(r'(?s)/\*.*?\*/', '', sql)
     )
+
+
+_explain_pattern = r'(?ixs)^ EXPLAIN \(\s*([^\)]+)\)'
+_explain_pattern_old = r'(?ixs)^ EXPLAIN (?:\s+(ANALYZE))? (?:\s+(VERBOSE))?'
+
+def is_explain(q):
+    m = re.match(pattern, q)
+    if m:
+        return m.group(1)
+
+    old_pattern = r'(?ixs)^ EXPLAIN (?:\s+(ANALYZE))? (?:\s+(VERBOSE))?'
+    m = re.match(old_pattern, q)
+    if m:
+        return ','.join(list(filter(None, m.groups())))
+
+
+

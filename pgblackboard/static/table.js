@@ -1,37 +1,45 @@
+(function () {
 'use strict';
 
+function onCell(eventType, handler) {
+    window.addEventListener(eventType, function (e) {
+        if (e.target.nodeName === 'TD' &&
+            e.target.cellIndex > 0 &&
+            e.target.parentNode.parentNode.parentNode.classList.contains('rowset'))
+        {
+            handler(
+                e.target,
+                e.target.parentNode,
+                e.target.parentNode.parentNode.parentNode
+            );
+        }
+    }, true);
+}
+
 // focus readonly cell expanding oversized content
-window.addEventListener('click', function (e) {
-    if (e.target.nodeName === 'TD'
-        && e.target.cellIndex > 0
-        && !e.target.tabindex
-        && !e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table /* is not editable */)
-    {
-        e.target.tabIndex = -1;
-        e.target.focus();
+onCell('click', function (clickedCell, row, table) {
+    if (!clickedCell.tabindex && !table.dataset.table /* is not editable */) {
+        clickedCell.tabIndex = -1;
+        clickedCell.focus();
     }
-}, true);
+});
 
 
 // make row editable on click and save original values
 // instead of using contenteditable attribute in html
 // to reduce response size
-window.addEventListener('click', function (e) {
-    if (e.target.nodeName === 'TD'
-
+onCell('click', function (clickedCell, row, table) {
+    if (
         // skip if already editable
-        && e.target.contentEditable !== 'plaintext-only'
+        clickedCell.contentEditable !== 'plaintext-only' &&
 
         // not allow focus when row is submitting
-        && !e.target.parentNode/*TR*/.classList.contains('submitting-row')
-
-        // not allow focus on row header
-        && e.target.cellIndex > 0
+        !row.classList.contains('submitting-row') &&
 
         // can focus only when table is updatable/insertable
-        && e.target.parentNode/*TR*/.parentNode/*TBODY*/.parentNode/*TABLE*/.dataset.table)
+        table.dataset.table)
     {
-        var cells = e.target.parentNode.cells;
+        var cells = row.cells;
         for (var i = 1 /* skip row header */; i < cells.length; i++) {
             var cell = cells[i];
             cell.contentEditable = 'plaintext-only';
@@ -41,52 +49,44 @@ window.addEventListener('click', function (e) {
                 cell.dataset.origval = cell.textContent;
             }
         }
-        e.target.focus();
-    }
-}, true);
-
-
-// fix blank row when input
-window.addEventListener('input', function (e) {
-    if (e.target.nodeName === 'TD') {
-        var editingRow = e.target.parentNode;
-        var tBody = editingRow.parentNode;
-        if (tBody.classList.contains('has-blankrow') && tBody.lastChild === editingRow) {
-            editingRow.dataset.inserting = true;
-            var newBlankRow = document.createElement('TR');
-            for (var i = 0; i < editingRow.cells.length; i++) {
-                newBlankRow.appendChild(document.createElement('TD'));
-            }
-            tBody.appendChild(newBlankRow);
-        }
-
-        var cell = e.target;
-        var cellWasDirty = !!cell.dataset.dirty;
-        var cellNowDirty = (cell.dataset.origval !== cell.textContent);
-        cell.dataset.dirty = cellNowDirty || '';
-        editingRow.dataset.dirtycells = (+(editingRow.dataset.dirtycells || 0) + (cellNowDirty - cellWasDirty)) || '';
+        clickedCell.focus();
     }
 });
 
 
-// submit dirty row when switch to another row
-window.addEventListener('blur', function (e) {
-    if (e.target.nodeName === 'TD') {
-        var blurredRow = e.target.parentNode/*TR*/;
-
-        // disable editing on blurred row
-        for (var i = blurredRow.cells.length - 1; i >= 1; i--) {
-            blurredRow.cells[i].contentEditable = false;
-        };
-
-        setTimeout(function () {
-            var focusedEl = document.activeElement;
-            if (blurredRow !== focusedEl.parentNode/*TR*/) {
-                submitDirtyRow(blurredRow);
-            }
-        }, 10);
+// fix blank row when input
+onCell('input', function (editingCell, editingRow) {
+    var tBody = editingRow.parentNode;
+    if (tBody.classList.contains('has-blankrow') && tBody.lastChild === editingRow) {
+        editingRow.dataset.inserting = true;
+        var newBlankRow = document.createElement('TR');
+        for (var i = 0; i < editingRow.cells.length; i++) {
+            newBlankRow.appendChild(document.createElement('TD'));
+        }
+        tBody.appendChild(newBlankRow);
     }
-}, true);
+    var cellWasDirty = !!editingCell.dataset.dirty;
+    var cellNowDirty = (editingCell.dataset.origval !== editingCell.textContent);
+    editingCell.dataset.dirty = cellNowDirty || '';
+    editingRow.dataset.dirtycells = (+(editingRow.dataset.dirtycells || 0) + (cellNowDirty - cellWasDirty)) || '';
+});
+
+
+// submit dirty row when switch to another row
+onCell('blur', function (blurredCell, blurredRow) {
+    setTimeout(function () {
+        var focusedEl = document.activeElement;
+        if (blurredRow !== focusedEl.parentNode/*TR*/) {
+
+            // disable editing on blurred row
+            for (var i = blurredRow.cells.length - 1; i >= 1; i--) {
+                blurredRow.cells[i].contentEditable = false;
+            }
+
+            submitDirtyRow(blurredRow);
+        }
+    }, 10);
+});
 
 
 function submitDirtyRow(row) {
@@ -139,7 +139,7 @@ function submitDirtyRow(row) {
             row.classList.remove('invalid-row');
 
             for (var i = 1; i < cells.length; i++) {
-                var cell = cells[i]
+                var cell = cells[i];
 
                 // invalidate original value
                 delete cell.dataset.origval;
@@ -161,3 +161,5 @@ function submitDirtyRow(row) {
         row.classList.remove('submitting-row');
     }
 }
+
+})();

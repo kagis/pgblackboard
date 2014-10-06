@@ -27,7 +27,7 @@ class QueryDatabaseAppHandler:
                 query = psql_query[sel_start:sel_end]
                 self._querypos = sel_start
 
-            self._statements = sql.split(query)
+            self._statements = list(sql.split(query))
 
     def on_database_missing(self):
         yield from self._render_doc_intro()
@@ -57,18 +57,27 @@ class QueryDatabaseAppHandler:
         yield ('<!doctype html>'
                '<html>'
                '<head>'
-               '<meta charset="utf-8" />')
+               '<meta charset="utf-8" />'
+               '<script>window.pgbb = window.parent.pgbb;</script>')
         yield self._view.render_head()
         yield ('</head>'
-               '<body>')
+               '<body>'
+               '<main>')
         yield self._view.render_body_start()
 
     def _render_doc_outro(self):
-        yield ('</body>'
+        yield ('</main>'
+               '</body>'
                '</html>')
 
+    def _pop_and_render_notices(self, cursor):
+        while cursor.connection.notices:
+            yield self._view.render_notice(
+                cursor.connection.notices.pop(0)
+            )
+
     def _exec_stmt(self, cursor, stmt, position_offset):
-        query_parse_res = sql.parse_updatable(stmt)
+        query_parse_res = sql.try_get_selecting_table_and_cols(stmt)
         editable = False
         if query_parse_res:
             tablename, colnames = query_parse_res
@@ -103,9 +112,7 @@ class QueryDatabaseAppHandler:
             try:
                 cursor.execute(stmt)
             finally:
-                while cursor.connection.notices:
-                    yield self._view.render_notice(
-                        cursor.connection.notices.pop())
+                yield from self._pop_and_render_notices(cursor)
         except Exception as ex:
             yield self._view.render_exception(ex)
             try:
@@ -114,13 +121,19 @@ class QueryDatabaseAppHandler:
                 errpos = sql.notemptypos(stmt)
             errpos += position_offset
             errrow = self._psql_query.count('\n', 0, errpos)
-            errscript = ('<script>'
-                         'parent.pgbb.setError({0}, {1});'
-                         '</script>')
-            yield errscript.format(errrow, json.dumps(str(ex)))
+            yield _jsinvoke('pgbb.setError', errrow, str(ex))
 
         else:
-            if cursor.description:
+            if cursor.description and \
+                    len(cursor.description) == 1 and \
+                    cursor.description[0][1] == 114 and \
+                    cursor.description[0][0] == 'QUERY PLAN':
+                plan, = cursor.fetchone()
+                yield from self._render_query_plan(
+                    self._prepare_queryplan(plan)
+                )
+
+            elif cursor.description:
                 colaliases, coltypes = zip(*[(al, typ)
                     for al, typ, *_ in cursor.description
                 ])
@@ -156,3 +169,65 @@ class QueryDatabaseAppHandler:
                 yield self._view.render_nonquery(cursor.statusmessage)
 
 
+    _query_plan_assets_included = False
+    def _render_query_plan(self, plan):
+        if not self._query_plan_assets_included:
+            self._query_plan_assets_included = True
+            yield ('<link href="static/queryplan.css" rel="stylesheet" />'
+                   '<script src="static/lib-src/d3/3.4.11/d3.js"></script>'
+                   '<script src="static/lib-src/dagre-d3/0.2.9/dagre-d3.js"></script>'
+                   '<script src="static/queryplan.js"></script>')
+        yield _jsinvoke('queryPlan', plan);
+
+    def _prepare_queryplan(self, plan):
+
+        nodes = []
+
+        def flatten_nodes(node):
+            node['_type'] = node['Node Type']
+            del node['Node Type']
+            node_index = len(nodes)
+            nodes.append(node)
+            if 'Plans' in node:
+                for child in node['Plans']:
+                    child['_parentIndex'] = node_index
+                    flatten_nodes(child)
+                del node['Plans']
+
+        flatten_nodes(plan[0]['Plan'])
+
+        cost_prop = ([p
+            for p in ['Actual Total Time', 'Total Cost']
+            if p in nodes[0]
+        ] or [None])[0]
+
+        if cost_prop:
+            for node in nodes:
+                node['_cost'] = node[cost_prop]
+
+            for node in nodes:
+                if '_parentIndex' in node:
+                    nodes[node['_parentIndex']]['_cost'] -= node['_cost']
+
+            mincost = min(n['_cost'] for n in nodes)
+            maxcost = max(n['_cost'] for n in nodes)
+
+            for node in nodes:
+                node['_cost'] = (node['_cost'] - mincost) / (maxcost - mincost)
+
+        return {
+            'nodes': nodes
+        }
+
+
+
+def _jsinvoke(fun, *args):
+    return ''.join((
+        '<script>'
+        ,fun
+        ,'('
+        ,','.join(json.dumps(x) for x in args)
+        ,')'
+        ,';'
+        ,'</script>'
+    ))

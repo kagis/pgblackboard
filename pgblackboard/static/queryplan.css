@@ -1,0 +1,121 @@
+.blurred {
+    -webkit-filter: blur(1px);
+    opacity: .5;
+}
+
+.queryplan {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    cursor: -webkit-grab;
+    cursor: grab;
+    font-family: Ubuntu;
+    font-size: 12px;
+
+    -webkit-user-select: none;
+       -moz-user-select: none;
+
+    background-color: rgba(0,0,0,.3);
+    background-size: 1em 1em;
+
+    background-image: -webkit-linear-gradient(45deg
+                        ,rgba(0,0,0, 0)   0
+                        ,rgba(0,0,0, 0)  20%
+                        ,rgba(0,0,0,.1)  20%
+                        ,rgba(0,0,0,.1)  40%
+                        ,rgba(0,0,0, 0)  40%
+                        ,rgba(0,0,0, 0)  60%
+                        ,rgba(0,0,0,.1)  60%
+                        ,rgba(0,0,0,.1)  80%
+                        ,rgba(0,0,0, 0)  80%
+                        ,rgba(0,0,0, 0) 100%);
+
+    background-image: linear-gradient(45deg
+                        ,rgba(0,0,0, 0)   0
+                        ,rgba(0,0,0, 0)  20%
+                        ,rgba(0,0,0,.1)  20%
+                        ,rgba(0,0,0,.1)  40%
+                        ,rgba(0,0,0, 0)  40%
+                        ,rgba(0,0,0, 0)  60%
+                        ,rgba(0,0,0,.1)  60%
+                        ,rgba(0,0,0,.1)  80%
+                        ,rgba(0,0,0, 0)  80%
+                        ,rgba(0,0,0, 0) 100%);
+
+}
+
+.queryplan:active {
+    cursor: -webkit-grabbing;
+    cursor: grabbing;
+}
+
+.node rect {
+    fill: #555;
+}
+
+.node text {
+    fill: #ddd;
+}
+
+.node header {
+    text-align: center;
+    color: #ddd;
+    border-bottom: 1px solid #aaa;
+}
+
+.node g {
+    pointer-events: none;
+}
+
+.edgePath path {
+    stroke: #555;
+    stroke-width: 2px;
+    fill: none;
+}
+
+
+
+
+.queryplan-tip {
+    position: fixed;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+
+    line-height: 1;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ddd;
+    border-radius: 2px;
+    font-family: Ubuntu;
+    font-size: 10px;
+
+    box-shadow: 0 0 1em black;
+
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.queryplan-tip table {
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.queryplan-tip:after {
+  content: '';
+  display: block;
+  border-width: .5em;
+  border-style: solid;
+  border-color: transparent;
+  border-top-color: rgba(0, 0, 0, 0.8);
+  position: absolute;
+  bottom: -1em;
+  left: 50%;
+  margin-left: -.5em;
+}

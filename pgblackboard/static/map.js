@@ -1,4 +1,7 @@
-var map = L.map('map', {
+(function () {
+'use strict';
+
+var map = L.map(document.querySelector('main'), {
     center: [43.260535, 76.945493],
     zoom: 5,
     zoomControl: false,
@@ -137,3 +140,6 @@ var featureColors = [
     '#ffff99',
     '#b15928',
 ];
+
+
+})();

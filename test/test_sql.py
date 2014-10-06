@@ -3,101 +3,103 @@ import unittest
 from pgblackboard import sql
 
 
-class ParseUpdatableTestCase(unittest.TestCase):
+class TryGetSelectingTableAndColsTestCase(unittest.TestCase):
+    def _m(self, stmt):
+        return sql.try_get_selecting_table_and_cols(stmt)
 
     def test_single_col(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col FROM table'),
+            self._m('SELECT col FROM table'),
             ('table', ['col'])
         )
 
     def test_wildcard(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT * FROM table'),
+            self._m('SELECT * FROM table'),
             ('table', '*')
         )
 
     def test_two_cols(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table'),
+            self._m('SELECT col1, col2 FROM table'),
             ('table', ['col1', 'col2'])
         )
 
     def test_quoted_idents(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT "col1", "col2", "col_with_""quotes""" FROM table'),
+            self._m('SELECT "col1", "col2", "col_with_""quotes""" FROM table'),
             ('table', ['col1', 'col2', 'col_with_"quotes"'])
         )
 
     def test_full_qualified_idents(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT table.col1, table.col2 FROM public.table'),
+            self._m('SELECT table.col1, table.col2 FROM public.table'),
             ('public.table', ['col1', 'col2'])
         )
 
     def test_full_qualified_quoted_idents(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT table."col1", table."col_with_""quotes""" FROM public."table"'),
+            self._m('SELECT table."col1", table."col_with_""quotes""" FROM public."table"'),
             ('public."table"', ['col1', 'col_with_"quotes"'])
         )
 
     def test_where(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table WHERE true'),
+            self._m('SELECT col1, col2 FROM table WHERE true'),
             ('table', ['col1', 'col2'])
         )
 
     def test_limit(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table LIMIT 10'),
+            self._m('SELECT col1, col2 FROM table LIMIT 10'),
             ('table', ['col1', 'col2'])
         )
 
     def test_offset(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table OFFSET 20'),
+            self._m('SELECT col1, col2 FROM table OFFSET 20'),
             ('table', ['col1', 'col2'])
         )
 
     def test_orderby(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table ORDER BY col1'),
+            self._m('SELECT col1, col2 FROM table ORDER BY col1'),
             ('table', ['col1', 'col2'])
         )
 
     def test_limit_offset(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table WHERE true LIMIT 10 OFFSET 20'),
+            self._m('SELECT col1, col2 FROM table WHERE true LIMIT 10 OFFSET 20'),
             ('table', ['col1', 'col2'])
         )
 
     def test_where_limit_offset(self):
         self.assertEqual(
-            sql.parse_updatable('SELECT col1, col2 FROM table WHERE true LIMIT 10 OFFSET 20'),
+            self._m('SELECT col1, col2 FROM table WHERE true LIMIT 10 OFFSET 20'),
             ('table', ['col1', 'col2'])
         )
 
     def test_line_comment(self):
         self.assertEqual(
-            sql.parse_updatable('-- line comment\nSELECT col FROM table'),
+            self._m('-- line comment\nSELECT col FROM table'),
             ('table', ['col'])
         )
 
     def test_inline_comment(self):
         self.assertEqual(
-            sql.parse_updatable('/* inline comment */ SELECT col FROM table'),
+            self._m('/* inline comment */ SELECT col FROM table'),
             ('table', ['col'])
         )
 
 
     def test_join(self):
         self.assertIsNone(
-            sql.parse_updatable('SELECT col1, col2 FROM table JOIN table1')
+            self._m('SELECT col1, col2 FROM table JOIN table1')
         )
 
     def test_groupby(self):
         self.assertIsNone(
-            sql.parse_updatable('SELECT col1, col2 FROM table GROUP BY col1')
+            self._m('SELECT col1, col2 FROM table GROUP BY col1')
         )
 
 
@@ -115,7 +117,7 @@ class SplitTestCase(unittest.TestCase):
             ['SELECT 1;', 'SELECT 2']
         )
 
-    def test_listeral(self):
+    def test_literal(self):
         self.assertEqual(
             list(sql.split("SELECT ';';SELECT 2;")),
             ["SELECT ';';", 'SELECT 2;']
@@ -132,6 +134,12 @@ class SplitTestCase(unittest.TestCase):
         self.assertEqual(
             list(sql.split('SELECT 1 as $foo$;$foo$;SELECT 2;')),
             ['SELECT 1 as $foo$;$foo$;', 'SELECT 2;']
+        )
+
+    def test_nested_dollar_quoted(self):
+        self.assertEqual(
+            list(sql.split('SELECT 1 as $foo$ $bar; $foo$;SELECT 2;')),
+            ['SELECT 1 as $foo$ $bar; $foo$;', 'SELECT 2;']
         )
 
     def test_ident(self):
@@ -151,6 +159,29 @@ class SplitTestCase(unittest.TestCase):
             list(sql.split('SELECT 1 ' '-- one;\n;SELECT 2;')),
             ['SELECT 1 ' '-- one;\n;', 'SELECT 2;']
         )
+
+
+class ExtractDbnameTestCase(unittest.TestCase):
+    def test_simple(self):
+        self.assertEqual(
+            sql.extract_dbname('\\connect postgres\nselect 1'),
+            ('postgres', 'select 1', 18)
+        )
+
+    def test_empty_first_lines(self):
+        self.assertEqual(
+            sql.extract_dbname('\n\n\\connect postgres\nselect 1'),
+            ('postgres', 'select 1', 20)
+        )
+
+    def test_quoted(self):
+        self.assertEqual(
+            sql.extract_dbname('\\connect "name_with_""quotes"""\nselect 1'),
+            ('name_with_"quotes"', 'select 1', 32)
+        )
+
+    def test_fail(self):
+        self.assertIsNone(sql.extract_dbname('select 1'))
 
 
 class StripCommentsTestCase(unittest.TestCase):

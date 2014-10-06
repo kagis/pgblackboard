@@ -1,10 +1,7 @@
 import pkgutil, json
 
 
-_index_html = pkgutil.get_data(
-    'pgblackboard',
-    'static/index.html'
-).decode()
+_index_html = pkgutil.get_data('pgblackboard', 'index.html').decode()
 
 
 class IndexDatabaseAppHandler:
