@@ -83,16 +83,16 @@ var overlayOptions = {
 
 var latestFeatureCollection;
 
-function beginFeatureCollection() {
+window.beginFeatureCollection = function () {
     latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
-}
+};
 
-function addFeatures(featureCollection) {
+window.addFeatures = function (featureCollection) {
     featureCollection.features.forEach(function (f) {
         f.overlay = latestFeatureCollection;
     });
     latestFeatureCollection.addData(featureCollection);
-}
+};
 
 function addOverlay(overlayKey) {
     var overlay = L.geoJson(null, overlayOptions);
