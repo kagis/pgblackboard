@@ -44,6 +44,11 @@ button::-webkit-focus-inner {
     padding: 0;
     }
 
+button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
 ul {
     padding: 0;
     margin: 0;
@@ -106,7 +111,7 @@ a > small {
     width: 1em;
     height: 1em;
     opacity: 0.5;
-    border-style: solid;
+    border-style: dotted /* firefox jagged fix */ solid;
     border-width: .5em 0 .5em .7em;
     border-color: transparent transparent transparent white;
     user-select: none;
@@ -261,9 +266,11 @@ a > small {
     -webkit-transform-origin: center center;
        -moz-transform-origin: center center;
         -ms-transform-origin: center center;
+            transform-origin: center center;
     -webkit-animation: spin .5s infinite linear;
        -moz-animation: spin .5s infinite linear;
         -ms-animation: spin .5s infinite linear;
+            animation: spin .5s infinite linear;
     }
 
 @-webkit-keyframes spin {
@@ -281,9 +288,9 @@ a > small {
     to   { -ms-transform: rotate(360deg); }
     }
 
-@-keyframes spin {
-    from { -ms-transform: rotate(0deg); }
-    to   { -ms-transform: rotate(360deg); }
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
     }
 
 
@@ -431,12 +438,10 @@ a > small {
     display: inline-block;
     text-decoration: inherit;
     width: 1em;
-    margin-right: .3em;
     text-align: center;
     font-variant: normal;
     text-transform: none;
     line-height: 1em;
-    margin-left: .2em;
 
     content: '\e80b';
     }
