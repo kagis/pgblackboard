@@ -3,16 +3,12 @@
         ,obj_description(c.oid, 'pg_class') as comment
         ,c.oid as node
         ,current_database() as database
-        ,case relkind when 'r' then 'table_def'
-                      when 'v' then 'view_def'
-                      when 'm' then 'matview_def'
-                      when 'f' then 'table_def'
-                      end as defquery
+        ,'table_def' as defquery
         ,'columns_in_rel' as childquery
-        ,case relkind when 'r' then 'table'
-                      when 'v' then 'view'
-                      when 'f' then 'foreigntable'
-                      when 'm' then 'matview'
+        ,case relkind when 'r' then 'table rel'
+                      when 'v' then 'view rel'
+                      when 'f' then 'foreigntable rel'
+                      when 'm' then 'matview rel'
                       end as type
     from pg_class as c
         left outer join pg_depend as dep on c.oid = dep.objid
@@ -22,10 +18,7 @@
     order by name
 
 ) union all (
-    select format('%%s(%%s)'
-            ,proname
-            ,array_to_string(proargtypes::regtype[], ', ')
-        ) as name
+    select proname || '(' || array_to_string(proargtypes::regtype[], ', ') || ')' as name
         ,obj_description(p.oid, 'pg_proc') as comment
         ,p.oid as node
         ,current_database() as database

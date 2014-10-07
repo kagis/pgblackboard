@@ -30,10 +30,7 @@
     order by name
 
 ) union all (
-    select format('%%s(%%s)'
-            ,proname
-            ,array_to_string(proargtypes::regtype[], ', ')
-        ) as name
+    select proname || '(' || array_to_string(proargtypes::regtype[], ', ') || ')' as name
         ,obj_description(p.oid, 'pg_proc') as comment
         ,p.oid as node
         ,current_database() as database

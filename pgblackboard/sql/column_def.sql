@@ -16,8 +16,8 @@ select concat_ws(e'\n'
     ,'GROUP BY ' || attident
     ,'   LIMIT 1000;'
     ,''
-    ,'/*'
 
+    ,'/*'
     ,concat_ws(' '
         ,altertable
         ,'ADD   '
@@ -26,11 +26,27 @@ select concat_ws(e'\n'
         ,case when attnotnull then 'NOT NULL' end
         ,'DEFAULT (' || adsrc || ')'
     ) || ';'
+    ,'*/'
+    ,''
+
+    ,'/*'
+
+    ,'-- rename column'
     ,altertable || ' RENAME ' || attident || ' TO ' || attident || ';'
+
+    ,''
+    ,'-- make column' || case when attnotnull then '' else ' NOT' end || ' nullable'
     ,altertable || ' ALTER  ' || attident || ' SET '
         || case when attnotnull then 'NULL' else 'NOT NULL' end || ';'
+
+    ,''
+    ,'-- change column type'
     ,altertable || ' ALTER  ' || attident || ' SET TYPE text USING (' || attident || '::text);'
+
+    ,''
+    ,'-- drop column'
     ,altertable || ' DROP   ' || attident || ';'
     ,'*/'
+    ,''
 ) as def
 from common_cte

@@ -1,17 +1,13 @@
-select format(
-    concat_ws(e'\n'
-        ,'BEGIN;'
-        ,''
-        ,'-- select and execute following line to drop constraint'
-        ,'ALTER TABLE %%1$s DROP CONSTRAINT %%3$I;'
-        ,''
-        ,'ALTER TABLE %%1$s ADD CONSTRAINT %%3$I'
-        ,'  %%2$s;'
-        ,''
-        ,'ROLLBACK;'
-    )
-    ,conrelid::regclass
-    ,pg_get_constraintdef(%(node)s::oid)
-    ,conname
+select concat_ws(e'\n'
+    ,'BEGIN;'
+    ,''
+    ,'-- select and execute following line to drop constraint'
+    ,'ALTER TABLE ' || conrelid::regclass || ' DROP CONSTRAINT ' || quote_ident(conname) || ';'
+    ,''
+    ,'ALTER TABLE ' || conrelid::regclass || ' ADD CONSTRAINT ' || quote_ident(conname)
+    ,'  ' || pg_get_constraintdef(oid) || ';'
+    ,''
+    ,'ROLLBACK;'
+    ,''
 ) as def
 from pg_constraint where oid = %(node)s::oid

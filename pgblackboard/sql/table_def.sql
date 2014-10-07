@@ -1,10 +1,10 @@
 with params_cte as (
-    select %(node)s::oid as oid
+    select %(node)s::oid as param_oid
 ),
 attrs_cte as (
     select pg_attribute.*, max(length(quote_ident(attname))) over() as max_attname_len
-    from pg_attribute join pg_class on pg_class.oid = attrelid
-    where attrelid = %(node)s and attnum > 0 and not attisdropped
+    from params_cte, pg_attribute join pg_class on pg_class.oid = attrelid
+    where attrelid = param_oid and attnum > 0 and not attisdropped
 ),
 attrs_def_cte as (
     select string_agg(
@@ -21,15 +21,13 @@ attrs_def_cte as (
 ),
 constraints_def_cte as (
     with constraints_with_maxnamelen as (
-        select max(length(quote_ident(conname))) over() as maxnamelen, oid, *
-        from pg_constraint
-        where conrelid = %(node)s
+        select max(length(quote_ident(conname))) over() as maxnamelen, oid, pg_constraint.*
+        from pg_constraint, params_cte
+        where conrelid = param_oid
     )
     select string_agg(
-        format('CONSTRAINT %%s %%s'
-            ,rpad(quote_ident(conname), maxnamelen)
-            ,pg_get_constraintdef(oid)
-        )
+        'CONSTRAINT ' || rpad(quote_ident(conname), maxnamelen)
+            || ' ' || pg_get_constraintdef(oid)
         ,e'\n  ,'
         order by strpos('pufc', contype)
     ) as constraints_def
@@ -37,32 +35,19 @@ constraints_def_cte as (
 ),
 table_def_cte as (
     select case relkind
-        when 'v' then format(
-            e' CREATE VIEW %%s AS\n%%s'
-            ,oid::regclass
-            ,pg_get_viewdef(oid)
-        )
-
-        when 'm' then format(
-            e' CREATE MATERIALIZED VIEW %%s AS\n%%s'
-            ,oid::regclass
-            ,pg_get_viewdef(oid)
-        )
-
-        when 'r' then format(
-            e'CREATE TABLE %%s (\n   %%s\n)%%s;'
-            ,oid::regclass
-            ,concat_ws(e'\n\n  ,'
+        when 'v' then e' CREATE VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
+        when 'm' then e' CREATE MATERIALIZED VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
+        when 'r' then 'CREATE TABLE ' || oid::regclass || e' (\n   '
+            || concat_ws(e'\n\n  ,'
                 ,(select attrs_def from attrs_def_cte)
                 ,(select constraints_def from constraints_def_cte)
             )
-            ,case when relhasoids then ' WITH OIDS' end
-        )
-
+            || e'\n)'
+            || case when relhasoids then ' WITH OIDS' else '' end || ';'
         else ''
     end as table_def
-    from pg_class
-    where oid = %(node)s
+    from pg_class, params_cte
+    where oid = param_oid
 ),
 select_stmt_cte as (
     with pk_cols as (
@@ -71,20 +56,16 @@ select_stmt_cte as (
             join pg_attribute on contype = 'p'
                                 and attnum = any(conkey)
                                 and attrelid = conrelid
-        where conrelid = params_cte.oid
+        where conrelid = param_oid
     )
     select concat_ws(e'\n'
         ,'  SELECT ' || string_agg(quote_ident(attname), e'\n        ,' order by attnum)
-        ,'    FROM ' || (select oid::regclass from params_cte)
+        ,'    FROM ' || (select param_oid::regclass from params_cte)
         ,'   WHERE true'
         ,'ORDER BY ' || (select string_agg(attident, ', ') from pk_cols)
         ,'   LIMIT 1000;'
     ) as select_stmt
     from attrs_cte
 )
-select format(
-    e'%%s\n\n/*\n%%s\n*/\n'
-    ,(select select_stmt from select_stmt_cte)
-    ,(select table_def from table_def_cte)
-) as def
-
+select (select select_stmt from select_stmt_cte) || e'\n\n/*\n'
+    || (select table_def from table_def_cte) || e'\n*/\n' as def
