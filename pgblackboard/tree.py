@@ -24,10 +24,8 @@ class TreeDatabaseAppHandler:
 _queries = { nm: pkgutil.get_data('pgblackboard',
                                   'sql/{0}.sql'.format(nm)) for nm in [
     'columns_in_rel',
-    'databases',
     'func_def',
     'rels_and_funcs_in_schema',
-    'extension_children',
     'schemas_in_db',
     'table_def',
     'index_def',
