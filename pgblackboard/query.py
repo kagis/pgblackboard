@@ -211,9 +211,12 @@ class QueryDatabaseAppHandler:
 
             mincost = min(n['_cost'] for n in nodes)
             maxcost = max(n['_cost'] for n in nodes)
+            cost_d = maxcost - mincost
 
             for node in nodes:
-                node['_cost'] = (node['_cost'] - mincost) / (maxcost - mincost)
+                # set zero cost when cost delta is zero
+                # and prevent zero division
+                node['_cost'] = cost_d and (node['_cost'] - mincost) / cost_d
 
         return {
             'nodes': nodes
