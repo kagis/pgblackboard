@@ -111,12 +111,20 @@ a > small {
     width: 1em;
     height: 1em;
     opacity: 0.5;
-    border-style: dotted /* firefox jagged fix */ solid;
+    border-style: solid;
     border-width: .5em 0 .5em .7em;
     border-color: transparent transparent transparent white;
     user-select: none;
     -moz-box-sizing: border-box;
          box-sizing: border-box;
+    }
+
+/* fix jagged triangle in firefox */
+@-moz-document url-prefix() {
+    .treenode-toggler-expanded,
+    .treenode-toggler-collapsed {
+        border-style: dotted solid;
+        }
     }
 
 .treenode-toggler-expanded:hover,
@@ -339,7 +347,7 @@ a > small {
 .CodeMirror-vscrollbar,
 .CodeMirror-hscrollbar,
 .scrollbox {
-    scrollbar-base-color: #1c1c1c;
+    scrollbar-base-color: #333;
     scrollbar-3dlight-color: #222;
     scrollbar-highlight-color: #222;
     scrollbar-track-color: #222;

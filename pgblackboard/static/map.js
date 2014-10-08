@@ -1,7 +1,7 @@
 (function () {
 'use strict';
 
-var map = L.map(document.querySelector('main'), {
+var map = L.map(document.querySelector('.main'), {
     center: [43.260535, 76.945493],
     zoom: 5,
     zoomControl: false,

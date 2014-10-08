@@ -62,11 +62,11 @@ class QueryDatabaseAppHandler:
         yield self._view.render_head()
         yield ('</head>'
                '<body>'
-               '<main>')
+               '<div class="main">')
         yield self._view.render_body_start()
 
     def _render_doc_outro(self):
-        yield ('</main>'
+        yield ('</div>'
                '</body>'
                '</html>')
 

@@ -1,7 +1,7 @@
 (function () {
 'use strict';
 
-window.pgbb = {};
+var pbgg = window.pgbb = {};
 pgbb.extend = ko.utils.extend;
 
 
@@ -24,11 +24,12 @@ pgbb.SplitPanel = function (el, orientation) {
 };
 
 pgbb.extend(pgbb.SplitPanel.prototype, {
-    _resizeEvent: new Event('resize'),
 
     _fireResize: function () {
-        this._panel1.dispatchEvent(this._resizeEvent);
-        this._panel2.dispatchEvent(this._resizeEvent);
+        var evt = document.createEvent('HTMLEvents');
+        evt.initEvent('resize', false, false);
+        this._panel1.dispatchEvent(evt);
+        this._panel2.dispatchEvent(evt);
     },
 
     _onSplitterMouseDown: function (e) {
@@ -170,22 +171,31 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
 
     _sqlexec: function (options) {
         var req = new XMLHttpRequest();
-        var context = this;
-        req.onload = function (e) {
-            if (e.target.status === 200) {
-                options.success.call(context, e.target.response);
-            } else {
-                options.error.call(context);
-            }
-        };
-        req.onerror = function (e) {
-            options.error.call(context);
-        };
-        req.open('GET', 'tree?database=' + this.database +
-                             '&q=' + options.query +
-                             (this.nodekey ? '&node=' + this.nodekey : ''));
-        req.responseType = 'json';
+        req.onload = onLoad;
+        req.onerror = onLoadEnd;
+        req.open('GET', 'tree?' + [
+             'database=' + encodeURIComponent(this.database)
+            ,'q=' + encodeURIComponent(options.query)
+            ,this.nodekey && 'node=' + encodeURIComponent(this.nodekey)
+        ].join('&'));
         req.send();
+
+
+        var callbackContext = this;
+
+        function onLoad(e) {
+            if (e.target.status === 200) {
+                // because IE does not support responseType='json'
+                var jsonResp = JSON.parse(e.target.response);
+                options.success.call(callbackContext, jsonResp);
+            } else {
+                options.error.call(callbackContext);
+            }
+        }
+
+        function onLoadEnd(e) {
+            options.error.call(callbackContext);
+        }
     }
 });
 

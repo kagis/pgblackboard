@@ -1,6 +1,11 @@
 .blurred {
-    -webkit-filter: blur(1px);
     opacity: .5;
+    -webkit-filter: blur(1px);
+}
+
+.queryplan,
+.queryplan-tip {
+    font-family: Ubuntu, Verdana, sans-serif;
 }
 
 .queryplan {
@@ -14,7 +19,6 @@
     overflow: hidden;
     cursor: -webkit-grab;
     cursor: grab;
-    font-family: Ubuntu;
     font-size: 12px;
 
     -webkit-user-select: none;
@@ -91,7 +95,6 @@
     background: rgba(0, 0, 0, 0.8);
     color: #ddd;
     border-radius: 2px;
-    font-family: Ubuntu;
     font-size: 10px;
 
     box-shadow: 0 0 1em black;
