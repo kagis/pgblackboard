@@ -14,7 +14,7 @@ select concat_ws(e'\n'
     ,'   SFUNC       = ' || aggtransfn
     ,'  ,STYPE       = ' || format_type(aggtranstype, null)
     ,'  ,FINALFUNC   = ' || nullif(aggfinalfn, 0)::regproc
-    ,'  ,INITCOND    = ' || array_to_string(nullif(agginitval, '')::text[], ', ')
+    ,'  ,INITCOND    = ' || array_to_string(agginitval::text[], ', ')
     ,'  ,SORTOP      = ' || nullif(aggsortop, 0)::regoperator
     ,');'
     ,''
