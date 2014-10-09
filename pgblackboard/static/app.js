@@ -159,7 +159,7 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
                 success: function (tuples) {
                     onComplete.call(context,
                         '\\connect ' + quotedDatabase +
-                        '\n\n' + tuples[0].def
+                        '\n\n' + (tuples[0] && tuples[0].def)
                     );
                 },
                 error: function () {

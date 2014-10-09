@@ -49,9 +49,11 @@ with params_cte as (
         ,obj_description(pg_proc.oid, 'pg_proc')       as comment
         ,pg_proc.oid::text                             as node
         ,current_database()                            as database
-        ,'func_def'                                    as defquery
+        ,case when proisagg then 'agg_def'
+                            else 'func_def' end        as defquery
         ,null                                          as childquery
-        ,'func'                                        as type
+        ,case when proisagg then 'agg func'
+                            else 'func' end            as type
     from params_cte, pg_proc left outer join ext_dep_cte on pg_proc.oid = objid
     where (pronamespace = schema_oid and refobjid is null)
           or refobjid = ext_oid

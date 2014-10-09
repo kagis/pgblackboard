@@ -34,4 +34,5 @@ _queries = { nm: pkgutil.get_data('pgblackboard',
     'column_def',
     'schema_def',
     'extension_def',
+    'agg_def',
 ]}
