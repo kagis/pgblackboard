@@ -63,7 +63,12 @@ ul + ul {
     }
 
 li > header {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
     display: flex;
+
     align-items: center;
     }
 
@@ -214,7 +219,12 @@ a > small {
 
 
 #queryform {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
     display: flex;
+
     position: relative;
     }
 
@@ -469,7 +479,12 @@ a > small {
     }
 
 .splitpanel-h {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
     display: flex;
+
     flex-direction: row;
     }
 
@@ -484,7 +499,12 @@ a > small {
     }
 
 .splitpanel-v {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
     display: flex;
+
     flex-direction: column;
     }
 

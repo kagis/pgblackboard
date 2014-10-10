@@ -1,10 +1,10 @@
 (function () {
 'use strict';
 
+
 function onCell(eventType, handler) {
     window.addEventListener(eventType, function (e) {
         if (e.target.nodeName === 'TD' &&
-            e.target.cellIndex > 0 &&
             e.target.parentNode.parentNode.parentNode.classList.contains('rowset'))
         {
             handler(
@@ -16,9 +16,10 @@ function onCell(eventType, handler) {
     }, true);
 }
 
+
 // focus readonly cell expanding oversized content
-onCell('click', function (clickedCell, row, table) {
-    if (!clickedCell.tabindex && !table.dataset.table /* is not editable */) {
+onCell('mousedown', function (clickedCell, row, table) {
+    if (!tableIsEditable(table)) {
         clickedCell.tabIndex = -1;
         clickedCell.focus();
     }
@@ -34,20 +35,16 @@ onCell('click', function (clickedCell, row, table) {
         clickedCell.contentEditable !== 'plaintext-only' &&
 
         // not allow focus when row is submitting
-        !row.classList.contains('submitting-row') &&
+        !row.classList.contains('rowset-submitting-row') &&
 
         // can focus only when table is updatable/insertable
-        table.dataset.table)
+        tableIsEditable(table))
     {
         var cells = row.cells;
         for (var i = 1 /* skip row header */; i < cells.length; i++) {
             var cell = cells[i];
+            saveCellOriginalValue(cell);
             cell.contentEditable = 'plaintext-only';
-
-            // save original values
-            if (!('origval' in cell.dataset)) {
-                cell.dataset.origval = cell.textContent;
-            }
         }
         clickedCell.focus();
     }
@@ -55,20 +52,30 @@ onCell('click', function (clickedCell, row, table) {
 
 
 // fix blank row when input
-onCell('input', function (editingCell, editingRow) {
+onCell('input', function (editingCell, editingRow, table) {
     var tBody = editingRow.parentNode;
-    if (tBody.classList.contains('has-blankrow') && tBody.lastChild === editingRow) {
-        editingRow.dataset.inserting = true;
+    if (table.classList.contains('rowset-has-blankrow') && tBody.lastChild === editingRow) {
+        editingRow.setAttribute('data-inserting', 'true');
         var newBlankRow = document.createElement('TR');
-        for (var i = 0; i < editingRow.cells.length; i++) {
+        newBlankRow.appendChild(document.createElement('TH'));
+        for (var i = 1; i < editingRow.cells.length; i++) {
             newBlankRow.appendChild(document.createElement('TD'));
         }
         tBody.appendChild(newBlankRow);
     }
-    var cellWasDirty = !!editingCell.dataset.dirty;
-    var cellNowDirty = (editingCell.dataset.origval !== editingCell.textContent);
-    editingCell.dataset.dirty = cellNowDirty || '';
-    editingRow.dataset.dirtycells = (+(editingRow.dataset.dirtycells || 0) + (cellNowDirty - cellWasDirty)) || '';
+
+    if (getCellOriginalValue(editingCell) === getCellValue(editingCell)) {
+        editingCell.removeAttribute('data-dirty');
+    } else {
+        editingCell.setAttribute('data-dirty', 'true');
+    }
+});
+
+
+onCell('input', function (editingCell) {
+    if (editingCell.textContent) {
+        editingCell.classList.remove('emptystr');
+    }
 });
 
 
@@ -90,9 +97,9 @@ onCell('blur', function (blurredCell, blurredRow) {
 
 
 function submitDirtyRow(row) {
-    row.classList.remove('invalid-row');
+    row.classList.remove('rowset-invalid-row');
 
-    if (!row.dataset.dirtycells) {
+    if (!rowIsDirty(row)) {
         return;
     }
 
@@ -100,18 +107,19 @@ function submitDirtyRow(row) {
     var table = row.parentNode/*TBODY*/.parentNode/*TABLE*/;
     var headcells = table.tHead.rows[0].cells;
 
-    row.classList.add('submitting-row');
+    row.classList.add('rowset-submitting-row');
 
     var changes = {};
     var key = {};
     for (var i = 1 /* skip # row header */; i < cells.length; i++) {
         var cell = cells[i];
         var headcell = headcells[i];
-        if (headcell.dataset.key) {
-            key[headcell.dataset.name] = cell.dataset.origval || null;
+        var colName = headcell.getAttribute('data-name');
+        if (headcell.hasAttribute('data-key')) {
+            key[colName] = getCellOriginalValue(cell);
         }
-        if (cell.dataset.dirty) {
-            changes[headcell.dataset.name] = cell.textContent || null;
+        if (cellIsDirty(cell)) {
+            changes[colName] = getCellValue(cell);
         }
     }
 
@@ -121,10 +129,10 @@ function submitDirtyRow(row) {
     req.onloadend = onLoadEnd;
     req.onload = onLoad;
     req.send(JSON.stringify({
-        action   : row.dataset.inserting ? 'insert' : 'update',
-        database : table.dataset.database,
-        table    : table.dataset.table,
-        schema   : table.dataset.schema,
+        action   : row.hasAttribute('data-inserting') ? 'insert' : 'update',
+        database : table.getAttribute('data-database'),
+        table    : table.getAttribute('data-table'),
+        schema   : table.getAttribute('data-schema'),
         changes  : changes,
         where    : key
     }));
@@ -132,34 +140,83 @@ function submitDirtyRow(row) {
 
     function onLoad(e) {
         if (e.target.status === 200) {
-
-            // row is not dirty since it successfully submitted
-            delete row.dataset.dirtycells;
-            delete row.dataset.inserting;
-            row.classList.remove('invalid-row');
+            delete row.removeAttribute('data-inserting');
+            row.classList.remove('rowset-invalid-row');
 
             for (var i = 1; i < cells.length; i++) {
                 var cell = cells[i];
 
-                // invalidate original value
-                delete cell.dataset.origval;
-                delete cell.dataset.dirty;
+                // cells are not dirty since row successfully submitted
+                invalidateCellOriginalValue(cell);
 
                 // refresh cell with actual inserted/updated value
-                var returnedVal = e.target.response[headcells[i].dataset.name];
+                var colName = headcells[i].getAttribute('data-name');
+                var returnedVal = e.target.response[colName];
                 if (returnedVal !== undefined) {
                     cell.innerHTML = returnedVal;
                 }
             }
         } else {
-            row.classList.add('invalid-row');
+            row.classList.add('rowset-invalid-row');
             alert(e.target.response);
         }
     }
 
     function onLoadEnd() {
-        row.classList.remove('submitting-row');
+        row.classList.remove('rowset-submitting-row');
     }
 }
+
+
+
+function getCellValue(cell) {
+    return cell.textContent || (
+        cell.classList.contains('emptystr') ? '' : null
+    );
+}
+
+function setCellValue(cell, newValue) {
+    cell.textContent = newValue;
+    cell.classList.toggle('emptystr', newValue === '');
+}
+
+function getCellOriginalValue(cell) {
+    return cell.getAttribute('data-origval') || (
+        cell.hasAttribute('data-origval-emptystr') ? '' : null
+    );
+}
+
+function saveCellOriginalValue(cell) {
+    if (!cellIsDirty(cell)) {
+        cell.setAttribute('data-origval', cell.textContent);
+        if (cell.classList.contains('emptystr')) {
+            cell.setAttribute('data-origval-emptystr', 'true');
+        }
+    }
+}
+
+function invalidateCellOriginalValue(cell) {
+    cell.removeAttribute('data-origval');
+    cell.removeAttribute('data-origval-emptystr');
+    cell.removeAttribute('data-dirty');
+}
+
+function cellIsDirty(cell) {
+    return !!cell.getAttribute('data-dirty');
+}
+
+function rowIsDirty(row) {
+    for (var i = row.cells.length - 1; i >= 1; i--) {
+        if (cellIsDirty(row.cells[i])) {
+            return true;
+        }
+    };
+    return false;
+}
+
+function tableIsEditable(table) {
+    return table.hasAttribute('data-table');
+}
+
 
 })();

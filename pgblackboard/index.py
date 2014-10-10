@@ -20,6 +20,7 @@ class IndexDatabaseAppHandler:
                   ,shobj_description(oid, 'pg_database') AS comment
             FROM pg_database
             WHERE NOT datistemplate
+            ORDER BY datname
         ''')
 
         initial_data = {

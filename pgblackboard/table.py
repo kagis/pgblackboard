@@ -12,10 +12,10 @@ class TableView:
         return ''
 
     def render_exception(self, exception):
-        return '<pre class="error">{0}</pre>'.format(exception)
+        return '<p class="message-error message">{0}</p>'.format(exception)
 
     def render_nonquery(self, result):
-        return '<p class="non-query-result">{0}</p>'.format(result)
+        return '<p class="message">{0}</p>'.format(result)
 
     def render_notice(self, notice):
         return self.render_nonquery(notice)
@@ -53,34 +53,37 @@ class TableView:
                 'data-table': self._table,
                 'data-schema': self._schema,
                 'data-database': self._database,
-                'class': 'rowset'
+                'class': 'rowset' + (
+                    ' rowset-has-blankrow' if self._can_insert else ''
+                )
             })
 
 
 
             yield tagopen('thead')
             yield tagopen('tr')
-            yield tag('th', '')
+            yield tag('th', '', { 'class': 'rowset-rowheader' })
             for alias, name, typid, iskey in self._columns:
-                yield  tagopen('th', {
+                yield tagopen('th', {
                     'data-name': name,
-                    'data-key': iskey or None
+                    'data-key': iskey or None,
+                    'class': 'rowset-colheader'
                 })
                 yield tag('div', alias)
-                yield tag('small', pgtypes.get_type_name(typid), { 'class': 'coltype' })
+                yield tag('small', pgtypes.get_type_name(typid), {
+                    'class': 'rowset-coltype'
+                })
                 yield tagclose('th')
             yield tagclose('tr')
             yield tagclose('thead')
 
-            yield tagopen('tbody', {
-                'class': self._can_insert and 'has-blankrow'
-            })
+            yield tagopen('tbody')
 
         def render_outro(self):
             if self._can_insert:
                 yield tagopen('tr')
-                yield tag('td', '')
-                editable_td = tag('td', '', {'contenteditable': 'plaintext-only'})
+                yield tag('th', '') # rownum
+                editable_td = tag('td', '')
                 yield editable_td * len(self._columns)
                 yield tagclose('tr')
             yield tagclose('tbody')
@@ -89,9 +92,9 @@ class TableView:
         def render_rows(self, rows):
             for row in rows:
                 yield '<tr>'
-                yield '<td></td>' #rownum
+                yield '<th></th>' #rownum
                 for val, render in zip(row, self._colrenderers):
-                    yield '<td>'
+                    yield '<td class="emptystr">' if val == '' else '<td>'
                     if val is not None:
                         yield render(val)
                     yield '</td>'
@@ -121,7 +124,9 @@ def tagopen(tagname, attrs=dict()):
             yield ' '
             yield attname
             yield '='
+            yield '"'
             yield html.escape(str(attval))
+            yield '"'
     yield '>'
 
 
