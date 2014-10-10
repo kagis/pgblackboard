@@ -140,7 +140,7 @@ function submitDirtyRow(row) {
 
     function onLoad(e) {
         if (e.target.status === 200) {
-            delete row.removeAttribute('data-inserting');
+            row.removeAttribute('data-inserting');
             row.classList.remove('rowset-invalid-row');
 
             for (var i = 1; i < cells.length; i++) {
@@ -210,7 +210,7 @@ function rowIsDirty(row) {
         if (cellIsDirty(row.cells[i])) {
             return true;
         }
-    };
+    }
     return false;
 }
 

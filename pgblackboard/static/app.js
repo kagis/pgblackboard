@@ -10,67 +10,68 @@ pgbb.extend = ko.utils.extend;
     SPLITPANEL
 */
 
-pgbb.SplitPanel = function (el, orientation) {
-    this._resizeFixedPanel = orientation === 'horizontal' ?
-        this._resizeFixedPanelHorizontal : this._resizeFixedPanelVertical;
+pgbb.splitPanel = function (el, orientation) {
+    var _resizeFixedPanel = orientation === 'horizontal' ?
+        resizeFixedPanelHorizontal : resizeFixedPanelVertical;
 
-    this._el = el;
-    this._fixedPanelEl = el.querySelector('.splitfix');
+    var _el = el;
+    var _fixedPanelEl = el.querySelector('.splitfix');
 
-    this._panel1 = el.children[0];
-    this._panel2 = el.children[2];
+    var _panel1 = el.children[0];
+    var _panel2 = el.children[2];
 
-    el.querySelector('.splitter').addEventListener('mousedown', this._onSplitterMouseDown.bind(this));
-};
+    var _startX;
+    var _startY;
 
-pgbb.extend(pgbb.SplitPanel.prototype, {
+    el.querySelector('.splitter').addEventListener('mousedown', onSplitterMouseDown);
 
-    _fireResize: function () {
-        var evt = document.createEvent('HTMLEvents');
-        evt.initEvent('resize', false, false);
-        this._panel1.dispatchEvent(evt);
-        this._panel2.dispatchEvent(evt);
-    },
+    var _resizeEvt = document.createEvent('HTMLEvents');
+    _resizeEvt.initEvent('resize', false, false);
 
-    _onSplitterMouseDown: function (e) {
-        this._startX = this._fixedPanelEl.offsetWidth - e.clientX;
-        this._startY = this._fixedPanelEl.offsetHeight + e.clientY;
-        this._onSplitterMouseUpBinded = this._onSplitterMouseUp.bind(this);
-        this._onSplitterMouseMoveBinded = this._onSplitterMouseMove.bind(this);
+
+
+    function fireResize() {
+        _panel1.dispatchEvent(_resizeEvt);
+        _panel2.dispatchEvent(_resizeEvt);
+    }
+
+    function onSplitterMouseDown(e) {
+        _startX = _fixedPanelEl.offsetWidth - e.clientX;
+        _startY = _fixedPanelEl.offsetHeight + e.clientY;
 
         document.body.classList.add('splitting');
-        document.addEventListener('mousemove', this._onSplitterMouseMoveBinded);
-        document.addEventListener('mouseup', this._onSplitterMouseUpBinded);
-    },
-
-    _onSplitterMouseUp: function (e) {
-        document.removeEventListener('mouseup', this._onSplitterMouseUpBinded);
-        document.removeEventListener('mousemove', this._onSplitterMouseMoveBinded);
-        document.body.classList.remove('splitting');
-        this._fireResize();
-    },
-
-    _onSplitterMouseMove: function (e) {
-        this._resizeFixedPanel(e.clientX, e.clientY);
-        this._fireResize();
-    },
-
-    _resizeFixedPanelVertical: function (_, y) {
-        this._fixedPanelEl.style.height = (this._startY - y) + 'px';
-    },
-
-    _resizeFixedPanelHorizontal: function (x, _) {
-       this._fixedPanelEl.style.width = (this._startX + x) + 'px';
+        document.addEventListener('mousemove', onSplitterMouseMove);
+        document.addEventListener('mouseup', onSplitterMouseUp);
     }
-});
+
+    function onSplitterMouseUp(e) {
+        document.removeEventListener('mouseup', onSplitterMouseUp);
+        document.removeEventListener('mousemove', onSplitterMouseMove);
+        document.body.classList.remove('splitting');
+        fireResize();
+    }
+
+    function onSplitterMouseMove(e) {
+        _resizeFixedPanel(e.clientX, e.clientY);
+        fireResize();
+    }
+
+    function resizeFixedPanelVertical(_, y) {
+        _fixedPanelEl.style.height = (_startY - y) + 'px';
+    }
+
+    function resizeFixedPanelHorizontal(x, _) {
+       _fixedPanelEl.style.width = (_startX + x) + 'px';
+    }
+};
 
 var shieldEl = document.createElement('div');
 shieldEl.className = 'splitshield';
 document.body.appendChild(shieldEl);
 
 
-new pgbb.SplitPanel(document.querySelector('.splitpanel-h'), 'horizontal');
-new pgbb.SplitPanel(document.querySelector('.splitpanel-v'), 'vertical');
+pgbb.splitPanel(document.querySelector('.splitpanel-h'), 'horizontal');
+pgbb.splitPanel(document.querySelector('.splitpanel-v'), 'vertical');
 
 
 
@@ -174,9 +175,9 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         req.onload = onLoad;
         req.onerror = onLoadEnd;
         req.open('GET', 'tree?' + [
-             'database=' + encodeURIComponent(this.database)
-            ,'q=' + encodeURIComponent(options.query)
-            ,this.nodekey && 'node=' + encodeURIComponent(this.nodekey)
+            'database=' + encodeURIComponent(this.database),
+            'q=' + encodeURIComponent(options.query),
+            this.nodekey && 'node=' + encodeURIComponent(this.nodekey)
         ].join('&'));
         req.send();
 
