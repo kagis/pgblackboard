@@ -1,12 +1,26 @@
+.light .queryplan { background-color: rgba(255,255,255,.3); }
+.light .node .node-back { fill: #fff; }
+.light .node text { fill: #333; }
+.light .edgePath path { stroke: #999; }
+
+.dark .queryplan { background-color: rgba(0,0,0,.3); }
+.dark .node .node-back { fill: #000; }
+.dark .node text { fill: #ddd; }
+.dark .edgePath path { stroke: #555; }
+
+
+.node .node-overlay { fill: #888; fill-opacity: .5; }
+
+
 .blurred {
     opacity: .5;
     -webkit-filter: blur(1px);
-}
+    }
 
 .queryplan,
 .queryplan-tip {
     font-family: Ubuntu, Verdana, sans-serif;
-}
+    }
 
 .queryplan {
     position: fixed;
@@ -19,12 +33,12 @@
     overflow: hidden;
     cursor: -webkit-grab;
     cursor: grab;
-    font-size: 12px;
+    font-size: 14px;
 
     -webkit-user-select: none;
        -moz-user-select: none;
 
-    background-color: rgba(0,0,0,.3);
+
     background-size: 1em 1em;
 
     background-image: -webkit-linear-gradient(45deg
@@ -51,36 +65,23 @@
                         ,rgba(0,0,0, 0)  80%
                         ,rgba(0,0,0, 0) 100%);
 
-}
+    }
 
 .queryplan:active {
     cursor: -webkit-grabbing;
     cursor: grabbing;
-}
+    }
 
-.node rect {
-    fill: #555;
-}
 
-.node text {
-    fill: #ddd;
-}
-
-.node header {
-    text-align: center;
-    color: #ddd;
-    border-bottom: 1px solid #aaa;
-}
 
 .node g {
     pointer-events: none;
-}
+    }
 
 .edgePath path {
-    stroke: #555;
     stroke-width: 2px;
     fill: none;
-}
+    }
 
 
 
@@ -101,24 +102,24 @@
 
     white-space: nowrap;
     pointer-events: none;
-}
+    }
 
 .queryplan-tip table {
     color: inherit;
     font-family: inherit;
     font-size: inherit;
-}
+    }
 
 /* Creates a small triangle extender for the tooltip */
 .queryplan-tip:after {
-  content: '';
-  display: block;
-  border-width: .5em;
-  border-style: solid;
-  border-color: transparent;
-  border-top-color: rgba(0, 0, 0, 0.8);
-  position: absolute;
-  bottom: -1em;
-  left: 50%;
-  margin-left: -.5em;
-}
+    content: '';
+    display: block;
+    border-width: .5em;
+    border-style: solid;
+    border-color: transparent;
+    border-top-color: rgba(0, 0, 0, 0.8);
+    position: absolute;
+    bottom: -1em;
+    left: 50%;
+    margin-left: -.5em;
+    }

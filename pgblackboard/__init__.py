@@ -39,7 +39,6 @@ _routes.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [
     ,'static/lib-src/codemirror/4.6.0/addon/edit/matchbrackets.js'
     ,'static/lib-src/codemirror/4.6.0/addon/edit/closebrackets.js'
     ,'static/lib-src/codemirror/4.6.0/codemirror.css'
-    ,'static/lib-src/codemirror/4.6.0/theme/monokai.css'
     ,'static/lib-src/knockout/3.2.0/knockout.js'
     ,'static/lib-src/knockout-flatBindingProvider/1.0.0/knockout-flatBindingProvider.js'
     ,'static/lib-src/d3/3.4.11/d3.js'

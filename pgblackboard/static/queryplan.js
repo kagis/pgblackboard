@@ -17,7 +17,7 @@ window.queryPlan = function (plan) {
         graph.addNode(nodeId, {
             label: node._type,
             description: getNodeDescription(node),
-            fill: '_cost' in node && d3.hsl(hueDelta * node._cost + lowHue, 1, 0.2)
+            fill: '_cost' in node && d3.hsl(hueDelta * node._cost + lowHue, 1, 0.5)
         });
         if ('_parentIndex' in node) {
             graph.addEdge(null, nodeId, node._parentIndex);
@@ -34,6 +34,24 @@ window.queryPlan = function (plan) {
         return zoom.on('zoom', function() {
             svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
         });
+    });
+
+
+    // insert back rect for nodes
+    // for color lightening
+    var oldDrawNodes = renderer.drawNodes();
+    renderer.drawNodes(function(g, svg) {
+        var svgNodes = oldDrawNodes(g, svg);
+        svgNodes.selectAll('rect').each(function () {
+            var back = this.cloneNode();
+            this.setAttribute('class', 'node-overlay');
+
+            back.setAttribute('class', 'node-back');
+            back.removeAttribute('style');
+            back.removeAttribute('fill');
+            this.parentNode.insertBefore(back, this);
+        });
+        return svgNodes;
     });
 
 

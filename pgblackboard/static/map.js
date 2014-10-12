@@ -34,10 +34,16 @@ var bingOptions = {
 }
 
 
-var basemap = L.tileLayer(
-    'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png'
-    //'https://www.mapbox.com/v3/base.mapbox-streets+bg-4c4c4c_scale-1_water-0.47x0.47;0.00x0.00;0.05x0.05;0.00x1.00_streets-0.50x0.50;0.00x0.20;0.90x0.00;0.00x1.00_landuse-0.48x0.48;0.00x0.00;0.00x0.40;0.00x1.00_buildings-0.49x0.49;0.00x0.00;0.05x0.45;0.00x1.00/{z}/{x}/{y}.png'
-);
+var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png';
+var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
+
+var basemap = L.tileLayer();
+
+window.parent.ko.computed(function () {
+    var theme = window.parent.pgbb.model.theme();
+    basemap.setUrl(theme === 'dark' ? darkBasemapUrl : lightBasemapUrl);
+});
+
 var imagery = L.tileLayer('http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z', bingOptions);
 
 

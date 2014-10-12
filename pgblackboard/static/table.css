@@ -8,35 +8,24 @@ html {
     scrollbar-dark-shadow-color: #222;
     }
 
-body {
-    color: #ddd;
-    background-color: #272822;
-    }
+.dark { color: #ddd; background-color: #272822; }
+.dark .rowset { border-color: #555; }
+.dark .rowset th { background-color: #444; }
+.dark .rowset-invalid-row td { background-color: #551414; }
+.dark .message-error { color: #ff4c4c; }
+.dark .message { border-bottom-color: #333; }
+.dark .rowset tr:nth-child(even) { color: #aaa; }
 
-.rowset {
-    border-color: #555;
-    }
 
-.rowset th {
-    background-color: #444;
-    }
+.light { color: #555; background-color: #fcfcfc; }
+.light .rowset { border-color: #aaa; }
+.light .rowset th { background-color: #ddd; }
+.light .rowset-invalid-row td { background-color: #551414; }
+.light .message-error { color: #ff4c4c; }
+.light .message { border-bottom-color: #eee; }
+.light .rowset tr:nth-child(even) { background-color: #eee; }
 
-/* make table stripped */
-.rowset tr:nth-child(even) {
-    color: #aaa;
-    }
 
-.rowset-invalid-row td {
-    background-color: #551414;
-}
-
-.message-error {
-    color: #ff4c4c; /* red */
-    }
-
-.message {
-    border-bottom-color: #333;
-    }
 
 
 
@@ -71,11 +60,17 @@ html, body {
     margin-bottom: 1em;
     }
 
+
+/* make firefox inherit border-color for cells */
+.rowset * {
+    border-color: inherit;
+    }
+
 .rowset td,
 .rowset th {
-    border: 1px solid;
+    border-width: 1px;
+    border-style: solid;
     padding: .2em;
-    border-color: inherit;
     }
 
 /* truncate long cells */

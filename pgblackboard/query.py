@@ -57,11 +57,11 @@ class QueryDatabaseAppHandler:
         yield ('<!doctype html>'
                '<html>'
                '<head>'
-               '<meta charset="utf-8" />'
-               '<script>window.pgbb = window.parent.pgbb;</script>')
+               '<meta charset="utf-8" />')
         yield self._view.render_head()
         yield ('</head>'
-               '<body>'
+               '<body class="bg-panel">'
+               '<script>parent.pgbb.initResult(window);</script>'
                '<div class="main">')
         yield self._view.render_body_start()
 
@@ -212,11 +212,10 @@ class QueryDatabaseAppHandler:
             mincost = min(n['_cost'] for n in nodes)
             maxcost = max(n['_cost'] for n in nodes)
             cost_d = maxcost - mincost
+            cost_factor = cost_d and 1 / cost_d;
 
             for node in nodes:
-                # set zero cost when cost delta is zero
-                # and prevent zero division
-                node['_cost'] = cost_d and (node['_cost'] - mincost) / cost_d
+                node['_cost'] = (node['_cost'] - mincost) * cost_factor
 
         return {
             'nodes': nodes

@@ -5,15 +5,7 @@
   <link rel="shortcut icon" href="static/favicon.ico" type="image/vnd.microsoft.icon" />
   <title>pgBlackboard</title>
 
-  <script type="text/javascript">
-    if (navigator.userAgent.indexOf('AppleWebKit') === -1) {
-      alert('Your browser is not WebKit based.');
-    }
-  </script>
-
   <link href="static/lib-src/codemirror/4.6.0/codemirror.css" rel="stylesheet" />
-  <link href="static/lib-src/codemirror/4.6.0/theme/monokai.css" rel="stylesheet" />
-
   <link href="static/app.css" rel="stylesheet" />
 
   <script id="tree-tmpl" type="text/html">
@@ -24,7 +16,8 @@
                 data-bind-visible="!isLeaf"
                 data-bind-css.treenode-toggler-collapsed="!isExpanded()"
                 data-bind-css.treenode-toggler-expanded="isExpanded"
-                data-bind-css.spinner="childrenAreLoading"></button>
+                data-bind-css.spinner="childrenAreLoading"
+                class="treenode-toggler"></button>
 
         <header class="itemheader"
                 data-bind-css.itemheader-active="isOpened">
@@ -58,63 +51,65 @@
           </a>
 
           <button data-bind-click="$root.removeStoredQuery.bind($root)"
-                  data-bind-visible="isOpened">remove</button>
+                  data-bind-visible="isOpened"
+                  class="btn-action">remove</button>
 
         </header>
       </li>
     </ul>
   </script>
 </head>
-<body class="splitpanel-h">
+<body class="stretch" data-bind-css="theme">
+  <div class="stretch splitpanel-h bg-body">
 
-  <section id="leftpanel" class="scrollbox splitfix">
-    <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
-    <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
-  </section>
+    <div id="leftpanel" class="scrollbox splitfix bg-panel">
+      <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
+      <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
+    </div>
 
-  <div class="splitter"></div>
-
-  <section class="splitstretch splitpanel-v">
-    <form id="queryform"
-          method="POST"
-          action=""
-          target="result"
-          class="splitstretch"
-          enctype="application/x-www-form-urlencoded">
-
-      <textarea id="query" name="query"
-        >\connect postgres&#13;&#10;select 'hello, ' || current_user; -- Alt+X to execute</textarea>
-
-      <input type="hidden" name="selection" />
-
-      <div id="execbar">
-        <button type="submit"
-                title="alt-m"
-                accesskey="m"
-                formaction="map">
-          map
-        </button>
-
-        <button class="execute-action"
-                type="submit"
-                title="alt-x"
-                accesskey="x">
-          execute
-        </button>
-      </div>
-
-      <div class="spinner-shield" data-bind="visible: queryTextIsLoading()">
-        <div class="spinner"></div>
-      </div>
-
-    </form>
     <div class="splitter"></div>
-    <iframe id="result" name="result" class="scrollbox splitfix"></iframe>
-  </section>
+
+    <div class="splitstretch splitpanel-v">
+      <form id="queryform"
+            method="POST"
+            target="result"
+            class="splitstretch bg-panel"
+            enctype="application/x-www-form-urlencoded">
+
+        <textarea id="query" name="query"
+          >\connect postgres&#13;&#10;select 'hello, ' || current_user; -- Alt+X to execute</textarea>
+
+        <input type="hidden" name="selection" />
+
+        <div id="execbar" class="bg-body">
+          <button class="btn-action"
+                  type="submit"
+                  title="alt-m"
+                  accesskey="m"
+                  formaction="map">
+            map
+          </button>
+
+          <button class="execute-action btn-action"
+                  type="submit"
+                  title="alt-x"
+                  accesskey="x">
+            execute
+          </button>
+        </div>
+
+        <div class="spinner-shield" data-bind="visible: queryTextIsLoading()">
+          <div class="spinner"></div>
+        </div>
+
+      </form>
+      <div class="splitter"></div>
+      <iframe id="result" name="result" class="scrollbox splitfix bg-panel"></iframe>
+    </div>
 
 
-  <button id="share-action" accesskey="s" style="display:none"></button>
-
+    <button id="share-action" accesskey="s" style="display:none"></button>
+  </div>
 
   <script src="static/lib-src/knockout/3.2.0/knockout.js"></script>
   <script src="static/lib-src/knockout-flatBindingProvider/1.0.0/knockout-flatBindingProvider.js"></script>

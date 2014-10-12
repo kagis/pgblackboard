@@ -1,23 +1,187 @@
+.light { color: #555; }
+.light .bg-body { background-color: #eee; }
+.light .btn-action:hover { color: #333; }
+.light .treenode { border-top-color: #ccc; }
+.light .treenode-icon::after { color: white; }
+.light .treenode-icon[data-type~=view         ]::after { background-color: red; }
+.light .treenode-icon[data-type~=matview      ]::after { background-color: green; }
+.light .treenode-icon[data-type~=foreigntable ]::after { background-color: purple; }
+.light .itemheader:hover { background-color: rgba(0,0,0,.1); }
+.light .itemheader-active { background-color: rgba(0,0,0,.1); }
+
+
+
+.light .gutter-marker-error:hover::after {
+    background-color: #555;
+    color: #ddd;
+    box-shadow: 0 0 .5em #999;
+    }
+
+
+.light .bg-panel { background-color: #fcfcfc; }
+
+.light .scrollbox::-webkit-scrollbar,
+.light .scrollbox::-webkit-scrollbar-corner {
+    background-color: #ddd;
+    }
+
+.light .scrollbox::-webkit-scrollbar-thumb {
+    background-color: #999;
+    color: #ddd;
+    }
+
+.light .scrollbox {
+    scrollbar-base-color: #333;
+    scrollbar-3dlight-color: #222;
+    scrollbar-highlight-color: #222;
+    scrollbar-track-color: #222;
+    scrollbar-arrow-color: #888;
+    scrollbar-shadow-color: #222;
+    scrollbar-dark-shadow-color: #222;
+    }
+
+
+.light .CodeMirror { color: #2e383c; background-color: #fcfcfc; }
+.light .CodeMirror-linenumber { color: #8f908a; }
+.light .CodeMirror-matchingbracket { color: black !important; }
+.light .CodeMirror-gutters { background-color: #f5f5f5; }
+.light .CodeMirror-linenumber { color: #aaa; }
+.light .CodeMirror-guttermarker { color: #1d75b3; }
+.light .CodeMirror-guttermarker-subtle { color: #e0e2e5; }
+.light div.CodeMirror-selected { background: #ddd; }
+
+
+.light .cm-comment   { color: #75787b; }
+.light .cm-keyword   { color: #1d75b3; }
+.light .cm-property  { color: #1d75b3; }
+.light .cm-atom      { color: #75438a; }
+.light .cm-number    { color: #75438a; }
+.light .cm-node      { color: #9c3328; }
+.light .cm-tag       { color: #9c3328; }
+.light .cm-string    { color: #b35e14; }
+.light .cm-variable  { color: #047d65; }
+.light .cm-qualifier { color: #047d65; }
+.light .cm-builtin   { color: #1cadf1; }
+
+
+
+
+
+
+
+html {
+    scrollbar-base-color: #333;
+    scrollbar-3dlight-color: #222;
+    scrollbar-highlight-color: #222;
+    scrollbar-track-color: #222;
+    scrollbar-arrow-color: #888;
+    scrollbar-shadow-color: #222;
+    scrollbar-dark-shadow-color: #222;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dark { color: #ddd; }
+.dark .bg-body { background-color: #333; }
+.dark .btn-action:hover { color: orange; }
+.dark .treenode { border-top-color: #444; }
+.dark .treenode-icon[data-type~=view         ]::after { background-color: #a20000; }
+.dark .treenode-icon[data-type~=matview      ]::after { background-color: green; }
+.dark .treenode-icon[data-type~=foreigntable ]::after { background-color: purple; }
+.dark .itemheader-active { background-color: rgba(255,255,255,.1); }
+.dark .itemheader:hover { background-color: rgba(255,255,255,.1); }
+.dark .bg-panel { background-color: #272822 }
+
+.dark .scrollbox::-webkit-scrollbar,
+.dark .scrollbox::-webkit-scrollbar-corner {
+    background-color: #222;
+    }
+
+.dark .scrollbox::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,.2);
+    color: #222;
+    }
+
+.dark .scrollbox {
+    scrollbar-base-color: #333;
+    scrollbar-3dlight-color: #222;
+    scrollbar-highlight-color: #222;
+    scrollbar-track-color: #222;
+    scrollbar-arrow-color: #888;
+    scrollbar-shadow-color: #222;
+    scrollbar-dark-shadow-color: #222;
+    }
+
+
+
+
+
+
+
+
+.dark .CodeMirror { color: #f8f8f2; background: #272822; }
+.dark div.CodeMirror-selected { background: #49483E; }
+.dark .CodeMirror-gutters { background: #2F3129; }
+.dark .CodeMirror-guttermarker { color: white; }
+.dark .CodeMirror-guttermarker-subtle { color: #8f908a; }
+.dark .CodeMirror-linenumber { color: #8f908a; }
+.dark .CodeMirror-activeline-background { background: #373831 !important; }
+.dark .CodeMirror-matchingbracket { color: white !important; }
+
+.dark .cm-comment { color: #75715e; }
+.dark .cm-atom { color: #ae81ff; }
+.dark .cm-number { color: #ae81ff; }
+.dark .cm-property,
+.dark .cm-attribute { color: #a6e22e; }
+.dark .cm-keyword { color: #f92672; }
+.dark .cm-string { color: #e6db74; }
+.dark .cm-variable { color: #a6e22e; }
+.dark .cm-variable-2 { color: #9effff; }
+.dark .cm-def { color: #fd971f; }
+.dark .cm-bracket { color: #f8f8f2; }
+.dark .cm-tag { color: #f92672; }
+.dark .cm-link { color: #ae81ff; }
+.dark .cm-error { color: #f8f8f0; background: #f92672; }
+.dark .cm-builtin { color: #8bdaff; }
+
+.dark .gutter-marker-error:hover::after {
+    background-color: #151515;
+    color: #c2c2c2;
+    box-shadow: 0 0 .5em #111;
+    }
+
+
+
+
+
 html,
-body {
+.stretch {
+    width: 100%;
     height: 100%;
     padding: 0;
     margin: 0;
-    }
+}
 
 body {
     font-family: 'DejaVu Sans', 'Verdana', sans;
-
-    background-color: #333;
-    color: #ddd;
     }
 
 #leftpanel {
     overflow-y: auto;
     overflow-x: hidden;
     padding: .5em;
-
-    background-color: #272822;
     }
 
 button {
@@ -25,18 +189,12 @@ button {
     margin: 0;
     padding: 0;
     border: none;
-    border-bottom: 1px dotted;
     color: inherit;
     background: none;
     font-family: inherit;
     line-height: 1em;
     cursor: pointer;
-    margin: .2em;
     white-space: nowrap;
-    }
-
-button:hover {
-    color: orange;
     }
 
 button::-webkit-focus-inner {
@@ -47,6 +205,12 @@ button::-webkit-focus-inner {
 button::-moz-focus-inner {
     border: 0;
     padding: 0;
+    }
+
+
+.btn-action {
+    border-bottom: 1px dotted;
+    margin: .2em;
     }
 
 ul {
@@ -83,12 +247,7 @@ li > header > a {
     flex: 1;
     }
 
-.itemheader:hover {
-    background-color: rgba(255,255,255,.1);
-    }
-
 .itemheader-active {
-    background-color: rgba(255,255,255,.1);
     font-weight: bold;
     }
 
@@ -106,8 +265,7 @@ a > small {
     padding-left: 1.2em;
     }
 
-.treenode-toggler-expanded,
-.treenode-toggler-collapsed {
+.treenode-toggler {
     position: absolute;
     left: -1em;
     top: .4em;
@@ -118,8 +276,13 @@ a > small {
     opacity: 0.5;
     border-style: solid;
     border-width: .5em 0 .5em .7em;
-    border-color: transparent transparent transparent white;
-    user-select: none;
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+    border-right-color: transparent;
+    -webkit-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
     -moz-box-sizing: border-box;
          box-sizing: border-box;
     }
@@ -132,8 +295,7 @@ a > small {
         }
     }
 
-.treenode-toggler-expanded:hover,
-.treenode-toggler-collapsed:hover {
+.treenode-toggler:hover {
     opacity: 1;
     }
 
@@ -149,12 +311,14 @@ a > small {
     }
 
 
+
 /* separate columns from indexes, triggers, etc. with horizontal line */
 .treenode[data-type~="column"]     + .treenode:not([data-type~="column"]),
 .treenode[data-type~="constraint"] + .treenode:not([data-type~="constraint"]),
 .treenode[data-type~="index"]      + .treenode:not([data-type~="index"]),
 .treenode[data-type~="trigger"]    + .treenode:not([data-type~="trigger"]) {
-    border-top: 1px dotted #444;
+    border-top-width: 1px;
+    border-top-style: dotted;
     padding-top: .2em;
     margin-top: .2em;
     }
@@ -200,20 +364,9 @@ a > small {
     left: .2em;
     }
 
-.treenode-icon[data-type~=view]::after {
-    content: '\e80b';
-    background-color: #a20000;
-    }
-
-.treenode-icon[data-type~=matview]::after {
-    content: '\e80b';
-    background-color: green;
-    }
-
-.treenode-icon[data-type~=foreigntable]::after {
-    content: '\e809';
-    background-color: purple;
-    }
+.treenode-icon[data-type~=view         ]::after { content: '\e80b'; }
+.treenode-icon[data-type~=matview      ]::after { content: '\e80b'; }
+.treenode-icon[data-type~=foreigntable ]::after { content: '\e809'; }
 
 
 
@@ -234,8 +387,6 @@ a > small {
     right: 0;
     z-index: 10;
     padding: .2em;
-
-    background-color: #333;
     border-top-left-radius: .3em;
     }
 
@@ -249,8 +400,6 @@ a > small {
     margin: 0;
     padding: 0;
     border: none;
-
-    background-color: #272822;
     }
 
 .spinner-shield {
@@ -277,7 +426,7 @@ a > small {
 .spinner {
     width: 1em;
     height: 1em;
-    border: .2em solid white;
+    border: .2em solid;
     border-top-color: transparent;
     border-left-color: transparent;
     border-radius: 50%;
@@ -319,72 +468,51 @@ a > small {
 
 
 
-.CodeMirror-vscrollbar::-webkit-scrollbar,
-.CodeMirror-hscrollbar::-webkit-scrollbar,
 .scrollbox::-webkit-scrollbar {
     width: 12px;
     height: 12px;
     padding: 2px;
-    background-color: #222;
     }
 
 .scrollbox::-webkit-scrollbar-button:start:decrement,
-.scrollbox::-webkit-scrollbar-button:end:increment,
-.CodeMirror-vscrollbar::-webkit-scrollbar-button:start:decrement,
-.CodeMirror-vscrollbar::-webkit-scrollbar-button:end:increment,
-.CodeMirror-hscrollbar::-webkit-scrollbar-button:start:decrement,
-.CodeMirror-hscrollbar::-webkit-scrollbar-button:end:increment {
+.scrollbox::-webkit-scrollbar-button:end:increment {
     display: block;
     height: 0;
     width: 0;
     background-color: transparent;
     }
 
-.scrollbox::-webkit-scrollbar-thumb,
-.CodeMirror-vscrollbar::-webkit-scrollbar-thumb,
-.CodeMirror-hscrollbar::-webkit-scrollbar-thumb {
+.scrollbox::-webkit-scrollbar-thumb {
     background-color: rgba(255,255,255,.2);
     border-radius: 6px;
-    border: 2px solid #222;
-    }
-
-.scrollbox::-webkit-scrollbar-corner,
-.CodeMirror-vscrollbar::-webkit-scrollbar-corner,
-.CodeMirror-hscrollbar::-webkit-scrollbar-corner {
-    background-color: #222;
-    }
-
-.CodeMirror-vscrollbar,
-.CodeMirror-hscrollbar,
-.scrollbox {
-    scrollbar-base-color: #333;
-    scrollbar-3dlight-color: #222;
-    scrollbar-highlight-color: #222;
-    scrollbar-track-color: #222;
-    scrollbar-arrow-color: #888;
-    scrollbar-shadow-color: #222;
-    scrollbar-dark-shadow-color: #222;
+    border: 2px solid;
     }
 
 .CodeMirror-vscrollbar {
-    margin-bottom: 27px;
-    bottom: 0 !important;
+    bottom: 27px !important;
     }
 
 .CodeMirror-hscrollbar {
-    margin-right: 111px;
-    right: 0 !important;
+    right: 111px !important;
+    left: 0 !important;
+    }
+
+.CodeMirror-gutters {
+    border-right: 0px;
+    }
+
+.CodeMirror div.CodeMirror-cursor {
+    border-left-width: 1px;
+    border-left-style: solid;
+    border-left-color: inherit;
+    }
+
+.CodeMirror-matchingbracket {
+    text-decoration: underline;
     }
 
 
 
-.cm-s-monokai .CodeMirror-gutters {
-    background-color: #2F3129;
-    }
-
-.cm-s-monokai .cm-builtin {
-    color: rgb(139, 218, 255);
-    }
 
 .CodeMirror {
     font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
@@ -396,10 +524,7 @@ a > small {
     width: 1em;
     }
 
-.cm-s-monokai .CodeMirror-guttermarker-subtle,
-.cm-s-monokai .CodeMirror-linenumber {
-    color: #8f908a;
-    }
+
 
 
 
@@ -409,7 +534,7 @@ a > small {
     font-size: .8em;
     content: '\e802';
     color: #ff4848;
-    font-family: "fontello";
+    font-family: 'fontello';
     font-style: normal;
     font-weight: normal;
     speak: none;
@@ -420,20 +545,15 @@ a > small {
     text-transform: none;
     }
 
-
-
 .gutter-marker-error:hover::after {
     content: attr(data-title);
     display: block;
     position: absolute;
-    background-color: #151515;
-    color: #c2c2c2;
     font-size: 14px;
     white-space: pre;
     border-radius: .3em;
     padding: .3em;
     left: 2em;
-    box-shadow: 0 0 1em #111;
     }
 
 
@@ -541,6 +661,7 @@ a > small {
     -webkit-user-select: none;
        -moz-user-select: none;
         -ms-user-select: none;
+            user-select: none;
     }
 
 .splitting iframe {

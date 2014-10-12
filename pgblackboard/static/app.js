@@ -6,6 +6,10 @@ pgbb.extend = ko.utils.extend;
 
 
 
+
+
+
+
 /*
     SPLITPANEL
 */
@@ -323,9 +327,13 @@ pgbb.initEditor = function () {
         autofocus: true,
         mode: 'text/x-pgsql',
         keyMap: 'sublime',
-        theme: 'monokai',
+        theme: 'pgbb',
         gutters: ['CodeMirror-linenumbers', 'errors-gutter']
     });
+
+
+    editor.display.scrollbarV.className += ' scrollbox';
+    editor.display.scrollbarH.className += ' scrollbox';
 
     function onSubmit() {
         editor.clearGutter('errors-gutter');
@@ -368,6 +376,8 @@ pgbb.setError = function (line, message) {
 */
 
 pgbb.AppModel = function (editor, initialData) {
+    this.theme = ko.observable('light');
+
     this._onBlankEditSessionChangedBinded =
         this._onBlankEditSessionChanged.bind(this);
 
@@ -461,6 +471,19 @@ pgbb.editor = pgbb.initEditor();
 pgbb.main = function (initialData) {
     pgbb.model = new pgbb.AppModel(pgbb.editor, initialData);
     ko.applyBindings(pgbb.model);
+};
+
+
+
+pgbb.initResult = function (resultWindow) {
+    resultWindow.pgbb = pgbb;
+    ko.computed(function () {
+        resultWindow.document.body.classList.remove('light');
+        resultWindow.document.body.classList.remove('dark');
+        resultWindow.document.body.classList.add(
+            pgbb.model.theme()
+        );
+    });
 };
 
 

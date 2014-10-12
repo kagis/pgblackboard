@@ -5,13 +5,54 @@ body,
     height: 100%;
     padding: 0;
     margin: 0;
-    color: #eee;
-}
-
-
-.leaflet-container {
-    background: #222;
     }
+
+.light { color: #555; }
+.light .leaflet-container { background: #fcfcfc; }
+.light .leaflet-control-layers-expanded {  background-color: #fcfcfc; }
+.light .leaflet-control-layers-separator { border-color: #ccc; }
+
+/*.light .leaflet-control-scale-line {
+    border-color: #aaa;
+    background-color: rgba(220, 220, 220, .3);
+    } */
+
+.light .leaflet-popup-content-wrapper,
+.light .leaflet-popup-tip {
+    background-color: #fcfcfc;
+    }
+
+.light .leaflet-popup-content-wrapper,
+.light .leaflet-popup-tip {
+    box-shadow: 0 0 0 .4em rgba(0,0,0,.1);
+    }
+
+
+.dark { color: #eee; }
+.dark .leaflet-container { background: #222; }
+
+.dark .leaflet-control-layers-expanded {  background-color: #333; }
+.dark .leaflet-control-layers-separator { border-color: #555; }
+.dark .leaflet-control-scale-line:not(:first-child) { border-top-color: #222; }
+
+.dark .leaflet-control-scale-line {
+    background-color: rgba(0, 0, 0, .3);
+    border-color: #222;
+    }
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+    background-color: #333;
+    }
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+    box-shadow: 0 0 0 .4em rgba(0,0,0,.2);
+    }
+
+
+
+
 
 .leaflet-control-layers-list {
     margin: 0;
@@ -37,43 +78,29 @@ body,
 
 .leaflet-control-scale-line {
     -webkit-transition: width 100ms ease;
+            transition: width 100ms ease;
     }
 
 .leaflet-popup-content-wrapper {
     border-radius: .2em;
-
-    }
-
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-    box-shadow: 0 0 0 .4em rgba(0,0,0,.2);
-
     }
 
 
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-    background-color: #333;
-    }
+
+
 
 .leaflet-control-layers-expanded {
-    background-color: #333;
-    color: #eee;
+    color: inherit;
     border-radius: 0;
     }
 
-.leaflet-control-layers-separator {
-    border-color: #555;
-    }
+
 
 .leaflet-control-scale-line {
-    background-color: rgba(0, 0, 0, .3);
-    border-color: #222;
     color: inherit;
     }
 
-.leaflet-control-scale-line:not(:first-child) {
-    border-top-color: #222;
-    }
+
 
 
 .prop-sheet {
