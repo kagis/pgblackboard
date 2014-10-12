@@ -1,5 +1,5 @@
 with params_cte as (
-    select %(node)s::oid as param_oid
+    select %(nodeid)s::oid as param_oid
 ),
 attrs_cte as (
     select pg_attribute.*, max(length(quote_ident(attname))) over() as max_attname_len

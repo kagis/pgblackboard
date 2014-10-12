@@ -6,4 +6,4 @@ select concat_ws(e'\n'
     ,'*/'
 ) as def
 from pg_namespace
-where oid = %(node)s
+where oid = %(nodeid)s

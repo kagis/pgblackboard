@@ -1,11 +1,11 @@
 .light { color: #555; }
 .light .bg-body { background-color: #eee; }
 .light .btn-action:hover { color: #333; }
-.light .treenode { border-top-color: #ccc; }
+.light .treenode-groupstart { border-top-color: #ccc; }
 .light .treenode-icon::after { color: white; }
-.light .treenode-icon[data-type~=view         ]::after { background-color: red; }
-.light .treenode-icon[data-type~=matview      ]::after { background-color: green; }
-.light .treenode-icon[data-type~=foreigntable ]::after { background-color: purple; }
+.light .treenode-icon--view::after { background-color: red; }
+.light .treenode-icon--matview::after { background-color: green; }
+.light .treenode-icon--foreigntable::after { background-color: purple; }
 .light .itemheader:hover { background-color: rgba(0,0,0,.1); }
 .light .itemheader-active { background-color: rgba(0,0,0,.1); }
 
@@ -96,10 +96,10 @@ html {
 .dark { color: #ddd; }
 .dark .bg-body { background-color: #333; }
 .dark .btn-action:hover { color: orange; }
-.dark .treenode { border-top-color: #444; }
-.dark .treenode-icon[data-type~=view         ]::after { background-color: #a20000; }
-.dark .treenode-icon[data-type~=matview      ]::after { background-color: green; }
-.dark .treenode-icon[data-type~=foreigntable ]::after { background-color: purple; }
+.dark .treenode-groupstart { border-top-color: #444; }
+.dark .treenode-icon--view::after { background-color: #a20000; }
+.dark .treenode-icon--matview::after { background-color: green; }
+.dark .treenode-icon--foreigntable::after { background-color: purple; }
 .dark .itemheader-active { background-color: rgba(255,255,255,.1); }
 .dark .itemheader:hover { background-color: rgba(255,255,255,.1); }
 .dark .bg-panel { background-color: #272822 }
@@ -310,13 +310,7 @@ a > small {
             transform: rotate(90deg);
     }
 
-
-
-/* separate columns from indexes, triggers, etc. with horizontal line */
-.treenode[data-type~="column"]     + .treenode:not([data-type~="column"]),
-.treenode[data-type~="constraint"] + .treenode:not([data-type~="constraint"]),
-.treenode[data-type~="index"]      + .treenode:not([data-type~="index"]),
-.treenode[data-type~="trigger"]    + .treenode:not([data-type~="trigger"]) {
+.treenode-groupstart {
     border-top-width: 1px;
     border-top-style: dotted;
     padding-top: .2em;
@@ -340,19 +334,23 @@ a > small {
     line-height: 1em;
     }
 
-.treenode-icon[data-type~=database   ]::before { content: '\e801'; }
-.treenode-icon[data-type~=schema     ]::before { content: '\e806'; }
-.treenode-icon[data-type~=extension  ]::before { content: '\e808'; }
-.treenode-icon[data-type~=func       ]::before { content: '\e80b'; }
-.treenode-icon[data-type~=rel        ]::before { content: '\e800'; }
-.treenode-icon[data-type~=column     ]::before { content: '\e80d'; }
-.treenode-icon[data-type~=pk_column  ]::before { content: '\e80a'; }
-.treenode-icon[data-type~=fk_column  ]::before { content: '\e80c'; }
-.treenode-icon[data-type~=index      ]::before { content: '\e80f'; }
-.treenode-icon[data-type~=trigger    ]::before { content: '\e805'; }
-.treenode-icon[data-type~=foreignkey ]::before { content: '\e80c'; }
-.treenode-icon[data-type~=unique     ]::before { content: '\e80a'; }
-.treenode-icon[data-type~=check      ]::before { content: '\e807'; }
+.treenode-icon--database::before { content: '\e801'; }
+.treenode-icon--schema::before { content: '\e806'; }
+.treenode-icon--extension::before { content: '\e808'; }
+.treenode-icon--func::before,
+.treenode-icon--agg::before { content: '\e80b'; }
+.treenode-icon--table::before,
+.treenode-icon--view::before,
+.treenode-icon--matview::before,
+.treenode-icon--foreigntable::before { content: '\e800'; }
+.treenode-icon--column::before { content: '\e80d'; }
+.treenode-icon--pkcolumn::before { content: '\e80a'; }
+.treenode-icon--fkcolumn::before { content: '\e80c'; }
+.treenode-icon--index::before { content: '\e80f'; }
+.treenode-icon--trigger::before { content: '\e805'; }
+.treenode-icon--foreignkey::before { content: '\e80c'; }
+.treenode-icon--unique::before { content: '\e80a'; }
+.treenode-icon--check::before { content: '\e807'; }
 
 /* subicons */
 .treenode-icon::after {
@@ -364,9 +362,9 @@ a > small {
     left: .2em;
     }
 
-.treenode-icon[data-type~=view         ]::after { content: '\e80b'; }
-.treenode-icon[data-type~=matview      ]::after { content: '\e80b'; }
-.treenode-icon[data-type~=foreigntable ]::after { content: '\e809'; }
+.treenode-icon--view::after { content: '\e80b'; }
+.treenode-icon--matview::after { content: '\e80b'; }
+.treenode-icon--foreigntable::after { content: '\e809'; }
 
 
 

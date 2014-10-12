@@ -1,6 +1,6 @@
 with params_cte as (
-    select split_part(%(node)s, '_', 1)::oid as attrelid
-          ,split_part(%(node)s, '_', 2)::int as attnum
+    select split_part(%(nodeid)s, '_', 1)::oid as attrelid
+          ,split_part(%(nodeid)s, '_', 2)::int as attnum
 ),
 common_cte as (
     select 'ALTER TABLE ' || attrelid::regclass as altertable

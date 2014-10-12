@@ -25,11 +25,12 @@ class IndexDatabaseAppHandler:
 
         initial_data = {
             'databases': [{
+                'id': name,
+                'type': 'database',
                 'name': name,
                 'comment': comment,
                 'database': name,
-                'childquery': 'schemas_in_db',
-                'type': 'database'
+                'hasChildren': True
             } for name, comment in cursor.fetchall()]
         }
 

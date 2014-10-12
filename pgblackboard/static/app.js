@@ -92,24 +92,19 @@ pgbb.TreeNode = function (tuple) {
     this.isOpened = ko.observable(false);
 
     this.database = tuple.database;
-    this.isLeaf = !tuple.childquery;
+    this.hasChildren = tuple.hasChildren;
     this.name = tuple.name;
     this.type = tuple.type;
+    this.id = tuple.id;
+    this.isGroupStart = tuple.isGroupStart;
     this.comment = tuple.comment;
-    this.nodekey = tuple.node;
-    this._childrenQuery = tuple.childquery;
-    this._definitionQuery = tuple.defquery;
-
-    if (tuple.expanded) {
-        this.expand();
-    }
 };
 
 ko.utils.extend(pgbb.TreeNode.prototype, {
     expand: function () {
         this.childrenAreLoading(true);
         this._sqlexec({
-            query: this._childrenQuery,
+            query: 'children',
             success: this._onChildrenLoaded,
             error: this._onChildrenLoadError
         });
@@ -148,30 +143,19 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
                 quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
             }
 
-        if (!this._definitionQuery) {
-            if (this.type === 'database') {
 
+        this._sqlexec({
+            query: 'definition',
+            success: function (resp) {
                 onComplete.call(context,
-                    "\\connect " + quotedDatabase +
-                    "\nselect 'awesome';"
+                    '\\connect ' + quotedDatabase +
+                    '\n\n' + resp.definition
                 );
-            } else {
-                onComplete.call(context, '-- not implemented');
+            },
+            error: function () {
+                onComplete.call(context, '/*\n  ERROR while loading definition.\n*/');
             }
-        } else {
-            this._sqlexec({
-                query: this._definitionQuery,
-                success: function (tuples) {
-                    onComplete.call(context,
-                        '\\connect ' + quotedDatabase +
-                        '\n\n' + (tuples[0] && tuples[0].def)
-                    );
-                },
-                error: function () {
-                    onComplete.call(context, '/*\n  ERROR while loading definition.\n*/');
-                }
-            });
-        }
+        });
     },
 
     _sqlexec: function (options) {
@@ -181,7 +165,8 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         req.open('GET', 'tree?' + [
             'database=' + encodeURIComponent(this.database),
             'q=' + encodeURIComponent(options.query),
-            this.nodekey && 'node=' + encodeURIComponent(this.nodekey)
+            'nodeid=' + encodeURIComponent(this.id || ''),
+            'nodetype=' + encodeURIComponent(this.type)
         ].join('&'));
         req.send();
 

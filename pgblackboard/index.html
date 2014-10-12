@@ -10,10 +10,11 @@
 
   <script id="tree-tmpl" type="text/html">
     <ul data-bind-foreach="nodes">
-      <li class="treenode" data-bind-attr.data-type="type">
+      <li class="treenode"
+          data-bind-css.treenode-groupstart="isGroupStart">
 
         <button data-bind-click="toggle"
-                data-bind-visible="!isLeaf"
+                data-bind-visible="hasChildren"
                 data-bind-css.treenode-toggler-collapsed="!isExpanded()"
                 data-bind-css.treenode-toggler-expanded="isExpanded"
                 data-bind-css.spinner="childrenAreLoading"
@@ -24,7 +25,7 @@
 
           <a data-bind-click="$root.openTreeNode.bind($root)"
              data-bind-attr.title="comment">
-            <i class="treenode-icon" data-bind-attr.data-type="type"></i>
+            <i class="treenode-icon" data-bind-css="'treenode-icon--'+type"></i>
             <span data-bind-text="name"></span>
             <small data-bind-text="comment"></small>
           </a>

@@ -11,4 +11,4 @@ select concat_ws(e'\n'
 ) as def
 from pg_class
 where relkind = 'i'
-    and oid = %(node)s
+    and oid = %(nodeid)s

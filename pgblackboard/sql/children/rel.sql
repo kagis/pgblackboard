@@ -1,23 +1,22 @@
 with param_cte as (
-    select %(node)s::oid as param_oid
+    select %(nodeid)s::oid as param_oid
 )
 (
-  select concat_ws('_', attrelid, attnum) as node
+  select concat_ws('_', attrelid, attnum) as id
       ,concat_ws(' ', attname, ':'
           ,case when not attnotnull then 'nullable' end
           ,format_type(atttypid, null)
       ) as name
       ,col_description(attrelid, attnum) as comment
-      ,case when indisprimary then 'pk_column column'
+      ,case when indisprimary then 'pkcolumn'
             when exists(select 1
               from pg_constraint
               where conrelid = attrelid and
                   attnum = any(conkey) and
-                  contype = 'f') then 'fk_column column'
+                  contype = 'f') then 'fkcolumn'
             else 'column'
             end as type
-      ,current_database() as database
-      ,'column_def' as defquery
+      ,1 as "group"
   from param_cte, pg_attribute
       left outer join pg_index on indrelid = attrelid and
                                   attnum = any(indkey) and
@@ -27,26 +26,24 @@ with param_cte as (
 
 
 ) union all (
-  select oid::text as node
+  select oid::text as id
         ,conname as name
         ,obj_description(oid, 'pg_constraint') as comment
-        ,case contype when 'f' then 'foreignkey constraint'
-                      when 'u' then 'unique constraint'
-                      when 'c' then 'check constraint'
+        ,case contype when 'f' then 'foreignkey'
+                      when 'u' then 'unique'
+                      when 'c' then 'check'
                       end as type
-        ,current_database() as database
-        ,'constraint_def' as defquery
+        ,2 as "group"
   from param_cte, pg_constraint
   where contype in ('c', 'f', 'u')
       and conrelid = param_oid
 ) union all (
 
-  select indexrelid::text as node
+  select indexrelid::text as id
         ,relname as name
         ,obj_description(indexrelid, 'pg_class') as comment
         ,'index' as type
-        ,current_database() as database
-        ,'index_def' as defquery
+        ,3 as "group"
   from param_cte, pg_index
       join pg_class on indexrelid = oid
       left outer join pg_constraint on conindid = indexrelid
@@ -55,12 +52,11 @@ with param_cte as (
 
 ) union all (
 
-  select oid::text as node
+  select oid::text as id
         ,tgname as name
         ,obj_description(oid, 'pg_trigger') as comment
         ,'trigger' as type
-        ,current_database() as database
-        ,'trigger_def' as defquery
+        ,4 as "group"
   from pg_trigger, param_cte
   where tgrelid = param_oid
       and tgconstraint = 0
