@@ -20,7 +20,7 @@ html {
 .light { color: #555; background-color: #fcfcfc; }
 .light .rowset { border-color: #aaa; }
 .light .rowset th { background-color: #ddd; }
-.light .rowset-invalid-row td { background-color: #551414; }
+.light .rowset-invalid-row td { background-color: #ffd7d7; }
 .light .message-error { color: #ff4c4c; }
 .light .message { border-bottom-color: #eee; }
 .light .rowset tr:nth-child(even) { background-color: #eee; }
