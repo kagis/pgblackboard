@@ -320,6 +320,14 @@ pgbb.initEditor = function () {
     editor.display.scrollbarV.className += ' scrollbox';
     editor.display.scrollbarH.className += ' scrollbox';
 
+    // add gutter shadow when scrolled horizontal
+    editor.on('scroll', function () {
+        editor.display.gutters.classList.toggle(
+            'CodeMirror-gutters--overlaying',
+            editor.getScrollInfo().left > 1
+        );
+    });
+
     function onSubmit() {
         editor.clearGutter('errors-gutter');
         var selStart = editor.getCursor(true),
@@ -447,6 +455,10 @@ ko.utils.extend(pgbb.AppModel.prototype, {
 
         var newStoredQuery = this.queries.newQuery(doc);
         this.openStoredQuery(newStoredQuery);
+    },
+
+    toggleTheme: function () {
+        this.theme(this.theme() === 'dark' ? 'light' : 'dark');
     }
 });
 

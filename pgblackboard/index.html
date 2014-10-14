@@ -61,11 +61,20 @@
   </script>
 </head>
 <body class="stretch" data-bind-css="theme">
+
+
+  <div class="leftbar bg-body">
+    <button class="leftbar-btn fontello fontello-lamp"
+            data-bind-click="toggleTheme">
+    </button>
+  </div>
+
+
   <div class="stretch splitpanel-h bg-body">
 
-    <div id="leftpanel" class="scrollbox splitfix bg-panel">
-      <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
-      <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
+    <div class="leftpanel splitfix scrollbox bg-panel">
+        <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
+        <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
     </div>
 
     <div class="splitter"></div>
