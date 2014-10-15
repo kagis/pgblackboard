@@ -53,3 +53,11 @@ sudo wget -O /etc/init/pgblackboard.conf https://raw.githubusercontent.com/exe-d
 # Start server
 sudo start pgblackboard
 ```
+
+## Platform
+
+pgBlackboard is tested on
+- PostgreSQL 9.3
+- Python 3.4
+- Ubuntu 14.04
+- Chromium 37
