@@ -20,12 +20,22 @@ select concat_ws(e'\n'
     ,'/*'
     ,concat_ws(' '
         ,altertable
-        ,'ADD   '
+        ,'ADD'
         ,attident
         ,upper(format_type(atttypid, atttypmod))
         ,case when attnotnull then 'NOT NULL' end
         ,'DEFAULT (' || adsrc || ')'
     ) || ';'
+    ,(select string_agg(concat_ws(' '
+            ,altertable
+            ,'ADD CONSTRAINT'
+            ,quote_ident(conname)
+            ,e'\n '
+            ,pg_get_constraintdef(oid) || ';'
+        ), e'\n')
+      from pg_constraint
+      where conrelid = attrelid and conkey = array[attnum]::int2[]
+    )
     ,'*/'
     ,''
 
