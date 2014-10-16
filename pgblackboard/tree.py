@@ -36,9 +36,9 @@ class TreeDatabaseAppHandler:
             'nodeid': self._nodeid,
             'nodetype': self._nodetype
         })
-        return '200 OK', json.dumps({
+        return '200 OK', [json.dumps({
             'definition': cursor.fetchone()[0]
-        })
+        })]
 
     def _get_children(self, cursor):
         childquery = _child_queries[self._nodetype]
