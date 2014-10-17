@@ -14,6 +14,7 @@ select concat_ws(e'\n'
     ,'  SELECT ' || attident || ', COUNT(*)'
     ,'    FROM ' || attrelid::regclass
     ,'GROUP BY ' || attident
+    ,'ORDER BY COUNT DESC'
     ,'   LIMIT 1000;'
     ,''
 
