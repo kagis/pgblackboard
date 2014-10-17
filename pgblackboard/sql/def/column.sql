@@ -46,8 +46,9 @@ select concat_ws(e'\n'
 
     ,''
     ,'-- make column' || case when attnotnull then '' else ' NOT' end || ' nullable'
-    ,altertable || ' ALTER  ' || attident || ' SET '
-        || case when attnotnull then 'NULL' else 'NOT NULL' end || ';'
+    ,altertable || ' ALTER  ' || attident || ' '
+        || case when attnotnull then 'DROP' else 'SET' end
+        || ' NOT NULL;'
 
     ,''
     ,'-- change column type'
