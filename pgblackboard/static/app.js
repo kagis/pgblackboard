@@ -369,7 +369,10 @@ pgbb.setError = function (line, message) {
 */
 
 pgbb.AppModel = function (editor, initialData) {
-    this.theme = ko.observable('light');
+    this.isLightsOn = ko.observable(true);
+    this.theme = ko.pureComputed(function () {
+        return this.isLightsOn() ? 'light' : 'dark';
+    }, this);
 
     this._onBlankEditSessionChangedBinded =
         this._onBlankEditSessionChanged.bind(this);
@@ -458,7 +461,7 @@ ko.utils.extend(pgbb.AppModel.prototype, {
     },
 
     toggleTheme: function () {
-        this.theme(this.theme() === 'dark' ? 'light' : 'dark');
+        this.isLightsOn(!this.isLightsOn());
     }
 });
 
