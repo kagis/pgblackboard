@@ -1,4 +1,22 @@
-html {
+.dark { color: #ddd; background-color: #272822; }
+.dark .rowset { border-color: #555; }
+.dark .rowset th { background-color: #444; }
+.dark .rowset-invalid-row td { background-color: #551414; }
+.dark .message-error { color: #ff4c4c; }
+.dark .message { border-bottom-color: #333; }
+.dark .rowset tr:nth-child(even) { color: #aaa; }
+
+.dark .scrollbox::-webkit-scrollbar,
+.dark .scrollbox::-webkit-scrollbar-corner {
+    background-color: #222;
+    }
+
+.dark .scrollbox::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,.2);
+    color: #222;
+    }
+
+.dark .scrollbox {
     scrollbar-base-color: #333;
     scrollbar-3dlight-color: #222;
     scrollbar-highlight-color: #222;
@@ -8,13 +26,7 @@ html {
     scrollbar-dark-shadow-color: #222;
     }
 
-.dark { color: #ddd; background-color: #272822; }
-.dark .rowset { border-color: #555; }
-.dark .rowset th { background-color: #444; }
-.dark .rowset-invalid-row td { background-color: #551414; }
-.dark .message-error { color: #ff4c4c; }
-.dark .message { border-bottom-color: #333; }
-.dark .rowset tr:nth-child(even) { color: #aaa; }
+
 
 
 .light { color: #555; background-color: #fcfcfc; }
@@ -26,16 +38,55 @@ html {
 .light .rowset tr:nth-child(even) { background-color: #eee; }
 
 
+.light .scrollbox::-webkit-scrollbar,
+.light .scrollbox::-webkit-scrollbar-corner {
+    background-color: #ddd;
+    }
+
+.light .scrollbox::-webkit-scrollbar-thumb {
+    background-color: #999;
+    color: #ddd;
+    }
+
+
+
+
+.scrollbox::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+    padding: 2px;
+    }
+
+.scrollbox::-webkit-scrollbar-button:start:decrement,
+.scrollbox::-webkit-scrollbar-button:end:increment {
+    display: block;
+    height: 0;
+    width: 0;
+    background-color: transparent;
+    }
+
+.scrollbox::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+    border: 2px solid;
+    }
 
 
 
 
 
-
-html, body {
+html,
+body,
+.main {
     margin: 0;
     padding: 0;
+    height: 100%;
+    width: 100%;
     font-family: sans-serif;
+    }
+
+
+.main {
+    overflow: auto;
     }
 
 

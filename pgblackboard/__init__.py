@@ -1,22 +1,13 @@
-import functools
-
 import psycopg2
 
-from . import index, fileapp, dbapp, query, table, geo, tree, editing
+from . import index, fileapp, dbapp, query, tree, editing
 
 
 _routes = {
     ('GET', ''): dbapp.DatabaseApp(psycopg2, index.IndexDatabaseAppHandler),
     ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler),
     ('POST', 'edit'): dbapp.DatabaseApp(psycopg2, editing.EditDatabaseAppHandler),
-
-    ('POST', ''): dbapp.DatabaseApp(psycopg2, functools.partial(
-                        query.QueryDatabaseAppHandler,
-                        table.TableView())),
-
-    ('POST', 'map'): dbapp.DatabaseApp(psycopg2, functools.partial(
-                        query.QueryDatabaseAppHandler,
-                        geo.MapView())),
+    ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler)
 }
 
 _routes.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [

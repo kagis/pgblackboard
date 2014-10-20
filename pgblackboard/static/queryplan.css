@@ -2,6 +2,8 @@
 .light .node .node-back { fill: #fff; }
 .light .node text { fill: #333; }
 .light .edgePath path { stroke: #999; }
+.light .queryplan-tip        { background-color: rgba(50, 50, 50, .9); }
+.light .queryplan-tip::after { border-top-color: rgba(50, 50, 50, .9); }
 .light .queryplan {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.0)   0
@@ -29,10 +31,15 @@
     }
 
 
+
+
+
 .dark .queryplan { background-color: rgba(0,0,0,.3); }
 .dark .node .node-back { fill: #000; }
 .dark .node text { fill: #ddd; }
 .dark .edgePath path { stroke: #555; }
+.dark .queryplan-tip        { background-color: rgba(0, 0, 0, .9); }
+.dark .queryplan-tip::after { border-top-color: rgba(0, 0, 0, .9); }
 .dark .queryplan {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.1)   0
@@ -58,6 +65,8 @@
                     ,rgba(0,0,0,.5)  1px
                     ,rgba(0,0,0,.5)  2px);
     }
+
+
 
 
 .node .node-overlay { fill: #888; fill-opacity: .5; }
@@ -115,13 +124,17 @@
 
 
 .queryplan-tip {
+    -webkit-transform: translate(-50%, -100%);
+       -moz-transform: translate(-50%, -100%);
+        -ms-transform: translate(-50%, -100%);
+            transform: translate(-50%, -100%);
+
     position: fixed;
-    transform: translate(-50%, -100%);
     margin-top: -10px;
 
     line-height: 1;
     padding: 12px;
-    background: rgba(0, 0, 0, 0.8);
+
     color: #ddd;
     border-radius: 2px;
     font-size: 10px;
@@ -145,9 +158,10 @@
     border-width: .5em;
     border-style: solid;
     border-color: transparent;
-    border-top-color: rgba(0, 0, 0, 0.8);
     position: absolute;
     bottom: -1em;
     left: 50%;
     margin-left: -.5em;
     }
+
+

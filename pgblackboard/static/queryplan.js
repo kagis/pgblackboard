@@ -4,7 +4,7 @@
 
 window.queryPlan = function (plan) {
 
-    document.querySelector('.main').classList.add('blurred');
+    document.querySelector('.main').className += ' blurred';
 
 
     var lowHue = 90; /* green */

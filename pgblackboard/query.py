@@ -1,15 +1,19 @@
 import urllib.parse, json
 
-from . import sql
+from . import table, geo, sql
 
 
 class QueryDatabaseAppHandler:
     mimetype = 'text/html'
     database = None
+    _views = {
+        'table': table.TableView(),
+        'map': geo.MapView()
+    }
 
-    def __init__(self, view, environ):
-        self._view = view
+    def __init__(self, environ):
         form = urllib.parse.parse_qs(environ['wsgi.input'].read().decode())
+        self._view = self._views[form.get('view', ['table'])[0]]
         psql_query = form['query'][0]
         lines = psql_query.splitlines()
         psql_query = '\n'.join(lines)
@@ -62,7 +66,7 @@ class QueryDatabaseAppHandler:
         yield ('</head>'
                '<body class="bg-panel">'
                '<script>parent.pgbb.initResult(window);</script>'
-               '<div class="main">')
+               '<div class="main scrollbox">')
         yield self._view.render_body_start()
 
     def _render_doc_outro(self):

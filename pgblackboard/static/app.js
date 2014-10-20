@@ -9,74 +9,109 @@ pgbb.extend = ko.utils.extend;
 
 
 
-
 /*
     SPLITPANEL
 */
 
-pgbb.splitPanel = function (el, orientation) {
-    var _resizeFixedPanel = orientation === 'horizontal' ?
-        resizeFixedPanelHorizontal : resizeFixedPanelVertical;
+pgbb.initSplitter = function (splitter) {
+    var panel1 = splitter.previousElementSibling;
+    var panel2 = splitter.nextElementSibling;
+    var splitpanel = splitter.parentNode;
 
-    var _el = el;
-    var _fixedPanelEl = el.querySelector('.splitfix');
+    var isHorizontal = splitter.className.match(/\bsplitter-h\b/);
+    var resize = isHorizontal ? resizeH : resizeV;
 
-    var _panel1 = el.children[0];
-    var _panel2 = el.children[2];
+    var splitterHeight = splitter.offsetHeight;
+    var splitterWidth = splitter.offsetWidth;
+    var splitpanelBounds;
 
-    var _startX;
-    var _startY;
+    splitter.addEventListener('mousedown', onSplitterMouseDown);
 
-    el.querySelector('.splitter').addEventListener('mousedown', onSplitterMouseDown);
-
-    var _resizeEvt = document.createEvent('HTMLEvents');
-    _resizeEvt.initEvent('resize', false, false);
-
+    var resizeEvt = document.createEvent('HTMLEvents');
+    resizeEvt.initEvent('resize', false, false);
 
 
     function fireResize() {
-        _panel1.dispatchEvent(_resizeEvt);
-        _panel2.dispatchEvent(_resizeEvt);
+        panel1.dispatchEvent(resizeEvt);
+        panel2.dispatchEvent(resizeEvt);
     }
 
-    function onSplitterMouseDown(e) {
-        _startX = _fixedPanelEl.offsetWidth - e.clientX;
-        _startY = _fixedPanelEl.offsetHeight + e.clientY;
 
-        document.body.classList.add('splitting');
-        document.addEventListener('mousemove', onSplitterMouseMove);
-        document.addEventListener('mouseup', onSplitterMouseUp);
+    function onSplitterMouseDown(e) {
+        if ('setCapture' in splitter) {
+            splitter.setCapture();
+        }
+        splitpanelBounds = splitpanel.getBoundingClientRect();
+        window.addEventListener('mousemove', onSplitterMouseMove);
+        window.addEventListener('mouseup', onSplitterMouseUp);
+        splitpanel.className += ' splitting ' +
+            (isHorizontal ? 'splitting-h' : 'splitting-v');
+        e.preventDefault(); // disable text selection
     }
 
     function onSplitterMouseUp(e) {
-        document.removeEventListener('mouseup', onSplitterMouseUp);
-        document.removeEventListener('mousemove', onSplitterMouseMove);
-        document.body.classList.remove('splitting');
+        if ('releaseCapture' in splitter) {
+            splitter.releaseCapture();
+        }
+
+        splitpanel.className = splitpanel.className
+            .replace(/\bsplitting\b/, '')
+            .replace(/\bsplitting-h\b/, '')
+            .replace(/\bsplitting-v\b/, '')
+            .trim();
+
+        window.removeEventListener('mousemove', onSplitterMouseMove);
+        window.removeEventListener('mouseup', onSplitterMouseUp);
         fireResize();
     }
 
     function onSplitterMouseMove(e) {
-        _resizeFixedPanel(e.clientX, e.clientY);
+        resize(e.clientX, e.clientY);
         fireResize();
     }
 
-    function resizeFixedPanelVertical(_, y) {
-        _fixedPanelEl.style.height = (_startY - y) + 'px';
+    function resizeH(_, y) {
+        y -= splitpanelBounds.top;
+        if (y <= splitterHeight) {
+            panel1.style.bottom = '100%';
+            panel2.style.top = splitterHeight + 'px';
+            splitter.style.top = 0;
+            splitter.style.bottom = null;
+        } else {
+            var percentage = (y / splitpanelBounds.height) * 100;
+            percentage = Math.max(0, Math.min(100, percentage));
+            panel1.style.bottom = 100 - percentage + '%';
+            panel2.style.top = percentage + '%';
+            splitter.style.top = null;
+            splitter.style.bottom = 100 - percentage + '%';
+        }
     }
 
-    function resizeFixedPanelHorizontal(x, _) {
-       _fixedPanelEl.style.width = (_startX + x) + 'px';
+    function resizeV(x, _) {
+        x -= splitpanelBounds.left;
+        if (x <= splitterWidth) {
+            panel1.style.right = '100%';
+            panel2.style.left = splitterWidth + 'px';
+            splitter.style.left = 0;
+            splitter.style.right = null;
+        } else {
+            var percentage = (x / splitpanelBounds.width) * 100;
+            percentage = Math.max(0, Math.min(100, percentage));
+            panel1.style.right = 100 - percentage + '%';
+            panel2.style.left = percentage + '%';
+            splitter.style.left = null;
+            splitter.style.right = 100 - percentage + '%';
+        }
     }
 };
 
-var shieldEl = document.createElement('div');
-shieldEl.className = 'splitshield';
-document.body.appendChild(shieldEl);
+// var shieldEl = document.createElement('div');
+// shieldEl.className = 'splitshield';
+// document.body.appendChild(shieldEl);
 
 
-pgbb.splitPanel(document.querySelector('.splitpanel-h'), 'horizontal');
-pgbb.splitPanel(document.querySelector('.splitpanel-v'), 'vertical');
-
+pgbb.initSplitter(document.querySelector('.splitter-h'));
+pgbb.initSplitter(document.querySelector('.splitter-v'));
 
 
 
@@ -87,8 +122,15 @@ pgbb.splitPanel(document.querySelector('.splitpanel-v'), 'vertical');
 
 pgbb.TreeNode = function (tuple) {
     this.nodes = ko.observable();
-    this.isExpanded = ko.observable(false);
     this.childrenAreLoading = ko.observable(false);
+
+    this.isExpanded = ko.pureComputed(function () {
+        return this.nodes() && !this.childrenAreLoading();
+    }, this);
+    this.isCollapsed = ko.pureComputed(function () {
+        return !this.nodes() && !this.childrenAreLoading();
+    }, this);
+
     this.isOpened = ko.observable(false);
 
     this.database = tuple.database;
@@ -111,7 +153,6 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
     },
 
     _onChildrenLoaded: function (tuples) {
-        this.isExpanded(true);
         this.childrenAreLoading(false);
         var TreeNode = this.constructor;
         this.nodes(tuples.map(function (tuple) {
@@ -125,7 +166,6 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
     },
 
     collapse: function () {
-        this.isExpanded(false);
         this.nodes(null);
     },
 
@@ -139,10 +179,9 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
 
     getDefinition: function (onComplete, context) {
         var quotedDatabase = this.database;
-            if (quotedDatabase.indexOf('"') !== -1) {
-                quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
-            }
-
+        if (quotedDatabase.indexOf('"') !== -1) {
+            quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
+        }
 
         this._sqlexec({
             query: 'definition',
@@ -176,7 +215,7 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         function onLoad(e) {
             if (e.target.status === 200) {
                 // because IE does not support responseType='json'
-                var jsonResp = JSON.parse(e.target.response);
+                var jsonResp = JSON.parse(e.target.responseText);
                 options.success.call(callbackContext, jsonResp);
             } else {
                 options.error.call(callbackContext);
@@ -312,7 +351,6 @@ pgbb.initEditor = function () {
         autofocus: true,
         mode: 'text/x-pgsql',
         keyMap: 'sublime',
-        theme: 'pgbb',
         gutters: ['CodeMirror-linenumbers', 'errors-gutter']
     });
 
@@ -322,7 +360,8 @@ pgbb.initEditor = function () {
 
     // add gutter shadow when scrolled horizontal
     editor.on('scroll', function () {
-        editor.display.gutters.classList.toggle(
+        ko.utils.toggleDomNodeCssClass(
+            editor.display.gutters,
             'CodeMirror-gutters--overlaying',
             editor.getScrollInfo().left > 1
         );
@@ -339,14 +378,12 @@ pgbb.initEditor = function () {
 
     var queryform = document.getElementById('queryform');
     queryform.onsubmit = onSubmit;
-    function fitEditorSize() {
-        editor.setSize(queryform.clientWidth, queryform.clientHeight);
-    }
-    queryform.addEventListener('resize', fitEditorSize);
-    queryform.parentNode.addEventListener('resize', fitEditorSize);
-    window.addEventListener('resize', fitEditorSize);
 
-    fitEditorSize();
+
+    // todo: codemirror refresh is expensive, do something
+    queryform.parentNode.addEventListener('resize', editor.refresh.bind(editor));
+    queryform.parentNode.parentNode.addEventListener('resize', editor.refresh.bind(editor));
+    window.addEventListener('resize', editor.refresh.bind(editor));
 
     return editor;
 };
@@ -478,10 +515,16 @@ pgbb.main = function (initialData) {
 pgbb.initResult = function (resultWindow) {
     resultWindow.pgbb = pgbb;
     ko.computed(function () {
-        resultWindow.document.body.classList.remove('light');
-        resultWindow.document.body.classList.remove('dark');
-        resultWindow.document.body.classList.add(
-            pgbb.model.theme()
+        ko.utils.toggleDomNodeCssClass(
+            resultWindow.document.body,
+            'light',
+            pgbb.model.isLightsOn()
+        );
+
+        ko.utils.toggleDomNodeCssClass(
+            resultWindow.document.body,
+            'dark',
+            !pgbb.model.isLightsOn()
         );
     });
 };

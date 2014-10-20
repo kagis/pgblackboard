@@ -2,10 +2,16 @@
 'use strict';
 
 
+var CONTENT_EDITABLE = 'true';
+if (navigator.userAgent.indexOf('AppleWebKit') !== -1) {
+    CONTENT_EDITABLE = 'plaintext-only';
+}
+
+
 function onCell(eventType, handler) {
     window.addEventListener(eventType, function (e) {
         if (e.target.nodeName === 'TD' &&
-            e.target.parentNode.parentNode.parentNode.classList.contains('rowset'))
+            hasClass(e.target.parentNode.parentNode.parentNode, 'rowset'))
         {
             handler(
                 e.target,
@@ -32,10 +38,10 @@ onCell('mousedown', function (clickedCell, row, table) {
 onCell('click', function (clickedCell, row, table) {
     if (
         // skip if already editable
-        clickedCell.contentEditable !== 'plaintext-only' &&
+        clickedCell.contentEditable !== CONTENT_EDITABLE &&
 
         // not allow focus when row is submitting
-        !row.classList.contains('rowset-submitting-row') &&
+        !hasClass(row, 'rowset-submitting-row') &&
 
         // can focus only when table is updatable/insertable
         tableIsEditable(table))
@@ -44,7 +50,7 @@ onCell('click', function (clickedCell, row, table) {
         for (var i = 1 /* skip row header */; i < cells.length; i++) {
             var cell = cells[i];
             saveCellOriginalValue(cell);
-            cell.contentEditable = 'plaintext-only';
+            cell.contentEditable = CONTENT_EDITABLE;
         }
         clickedCell.focus();
     }
@@ -54,7 +60,7 @@ onCell('click', function (clickedCell, row, table) {
 // fix blank row when input
 onCell('input', function (editingCell, editingRow, table) {
     var tBody = editingRow.parentNode;
-    if (table.classList.contains('rowset-has-blankrow') && tBody.lastChild === editingRow) {
+    if (hasClass(table, 'rowset-has-blankrow') && tBody.lastChild === editingRow) {
         editingRow.setAttribute('data-inserting', 'true');
         var newBlankRow = document.createElement('TR');
         newBlankRow.appendChild(document.createElement('TH'));
@@ -74,7 +80,7 @@ onCell('input', function (editingCell, editingRow, table) {
 
 onCell('input', function (editingCell) {
     if (editingCell.textContent) {
-        editingCell.classList.remove('emptystr');
+        removeClass(editingCell, 'emptystr');
     }
 });
 
@@ -97,7 +103,7 @@ onCell('blur', function (blurredCell, blurredRow) {
 
 
 function submitDirtyRow(row) {
-    row.classList.remove('rowset-invalid-row');
+    removeClass(row, 'rowset-invalid-row');
 
     if (!rowIsDirty(row)) {
         return;
@@ -107,7 +113,7 @@ function submitDirtyRow(row) {
     var table = row.parentNode/*TBODY*/.parentNode/*TABLE*/;
     var headcells = table.tHead.rows[0].cells;
 
-    row.classList.add('rowset-submitting-row');
+    addClass(row, 'rowset-submitting-row');
 
     var changes = {};
     var key = {};
@@ -125,7 +131,6 @@ function submitDirtyRow(row) {
 
     var req = new XMLHttpRequest();
     req.open('POST', 'edit');
-    req.responseType = 'json';
     req.onloadend = onLoadEnd;
     req.onload = onLoad;
     req.send(JSON.stringify({
@@ -140,8 +145,10 @@ function submitDirtyRow(row) {
 
     function onLoad(e) {
         if (e.target.status === 200) {
+            var response = JSON.parse(e.target.responseText);
+
             row.removeAttribute('data-inserting');
-            row.classList.remove('rowset-invalid-row');
+            removeClass(row, 'rowset-invalid-row');
 
             for (var i = 1; i < cells.length; i++) {
                 var cell = cells[i];
@@ -151,19 +158,19 @@ function submitDirtyRow(row) {
 
                 // refresh cell with actual inserted/updated value
                 var colName = headcells[i].getAttribute('data-name');
-                var returnedVal = e.target.response[colName];
+                var returnedVal = response[colName];
                 if (returnedVal !== undefined) {
                     cell.innerHTML = returnedVal;
                 }
             }
         } else {
-            row.classList.add('rowset-invalid-row');
-            alert(e.target.response);
+            addClass(row, 'rowset-invalid-row');
+            alert(e.target.responseText);
         }
     }
 
     function onLoadEnd() {
-        row.classList.remove('rowset-submitting-row');
+        removeClass(row, 'rowset-submitting-row');
     }
 }
 
@@ -171,13 +178,13 @@ function submitDirtyRow(row) {
 
 function getCellValue(cell) {
     return cell.textContent || (
-        cell.classList.contains('emptystr') ? '' : null
+        hasClass(cell, 'emptystr') ? '' : null
     );
 }
 
 function setCellValue(cell, newValue) {
     cell.textContent = newValue;
-    cell.classList.toggle('emptystr', newValue === '');
+    toggleClass(cell, 'emptystr', newValue === '');
 }
 
 function getCellOriginalValue(cell) {
@@ -189,7 +196,7 @@ function getCellOriginalValue(cell) {
 function saveCellOriginalValue(cell) {
     if (!cellIsDirty(cell)) {
         cell.setAttribute('data-origval', cell.textContent);
-        if (cell.classList.contains('emptystr')) {
+        if (hasClass(cell, 'emptystr')) {
             cell.setAttribute('data-origval-emptystr', 'true');
         }
     }
@@ -218,5 +225,55 @@ function tableIsEditable(table) {
     return table.hasAttribute('data-table');
 }
 
+
+var hasClass,
+    removeClass,
+    addClass,
+    toggleClass;
+
+if ('classList' in document.createElement('_')) {
+    // classList expected to be faster
+    hasClass = function (node, class_) {
+        return node.classList.contains(class_);
+    };
+
+    removeClass = function (node, class_) {
+        node.classList.remove(class_);
+    };
+
+    addClass = function (node, class_) {
+        node.classList.add(class_);
+    };
+
+    toggleClass = function (node, class_, shouldHaveClass) {
+        node.classList.toggle(class_, shouldHaveClass);
+    };
+} else {
+    hasClass = function (node, class_) {
+        return (' ' + node.className + ' ').indexOf(' ' + class_ + ' ') !== -1;
+    };
+
+    removeClass = function (node, class_) {
+        node.className = node.className
+            .replace(new RegExp('\\b' + class_ + '\\b', 'g'))
+            .trim();
+    };
+
+    addClass = function (node, class_) {
+        node.className += ' ' + class_;
+    };
+
+    toggleClass = function (node, class_, shouldHaveClass) {
+        if (hasClass(node, class_)) {
+            if (!shouldHaveClass) {
+                removeClass(node, class_);
+            }
+        } else {
+            if (shouldHaveClass) {
+                addClass(node, class_);
+            }
+        }
+    };
+}
 
 })();
