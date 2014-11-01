@@ -5,7 +5,7 @@
   <link rel="shortcut icon" href="static/favicon.ico" type="image/vnd.microsoft.icon" />
   <title>pgBlackboard</title>
 
-  <link href="static/lib-src/codemirror/4.6.0/codemirror.css" rel="stylesheet" />
+  <link href="static/lib/codemirror/4.6.0/codemirror.css" rel="stylesheet" />
   <link href="static/app.css" rel="stylesheet" />
 
   <script id="tree-tmpl" type="text/html">
@@ -47,7 +47,7 @@
   <script id="queries-tmpl" type="text/html">
     <ul data-bind-foreach="items">
       <li>
-        <header class="itemheader"
+        <header class="itemheader itemheader-has-btn"
                 data-bind-css.itemheader-active="isOpened">
           <a data-bind-click="$root.openStoredQuery.bind($root)">
             <i class="icon-code"></i>
@@ -133,17 +133,15 @@
     <button id="share-action" accesskey="s" style="display:none"></button>
   </div>
 
-  <script src="static/lib-src/knockout/3.2.0/knockout.js"></script>
-  <script src="static/lib-src/knockout-flatBindingProvider/1.0.0/knockout-flatBindingProvider.js"></script>
-  <script>ko.bindingProvider.instance = new ko.flatBindingProvider();</script>
-
-  <script src="static/lib-src/codemirror/4.6.0/codemirror.js"></script>
-  <script src="static/lib-src/codemirror/4.6.0/mode/sql/sql.js"></script>
+  <script src="static/lib/knockout/3.2.0/knockout.js"></script>
+  <script src="static/lib/knockout-att/1.0.0/knockout-att.js"></script>
+  <script src="static/lib/codemirror/4.6.0/codemirror.js"></script>
+  <script src="static/lib/codemirror/4.6.0/mode/sql/sql.js"></script>
   <script src="static/codemirror-pgsql.js"></script>
-  <script src="static/lib-src/codemirror/4.6.0/addon/search/searchcursor.js"></script>
-  <script src="static/lib-src/codemirror/4.6.0/keymap/sublime.js"></script>
-  <script src="static/lib-src/codemirror/4.6.0/addon/edit/matchbrackets.js"></script>
-  <script src="static/lib-src/codemirror/4.6.0/addon/edit/closebrackets.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/search/searchcursor.js"></script>
+  <script src="static/lib/codemirror/4.6.0/keymap/sublime.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/edit/matchbrackets.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/edit/closebrackets.js"></script>
 
   <script src="static/app.js"></script>
   <script>pgbb.main(/*INITIAL_DATA_PLACEHOLDER*/);</script>

@@ -1,6 +1,8 @@
 (function () {
 'use strict';
 
+
+
 var pbgg = window.pgbb = {};
 pgbb.extend = ko.utils.extend;
 
@@ -507,6 +509,8 @@ pgbb.editor = pgbb.initEditor();
 
 pgbb.main = function (initialData) {
     pgbb.model = new pgbb.AppModel(pgbb.editor, initialData);
+
+    ko.bindingProvider.instance = new ko.flatBindingProvider();
     ko.applyBindings(pgbb.model);
 };
 

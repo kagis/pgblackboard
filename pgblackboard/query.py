@@ -178,8 +178,8 @@ class QueryDatabaseAppHandler:
         if not self._query_plan_assets_included:
             self._query_plan_assets_included = True
             yield ('<link href="static/queryplan.css" rel="stylesheet" />'
-                   '<script src="static/lib-src/d3/3.4.11/d3.js"></script>'
-                   '<script src="static/lib-src/dagre-d3/0.2.9/dagre-d3.js"></script>'
+                   '<script src="static/lib/d3/3.4.11/d3.js"></script>'
+                   '<script src="static/lib/dagre-d3/0.2.9/dagre-d3.js"></script>'
                    '<script src="static/queryplan.js"></script>')
         yield _jsinvoke('queryPlan', plan);
 

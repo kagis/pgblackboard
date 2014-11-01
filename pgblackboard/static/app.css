@@ -256,7 +256,7 @@ body {
     top: 0;
     right: 0;
     bottom: 0;
-    left: 1.625em;
+    left: 1.3125em;
     }
 
 .leftpanel {
@@ -264,7 +264,7 @@ body {
     overflow-x: hidden;
     }
 
-/* using margin of inner container rather then
+/* using margin of inner container rather than
    padding on parent because ie9 not hides
    collapsed content */
 .leftpanel-inner {
@@ -308,8 +308,10 @@ button::-moz-focus-inner {
 
 
 .btn-action {
+    border-top: 1px solid transparent; /* for simmetric align */
     border-bottom: 1px dotted;
-    margin: .2em;
+    margin-left: .2em;
+    margin-right: .2em;
     font-size: 0.8125em;
     }
 
@@ -326,17 +328,28 @@ ul + ul {
     }
 
 
-li > header > a {
-    display: block;
+.itemheader > a {
+    display: inline-block;
+    vertical-align: bottom;
+    width: 100%;
     text-decoration: none;
     cursor: pointer;
     text-overflow: ellipsis;
     overflow: hidden;
     }
 
+.itemheader-has-btn.itemheader-active > a {
+    width: calc(100% - 4em);
+    }
+
+.itemheader-has-btn > .btn-action {
+    vertical-align: bottom;
+    display: inline-block;
+    margin-bottom: .25em;
+    }
 
 .itemheader {
-    padding: .2em;
+    padding: .125em .25em;
     }
 
 .itemheader-active {
@@ -360,7 +373,7 @@ a > small {
 .treenode-toggler {
     position: absolute;
     left: -1.1em;
-    top: .4em;
+    top: .3em;
     margin: 0;
     width: 1em;
     height: 1em;
@@ -656,7 +669,7 @@ a > small {
 
 .fontello-lamp::before {
     content: '\e810';
-    font-size: 140%;
+    font-size: 115%;
     }
 
 .icon-code::before {

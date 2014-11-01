@@ -1,9 +1,49 @@
 #!/usr/bin/env python3
 
-from setuptools import setup
+from distutils.command.build import build as _build
+from setuptools.command.bdist_egg import bdist_egg as _bdist_egg
+
+import setuptools
 
 
-setup(name='pgblackboard',
+
+class bdist_egg(_bdist_egg):
+    def run(self):
+        self.run_command('build_css')
+        _bdist_egg.run(self)
+
+
+class build_css(setuptools.Command):
+    description = 'build CSS from SCSS'
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import pdb; pdb.set_trace();
+        print('---------------------' + self.distribution)
+        pass # Here goes CSS compilation.
+
+
+class build(_build):
+    sub_commands = _build.sub_commands + [('build_css', None)]
+
+
+
+import os
+
+static_files = [
+    os.path.join(os.path.relpath(root, 'pgblackboard'), fn)
+    for root, dirs, filenames in os.walk('pgblackboard/static')
+    for fn in filenames
+]
+
+setuptools.setup(name='pgblackboard',
     version='0.1',
     description='Minimalistic GIS enabled interface for PostgreSQL',
     author='exe-dealer',
@@ -15,33 +55,13 @@ setup(name='pgblackboard',
     package_data={ 'pgblackboard': [
          'index.html'
 
-        ,'static/favicon.ico'
-        ,'static/app.js'
-        ,'static/app.css'
-        ,'static/table.js'
-        ,'static/table.css'
-        ,'static/map.js'
-        ,'static/map.css'
-        ,'static/queryplan.js'
-        ,'static/queryplan.css'
-
-        ,'static/codemirror-pgsql.js'
-
-        ,'static/lib-src/codemirror/4.6.0/codemirror.js'
-        ,'static/lib-src/codemirror/4.6.0/mode/sql/sql.js'
-        ,'static/lib-src/codemirror/4.6.0/addon/search/searchcursor.js'
-        ,'static/lib-src/codemirror/4.6.0/keymap/sublime.js'
-        ,'static/lib-src/codemirror/4.6.0/addon/edit/matchbrackets.js'
-        ,'static/lib-src/codemirror/4.6.0/addon/edit/closebrackets.js'
-        ,'static/lib-src/codemirror/4.6.0/codemirror.css'
-        ,'static/lib-src/knockout/3.2.0/knockout.js'
-        ,'static/lib-src/knockout-flatBindingProvider/1.0.0/knockout-flatBindingProvider.js'
-        ,'static/lib-src/d3/3.4.11/d3.js'
-        ,'static/lib-src/dagre-d3/0.2.9/dagre-d3.js'
-        ,'static/lib-src/leaflet/0.7.3/leaflet.js'
-        ,'static/lib-src/leaflet/0.7.3/leaflet.css'
-
         ,'sql/def/*'
         ,'sql/children/*'
-    ]},
+    ] + static_files },
+
+    cmdclass={
+        #'bdist_egg': bdist_egg,
+        #'build': build,
+        #'build_css': build_css,
+    },
 )

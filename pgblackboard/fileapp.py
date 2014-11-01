@@ -4,7 +4,7 @@ import pkgutil, mimetypes, gzip
 class ResourceFileApp:
     def __init__(self, path):
 
-        cache_control = 'max-age=86400, public' # 1 day cache
+        cache_control = '' #'max-age=86400, public' # 1 day cache
 
         contenttype, _ = mimetypes.guess_type(path)
         if contenttype in ('application/javascript', 'text/css'):

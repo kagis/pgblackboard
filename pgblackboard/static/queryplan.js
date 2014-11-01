@@ -59,12 +59,19 @@ window.queryPlan = function (plan) {
                         .nodeSep(20)
                         .rankDir('LR');
 
-    var graphContainer = d3.select(document.body)
-                           .append('svg')
-                           .attr('class', 'queryplan');
+
+    var overlay = d3.select(document.body)
+                    .append('div')
+                    .attr('class', 'queryplan-overlay');
+
+    overlay.append('button')
+           .text('close')
+           .on('click', function () { alert('oloo'); })
+
+    var svg = overlay.append('svg').attr('class', 'queryplan');
 
     var renderedLayout = renderer.layout(layout)
-                                 .run(graph, graphContainer);
+                                 .run(graph, svg);
 
 
     // center
@@ -72,7 +79,7 @@ window.queryPlan = function (plan) {
         (document.documentElement.clientWidth - renderedLayout.graph().width) / 2,
         (document.documentElement.clientHeight - renderedLayout.graph().height) / 2
     ]);
-    zoom.event(graphContainer);
+    zoom.event(svg);
 
 
 
@@ -90,7 +97,7 @@ window.queryPlan = function (plan) {
             }
         });
 
-    graphContainer
+    svg
         .selectAll('.node rect')
             .on('mouseover', function (d) {
                 tip.setContent(graph.node(d).description);

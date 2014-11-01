@@ -7,10 +7,10 @@ class MapView:
 
     def render_head(self):
         return (
-            '<link href="static/lib-src/leaflet/0.7.3/leaflet.css" rel="stylesheet" type="text/css" />'
+            '<link href="static/lib/leaflet/0.7.3/leaflet.css" rel="stylesheet" type="text/css" />'
             '<link href="static/map.css" rel="stylesheet" />'
             '<script>L_PREFER_CANVAS = true;</script>'
-            '<script src="static/lib-src/leaflet/0.7.3/leaflet.js"></script>')
+            '<script src="static/lib/leaflet/0.7.3/leaflet.js"></script>')
 
     def render_body_start(self):
         return '<script src="static/map.js"></script>'
