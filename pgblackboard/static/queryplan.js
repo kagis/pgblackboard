@@ -4,9 +4,6 @@
 
 window.queryPlan = function (plan) {
 
-    document.querySelector('.main').className += ' blurred';
-
-
     var lowHue = 90; /* green */
     var highHue = 20; /* red */
     var hueDelta = highHue - lowHue;
@@ -28,10 +25,10 @@ window.queryPlan = function (plan) {
 
 
     var renderer = new dagreD3.Renderer();
-    var zoom = d3.behavior.zoom();
+    var zoomBehavior = d3.behavior.zoom();
 
     renderer.zoom(function (graph, svg) {
-        return zoom.on('zoom', function() {
+        return zoomBehavior.on('zoom', function() {
             svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
         });
     });
@@ -65,8 +62,10 @@ window.queryPlan = function (plan) {
                     .attr('class', 'queryplan-overlay');
 
     overlay.append('button')
-           .text('close')
-           .on('click', function () { alert('oloo'); })
+           .attr('class', 'queryplan-close')
+           .on('click', function () { 
+                overlay.remove();
+         })
 
     var svg = overlay.append('svg').attr('class', 'queryplan');
 
@@ -75,11 +74,11 @@ window.queryPlan = function (plan) {
 
 
     // center
-    zoom.translate([
+    zoomBehavior.translate([
         (document.documentElement.clientWidth - renderedLayout.graph().width) / 2,
         (document.documentElement.clientHeight - renderedLayout.graph().height) / 2
     ]);
-    zoom.event(svg);
+    zoomBehavior.event(svg);
 
 
 
@@ -88,7 +87,7 @@ window.queryPlan = function (plan) {
     var tip = new QueryplanTip();
     var zooming = false;
     var hideTipOnZoomEnd = false;
-    zoom.on('zoom.tip', tip.updatePosition.bind(tip))
+    zoomBehavior.on('zoom.tip', tip.updatePosition.bind(tip))
         .on('zoomstart.tip', function () { zooming = true; })
         .on('zoomend.tip', function () {
             zooming = false;

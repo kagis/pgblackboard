@@ -1,10 +1,11 @@
-.light .queryplan { background-color: rgba(255,255,255,.3); }
+.light { color: #555; }
+.light .queryplan-overlay { background-color: rgba(255,255,255,.7); }
 .light .node .node-back { fill: #fff; }
 .light .node text { fill: #333; }
 .light .edgePath path { stroke: #999; }
 .light .queryplan-tip        { background-color: rgba(50, 50, 50, .9); }
 .light .queryplan-tip::after { border-top-color: rgba(50, 50, 50, .9); }
-.light .queryplan {
+.light .queryplan-overlay {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.0)   0
                     ,rgba(0,0,0,.0)  1px
@@ -33,14 +34,14 @@
 
 
 
-
-.dark .queryplan { background-color: rgba(0,0,0,.3); }
+.dark { color: #ddd; }
+.dark .queryplan { background-color: rgba(39, 40, 34,.7); }
 .dark .node .node-back { fill: #000; }
 .dark .node text { fill: #ddd; }
 .dark .edgePath path { stroke: #555; }
 .dark .queryplan-tip        { background-color: rgba(0, 0, 0, .9); }
 .dark .queryplan-tip::after { border-top-color: rgba(0, 0, 0, .9); }
-.dark .queryplan {
+.dark .queryplan-overlay {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.1)   0
                     ,rgba(0,0,0,.1)  1px
@@ -71,14 +72,21 @@
 
 .node .node-overlay { fill: #888; fill-opacity: .5; }
 
-
-.blurred {
-    opacity: .5;
-    }
-
+ 
 .queryplan,
 .queryplan-tip {
     font-family: Ubuntu, Verdana, sans-serif;
+    }
+
+
+.queryplan-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    background-size: 2px 100%;
     }
 
 .queryplan {
@@ -96,10 +104,7 @@
 
     -webkit-user-select: none;
        -moz-user-select: none;
-
-
-    background-size: 2px 100%;
-
+            user-select: none;
     }
 
 
@@ -165,3 +170,19 @@
     }
 
 
+.queryplan-close {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    z-index: 10;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+    }
+
+.queryplan-close::before {
+    content: '×';
+    font-size: 16px;
+    font-weight: bold;
+    }
