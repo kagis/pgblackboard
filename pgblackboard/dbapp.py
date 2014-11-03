@@ -21,7 +21,6 @@ class DatabaseApp:
             auth_scheme, b64cred = auth.split(' ', 1)
             user, password = base64.b64decode(b64cred).decode().split(':', 1)
         except:
-            print(ex)
             start_response('400 Bad Request', [
                 ('Content-type', 'text/plain')
             ])
@@ -37,19 +36,19 @@ class DatabaseApp:
             yield from (x.encode() for x in handler.on_database_missing())
             return
 
+
+        dsn = dict(
+            user=user,
+            password=password,
+            host=environ.get('postgresql.host', 'localhost'),
+            port=int(environ.get('postgresql.port', 5432)),
+            database=handler.database
+        )
+
         try:
-            conn = self._dbapi20.connect(
-                user=user,
-                password=password,
-                host=environ.get('postgresql.host', 'localhost'),
-                port=int(environ.get('postgresql.port', 5432)),
-                database=handler.database
-            )
+            conn = self._dbapi20.connect(**dsn)
         except Exception as ex:
-            errmsg = str(ex)
-            if errmsg == 'ERROR:  Auth failed\n' or \
-               errmsg == 'fe_sendauth: no password supplied\n' or \
-               errmsg.startswith('FATAL:  password authentication failed for user'):
+            if self._check_authfail(ex):
                 start_response('401 Unauthorized', [
                     ('Content-type', 'text/plain'),
                     ('WWW-Authenticate', 'Basic realm="postgresql"')
@@ -67,10 +66,20 @@ class DatabaseApp:
         with conn:
             conn.autocommit = True
             with conn.cursor() as cursor:
-                cursor.arraysize = 50;
+                cursor.arraysize = 50
                 status, app_iter = handler.handle(cursor)
                 start_response(status, [
                     ('Content-type', handler.mimetype + '; charset=utf-8'),
                     ('uWSGI-Encoding', 'gzip')
                 ])
                 yield from (x.encode() for x in app_iter)
+     
+
+    def _check_authfail(self, ex):
+        errmsg = str(ex)
+        return (
+            errmsg == 'ERROR:  Auth failed\n' or
+            errmsg == 'fe_sendauth: no password supplied\n' or
+            (errmsg.startswith('FATAL:  role ') and errmsg.endswith(' does not exist\n')) or
+            errmsg.startswith('FATAL:  password authentication failed for user')
+        )
