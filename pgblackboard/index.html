@@ -13,14 +13,15 @@
       <li class="treenode"
           data-bind-css.treenode-groupstart="isGroupStart">
 
-        <button data-bind-click="toggle"
-                data-bind-visible="hasChildren"
-                class="treenode-toggler">
+        <button class="treenode-toggler"
+                data-bind-click="toggle"
+                data-bind-visible="hasChildren">
 
           <i class="fontello treenode-toggler-icon"
              data-bind-css.fontello-triangle-right="isCollapsed"
              data-bind-css.fontello-triangle-down="isExpanded"
              data-bind-css.spinner="childrenAreLoading"></i>
+
         </button>
 
         <header class="itemheader"
@@ -117,7 +118,7 @@
             </button>
           </div>
 
-          <div class="spinner-shield" data-bind="visible: queryTextIsLoading()">
+          <div class="spinner-shield" data-bind-visible="queryTextIsLoading()">
             <div class="spinner"></div>
           </div>
 

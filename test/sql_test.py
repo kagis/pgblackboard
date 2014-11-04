@@ -180,7 +180,19 @@ class ExtractDbnameTestCase(unittest.TestCase):
             ('name_with_"quotes"', 'select 1', 32)
         )
 
-    def test_fail(self):
+    def test_empty_query(self):
+        self.assertEqual(
+            sql.extract_dbname('\\connect postgres'),
+            ('postgres', None, None)
+        )
+
+    def test_empty_query_1(self):
+        self.assertEqual(
+            sql.extract_dbname('\\connect postgres\n'),
+            ('postgres', '', 18)
+        )
+
+    def test_missing_connect(self):
         self.assertIsNone(sql.extract_dbname('select 1'))
 
 

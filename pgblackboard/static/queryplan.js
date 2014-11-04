@@ -63,9 +63,7 @@ window.queryPlan = function (plan) {
 
     overlay.append('button')
            .attr('class', 'queryplan-close')
-           .on('click', function () { 
-                overlay.remove();
-         })
+           .on('click', function () { overlay.remove(); });
 
     var svg = overlay.append('svg').attr('class', 'queryplan');
 
