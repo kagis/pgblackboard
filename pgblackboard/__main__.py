@@ -37,6 +37,10 @@ parser.add_option('--ssl-privkey',
     help="SSL private key filename"
 )
 
+parser.add_option('--autoreload',
+    action='store_true'
+)
+
 options, _ = parser.parse_args()
 
 def app(environ, start_response):
@@ -53,8 +57,38 @@ cherrypy.config.update({
     'server.socket_port': options.http_port,
     'server.socket_host': options.http_host,
     'server.ssl_certificate': options.ssl_cert,
-    'server.ssl_private_key': options.ssl_privkey
+    'server.ssl_private_key': options.ssl_privkey,
+    'engine.autoreload.on': False,
 })
+
+
+if options.autoreload:
+    import os
+
+    moduledir = os.path.dirname(os.path.realpath(__file__))
+
+    cherrypy.engine.autoreload.files.add(
+        os.path.join(moduledir, 'index.html')
+    )
+
+    sqldir = os.path.join(moduledir, 'sql')
+    for dirpath, subdirs, files in os.walk(sqldir):
+        for fn in files:
+            cherrypy.engine.autoreload.files.add(
+                os.path.join(dirpath, fn)
+            )
+
+    # read static files from disk on each request
+    cherrypy.tree.mount(None, '/static', {'/' : {
+        'tools.staticdir.root': moduledir,
+        'tools.staticdir.dir': 'static',
+        'tools.staticdir.on': True,
+    }})
+
+    cherrypy.config.update({
+        'engine.autoreload.on': True
+    })
+
 
 cherrypy.tree.graft(app, '/')
 cherrypy.engine.start()

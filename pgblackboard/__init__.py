@@ -7,7 +7,8 @@ _routes = {
     ('GET', ''): dbapp.DatabaseApp(psycopg2, index.IndexDatabaseAppHandler),
     ('GET', 'tree'): dbapp.DatabaseApp(psycopg2, tree.TreeDatabaseAppHandler),
     ('POST', 'edit'): dbapp.DatabaseApp(psycopg2, editing.EditDatabaseAppHandler),
-    ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler)
+    ('POST', ''): dbapp.DatabaseApp(psycopg2, query.QueryDatabaseAppHandler),
+    ('GET', 'favicon.ico'): fileapp.ResourceFileApp('static/favicon.ico'),
 }
 
 _routes.update({('GET', fn): fileapp.ResourceFileApp(fn) for fn in [
