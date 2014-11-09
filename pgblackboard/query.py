@@ -34,28 +34,37 @@ class QueryDatabaseAppHandler:
             self._statements = list(sql.split(query))
 
     def on_database_missing(self):
-        yield from self._render_doc_intro()
-        yield from self._view.render_exception(
-            'Missing \connect database command on first line'
-        )
-        yield from self._render_doc_outro()
+        for x in self._render_doc_intro():
+            yield x
+        for x in self._view.render_exception(
+                'Missing \connect database command on first line'
+            ):
+            yield x
+        for x in self._render_doc_outro():
+            yield x
 
     def on_connect_error(self, ex):
-        yield from self._render_doc_intro()
-        yield from self._view.render_exception(ex)
-        yield from self._render_doc_outro()
+        for x in self._render_doc_intro():
+            yield x
+        for x in self._view.render_exception(ex):
+            yield x
+        for x in self._render_doc_outro():
+            yield x
 
     def handle(self, cursor):
         return '200 OK', self.get_response(cursor)
 
     def get_response(self, cursor):
-        yield from self._render_doc_intro()
+        for x in self._render_doc_intro():
+            yield x
         position_offset = self._querypos
         for stmt in self._statements:
             if sql.isnotempty(stmt):
-                yield from self._exec_stmt(cursor, stmt, position_offset)
+                for x in self._exec_stmt(cursor, stmt, position_offset):
+                    yield x
             position_offset += len(stmt)
-        yield from self._render_doc_outro()
+        for x in self._render_doc_outro():
+            yield x
 
     def _render_doc_intro(self):
         yield ('<!doctype html>'
@@ -116,7 +125,8 @@ class QueryDatabaseAppHandler:
             try:
                 cursor.execute(stmt)
             finally:
-                yield from self._pop_and_render_notices(cursor)
+                for x in self._pop_and_render_notices(cursor):
+                    yield x
         except Exception as ex:
             yield self._view.render_exception(ex)
             try:
@@ -133,9 +143,10 @@ class QueryDatabaseAppHandler:
                     cursor.description[0][1] == 114 and \
                     cursor.description[0][0] == 'QUERY PLAN':
                 plan, = cursor.fetchone()
-                yield from self._render_query_plan(
-                    self._prepare_queryplan(plan)
-                )
+                for x in self._render_query_plan(
+                        self._prepare_queryplan(plan)
+                    ):
+                    yield x
 
             elif cursor.description:
                 colaliases, coltypes = zip(*[(al, typ)
@@ -152,7 +163,8 @@ class QueryDatabaseAppHandler:
                     list(zip(colaliases, colnames, coltypes, pkmask)),
                     tablename, schemaname, self.database
                 )
-                yield from rowset_renderer.render_intro()
+                for x in rowset_renderer.render_intro():
+                    yield x
                 unfetched_rows_exist = True
                 fetch_err = None
                 while unfetched_rows_exist and not fetch_err:
@@ -166,9 +178,11 @@ class QueryDatabaseAppHandler:
                             yield ''.join(
                                 rowset_renderer.render_rows(rows)
                             )
-                yield from rowset_renderer.render_outro()
+                for x in rowset_renderer.render_outro():
+                    yield x
                 if fetch_err:
-                    yield from rowset_renderer.render_exception(fetch_err)
+                    for x in rowset_renderer.render_exception(fetch_err):
+                        yield x
             else:
                 yield self._view.render_nonquery(cursor.statusmessage)
 

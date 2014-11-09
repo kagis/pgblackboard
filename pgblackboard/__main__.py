@@ -48,7 +48,7 @@ def app(environ, start_response):
     environ['postgresql.host'] = options.pg_host
     print('{REMOTE_ADDR} {HTTP_USER_AGENT} - {REQUEST_METHOD} '
                   '{PATH_INFO}?{QUERY_STRING}'.format_map(environ))
-    yield from pgblackboard.application(environ, start_response)
+    return pgblackboard.application(environ, start_response)
 
 
 

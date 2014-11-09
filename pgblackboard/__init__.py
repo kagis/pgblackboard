@@ -57,4 +57,4 @@ def application(environ, start_response):
     pathinfo = environ['PATH_INFO'].strip('/')
     method = environ['REQUEST_METHOD']
     app = _routes[method, pathinfo]
-    yield from app(environ, start_response)
+    return app(environ, start_response)

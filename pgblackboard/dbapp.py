@@ -33,7 +33,8 @@ class DatabaseApp:
             start_response('400 Bad Request', [
                 ('Content-type', handler.mimetype + '; charset=utf-8')
             ])
-            yield from (x.encode() for x in handler.on_database_missing())
+            for x in handler.on_database_missing():
+                yield x.encode()
             return
 
 
@@ -59,7 +60,8 @@ class DatabaseApp:
             start_response('500 Internal Server Error', [
                 ('Content-type', handler.mimetype + '; charset=utf-8')
             ])
-            yield from (x.encode() for x in handler.on_connect_error(ex))
+            for x in handler.on_connect_error(ex):
+                yield x.encode()
             return
 
 
@@ -73,7 +75,8 @@ class DatabaseApp:
                 ('Content-type', handler.mimetype + '; charset=utf-8'),
                 ('uWSGI-Encoding', 'gzip')
             ])
-            yield from (x.encode() for x in app_iter)
+            for x in app_iter:
+                yield x.encode()
         finally:
             conn.close()
 
