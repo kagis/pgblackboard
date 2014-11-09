@@ -19,10 +19,13 @@ class DatabaseApp:
 
         try:
             auth_scheme, b64cred = auth.split(' ', 1)
-            user, password = base64.b64decode(b64cred).decode().split(':', 1)
-        except:
-            start_response('400 Bad Request', [
-                ('Content-type', 'text/plain')
+            user, password = base64.b64decode(b64cred.encode('ascii')) \
+                                    .decode().split(':', 1)
+        except Exception as ex:
+            print(ex)
+            start_response('401 Unauthorized', [
+                ('Content-type', 'text/plain'),
+                ('WWW-Authenticate', 'Basic realm="postgresql"')
             ])
             yield b'Unexpected credentials format.'
             return
