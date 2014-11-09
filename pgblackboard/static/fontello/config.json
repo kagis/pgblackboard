@@ -1,6 +1,6 @@
 {
   "name": "",
-  "css_prefix_text": "icon-",
+  "css_prefix_text": "fontello-",
   "css_use_suffix": false,
   "hinting": true,
   "units_per_em": 1000,
@@ -14,7 +14,7 @@
     },
     {
       "uid": "5278ef7773e948d56c4d442c8c8c98cf",
-      "css": "lightbulb-2",
+      "css": "lightbulb",
       "code": 59408,
       "src": "fontawesome"
     },
@@ -94,6 +94,12 @@
       "uid": "1fb8776fe6f1d3bbf970996fdfcf0f94",
       "css": "link",
       "code": 59395,
+      "src": "mfglabs"
+    },
+    {
+      "uid": "3711151b8b34536498e2a7f4d5188ed2",
+      "css": "triangle-right",
+      "code": 59406,
       "src": "mfglabs"
     }
   ]
