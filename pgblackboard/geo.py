@@ -1,7 +1,5 @@
 import json
 
-import shapely.wkb
-
 
 class MapView:
 
@@ -32,8 +30,13 @@ class MapView:
         def __init__(self, columns, table, schema, database):
             self._columns = columns
             colnames = [name for name, *_ in columns]
-            if 'geom' in colnames:
-                self._geomcol_ix = geomcol_ix = colnames.index('geom')
+            if 'st_asgeojson' in colnames:
+                self._geomcol_ix = geomcol_ix = colnames.index('st_asgeojson')
+                if columns[geomcol_ix][1] == 114: # json type
+                    self.get_geojson_from_row = lambda x: x
+                else:
+                    self.get_geojson = lambda x: x and json.loads(x)
+
                 self._propnames = colnames[:geomcol_ix] + colnames[geomcol_ix+1:]
             else:
                 self.render_intro = \
@@ -53,17 +56,18 @@ class MapView:
                 'type': 'FeatureCollection',
                 'features': [{
                     'type': 'Feature',
-                    'geometry': hex_ewkb_mapping(row[self._geomcol_ix]),
-                    'properties': dict(zip(
-                        self._propnames,
-                        (x for i, x in enumerate(row)
-                            if i != self._geomcol_ix)
-                    ))
+                    'geometry': self._get_geom_from_row(row),
+                    'properties': self._get_props_from_row(row)
                 } for row in rows]
             }, ensure_ascii=False, default=str)
             yield ');</script>'
 
+        def _get_geom_from_row(self, row):
+            return self.get_geojson(row[self._geomcol_ix])
 
-def hex_ewkb_mapping(hex_ewkb):
-    if hex_ewkb:
-        return shapely.wkb.loads(hex_ewkb, hex=True).__geo_interface__
+        def _get_props_from_row(self, row):
+            return dict(zip(
+                self._propnames,
+                (x for i, x in enumerate(row)
+                    if i != self._geomcol_ix)
+            ))

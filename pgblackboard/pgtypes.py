@@ -52,6 +52,9 @@ def render_bool(val):
 
 
 def render_json(val):
+    if type(val) is str:
+        val = json.loads(val)
+
     return json.dumps(val, ensure_ascii=False, indent=2, default=str)
 
 

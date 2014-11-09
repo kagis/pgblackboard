@@ -14,7 +14,7 @@
 ## Install
 
 ```bash
-sudo apt-get install python3-pip python3-dev libpq-dev
+sudo apt-get install python3-pip python3-psycopg2
 sudo pip3 install https://github.com/exe-dealer/pgblackboard/archive/master.zip
 ```
 

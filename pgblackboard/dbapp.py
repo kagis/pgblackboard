@@ -63,17 +63,20 @@ class DatabaseApp:
             return
 
 
-        with conn:
+
+        try:
             conn.autocommit = True
-            with conn.cursor() as cursor:
-                cursor.arraysize = 50
-                status, app_iter = handler.handle(cursor)
-                start_response(status, [
-                    ('Content-type', handler.mimetype + '; charset=utf-8'),
-                    ('uWSGI-Encoding', 'gzip')
-                ])
-                yield from (x.encode() for x in app_iter)
-     
+            cursor = conn.cursor()
+            cursor.arraysize = 50
+            status, app_iter = handler.handle(cursor)
+            start_response(status, [
+                ('Content-type', handler.mimetype + '; charset=utf-8'),
+                ('uWSGI-Encoding', 'gzip')
+            ])
+            yield from (x.encode() for x in app_iter)
+        finally:
+            conn.close()
+
 
     def _check_authfail(self, ex):
         errmsg = str(ex)

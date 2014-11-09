@@ -2,8 +2,9 @@
 'use strict';
 
 var map = L.map(document.querySelector('.main'), {
-    center: [43.260535, 76.945493],
-    zoom: 5,
+    //center: [43.260535, 76.945493],
+    center: [20 /* push antarctida down */, 0],
+    zoom: 1,
     zoomControl: false,
     attributionControl: false
 });

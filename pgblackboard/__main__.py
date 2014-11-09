@@ -1,8 +1,8 @@
-import optparse, logging
-
-import cherrypy
+import optparse
 
 import pgblackboard
+import pgblackboard.wsgiserver.ssl_builtin
+import pgblackboard.wsgiserver
 
 
 parser = optparse.OptionParser()
@@ -46,20 +46,19 @@ options, _ = parser.parse_args()
 def app(environ, start_response):
     environ['postgresql.port'] = options.pg_port
     environ['postgresql.host'] = options.pg_host
-    logging.info('{REMOTE_ADDR} {HTTP_USER_AGENT} - {REQUEST_METHOD} '
-                  '{PATH_INFO}?{QUERY_STRING}'.format(**environ))
+    print('{REMOTE_ADDR} {HTTP_USER_AGENT} - {REQUEST_METHOD} '
+                  '{PATH_INFO}?{QUERY_STRING}'.format_map(environ))
     yield from pgblackboard.application(environ, start_response)
 
 
-logging.basicConfig(level=logging.INFO)
 
-cherrypy.config.update({
-    'server.socket_port': options.http_port,
-    'server.socket_host': options.http_host,
-    'server.ssl_certificate': options.ssl_cert,
-    'server.ssl_private_key': options.ssl_privkey,
-    'engine.autoreload.on': False,
-})
+# cherrypy.config.update({
+#     'server.socket_port': options.http_port,
+#     'server.socket_host': options.http_host,
+#     'server.ssl_certificate': options.ssl_cert,
+#     'server.ssl_private_key': options.ssl_privkey,
+#     'engine.autoreload.on': False,
+# })
 
 
 if options.autoreload:
@@ -90,6 +89,19 @@ if options.autoreload:
     })
 
 
-cherrypy.tree.graft(app, '/')
-cherrypy.engine.start()
-cherrypy.engine.block()
+bind_addr = (options.http_host, options.http_port)
+server =  pgblackboard.wsgiserver.CherryPyWSGIServer(bind_addr, app)
+
+using_ssl = options.ssl_cert and options.ssl_privkey
+
+if using_ssl:
+    server.ssl_adapter = pgblackboard.wsgiserver.ssl_builtin.BuiltinSSLAdapter(
+        options.ssl_cert, options.ssl_privkey
+    )
+
+print('start listening on {0}://{1}:{2}'.format(
+    'https' if using_ssl else 'http',
+    *bind_addr
+))
+
+server.start()

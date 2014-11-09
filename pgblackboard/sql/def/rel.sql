@@ -49,6 +49,16 @@ table_def_cte as (
     from pg_class, params_cte
     where oid = param_oid
 ),
+
+select_attrs_cte as (
+    select case when format_type(atttypid, null) in ('geometry', 'geography')
+        then 'ST_AsGeoJSON(' || quote_ident(attname) || ')'
+        else quote_ident(attname)
+        end as colexpr
+    from attrs_cte
+    order by attnum
+),
+
 select_stmt_cte as (
     with pk_cols as (
         select quote_ident(attname) as attident
@@ -59,13 +69,13 @@ select_stmt_cte as (
         where conrelid = param_oid
     )
     select concat_ws(e'\n'
-        ,'  SELECT ' || string_agg(quote_ident(attname), e'\n        ,' order by attnum)
+        ,'  SELECT ' || string_agg(colexpr, e'\n        ,')
         ,'    FROM ' || (select param_oid::regclass from params_cte)
         ,'   WHERE true'
         ,'ORDER BY ' || (select string_agg(attident, ', ') from pk_cols)
         ,'   LIMIT 1000;'
     ) as select_stmt
-    from attrs_cte
+    from select_attrs_cte
 )
 select (select select_stmt from select_stmt_cte) || e'\n\n/*\n'
     || (select table_def from table_def_cte) || e'\n*/\n' as def
