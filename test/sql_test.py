@@ -105,60 +105,52 @@ class TryGetSelectingTableAndColsTestCase(unittest.TestCase):
 
 class SplitTestCase(unittest.TestCase):
 
-    def test_simple(self):
+    def test_split(self):
         self.assertEqual(
             list(sql.split('SELECT 1;SELECT 2;')),
             ['SELECT 1;', 'SELECT 2;']
         )
 
-    def test_missing_last_semicolon(self):
+    def test_split_with_missing_last_semicolon(self):
         self.assertEqual(
             list(sql.split('SELECT 1;SELECT 2')),
             ['SELECT 1;', 'SELECT 2']
         )
 
-    def test_literal(self):
+    def test_split_fake_dollar_tag(self):
+        # make sure that $1, $ is not interpret as dollar tag
         self.assertEqual(
-            list(sql.split("SELECT ';';SELECT 2;")),
-            ["SELECT ';';", 'SELECT 2;']
+            list(sql.split('SELECT $1, $2; SELECT $1, $2;')),
+            ['SELECT $1, $2;', ' SELECT $1, $2;']
         )
 
+    def test_ignore_semicolon_in_literal(self):
+        self._test_no_split("SELECT ';', ...")
 
-    def test_dollar_quoted(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1 as $$;$$;SELECT 2;')),
-            ['SELECT 1 as $$;$$;', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_extended_literal(self):
+        self._test_no_split("SELECT e'\\';\\'', ...")
+        self._test_no_split("SELECT E'\\';\\'', ...")
 
-    def test_named_dollar_quoted(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1 as $foo$;$foo$;SELECT 2;')),
-            ['SELECT 1 as $foo$;$foo$;', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_ident(self):
+        self._test_no_split('SELECT 1 AS ";", ...')
 
-    def test_nested_dollar_quoted(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1 as $foo$ $bar; $foo$;SELECT 2;')),
-            ['SELECT 1 as $foo$ $bar; $foo$;', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_dollar_str(self):
+        self._test_no_split('SELECT 1 AS $$;$$, ...')
 
-    def test_ident(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1 as ";";SELECT 2;')),
-            ['SELECT 1 as ";";', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_dollar_str_with_named_tag(self):
+        self._test_no_split('SELECT 1 AS $foo_1$;$foo_1$, ...')
 
-    def test_inline_comments(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1/*;*/;SELECT 2;')),
-            ['SELECT 1/*;*/;', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_dollar_str_nested(self):
+        self._test_no_split('SELECT 1 AS $foo_1$ $bar; $foo_1$')
 
-    def test_line_comment(self):
-        self.assertEqual(
-            list(sql.split('SELECT 1 ' '-- one;\n;SELECT 2;')),
-            ['SELECT 1 ' '-- one;\n;', 'SELECT 2;']
-        )
+    def test_ignore_semicolon_in_block_comment(self):
+        self._test_no_split('SELECT 1/*;*/, ...')
+
+    def test_ignore_semicolon_in_line_comment(self):
+        self._test_no_split('SELECT 1 ' '-- one;\n, ...')
+
+    def _test_no_split(self, s):
+        self.assertEqual(list(sql.split(s)), [s])
 
 
 class ExtractDbnameTestCase(unittest.TestCase):
@@ -183,7 +175,7 @@ class ExtractDbnameTestCase(unittest.TestCase):
     def test_empty_query(self):
         self.assertEqual(
             sql.extract_dbname('\\connect postgres'),
-            ('postgres', None, None)
+            ('postgres', '', None)
         )
 
     def test_empty_query_1(self):
@@ -193,42 +185,71 @@ class ExtractDbnameTestCase(unittest.TestCase):
         )
 
     def test_missing_connect(self):
-        self.assertIsNone(sql.extract_dbname('select 1'))
+        self.assertIsNone(sql.extract_dbname('SELECT 1'))
 
 
 class StripCommentsTestCase(unittest.TestCase):
-    def test_inline(self):
+    def test_strip_block_comment(self):
         self.assertEqual(
-            sql._strip_comments('/* comment */SELECT 1'),
+            sql._strip_comments('SELECT 1/* comment */'),
             'SELECT 1'
         )
 
-    def test_line(self):
+    def test_strip_line_comment(self):
         self.assertEqual(
-            sql._strip_comments('-- comment\nSELECT 1'),
+            sql._strip_comments('... -- must be stripped'),
+            '... '
+        )
+
+    def test_strip_line_comment_preserving_linebreak(self):
+        self.assertEqual(
+            sql._strip_comments('-- must be stripped \nSELECT 1'),
             '\nSELECT 1'
         )
 
-    def test_inline_literal(self):
+    def test_strip_comment_after_slash_str_literal(self):
         self.assertEqual(
-            sql._strip_comments("SELECT '/* comment */'"),
-            "SELECT '/* comment */'"
+            sql._strip_comments("SELECT '\\'/* must be stripped */"),
+            "SELECT '\\'"
         )
 
-    def test_line_literal(self):
+    def test_strip_self_close_block_comment(self):
         self.assertEqual(
-            sql._strip_comments("'-- comment'"),
-            "'-- comment'"
+            sql._strip_comments('SELECT/*/ must be stripped */ ...'),
+            'SELECT ...'
         )
 
-    def test_inline_dollar_quoted(self):
+    def test_strip_block_comment_in_fake_dollar_str(self):
         self.assertEqual(
-            sql._strip_comments("$$/* comment */$$"),
-            "$$/* comment */$$"
+            sql._strip_comments(
+                'SELECT $1, $2;'
+                '/* must be stripped */'
+                'SELECT $1, $2;'),
+            'SELECT $1, $2;SELECT $1, $2;'
         )
 
-    def test_line_dollar_quoted(self):
-        self.assertEqual(
-            sql._strip_comments("$$-- comment$$"),
-            "$$-- comment$$"
-        )
+    def test_nostrip_block_comment_in_literal(self):
+        self._assert_nostrip("SELECT '/* must NOT be stripped */'")
+
+    def test_nostrip_block_comment_in_extended_literal(self):
+        self._assert_nostrip("SELECT e'\\'/* must NOT be stripped */\\''")
+        self._assert_nostrip("SELECT E'\\'/* must NOT be stripped */\\''")
+
+    def test_nostrip_line_comment_in_literal(self):
+        self._assert_nostrip("'-- must NOT be stripped'")
+
+    def test_nostrip_line_comment_in_extended_literal(self):
+        self._assert_nostrip("SELECT e'\\'" "-- must NOT be stripped \\''")
+        self._assert_nostrip("SELECT E'\\'" "-- must NOT be stripped \\''")
+
+    def test_nostrip_block_comment_in_dollar_str(self):
+        self._assert_nostrip('SELECT $tag_1$/* must NOT be stripped */$tag_1$')
+
+    def test_nostrip_line_comment_in_dollar_str(self):
+        self._assert_nostrip('$tag_1$ -- must NOT be stripped $tag_1$')
+
+    def test_nostrip_block_comment_in_dollar_str_with_empty_tag(self):
+        self._assert_nostrip("SELECT $$/* must NOT be stripped */$$")
+
+    def _assert_nostrip(self, s):
+        self.assertEqual(sql._strip_comments(s), s)

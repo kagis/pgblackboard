@@ -20,7 +20,6 @@ def split(sql):
     escaping = False
     escape_symbol = None
     expecting_close_token = None
-    dollar_quote_opening = False
 
     for x in sql:
         statement += x
@@ -36,26 +35,19 @@ def split(sql):
                 expecting_close_token = None
                 escape_symbol = None
 
-        elif dollar_quote_opening:
-            dollar_quote += x
-            if x == '$':
-                expecting_close_token = dollar_quote
-                dollar_quote_opening = False
-
         elif x == ';':
             yield statement
             statement = ''
 
+        elif x == '$':
+            m = _re_dollar_tag_end.search(statement)
+            expecting_close_token = m and m.group(0)
         else:
-            if x == '$':
-                dollar_quote_opening = True
-                dollar_quote = '$'
-            else:
-                for open_token, close_token, esc in open_close_esc:
-                    if statement.endswith(open_token):
-                        expecting_close_token = close_token
-                        escape_symbol = esc
-                        break
+            for open_token, close_token, esc in open_close_esc:
+                if statement.endswith(open_token):
+                    expecting_close_token = close_token
+                    escape_symbol = esc
+                    break
 
     if statement:
         yield statement
@@ -76,12 +68,12 @@ def extract_dbname(sql):
     """
 
     m = re.match(r'''(?ixs)^ \s* \\c(?:onnect)? \s+
-                    ({symbol}) [ \t]* \n (.*)'''
+                    ({symbol}) [ \t]* (\n)? (.*)'''
                     .format(symbol=_symbol), sql)
     return m and (
         _unquote_symbol(m.group(1)),
-        m.group(2),
-        m.start(2)
+        m.group(3) if m.group(2) else '',
+        m.start(3) if m.group(2) else None
     )
 
 
@@ -99,13 +91,14 @@ _updatable_query_pattern = re.compile(r'(?ixs)^{query}$'.format(query=_query))
 _ident_pattern = re.compile(r'(?ixs){ident}'.format(ident=_ident))
 
 
-def try_get_selecting_table_and_cols(q):
+def try_get_selecting_table_and_cols(sql):
     """
     Returns tuple (table, columns) if query is
     simple enough and result rowset can be modified.
     Otherwise returns None.
     """
-    match = _updatable_query_pattern.match(q.strip(';\n '))
+    sql = _strip_comments(sql).strip(';\n ')
+    match = _updatable_query_pattern.match(sql)
     return match and (
         match.group('table'),
         '*' if match.group('columns') == '*' else list(map(
@@ -122,10 +115,68 @@ def _unquote_symbol(ident):
 
 
 def _strip_comments(sql):
-    return re.sub(r'--.*', '',
-        re.sub(r'(?s)/\*.*?\*/', '', sql)
-    )
+    """Strips comments which are not within quotes"""
+    return ''.join(__strip_comments(sql))
 
+
+def __strip_comments(sql):
+    it = iter(sql)
+
+    skipping_line = False
+    skipping_multiline = False
+    slash_escaping = False
+    expecting_close_token = ''
+
+    tail = ''
+    prev = ''
+    x = next(it, '')
+    peek = next(it, '')
+    while x:
+        tail += x
+
+        if skipping_line:
+            if x == '\n':
+                yield '\n'
+                skipping_line = False
+
+        elif skipping_multiline:
+            skipping_multiline = (prev + x != '*/')
+
+        elif slash_escaping and prev == '\\':
+            yield x
+
+        elif expecting_close_token:
+            yield x
+            if tail.endswith(expecting_close_token):
+                expecting_close_token = ''
+                slash_escaping = False
+
+        elif x in '\'"':
+            yield x
+            expecting_close_token = x
+            slash_escaping = (prev in tuple('eE'))
+
+        elif x == '$':
+            yield x
+            m = _re_dollar_tag_end.search(tail)
+            expecting_close_token = m and m.groups(0)
+
+        elif x + peek == '--':
+            skipping_line = True
+
+        elif x + peek == '/*':
+            peek = next(it)
+            skipping_multiline = True
+
+        else:
+            yield x
+
+
+        prev = x
+        x = peek
+        peek = next(it, '')
+
+_re_dollar_tag_end = re.compile(r'(\$\w*\$)$')
 
 _explain_pattern = r'(?ixs)^ EXPLAIN \(\s*([^\)]+)\)'
 _explain_pattern_old = r'(?ixs)^ EXPLAIN (?:\s+(ANALYZE))? (?:\s+(VERBOSE))?'
@@ -142,3 +193,6 @@ def is_explain(q):
 
 
 
+# if __name__ == '__main__':
+#     print(_strip_comments('select 1 /*/ str */ --comment\n;'))
+#     print(_strip_comments('select 1/* comment */, \'-- olo\''))
