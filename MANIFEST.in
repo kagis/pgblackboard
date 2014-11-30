@@ -1,2 +1,3 @@
 graft pgblackboard/static
 graft pgblackboard/sql
+include pgblackboard/index.html
