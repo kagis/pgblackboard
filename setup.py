@@ -14,7 +14,7 @@ setup(
     author_email='exe-dealer@yandex.ru',
     url='https://github.com/exe-dealer/pgblackboard',
     install_requires=['psycopg2>=2.4.5'],
-    packages=['pgblackboard'],
+    packages=['pgblackboard', 'pgblackboard.wsgiserver'],
     keywords=['PostgreSQL', 'Postgres'],
     include_package_data=True,
     test_suite='test',
