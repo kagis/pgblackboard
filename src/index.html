@@ -6,7 +6,32 @@
 <body>
 
     <form method="POST">
-        <textarea name="script"></textarea>
+        <textarea name="script">
+
+             begin;
+
+
+
+            create function raise_notice() returns text language plpgsql as $$
+             begin
+            raise warning 'hello';
+             return 'hello_ret';
+            end
+             $$;
+
+            select raise_notice()
+             union all
+             select raise_notice();
+
+             select pg_sleep(1);
+
+               select * from pg_database;
+
+            select row_to_json(pg_database) from pg_database;
+
+
+              rollback;
+        </textarea>
         <button>execute</button>
     </form>
 

@@ -279,11 +279,11 @@ impl Request {
         };
 
         let http_version = &req_line[(right_space_pos + 1)..];
-        if http_version != "HTTP/1.1" {
+        if http_version != "HTTP/1.1" && http_version != "HTTP/1.0" {
             return Err(IoError {
                 kind: OtherIoError,
                 desc: "Unsupported HTTP protocol version.",
-                detail: None
+                detail: Some(http_version.to_string())
             });
         }
 
