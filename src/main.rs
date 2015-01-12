@@ -136,7 +136,17 @@ fn handle_pg_authorized_req<T: Writer>(
     use postgres::ScriptResultItem::*;
 
     let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-    let mut dbconn = try!(server_conn.connect_database("_postgres", &user[], &password[]));
+    let dbconn_res = server_conn.connect_database(
+        "_postgres", &user[], &password[]
+    );
+
+    let mut dbconn = match dbconn_res {
+        Ok(conn) => conn,
+        Err(postgres::PgError::ErrorMessage(postgres::ErrorOrNotice { code: "28P01", .. })) => {
+
+        },
+        _ => try!(dbconn_res),
+    };
 
     let mut a = try!(res.start_ok());
     try!(a.write_content_type("text/html"));

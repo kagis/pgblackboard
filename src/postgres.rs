@@ -362,8 +362,10 @@ impl<T: Buffer> CStringReader for T { }
 
 
 
-
-enum PgError {
+#[derive(Show)]
+pub enum PgError {
+    AuthenticationError,
+    DatabaseNotExists,
     UnexpectedMessage(BackendMessage),
     ErrorMessage(ErrorOrNotice),
     TransportError(IoError),
@@ -397,6 +399,13 @@ impl ::std::error::Error for PgError {
     }
 }
 
+impl ::std::error::FromError<IoError> for PgError {
+    fn from_error(err: IoError) -> PgError {
+        PgError::TransportError(err)
+    }
+}
+
+pub type PgResult<T> = Result<T, PgError>;
 
 
 
@@ -414,7 +423,7 @@ impl ::std::error::Error for PgError {
 //     pub host: String,
 // }
 
-pub struct ServerConnection<TStream> {
+pub struct ServerConnection<TStream: Stream> {
     stream: BufferedStream<TStream>
 }
 
@@ -442,7 +451,7 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
         }
     }
 
-    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> IoResult<DatabaseConnection<TStream>> {
+    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> PgResult<DatabaseConnection<TStream>> {
         try!(self.stream.write_startup_message(user, database));
 
         match try!(self.stream.read_message()) {
@@ -450,11 +459,7 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
             AuthenticationCleartextPassword => {
                 try!(self.stream.write_password_message(password));
             },
-            m => return Err(IoError {
-                kind: OtherIoError,
-                desc: "Unexpected response",
-                detail: Some(format!("got {:?}", m)),
-            })
+            m => return Err(PgError::UnexpectedMessage(m)),
         }
 
         match try!(self.stream.read_message()) {
@@ -462,11 +467,7 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
             // ErrorResponse(err) => {
 
             // },
-            m => return Err(IoError {
-                kind: OtherIoError,
-                desc: "Unexpected response",
-                detail: Some(format!("got {:?}", m)),
-            })
+            m => return Err(PgError::UnexpectedMessage(m)),
         }
 
         loop {
@@ -474,11 +475,7 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
                 ReadyForQuery(ConnectionStatus::Idle) => break,
                 ParameterStatus { .. } => {},
                 BackendKeyData { .. } => {},
-                m => return Err(IoError {
-                    kind: OtherIoError,
-                    desc: "Unexpected response",
-                    detail: Some(format!("got {:?}", m)),
-                })
+                m => return Err(PgError::UnexpectedMessage(m)),
             }
         }
 
