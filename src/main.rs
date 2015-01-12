@@ -137,15 +137,15 @@ fn handle_pg_authorized_req<T: Writer>(
 
     let server_conn = try!(postgres::connect_tcp("localhost:5432"));
     let dbconn_res = server_conn.connect_database(
-        "_postgres", &user[], &password[]
+        "postgres", &user[], &password[]
     );
 
     let mut dbconn = match dbconn_res {
         Ok(conn) => conn,
-        Err(postgres::PgError::ErrorMessage(postgres::ErrorOrNotice { code: "28P01", .. })) => {
-
+        Err(postgres::ConnectError::AuthenticationFailed) => {
+            return handle_unauthorized_req(res);
         },
-        _ => try!(dbconn_res),
+        Err(e) => { println!("{:?}", e); panic!("err"); },
     };
 
     let mut a = try!(res.start_ok());

@@ -135,12 +135,16 @@ pub enum BackendMessage {
     RowDescription(Vec<ColumnDescription>),
 }
 
-trait MessageReader {
+trait MessageReader: Sized {
     fn read_message(&mut self) -> IoResult<BackendMessage>;
     fn read_auth_message(&mut self) -> IoResult<BackendMessage>;
     fn read_data_row(&mut self) -> IoResult<Vec<Option<String>>>;
     fn read_error_or_notice(&mut self) -> IoResult<ErrorOrNotice>;
     fn read_row_description(&mut self) -> IoResult<Vec<ColumnDescription>>;
+
+    fn messages(&mut self) -> MessageIterator<Self> {
+        MessageIterator { msg_reader: self }
+    }
 }
 
 impl<T: Buffer> MessageReader for T  {
@@ -362,10 +366,12 @@ impl<T: Buffer> CStringReader for T { }
 
 
 
+
+
 #[derive(Show)]
 pub enum PgError {
-    AuthenticationError,
-    DatabaseNotExists,
+    //AuthenticationError,
+    //DatabaseNotExists,
     UnexpectedMessage(BackendMessage),
     ErrorMessage(ErrorOrNotice),
     TransportError(IoError),
@@ -407,7 +413,21 @@ impl ::std::error::FromError<IoError> for PgError {
 
 pub type PgResult<T> = Result<T, PgError>;
 
+#[derive(Show)]
+pub enum ConnectError {
+    AuthenticationFailed,
+    DatabaseNotExists,
+    ErrorResponse(ErrorOrNotice),
+    //NoServer,
+    UnexpectedMessage(BackendMessage),
+    TransportError(IoError),
+}
 
+impl ::std::error::FromError<IoError> for ConnectError {
+    fn from_error(err: IoError) -> ConnectError {
+        ConnectError::TransportError(err)
+    }
+}
 
 // enum ConnectError {
 //     AuthenticationFailed,
@@ -441,6 +461,9 @@ pub fn connect_tcp<T: ToSocketAddr>(addr: T) -> IoResult<ServerConnection<TcpStr
     Ok(ServerConnection::new(stream))
 }
 
+
+type ConnectResult<TStream: Stream> = Result<DatabaseConnection<TStream>, ConnectError>;
+
 impl<TStream> ServerConnection<TStream> where TStream: Stream {
 
     pub fn new(stream: TStream) -> ServerConnection<TStream> {
@@ -451,35 +474,28 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
         }
     }
 
-    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> PgResult<DatabaseConnection<TStream>> {
+    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> ConnectResult<TStream> {
         try!(self.stream.write_startup_message(user, database));
-
-        match try!(self.stream.read_message()) {
-            //AuthenticationMD5Password { salt } => println!("{}", salt),
-            AuthenticationCleartextPassword => {
-                try!(self.stream.write_password_message(password));
-            },
-            m => return Err(PgError::UnexpectedMessage(m)),
-        }
-
-        match try!(self.stream.read_message()) {
-            AuthenticationOk => { /* pass */ },
-            // ErrorResponse(err) => {
-
-            // },
-            m => return Err(PgError::UnexpectedMessage(m)),
-        }
 
         loop {
             match try!(self.stream.read_message()) {
-                ReadyForQuery(ConnectionStatus::Idle) => break,
-                ParameterStatus { .. } => {},
+                AuthenticationCleartextPassword => {
+                    try!(self.stream.write_password_message(password));
+                },
+                AuthenticationOk => { /* pass */ },
+                ErrorResponse(e) => {
+                    return Err(match &e.code[] {
+                        "28000" | "28P01" => ConnectError::AuthenticationFailed,
+                        "3D000" => ConnectError::DatabaseNotExists,
+                        _ => ConnectError::ErrorResponse(e),
+                    });
+                },
                 BackendKeyData { .. } => {},
-                m => return Err(PgError::UnexpectedMessage(m)),
+                ParameterStatus { .. } => {},
+                ReadyForQuery(ConnectionStatus::Idle) => break,
+                unexpected => return Err(ConnectError::UnexpectedMessage(unexpected)),
             }
         }
-
-        //self.is_connected_to_database = true;
 
         Ok(DatabaseConnection { stream: self.stream })
     }
@@ -609,15 +625,16 @@ fn cstr_len(s: &str) -> usize {
 type Row = Vec<Option<String>>;
 
 
-// struct MessageIterator<'a, TStream> {
-//     conn: &'a mut Connection<TStream>
-// }
+struct MessageIterator<'a, T: MessageReader + 'a> {
+    msg_reader: &'a mut T
+}
 
-// impl<'a, TStream> Iterator<IoResult<BackendMessage>> for MessageIterator<'a, TStream> {
-//     fn next(&mut self) -> Option<IoResult<BackendMessage>> {
-//         Some(self.conn.stream.read_message())
-//     }
-// }
+impl<'a, T: MessageReader> Iterator<> for MessageIterator<'a, T> {
+    type Item = IoResult<BackendMessage>;
+    fn next(&mut self) -> Option<IoResult<BackendMessage>> {
+        Some(self.msg_reader.read_message())
+    }
+}
 
 
 
