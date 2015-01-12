@@ -17,6 +17,7 @@ use std::io::{
 
 mod postgres;
 mod http;
+//mod md5;
 
 fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
     use http::Method::{ Get, Post };
@@ -27,7 +28,7 @@ fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
 
 
     match (req.method, &req.path[]) {
-        (Get, "/") =>  handle_index(res).unwrap(),
+        (Get, "/") =>  handle_static_req("src/index.html", res).unwrap(),
         (Post, "/") => handle_pg_req(req, res).unwrap(),
 
             // match req.basic_auth {
@@ -57,19 +58,34 @@ fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
     // writer.write(b"").unwrap();
 }
 
-fn handle_index<T: Writer>(res: http::Response<T>) -> IoResult<()> {
+
+fn handle_static_req<T: Writer>(path: &str, res: http::Response<T>) -> IoResult<()> {
     use std::io::File;
     use std::path::Path;
 
-    let content = File::open(&Path::new("src/index.html"))
+    let path = Path::new(path);
+
+    let content = File::open(&path)
                         .read_to_end()
                         .unwrap();
 
+    let ext = path.extension().unwrap_or(b"");
+
     let mut a = try!(res.start_ok());
-    a.write_content_type("text/html");
-    a.write_content(&content[]);
+    try!(a.write_content_type(guess_content_type(ext)));
+    try!(a.write_content(&content[]));
 
     Ok(())
+}
+
+fn guess_content_type(extension: &[u8]) -> &str {
+    match extension {
+        b"html" => "text/html",
+        b"js" => "application/javascript",
+        b"css" => "text/css",
+        b"ico" => "image/vnd.microsoft.icon",
+        _ => "application/octet-stream",
+    }
 }
 
 
@@ -119,10 +135,8 @@ fn handle_pg_authorized_req<T: Writer>(
 {
     use postgres::ScriptResultItem::*;
 
-    let mut conn = try!(postgres::connect_tcp("localhost", 5432));
-
-
-    try!(conn.connect_database("postgres", &user[], &password[]));
+    let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+    let mut dbconn = try!(server_conn.connect_database("_postgres", &user[], &password[]));
 
     let mut a = try!(res.start_ok());
     try!(a.write_content_type("text/html"));
@@ -166,7 +180,7 @@ fn handle_pg_authorized_req<T: Writer>(
 
     {
         let mut view = TableView(writer.by_ref());
-        for r in try!(conn.execute_script(script)) {
+        for r in try!(dbconn.execute_script(script)) {
             try!(match r.unwrap() {
                 RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
                 RowsetEnd => view.render_rowset_end(),
@@ -181,7 +195,7 @@ fn handle_pg_authorized_req<T: Writer>(
     try!(writer.write(b"\r\n"));
     try!(writer.end());
 
-    conn.finish()
+    dbconn.finish()
 }
 
 
@@ -240,7 +254,7 @@ fn main() {
 
     http::serve_forever_tcp("0.0.0.0:7890", handle_req);
 
-    pg_talk().unwrap();
+    //pg_talk().unwrap();
 
     // for stmt_result in postgres::execute_script(dsn, script) {
     //     match stmt_result {
@@ -274,77 +288,77 @@ fn main() {
 }
 
 
-fn pg_talk() -> IoResult<()> {
+// fn pg_talk() -> IoResult<()> {
 
-    let mut conn = try!(postgres::connect_tcp("localhost", 5432));
+//     let mut conn = try!(postgres::connect_tcp("localhost:5432"));
 
-    try!(conn.connect_database("postgres", "xed", "passpass"));
-
-
-    let script = "
-        begin;
-
-        create function raise_notice() returns text language plpgsql as $$
-        begin
-            raise warning 'hello';
-            return 'hello_ret';
-        end
-        $$;
-
-        select raise_notice()
-        union all
-        select raise_notice();
-
-        rollback;
-    ";
+//     try!(conn.connect_database("postgres", "xed", "passpass"));
 
 
-    // let mut result_iter =
-    //     // " select 1.0/generate_series(-10, 10);
-    //     //  select * from pg_database limit 10;
-    //     //  --select * from not_existing;
-    //     //  select 1/0;
-    //     //  select array['1', '\"2\"'];
-    //     //  begin;"
+//     let script = "
+//         begin;
+
+//         create function raise_notice() returns text language plpgsql as $$
+//         begin
+//             raise warning 'hello';
+//             return 'hello_ret';
+//         end
+//         $$;
+
+//         select raise_notice()
+//         union all
+//         select raise_notice();
+
+//         rollback;
+//     ";
 
 
-
-    // ));
-
-
-    for res in try!(conn.execute_script(script)) {
-
-        println!("{:?}", res.unwrap());
-        // match maybe_message {
-        //     Some(postgres::BackendMessage::ReadyForQuery(..))
-        // }
-    }
-
-    try!(conn.finish());
-
-    // loop {
-    //     match try!(conn.next_result()) {
-    //         Some(postgres::StatementResult::Rowset(description)) => {
-    //             let mut count = 0i;
-    //             loop {
-    //                 match try!(conn.fetch_row()) {
-    //                     Some(row) => { count += 1; },
-    //                     None => break
-    //                 }
-    //             }
-    //             println!("count = {}", count);
-    //         },
-    //         Some(postgres::StatementResult::NonQuery(tag)) => {
-
-    //         },
-    //         None => break
-    //     }
-    // }
+//     // let mut result_iter =
+//     //     // " select 1.0/generate_series(-10, 10);
+//     //     //  select * from pg_database limit 10;
+//     //     //  --select * from not_existing;
+//     //     //  select 1/0;
+//     //     //  select array['1', '\"2\"'];
+//     //     //  begin;"
 
 
 
-    Ok(())
-}
+//     // ));
+
+
+//     for res in try!(conn.execute_script(script)) {
+
+//         println!("{:?}", res.unwrap());
+//         // match maybe_message {
+//         //     Some(postgres::BackendMessage::ReadyForQuery(..))
+//         // }
+//     }
+
+//     try!(conn.finish());
+
+//     // loop {
+//     //     match try!(conn.next_result()) {
+//     //         Some(postgres::StatementResult::Rowset(description)) => {
+//     //             let mut count = 0i;
+//     //             loop {
+//     //                 match try!(conn.fetch_row()) {
+//     //                     Some(row) => { count += 1; },
+//     //                     None => break
+//     //                 }
+//     //             }
+//     //             println!("count = {}", count);
+//     //         },
+//     //         Some(postgres::StatementResult::NonQuery(tag)) => {
+
+//     //         },
+//     //         None => break
+//     //     }
+//     // }
+
+
+
+//     Ok(())
+// }
 
 
 

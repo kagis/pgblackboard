@@ -6,9 +6,10 @@ use std::io::{
     IoError,
     OtherIoError,
     Stream,
+
 };
 
-use std::io::net::ip::Port;
+use std::io::net::ip::ToSocketAddr;
 use std::io::util::LimitReader;
 use std::mem;
 use std::char;
@@ -362,8 +363,39 @@ impl<T: Buffer> CStringReader for T { }
 
 
 
+enum PgError {
+    UnexpectedMessage(BackendMessage),
+    ErrorMessage(ErrorOrNotice),
+    TransportError(IoError),
+}
 
+impl ::std::error::Error for PgError {
+    fn description(&self) -> &str {
+        use self::PgError::*;
+        match *self {
+            UnexpectedMessage(..) => "Unexpected message recived from server.",
+            ErrorMessage(..) => "Error message recived from server.",
+            TransportError(..) => "Transport error.",
+        }
+    }
 
+    fn detail(&self) -> Option<String> {
+        use self::PgError::*;
+        match *self {
+            UnexpectedMessage(ref msg) => Some(format!("{:?}", msg)),
+            ErrorMessage(ref err) => Some(format!("{:?}", err)),
+            TransportError(ref err) => err.detail(),
+        }
+    }
+
+    fn cause(&self) -> Option<&::std::error::Error> {
+        use self::PgError::TransportError;
+        match *self {
+            TransportError(ref err) => Some(err as &::std::error::Error),
+            _ => None
+        }
+    }
+}
 
 
 
@@ -382,10 +414,12 @@ impl<T: Buffer> CStringReader for T { }
 //     pub host: String,
 // }
 
-pub struct Connection<TStream> {
-    stream: BufferedStream<TStream>,
-    is_connected_to_database: bool,
-    is_executing_script: bool,
+pub struct ServerConnection<TStream> {
+    stream: BufferedStream<TStream>
+}
+
+pub struct DatabaseConnection<TStream: Stream> {
+    stream: BufferedStream<TStream>
 }
 
 // pub enum StatementResult {
@@ -393,22 +427,22 @@ pub struct Connection<TStream> {
 //     Rowset(Vec<ColumnDescription>),
 // }
 
-pub fn connect_tcp(host: &str, port: Port) -> IoResult<Connection<TcpStream>> {
-    let stream = try!(TcpStream::connect((host, port)));
-    Ok(Connection::new(stream))
+pub fn connect_tcp<T: ToSocketAddr>(addr: T) -> IoResult<ServerConnection<TcpStream>> {
+    let stream = try!(TcpStream::connect(addr));
+    Ok(ServerConnection::new(stream))
 }
 
-impl<TStream> Connection<TStream> where TStream: Stream {
+impl<TStream> ServerConnection<TStream> where TStream: Stream {
 
-    pub fn new(stream: TStream) -> Connection<TStream> {
-        Connection {
+    pub fn new(stream: TStream) -> ServerConnection<TStream> {
+        ServerConnection {
             stream: BufferedStream::new(stream),
-            is_executing_script: false,
-            is_connected_to_database: false
+            //is_executing_script: false,
+            //is_connected_to_database: false
         }
     }
 
-    pub fn connect_database(&mut self, database: &str, user: &str, password: &str) -> IoResult<()> {
+    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> IoResult<DatabaseConnection<TStream>> {
         try!(self.stream.write_startup_message(user, database));
 
         match try!(self.stream.read_message()) {
@@ -425,6 +459,9 @@ impl<TStream> Connection<TStream> where TStream: Stream {
 
         match try!(self.stream.read_message()) {
             AuthenticationOk => { /* pass */ },
+            // ErrorResponse(err) => {
+
+            // },
             m => return Err(IoError {
                 kind: OtherIoError,
                 desc: "Unexpected response",
@@ -445,18 +482,21 @@ impl<TStream> Connection<TStream> where TStream: Stream {
             }
         }
 
-        self.is_connected_to_database = true;
+        //self.is_connected_to_database = true;
 
-        Ok(())
+        Ok(DatabaseConnection { stream: self.stream })
     }
+}
+
+impl<TStream: Stream> DatabaseConnection<TStream> {
 
     pub fn execute_script(&mut self, script: &str) -> IoResult<ScriptResultIterator<TStream>> {
-        if !self.is_connected_to_database {
-            panic!("Connect to database first");
-        }
+        // if !self.is_connected_to_database {
+        //     panic!("Connect to database first");
+        // }
 
         try!(self.stream.write_query_message(script));
-        self.is_executing_script = true;
+       // self.is_executing_script = true;
         // loop {
         //     try!(self.stream.read_message());
         // }
@@ -595,13 +635,13 @@ pub enum ScriptResultItem {
 }
 
 struct ScriptResultIterator<'a, TStream: 'a> {
-    conn: &'a mut Connection<TStream>,
+    conn: &'a mut DatabaseConnection<TStream>,
     is_exhausted: bool,
     is_in_rowset: bool,
 }
 
 impl<'a, TStream> ScriptResultIterator<'a, TStream> {
-    fn new(conn: &'a mut Connection<TStream>) -> ScriptResultIterator<'a, TStream> {
+    fn new(conn: &'a mut DatabaseConnection<TStream>) -> ScriptResultIterator<'a, TStream> {
         ScriptResultIterator {
             conn: conn,
             is_exhausted: false,
