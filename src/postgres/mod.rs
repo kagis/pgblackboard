@@ -14,7 +14,7 @@ use std::io::util::LimitReader;
 use std::mem;
 use std::char;
 use std::i32;
-use sqlstate::{ SqlState, SqlStateClass };
+use self::sqlstate::{ SqlState, SqlStateClass };
 
 use self::BackendMessage::*;
 
@@ -298,9 +298,14 @@ impl<T: Buffer> MessageReader for T  {
             } = field_val;
         }
 
+        let code = code.unwrap();
+        let (sqlstate_class, sqlstate) = code.parse().unwrap();
+
         Ok(ErrorOrNotice {
             severity: severity.unwrap(),
-            code: code.unwrap(),
+            sqlstate: sqlstate,
+            sqlstate_class: sqlstate_class,
+            code: code,
             message: message.unwrap(),
             detail: detail,
             hint: hint,
@@ -374,50 +379,50 @@ impl<T: Buffer> CStringReader for T { }
 
 
 
-#[derive(Show)]
-pub enum PgError {
-    //AuthenticationError,
-    //DatabaseNotExists,
-    UnexpectedMessage(BackendMessage),
-    ErrorMessage(ErrorOrNotice),
-    TransportError(IoError),
-}
+// #[derive(Show)]
+// pub enum PgError {
+//     //AuthenticationError,
+//     //DatabaseNotExists,
+//     UnexpectedMessage(BackendMessage),
+//     ErrorMessage(ErrorOrNotice),
+//     TransportError(IoError),
+// }
 
-impl ::std::error::Error for PgError {
-    fn description(&self) -> &str {
-        use self::PgError::*;
-        match *self {
-            UnexpectedMessage(..) => "Unexpected message recived from server.",
-            ErrorMessage(..) => "Error message recived from server.",
-            TransportError(..) => "Transport error.",
-        }
-    }
+// impl ::std::error::Error for PgError {
+//     fn description(&self) -> &str {
+//         use self::PgError::*;
+//         match *self {
+//             UnexpectedMessage(..) => "Unexpected message recived from server.",
+//             ErrorMessage(..) => "Error message recived from server.",
+//             TransportError(..) => "Transport error.",
+//         }
+//     }
 
-    fn detail(&self) -> Option<String> {
-        use self::PgError::*;
-        match *self {
-            UnexpectedMessage(ref msg) => Some(format!("{:?}", msg)),
-            ErrorMessage(ref err) => Some(format!("{:?}", err)),
-            TransportError(ref err) => err.detail(),
-        }
-    }
+//     fn detail(&self) -> Option<String> {
+//         use self::PgError::*;
+//         match *self {
+//             UnexpectedMessage(ref msg) => Some(format!("{:?}", msg)),
+//             ErrorMessage(ref err) => Some(format!("{:?}", err)),
+//             TransportError(ref err) => err.detail(),
+//         }
+//     }
 
-    fn cause(&self) -> Option<&::std::error::Error> {
-        use self::PgError::TransportError;
-        match *self {
-            TransportError(ref err) => Some(err as &::std::error::Error),
-            _ => None
-        }
-    }
-}
+//     fn cause(&self) -> Option<&::std::error::Error> {
+//         use self::PgError::TransportError;
+//         match *self {
+//             TransportError(ref err) => Some(err as &::std::error::Error),
+//             _ => None
+//         }
+//     }
+// }
 
-impl ::std::error::FromError<IoError> for PgError {
-    fn from_error(err: IoError) -> PgError {
-        PgError::TransportError(err)
-    }
-}
+// impl ::std::error::FromError<IoError> for PgError {
+//     fn from_error(err: IoError) -> PgError {
+//         PgError::TransportError(err)
+//     }
+// }
 
-pub type PgResult<T> = Result<T, PgError>;
+// pub type PgResult<T> = Result<T, PgError>;
 
 #[derive(Show)]
 pub enum ConnectError {
@@ -490,9 +495,9 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
                 },
                 AuthenticationOk => { /* pass */ },
                 ErrorResponse(e) => {
-                    return Err(match &e.code[] {
-                        "28000" | "28P01" => ConnectError::AuthenticationFailed,
-                        "3D000" => ConnectError::DatabaseNotExists,
+                    return Err(match e.sqlstate_class {
+                        SqlStateClass::InvalidAuthorizationSpecification => ConnectError::AuthenticationFailed,
+                        SqlStateClass::InvalidCatalogName => ConnectError::DatabaseNotExists,
                         _ => ConnectError::ErrorResponse(e),
                     });
                 },

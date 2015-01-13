@@ -21,15 +21,11 @@ mod http;
 
 fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
     use http::Method::{ Get, Post };
-    use http::Status;
-    use http::AuthenticationScheme;
 
-
-
-
-    match (req.method, &req.path[]) {
-        (Get, "/") =>  handle_static_req("src/index.html", res).unwrap(),
-        (Post, "/") => handle_pg_req(req, res).unwrap(),
+    (match (req.method, &req.path[]) {
+        (Get, "/") =>  handle_static_req("src/index.html", res),
+        (Post, "/") => handle_pg_req(req, res),
+        _ => handle_not_found(res),
 
             // match req.basic_auth {
             //     Some((user, password)) => ,
@@ -48,8 +44,7 @@ fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
         //     writer.write(b"hello").unwrap();
         //     writer.write(b"").unwrap();
         // }
-        _ => { }
-    }
+    }).unwrap();
 
 
 
@@ -58,6 +53,14 @@ fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
     // writer.write(b"").unwrap();
 }
 
+fn handle_not_found<T: Writer>(res: http::Response<T>) -> IoResult<()> {
+    use http::Status::NotFound;
+    let mut a = try!(res.start(NotFound));
+    try!(a.write_content_type("text/plain"));
+    try!(a.write_content(b"Not Found"));
+
+    Ok(())
+}
 
 fn handle_static_req<T: Writer>(path: &str, res: http::Response<T>) -> IoResult<()> {
     use std::io::File;

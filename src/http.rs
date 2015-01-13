@@ -171,52 +171,52 @@ fn malformed_request_line_err() -> IoError {
 
 
 
-mod headers {
-    use std::io::IoResult;
-    use super::AuthenticationScheme;
+// mod headers {
+//     use std::io::IoResult;
+//     use super::AuthenticationScheme;
 
-    struct ResponseHeaders {
-        buf: Vec<u8>
-    }
+//     struct ResponseHeaders {
+//         buf: Vec<u8>
+//     }
 
-    impl ResponseHeaders {
-        fn new() -> ResponseHeaders {
-            ResponseHeaders { buf: vec![] }
-        }
+//     impl ResponseHeaders {
+//         fn new() -> ResponseHeaders {
+//             ResponseHeaders { buf: vec![] }
+//         }
 
-        fn add<T: ResponseHeader>(&mut self, header: T) {
-            self.buf.write_str(header.get_name()).unwrap();
-            self.buf.write_str(": ").unwrap();
-            header.get_value(&mut self.buf).unwrap();
-            self.buf.write(b"\r\n").unwrap();
-        }
-    }
+//         fn add<T: ResponseHeader>(&mut self, header: T) {
+//             self.buf.write_str(header.get_name()).unwrap();
+//             self.buf.write_str(": ").unwrap();
+//             header.get_value(&mut self.buf).unwrap();
+//             self.buf.write(b"\r\n").unwrap();
+//         }
+//     }
 
 
-    trait ResponseHeader {
-        fn get_name(&self) -> &'static str;
-        fn get_value<TWriter: Writer>(&self, &mut TWriter) -> IoResult<()>;
-    }
+//     trait ResponseHeader {
+//         fn get_name(&self) -> &'static str;
+//         fn get_value<TWriter: Writer>(&self, &mut TWriter) -> IoResult<()>;
+//     }
 
-    pub struct WWWAuthenticate(AuthenticationScheme);
+//     pub struct WWWAuthenticate(AuthenticationScheme);
 
-    impl ResponseHeader for WWWAuthenticate {
-        fn get_name(&self) -> &'static str { "WWW-Authenticate" }
+//     impl ResponseHeader for WWWAuthenticate {
+//         fn get_name(&self) -> &'static str { "WWW-Authenticate" }
 
-        fn get_value<TWriter: Writer>(&self, w: &mut TWriter) -> IoResult<()> {
-            write!(w, "Basic")
-        }
-    }
+//         fn get_value<TWriter: Writer>(&self, w: &mut TWriter) -> IoResult<()> {
+//             write!(w, "Basic")
+//         }
+//     }
 
-    #[test]
-    fn test_response_headers() {
-        let mut headers = ResponseHeaders::new();
-        headers.add(WWWAuthenticate(AuthenticationScheme::Basic));
+//     #[test]
+//     fn test_response_headers() {
+//         let mut headers = ResponseHeaders::new();
+//         headers.add(WWWAuthenticate(AuthenticationScheme::Basic));
 
-        let content = String::from_utf8(headers.buf).unwrap();
-        assert_eq!(content, "WWW-Authenticate: Basic\r\n");
-    }
-}
+//         let content = String::from_utf8(headers.buf).unwrap();
+//         assert_eq!(content, "WWW-Authenticate: Basic\r\n");
+//     }
+// }
 
 
 
@@ -313,7 +313,7 @@ impl Request {
                     }));
                 },
                 "content-type" => {
-                    is_urlenc_content = (header_value == "application/x-www-form-urlencoded");
+                    is_urlenc_content = header_value == "application/x-www-form-urlencoded";
                     //content_type = Some(header_value.to_string());
                 },
                 "authorization" => {

@@ -1,5 +1,6 @@
 /// http://www.postgresql.org/docs/9.4/static/errcodes-appendix.html
 
+#[derive(Show)]
 pub enum SqlStateClass {
 
 	// Class 00
@@ -132,6 +133,8 @@ pub enum SqlStateClass {
 
 }
 
+#[derive(Show)]
+#[allow(non_camel_case_types)]
 pub enum SqlState {
 	// Class 00 — Successful Completion
 
@@ -159,7 +162,7 @@ pub enum SqlState {
 	PrivilegeNotRevoked,
 
 	// 01004
-	StringDataRightTruncation,
+	Warning_StringDataRightTruncation,
 
 	// 01P01
 	DeprecatedFeature,
@@ -341,7 +344,7 @@ pub enum SqlState {
 	MostSpecificTypeMismatch,
 
 	// 22004
-	NullValueNotAllowed,
+	DataException_NullValueNotAllowed,
 
 	// 22002
 	NullValueNoIndicatorParameter,
@@ -353,7 +356,7 @@ pub enum SqlState {
 	StringDataLengthMismatch,
 
 	// 22001
-	StringDataRightTruncation,
+	DataException_StringDataRightTruncation,
 
 	// 22011
 	SubstringError,
@@ -500,13 +503,13 @@ pub enum SqlState {
 	FunctionExecutedNoReturnStatement,
 
 	// 2F002
-	ModifyingSqlDataNotPermitted,
+	InvalidTransactionTermination_ModifyingSqlDataNotPermitted,
 
 	// 2F003
-	ProhibitedSqlStatementAttempted,
+	SqlRoutineException_ProhibitedSqlStatementAttempted,
 
 	// 2F004
-	ReadingSqlDataNotPermitted,
+	SqlRoutineException_ReadingSqlDataNotPermitted,
 
 	// Class 34 — Invalid Cursor Name
 
@@ -522,13 +525,13 @@ pub enum SqlState {
 	ContainingSqlNotPermitted,
 
 	// 38002
-	ModifyingSqlDataNotPermitted,
+	ExternalRoutineException_ModifyingSqlDataNotPermitted,
 
 	// 38003
-	ProhibitedSqlStatementAttempted,
+	ExternalRoutineException_ProhibitedSqlStatementAttempted,
 
 	// 38004
-	ReadingSqlDataNotPermitted,
+	ExternalRoutineException_ReadingSqlDataNotPermitted,
 
 	// Class 39 — External Routine Invocation Exception
 
@@ -539,7 +542,7 @@ pub enum SqlState {
 	InvalidSqlstateReturned,
 
 	// 39004
-	NullValueNotAllowed,
+	ExternalRoutineInvocationException_NullValueNotAllowed,
 
 	// 39P01
 	TriggerProtocolViolated,
@@ -912,12 +915,14 @@ pub enum SqlState {
 
 	// XX002
 	IndexCorrupted,
+
+	Unknown(String),
 }
 
 impl ::std::str::FromStr for SqlState {
 	fn from_str(s: &str) -> Option<SqlState> {
 		use self::SqlState::*;
-		match s {
+		Some(match s {
 			"00000" => SuccessfulCompletion,
 			"01000" => Warning,
 			"0100C" => DynamicResultSetsReturned,
@@ -925,7 +930,7 @@ impl ::std::str::FromStr for SqlState {
 			"01003" => NullValueEliminatedInSetFunction,
 			"01007" => PrivilegeNotGranted,
 			"01006" => PrivilegeNotRevoked,
-			"01004" => StringDataRightTruncation,
+			"01004" => Warning_StringDataRightTruncation,
 			"01P01" => DeprecatedFeature,
 			"02000" => NoData,
 			"02001" => NoAdditionalDynamicResultSetsReturned,
@@ -977,11 +982,11 @@ impl ::std::str::FromStr for SqlState {
 			"22009" => InvalidTimeZoneDisplacementValue,
 			"2200C" => InvalidUseOfEscapeCharacter,
 			"2200G" => MostSpecificTypeMismatch,
-			"22004" => NullValueNotAllowed,
+			"22004" => DataException_NullValueNotAllowed,
 			"22002" => NullValueNoIndicatorParameter,
 			"22003" => NumericValueOutOfRange,
 			"22026" => StringDataLengthMismatch,
-			"22001" => StringDataRightTruncation,
+			"22001" => DataException_StringDataRightTruncation,
 			"22011" => SubstringError,
 			"22027" => TrimError,
 			"22024" => UnterminatedCString,
@@ -1024,18 +1029,18 @@ impl ::std::str::FromStr for SqlState {
 			"2D000" => InvalidTransactionTermination,
 			"2F000" => SqlRoutineException,
 			"2F005" => FunctionExecutedNoReturnStatement,
-			"2F002" => ModifyingSqlDataNotPermitted,
-			"2F003" => ProhibitedSqlStatementAttempted,
-			"2F004" => ReadingSqlDataNotPermitted,
+			"2F002" => InvalidTransactionTermination_ModifyingSqlDataNotPermitted,
+			"2F003" => SqlRoutineException_ProhibitedSqlStatementAttempted,
+			"2F004" => SqlRoutineException_ReadingSqlDataNotPermitted,
 			"34000" => InvalidCursorName,
 			"38000" => ExternalRoutineException,
 			"38001" => ContainingSqlNotPermitted,
-			"38002" => ModifyingSqlDataNotPermitted,
-			"38003" => ProhibitedSqlStatementAttempted,
-			"38004" => ReadingSqlDataNotPermitted,
+			"38002" => ExternalRoutineException_ModifyingSqlDataNotPermitted,
+			"38003" => ExternalRoutineException_ProhibitedSqlStatementAttempted,
+			"38004" => ExternalRoutineException_ReadingSqlDataNotPermitted,
 			"39000" => ExternalRoutineInvocationException,
 			"39001" => InvalidSqlstateReturned,
-			"39004" => NullValueNotAllowed,
+			"39004" => ExternalRoutineInvocationException_NullValueNotAllowed,
 			"39P01" => TriggerProtocolViolated,
 			"39P02" => SrfProtocolViolated,
 			"3B000" => SavepointException,
@@ -1151,13 +1156,14 @@ impl ::std::str::FromStr for SqlState {
 			"XX001" => DataCorrupted,
 			"XX002" => IndexCorrupted,
 			unknown => Unknown(unknown.to_string()),
-		}
+		})
 	}
 }
 
 impl ::std::str::FromStr for SqlStateClass {
 	fn from_str(s: &str) -> Option<SqlStateClass> {
-		match s {
+		use self::SqlStateClass::*;
+		Some(match s {
 			"00" =>	SuccessfulCompletion,
 			"01" =>	Warning,
 			"02" =>	NoData,
@@ -1201,6 +1207,146 @@ impl ::std::str::FromStr for SqlStateClass {
 			"P0" =>	PlPgSqlError,
 			"XX" =>	InternalError,
 			unknown => Unknown(unknown.to_string()),
-		}
+		})
 	}
 }
+
+impl ::std::str::FromStr for (SqlStateClass, SqlState) {
+	fn from_str(s: &str) -> Option<(SqlStateClass, SqlState)> {
+		Some((s[0..2].parse().unwrap(), s.parse().unwrap()))
+	}
+}
+
+
+
+// fn parse_sqlstate(code: [u8; 5]) -> (SqlStateClass, SqlState) {
+// 	match &code[0..2] {
+// 			"00" =>	(SuccessfulCompletion, match code {
+
+// 			}),
+// 			"01" =>	(Warning, match code {
+
+// 			}),
+// 			"02" =>	(NoData, match code {
+
+// 			}),
+// 			"03" =>	(SqlStatementNotYetComplete, match code {
+
+// 			}),
+// 			"08" =>	(ConnectionException, match code {
+
+// 			}),
+// 			"09" =>	(TriggeredActionException, match code {
+
+// 			}),
+// 			"0A" =>	(FeatureNotSupported, match code {
+
+// 			}),
+// 			"0B" =>	(InvalidTransactionInitiation, match code {
+
+// 			}),
+// 			"0F" =>	(LocatorException, match code {
+
+// 			}),
+// 			"0L" =>	(InvalidGrantor, match code {
+
+// 			}),
+// 			"0P" =>	(InvalidRoleSpecification, match code {
+
+// 			}),
+// 			"0Z" =>	(DiagnosticsException, match code {
+
+// 			}),
+// 			"20" =>	(CaseNotFound, match code {
+
+// 			}),
+// 			"21" =>	(CardinalityViolation, match code {
+
+// 			}),
+// 			"22" =>	(DataException, match code {
+
+// 			}),
+// 			"23" =>	(IntegrityConstraintViolation, match code {
+
+// 			}),
+// 			"24" =>	(InvalidCursorState, match code {
+
+// 			}),
+// 			"25" =>	(InvalidTransactionState, match code {
+
+// 			}),
+// 			"26" =>	(InvalidSqlStatementName, match code {
+
+// 			}),
+// 			"27" =>	(TriggeredDataChangeViolation, match code {
+
+// 			}),
+// 			"28" =>	(InvalidAuthorizationSpecification, match code {
+
+// 			}),
+// 			"2B" =>	(DependentPrivilegeDescriptorsStillExist, match code {
+
+// 			}),
+// 			"2D" =>	(InvalidTransactionTermination, match code {
+
+// 			}),
+// 			"2F" =>	(SqlRoutineException, match code {
+
+// 			}),
+// 			"34" =>	(InvalidCursorName, match code {
+
+// 			}),
+// 			"38" =>	(ExternalRoutineException, match code {
+
+// 			}),
+// 			"39" =>	(ExternalRoutineInvocationException, match code {
+
+// 			}),
+// 			"3B" =>	(SavepointException, match code {
+
+// 			}),
+// 			"3D" =>	(InvalidCatalogName, match code {
+
+// 			}),
+// 			"3F" =>	(InvalidSchemaName, match code {
+
+// 			}),
+// 			"40" =>	(TransactionRollback, match code {
+
+// 			}),
+// 			"42" =>	(SyntaxErrorOrAccessRuleViolation, match code {
+
+// 			}),
+// 			"44" =>	(WithCheckOptionViolation, match code {
+
+// 			}),
+// 			"53" =>	(InsufficientResources, match code {
+
+// 			}),
+// 			"54" =>	(ProgramLimitExceeded, match code {
+
+// 			}),
+// 			"55" =>	(ObjectNotInPrerequisiteState, match code {
+
+// 			}),
+// 			"57" =>	(OperatorIntervention, match code {
+
+// 			}),
+// 			"58" =>	(SystemError, match code {
+
+// 			}),
+// 			"F0" =>	(ConfigurationFileError, match code {
+
+// 			}),
+// 			"HV" =>	(ForeignDataWrapperError, match code {
+
+// 			}),
+// 			"P0" =>	(PlPgSqlError, match code {
+
+// 			}),
+// 			"XX" =>	(InternalError, match code {
+
+// 			}),
+// 			unknown => Unknown(unknown.to_string()),
+// 		}
+// }
