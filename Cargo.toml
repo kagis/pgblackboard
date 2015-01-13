@@ -4,6 +4,6 @@ name = "pgblackboard"
 version = "0.0.1"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
+[dependencies]
+rust-crypto = "*"
 
-#[dependencies.url]
-#git = "https://github.com/servo/rust-url"

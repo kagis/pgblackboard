@@ -1,3 +1,8 @@
+extern crate crypto;
+
+use self::crypto::md5::Md5;
+use self::crypto::digest::Digest;
+
 use std::io::{
     TcpStream,
     BufferedStream,
@@ -490,6 +495,17 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
 
         loop {
             match try!(self.stream.read_message()) {
+                AuthenticationMD5Password { salt } => {
+                    let mut hasher = Md5::new();
+                    hasher.input_str(&password[]);
+                    hasher.input_str(&user[]);
+                    let output = hasher.result_str();
+                    hasher.reset();
+                    hasher.input_str(&output[]);
+                    hasher.input(&salt);
+                    let output = format!("md5{}", hasher.result_str());
+                    try!(self.stream.write_password_message(&output[]));
+                },
                 AuthenticationCleartextPassword => {
                     try!(self.stream.write_password_message(password));
                 },
