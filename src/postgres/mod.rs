@@ -14,9 +14,11 @@ use std::io::util::LimitReader;
 use std::mem;
 use std::char;
 use std::i32;
-
+use sqlstate::{ SqlState, SqlStateClass };
 
 use self::BackendMessage::*;
+
+mod sqlstate;
 
 pub type Oid = u32;
 
@@ -59,6 +61,10 @@ pub struct ErrorOrNotice {
 
     // C
     code: String, //the SQLSTATE code for the error (see Appendix A). Not localizable. Always present.
+
+    sqlstate: SqlState,
+
+    sqlstate_class: SqlStateClass,
 
     // M
     message: String, // the primary human-readable error message. This should be accurate but terse (typically one line). Always present.
