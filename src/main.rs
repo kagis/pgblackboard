@@ -46,6 +46,7 @@ impl<'a, T: Writer> Controller<'a, T> {
 
         match (req.method, &req.path[]) {
             (Get, "/") => ctrl.handle_index_req(),
+            (Get, "/favicon.ico") => ctrl.handle_static_req("src/static/favicon.ico"),
             (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_script_req(conn)),
             _ => ctrl.handle_not_found(),
         }
