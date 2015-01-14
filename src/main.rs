@@ -39,16 +39,16 @@ struct Controller<'a, T: Writer> {
 
 impl<'a, T: Writer> Controller<'a, T> {
 
-    fn handle_req(req: http::Request, res: http::ResponseStarter<T>) {
+    fn handle_req(req: http::Request, res: http::ResponseStarter<T>) -> IoResult<()> {
         use http::Method::{ Get, Post };
 
         let ctrl = Controller { req: &req, res: res };
 
-        (match (req.method, &req.path[]) {
-            (Get, "/") =>  ctrl.handle_index_req(),
+        match (req.method, &req.path[]) {
+            (Get, "/") => ctrl.handle_index_req(),
             (Post, "/") => ctrl.handle_pg_req(),
             _ => ctrl.handle_not_found(),
-        }).unwrap();
+        }
     }
 
 

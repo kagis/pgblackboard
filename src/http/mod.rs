@@ -416,55 +416,6 @@ fn parse_header(line: &str) -> IoResult<(&str, &str)> {
 
 
 
-// fn handle_client<T>(stream: T) -> IoResult<()> where T: Stream {
-//     let mut stream = BufferedStream::with_capacities(1024, 1024, stream);
-//     let req = try!(stream.read_request());
-
-//     //let mut stream = BufferedStream::new(stream);
-
-//     //let line = try!(stream.read_until(b'\n'));
-//     //let method = line.slice_to(line.find())
-
-
-
-//     try!(stream.write_str("HTTP/1.1 200 OK\r\n"));
-//     try!(stream.write_str("Transfer-Encoding: chunked\r\n"));
-//     try!(stream.write_str("Connection: close\r\n"));
-//     try!(stream.write_str("\r\n"));
-
-//     // let mut body = ChunkedWriter(stream);
-
-//     // try!(body.write(b"hello world"));
-//     // try!(body.write(b""));
-
-//     // try!(stream.write_str(format!("{:x}\r\n", 11i).as_slice()));
-//     // try!(stream.write_str("hello world"));
-//     // try!(stream.write_str("\r\n"));
-//     // try!(stream.write_str("0\r\n\r\n"));
-//     // try!(stream.flush());
-
-//     Ok(())
-// }
-
-
-// trait HttpReader: Reader {
-
-
-//     fn read_until(&mut self, terminator: u8) -> IoResult<Vec<u8>> {
-//         let mut buf = vec![];
-
-//         loop {
-//             let b = try!(self.read_u8());
-//             buf.push(b);
-//             if b == terminator {
-//                 return Ok(buf);
-//             }
-//         }
-//     }
-// }
-
-//impl<T> HttpReader for T where T: Reader { }
-
 
 pub fn serve_forever_tcp<TAddr, THandler>(addr: TAddr, handler: THandler)
     where TAddr: ToSocketAddr,
@@ -490,7 +441,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
     let pool = TaskPool::new(10);
 
     let handler = Arc::new(handler);
-    // accept connections and process them, spawning a new tasks for each one
+
     for stream_result in acceptor.incoming() {
         let handler = handler.clone();
         match stream_result {
@@ -501,7 +452,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
                     Request::read_from(&mut reader).unwrap()
                 };
                 let res = ResponseStarter(stream);
-                handler.handle(req, res);
+                handler.handle(req, res).unwrap(); // todo log error
             })
         }
     }
@@ -516,16 +467,16 @@ pub trait Handler<TWriter: Writer>: Sync + Send {
     /// Receives a `Request`/`Response` pair, and should perform some action on them.
     ///
     /// This could reading from the request, and writing to the response.
-    fn handle(&self, Request, ResponseStarter<TWriter>);
+    fn handle(&self, Request, ResponseStarter<TWriter>) -> IoResult<()>;
 }
 
 impl<TFunc, TWriter> Handler<TWriter> for TFunc
-    where TFunc: Fn(Request, ResponseStarter<TWriter>),
+    where TFunc: Fn(Request, ResponseStarter<TWriter>) -> IoResult<()>,
           TFunc: Sync + Send,
           TWriter: Writer
 {
 
-    fn handle(&self, req: Request, res: ResponseStarter<TWriter>) {
+    fn handle(&self, req: Request, res: ResponseStarter<TWriter>) -> IoResult<()> {
         (*self)(req, res)
     }
 }
