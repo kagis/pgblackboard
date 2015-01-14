@@ -15,72 +15,10 @@ use std::io::{
     ByRefWriter,
 };
 
-
 mod postgres;
 mod http;
-//mod md5;
-
-fn handle_req<T: Writer>(req: http::Request, res: http::ResponseStarter<T>) {
-    use http::Method::{ Get, Post };
-
-    (match (req.method, &req.path[]) {
-        (Get, "/") =>  handle_static_req("src/index.html", res),
-        (Post, "/") => handle_pg_req(req, res),
-        _ => handle_not_found(res),
-
-            // match req.basic_auth {
-            //     Some((user, password)) => ,
-            //     None =>  handle_unauthorized_req(res).unwrap(),
-            // }
-
-            // let mut writer = res.start_chunked(http::Status::Unauthorized, &[
-            //     ("WWW-Authenticate", "Basic"),
-            //     ("Content-type", "text/html"),
-            // ]).unwrap();
-            // handle_pg_req(&mut writer).unwrap();
-            // writer.end().unwrap();
-        //},
-        // (Post, "/") => {
-        //     let mut writer = res.start_chunked(http::Status::Ok).unwrap();
-        //     writer.write(b"hello").unwrap();
-        //     writer.write(b"").unwrap();
-        // }
-    }).unwrap();
 
 
-
-    // let mut writer = res.start_chunked(http::Status::Ok).unwrap();
-    // writer.write(b"hello").unwrap();
-    // writer.write(b"").unwrap();
-}
-
-fn handle_not_found<T: Writer>(res: http::ResponseStarter<T>) -> IoResult<()> {
-    use http::Status::NotFound;
-    let mut a = try!(res.start(NotFound));
-    try!(a.write_content_type("text/plain"));
-    try!(a.write_content(b"Not Found"));
-
-    Ok(())
-}
-
-fn handle_static_req<T: Writer>(path: &str, res: http::ResponseStarter<T>) -> IoResult<()> {
-    use std::io::File;
-    use std::path::Path;
-
-    let path = Path::new(path);
-
-    let content = File::open(&path)
-                        .read_to_end()
-                        .unwrap();
-
-    let ext = path.extension().unwrap_or(b"");
-
-    let mut a = try!(res.start_ok());
-    try!(a.write_content_type(guess_content_type(ext)));
-    try!(a.write_content(&content[]));
-
-    Ok(())
-}
 
 fn guess_content_type(extension: &[u8]) -> &str {
     match extension {
@@ -93,122 +31,128 @@ fn guess_content_type(extension: &[u8]) -> &str {
 }
 
 
-fn handle_unauthorized_req<T: Writer>(res: http::ResponseStarter<T>) -> IoResult<()> {
-    use http::Status::Unauthorized;
 
-    let mut a = try!(res.start(Unauthorized));
-    try!(a.write_www_authenticate_basic("postgres"));
-    try!(a.write_content_type("text/html"));
-    try!(a.write_content(b"ololo"));
-    Ok(())
+struct Controller<'a, T: Writer> {
+    req: &'a http::Request,
+    res: http::ResponseStarter<T>,
 }
 
+impl<'a, T: Writer> Controller<'a, T> {
 
-fn handle_pg_req<T: Writer>(req: http::Request, res: http::ResponseStarter<T>) -> IoResult<()> {
-    if let Some((user, password)) = req.basic_auth {
-        match req.content {
-            Some(http::RequestContent::UrlEncoded(params)) => {
-                let script = params.iter()
+    fn handle_req(req: http::Request, res: http::ResponseStarter<T>) {
+        use http::Method::{ Get, Post };
+
+        let ctrl = Controller { req: &req, res: res };
+
+        (match (req.method, &req.path[]) {
+            (Get, "/") =>  ctrl.handle_index_req(),
+            (Post, "/") => ctrl.handle_pg_req(),
+            _ => ctrl.handle_not_found(),
+        }).unwrap();
+    }
+
+
+    fn handle_not_found(self) -> IoResult<()> {
+        use http::Status::NotFound;
+        let mut a = try!(self.res.start(NotFound));
+        try!(a.write_content_type("text/plain"));
+        try!(a.write_content(b"Not Found"));
+
+        Ok(())
+    }
+
+    fn handle_index_req(self) -> IoResult<()> {
+        self.handle_static_req("src/index.html")
+    }
+
+    fn handle_static_req(self, path: &str) -> IoResult<()> {
+        use std::io::File;
+        use std::path::Path;
+
+        let path = Path::new(path);
+
+        let content = File::open(&path)
+                            .read_to_end()
+                            .unwrap();
+
+        let ext = path.extension().unwrap_or(b"");
+
+        let mut a = try!(self.res.start_ok());
+        try!(a.write_content_type(guess_content_type(ext)));
+        try!(a.write_content(&content[]));
+
+        Ok(())
+    }
+
+    fn handle_unauthorized_req(self) -> IoResult<()> {
+        use http::Status::Unauthorized;
+
+        let mut a = try!(self.res.start(Unauthorized));
+        try!(a.write_www_authenticate_basic("postgres"));
+        try!(a.write_content_type("text/html"));
+        try!(a.write_content(b"ololo"));
+        Ok(())
+    }
+
+
+    fn handle_pg_req(self) -> IoResult<()> {
+
+        let &(ref user, ref password) = match self.req.basic_auth {
+            Some(ref x) => x,
+            None => return self.handle_unauthorized_req(),
+        };
+
+        let script = match self.req.content {
+            Some(http::RequestContent::UrlEncoded(ref params)) => {
+                params.iter()
                     .find(|x| x.0 == "script")
                     .unwrap()
                     .1
-                    .as_slice();
-
-                handle_pg_authorized_req(
-                    &user[],
-                    &password[],
-                    &script[],
-                    res
-                )
+                    .as_slice()
             },
             _ => panic!("bad request"),
+        };
+
+
+
+
+        let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+        let dbconn_res = server_conn.connect_database(
+            "postgres", &user[], &password[]
+        );
+
+        let mut dbconn = match dbconn_res {
+            Ok(conn) => conn,
+            Err(postgres::ConnectError::AuthenticationFailed) => {
+                return self.handle_unauthorized_req();
+            },
+            Err(e) => { println!("{:?}", e); panic!("err"); },
+        };
+
+        let mut a = try!(self.res.start_ok());
+        try!(a.write_content_type("text/html"));
+        let writer = &mut try!(a.start_chunked());
+
+        {
+            let mut view = TableView(writer.by_ref());
+            for r in try!(dbconn.execute_script(script)) {
+                use postgres::ScriptResultItem::*;
+                try!(match r.unwrap() {
+                    RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
+                    RowsetEnd => view.render_rowset_end(),
+                    Row(row) => view.render_row(&row[]),
+                    NonQuery(cmd) => view.render_nonquery(&cmd[]),
+                    Error(err) => view.render_error(err),
+                    Notice(notice) => view.render_error(notice),
+                });
+            }
         }
 
-    } else {
-        handle_unauthorized_req(res)
+        try!(writer.write(b"\r\n"));
+        try!(writer.end());
+
+        dbconn.finish()
     }
-}
-
-fn handle_pg_authorized_req<T: Writer>(
-    user: &str,
-    password: &str,
-    script: &str,
-    res: http::ResponseStarter<T>
-    ) -> IoResult<()>
-{
-    use postgres::ScriptResultItem::*;
-
-    let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-    let dbconn_res = server_conn.connect_database(
-        "postgres", &user[], &password[]
-    );
-
-    let mut dbconn = match dbconn_res {
-        Ok(conn) => conn,
-        Err(postgres::ConnectError::AuthenticationFailed) => {
-            return handle_unauthorized_req(res);
-        },
-        Err(e) => { println!("{:?}", e); panic!("err"); },
-    };
-
-    let mut a = try!(res.start_ok());
-    try!(a.write_content_type("text/html"));
-    let writer = &mut try!(a.start_chunked());
-
-
-
-    // let script = "
-    //     begin;
-
-    //     create function raise_notice() returns text language plpgsql as $$
-    //     begin
-    //         raise warning 'hello';
-    //         return 'hello_ret';
-    //     end
-    //     $$;
-
-    //     select raise_notice()
-    //     union all
-    //     select raise_notice();
-
-    //     select pg_sleep(5);
-
-    //     select * from pg_database;
-
-    //     rollback;
-    // ";
-
-
-    // let mut result_iter =
-    //     // " select 1.0/generate_series(-10, 10);
-    //     //  select * from pg_database limit 10;
-    //     //  --select * from not_existing;
-    //     //  select 1/0;
-    //     //  select array['1', '\"2\"'];
-    //     //  begin;"
-
-
-
-    // ));
-
-    {
-        let mut view = TableView(writer.by_ref());
-        for r in try!(dbconn.execute_script(script)) {
-            try!(match r.unwrap() {
-                RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
-                RowsetEnd => view.render_rowset_end(),
-                Row(row) => view.render_row(&row[]),
-                NonQuery(cmd) => view.render_nonquery(&cmd[]),
-                Error(err) => view.render_error(err),
-                Notice(notice) => view.render_error(notice),
-            });
-        }
-    }
-
-    try!(writer.write(b"\r\n"));
-    try!(writer.end());
-
-    dbconn.finish()
 }
 
 
@@ -265,7 +209,7 @@ impl<T: Writer> View for TableView<T> {
 
 fn main() {
 
-    http::serve_forever_tcp("0.0.0.0:7890", handle_req);
+    http::serve_forever_tcp("0.0.0.0:7890", Controller::handle_req);
 
     //pg_talk().unwrap();
 

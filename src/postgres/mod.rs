@@ -478,7 +478,7 @@ pub fn connect_tcp<T: ToSocketAddr>(addr: T) -> IoResult<ServerConnection<TcpStr
 }
 
 
-type ConnectResult<TStream: Stream> = Result<DatabaseConnection<TStream>, ConnectError>;
+type ConnectResult<TStream> = Result<DatabaseConnection<TStream>, ConnectError>;
 
 impl<TStream> ServerConnection<TStream> where TStream: Stream {
 
