@@ -9,7 +9,7 @@
 
 use std::io::{
     // TcpListener,
-    // TcpStream,
+    TcpStream,
     IoResult,
     // Listener,
     ByRefWriter,
@@ -46,7 +46,7 @@ impl<'a, T: Writer> Controller<'a, T> {
 
         match (req.method, &req.path[]) {
             (Get, "/") => ctrl.handle_index_req(),
-            (Post, "/") => ctrl.handle_pg_req(),
+            (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_pg_req(conn)),
             _ => ctrl.handle_not_found(),
         }
     }
@@ -94,13 +94,38 @@ impl<'a, T: Writer> Controller<'a, T> {
         Ok(())
     }
 
-
-    fn handle_pg_req(self) -> IoResult<()> {
-
+    fn handle_db_req<TConnConsumer>(self, consumer: TConnConsumer) -> IoResult<()>
+        where TConnConsumer: Fn(Self, postgres::DatabaseConnection<TcpStream>) -> IoResult<()>
+    {
         let &(ref user, ref password) = match self.req.basic_auth {
             Some(ref x) => x,
             None => return self.handle_unauthorized_req(),
         };
+
+        let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+
+        let dbconn_res = server_conn.connect_database("postgres",
+                                                      &user[],
+                                                      &password[]);
+
+        let dbconn = match dbconn_res {
+            Ok(conn) => conn,
+            Err(postgres::ConnectError::AuthenticationFailed) => {
+                return self.handle_unauthorized_req();
+            },
+            Err(e) => { println!("{:?}", e); panic!("err"); },
+        };
+
+        consumer(self, dbconn)
+    }
+
+
+    fn handle_pg_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+
+        // let &(ref user, ref password) = match self.req.basic_auth {
+        //     Some(ref x) => x,
+        //     None => return self.handle_unauthorized_req(),
+        // };
 
         let script = match self.req.content {
             Some(http::RequestContent::UrlEncoded(ref params)) => {
@@ -116,18 +141,18 @@ impl<'a, T: Writer> Controller<'a, T> {
 
 
 
-        let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-        let dbconn_res = server_conn.connect_database(
-            "postgres", &user[], &password[]
-        );
+        // let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+        // let dbconn_res = server_conn.connect_database(
+        //     "postgres", &user[], &password[]
+        // );
 
-        let mut dbconn = match dbconn_res {
-            Ok(conn) => conn,
-            Err(postgres::ConnectError::AuthenticationFailed) => {
-                return self.handle_unauthorized_req();
-            },
-            Err(e) => { println!("{:?}", e); panic!("err"); },
-        };
+        // let mut dbconn = match dbconn_res {
+        //     Ok(conn) => conn,
+        //     Err(postgres::ConnectError::AuthenticationFailed) => {
+        //         return self.handle_unauthorized_req();
+        //     },
+        //     Err(e) => { println!("{:?}", e); panic!("err"); },
+        // };
 
         let mut a = try!(self.res.start_ok());
         try!(a.write_content_type("text/html"));
@@ -154,6 +179,29 @@ impl<'a, T: Writer> Controller<'a, T> {
         dbconn.finish()
     }
 }
+
+
+
+
+
+
+
+
+
+
+// trait DatabaseAction<TStream: Stream> {
+//     fn get_database_name(self) -> String;
+//     fn consume_db_connection(self, DatabaseConnection<TStream>) -> IoResult<()>;
+// }
+
+
+
+
+
+
+
+
+
 
 
 trait View {
