@@ -1,18 +1,19 @@
 extern crate serialize;
 
+pub use self::response::{
+    ResponseStarter,
+    Status,
+};
+
 use self::serialize::base64::FromBase64;
 
 use std::io::{
     IoResult,
-    BufferedStream,
     BufferedReader,
     ByRefReader,
-    //ByRefWriter,
-
     IoError,
     OtherIoError,
     InvalidInput,
-
     Stream,
     Acceptor,
     Listener,
@@ -23,137 +24,15 @@ use std::io::{
 use std::ascii::AsciiExt;
 use std::io::net::ip::ToSocketAddr;
 
-//use std::thread::Thread;
 use std::sync::{ TaskPool, Arc };
-use std::fmt;
-use std::str;
 
 
+mod response;
 
 
-// pub struct Response<TBody> {
-//     pub status: Status,
-//     pub body: TBody,
-// }
-
-// pub trait Response: Iterator<Vec<u8>> {
-//     fn get_status(&self) -> Status;
-// }
-
-
-
-
-#[derive(Show, Copy)]
-pub enum Status {
-    Ok           = 200,
-
-    BadRequest   = 400,
-    Unauthorized = 401,
-    NotFound     = 404,
-}
-
-// impl fmt::String for Status {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         use self::Status::*;
-
-//         write!(f, "{} {:?}", *self as u16, *self)
-//     }
-// }
 
 pub enum AuthenticationScheme {
     Basic,
-}
-
-// pub struct ResponseHeaders {
-//     pub www_authenticate: Option<AuthenticationScheme>,
-//     pub content_type: Option<String>,
-// }
-
-pub struct Response<TWriter> where TWriter: Writer {
-    writer: TWriter
-}
-
-impl<TWriter> Response<TWriter> where TWriter: Writer {
-    fn new(writer: TWriter) -> Response<TWriter> {
-        Response { writer: writer }
-    }
-
-    pub fn start(mut self, status: Status) -> IoResult<ResponseHeadersWriter<TWriter>> {
-        try!(write!(&mut self.writer, "HTTP/1.1 {} {:?}\r\n", status as u16, status));
-        let mut a = ResponseHeadersWriter(self.writer);
-        try!(a.write_header("Connection", "close"));
-        Ok(a)
-    }
-
-    pub fn start_ok(self) -> IoResult<ResponseHeadersWriter<TWriter>> {
-        self.start(Status::Ok)
-    }
-
-    // pub fn start_chunked(mut self, status: Status, headers: &[(&str, &str)]) -> IoResult<ChunkedWriter<TWriter>> {
-    //     try!(write!(&mut self.writer, "HTTP/1.1 {}\r\n", status));
-    //     try!(self.writer.write_str("Connection: close\r\n"));
-    //     try!(self.writer.write_str("Transfer-Encoding: chunked\r\n"));
-    //     //try!(self.writer.write_str("Content-type: text/html; charset=utf-8\r\n"));
-
-    //     for &(header_name, header_value) in headers.iter() {
-    //         try!(write!(&mut self.writer, "{}: {}\r\n", header_value, header_name));
-    //     }
-
-    //     try!(self.writer.write(b"\r\n"));
-    //     Ok(ChunkedWriter(self.writer))
-    // }
-}
-
-
-struct ResponseHeadersWriter<T: Writer>(T);
-impl<T: Writer> ResponseHeadersWriter<T> {
-    pub fn write_header<TValue: fmt::String>(&mut self, name: &str, value: TValue) -> IoResult<&mut Self> {
-        try!(write!(&mut self.0, "{}: {}\r\n", name, value));
-        Ok(self)
-    }
-
-    pub fn write_www_authenticate(&mut self, auth_scheme: AuthenticationScheme) -> IoResult<&mut Self> {
-        self.write_header("WWW-Authenticate", match auth_scheme {
-            AuthenticationScheme::Basic => "Basic",
-        })
-    }
-
-    pub fn write_content_type(&mut self, content_type: &str) -> IoResult<&mut Self> {
-        self.write_header("Content-Type", content_type)
-    }
-
-    pub fn write_content(mut self, content: &[u8]) -> IoResult<()> {
-        try!(self.write_header("Content-Length", content.len()));
-        try!(self.0.write(b"\r\n"));
-        self.0.write(content)
-    }
-
-    pub fn start_chunked_content(mut self) -> IoResult<ChunkedWriter<T>> {
-        try!(self.write_header("Transfer-Encoding", "chunked"));
-        try!(self.0.write(b"\r\n"));
-        Ok(ChunkedWriter(self.0))
-    }
-}
-
-
-struct ChunkedWriter<T: Writer>(T);
-
-impl<T: Writer> ChunkedWriter<T> {
-    pub fn end(&mut self) -> IoResult<()> {
-        self.0.write(b"0\r\n\r\n")
-    }
-}
-
-impl<T: Writer> Writer for ChunkedWriter<T> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        if buf.is_empty() {
-            return Ok(());
-        }
-        let inner = &mut self.0;
-        try!(write!(inner, "{:x}\r\n", buf.len()));
-        try!(inner.write(buf));
-        inner.write(b"\r\n")
-    }
 }
 
 fn malformed_request_line_err() -> IoError {
@@ -166,58 +45,6 @@ fn malformed_request_line_err() -> IoError {
 
 
 
-
-
-
-
-
-
-// mod headers {
-//     use std::io::IoResult;
-//     use super::AuthenticationScheme;
-
-//     struct ResponseHeaders {
-//         buf: Vec<u8>
-//     }
-
-//     impl ResponseHeaders {
-//         fn new() -> ResponseHeaders {
-//             ResponseHeaders { buf: vec![] }
-//         }
-
-//         fn add<T: ResponseHeader>(&mut self, header: T) {
-//             self.buf.write_str(header.get_name()).unwrap();
-//             self.buf.write_str(": ").unwrap();
-//             header.get_value(&mut self.buf).unwrap();
-//             self.buf.write(b"\r\n").unwrap();
-//         }
-//     }
-
-
-//     trait ResponseHeader {
-//         fn get_name(&self) -> &'static str;
-//         fn get_value<TWriter: Writer>(&self, &mut TWriter) -> IoResult<()>;
-//     }
-
-//     pub struct WWWAuthenticate(AuthenticationScheme);
-
-//     impl ResponseHeader for WWWAuthenticate {
-//         fn get_name(&self) -> &'static str { "WWW-Authenticate" }
-
-//         fn get_value<TWriter: Writer>(&self, w: &mut TWriter) -> IoResult<()> {
-//             write!(w, "Basic")
-//         }
-//     }
-
-//     #[test]
-//     fn test_response_headers() {
-//         let mut headers = ResponseHeaders::new();
-//         headers.add(WWWAuthenticate(AuthenticationScheme::Basic));
-
-//         let content = String::from_utf8(headers.buf).unwrap();
-//         assert_eq!(content, "WWW-Authenticate: Basic\r\n");
-//     }
-// }
 
 
 
@@ -641,7 +468,7 @@ fn parse_header(line: &str) -> IoResult<(&str, &str)> {
 
 pub fn serve_forever_tcp<TAddr, THandler>(addr: TAddr, handler: THandler)
     where TAddr: ToSocketAddr,
-          THandler: Handler<TcpStream>
+          THandler: Handler<TcpStream>,
 {
     let listener = TcpListener::bind(addr).unwrap();
     let acceptor = listener.listen().unwrap();
@@ -656,7 +483,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
 
     TStream: Stream + Send,
     TAcceptor: Acceptor<TStream>,
-    THandler: Handler<TStream>
+    THandler: Handler<TStream>,
 {
 
 
@@ -673,7 +500,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
                     let mut reader = BufferedReader::with_capacity(1024, stream.by_ref());
                     Request::read_from(&mut reader).unwrap()
                 };
-                let res = Response::new(stream);
+                let res = ResponseStarter(stream);
                 handler.handle(req, res);
             })
         }
@@ -685,20 +512,20 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
 
 
 /// A handler that can handle incoming requests for a server.
-pub trait Handler<TWriter>: Sync + Send where TWriter: Writer {
+pub trait Handler<TWriter: Writer>: Sync + Send {
     /// Receives a `Request`/`Response` pair, and should perform some action on them.
     ///
     /// This could reading from the request, and writing to the response.
-    fn handle(&self, Request, Response<TWriter>);
+    fn handle(&self, Request, ResponseStarter<TWriter>);
 }
 
 impl<TFunc, TWriter> Handler<TWriter> for TFunc
-    where TFunc: Fn(Request, Response<TWriter>),
+    where TFunc: Fn(Request, ResponseStarter<TWriter>),
           TFunc: Sync + Send,
           TWriter: Writer
 {
 
-    fn handle(&self, req: Request, res: Response<TWriter>) {
+    fn handle(&self, req: Request, res: ResponseStarter<TWriter>) {
         (*self)(req, res)
     }
 }

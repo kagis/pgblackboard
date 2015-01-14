@@ -15,11 +15,12 @@ use std::io::{
     ByRefWriter,
 };
 
+
 mod postgres;
 mod http;
 //mod md5;
 
-fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
+fn handle_req<T: Writer>(req: http::Request, res: http::ResponseStarter<T>) {
     use http::Method::{ Get, Post };
 
     (match (req.method, &req.path[]) {
@@ -53,7 +54,7 @@ fn handle_req<T: Writer>(req: http::Request, res: http::Response<T>) {
     // writer.write(b"").unwrap();
 }
 
-fn handle_not_found<T: Writer>(res: http::Response<T>) -> IoResult<()> {
+fn handle_not_found<T: Writer>(res: http::ResponseStarter<T>) -> IoResult<()> {
     use http::Status::NotFound;
     let mut a = try!(res.start(NotFound));
     try!(a.write_content_type("text/plain"));
@@ -62,7 +63,7 @@ fn handle_not_found<T: Writer>(res: http::Response<T>) -> IoResult<()> {
     Ok(())
 }
 
-fn handle_static_req<T: Writer>(path: &str, res: http::Response<T>) -> IoResult<()> {
+fn handle_static_req<T: Writer>(path: &str, res: http::ResponseStarter<T>) -> IoResult<()> {
     use std::io::File;
     use std::path::Path;
 
@@ -92,19 +93,18 @@ fn guess_content_type(extension: &[u8]) -> &str {
 }
 
 
-fn handle_unauthorized_req<T: Writer>(res: http::Response<T>) -> IoResult<()> {
+fn handle_unauthorized_req<T: Writer>(res: http::ResponseStarter<T>) -> IoResult<()> {
     use http::Status::Unauthorized;
-    use http::AuthenticationScheme::Basic;
 
     let mut a = try!(res.start(Unauthorized));
-    try!(a.write_www_authenticate(Basic));
+    try!(a.write_www_authenticate_basic("postgres"));
     try!(a.write_content_type("text/html"));
     try!(a.write_content(b"ololo"));
     Ok(())
 }
 
 
-fn handle_pg_req<T: Writer>(req: http::Request, res: http::Response<T>) -> IoResult<()> {
+fn handle_pg_req<T: Writer>(req: http::Request, res: http::ResponseStarter<T>) -> IoResult<()> {
     if let Some((user, password)) = req.basic_auth {
         match req.content {
             Some(http::RequestContent::UrlEncoded(params)) => {
@@ -133,7 +133,7 @@ fn handle_pg_authorized_req<T: Writer>(
     user: &str,
     password: &str,
     script: &str,
-    res: http::Response<T>
+    res: http::ResponseStarter<T>
     ) -> IoResult<()>
 {
     use postgres::ScriptResultItem::*;
@@ -153,7 +153,7 @@ fn handle_pg_authorized_req<T: Writer>(
 
     let mut a = try!(res.start_ok());
     try!(a.write_content_type("text/html"));
-    let writer = &mut try!(a.start_chunked_content());
+    let writer = &mut try!(a.start_chunked());
 
 
 
