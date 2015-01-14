@@ -46,7 +46,7 @@ impl<'a, T: Writer> Controller<'a, T> {
 
         match (req.method, &req.path[]) {
             (Get, "/") => ctrl.handle_index_req(),
-            (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_pg_req(conn)),
+            (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_script_req(conn)),
             _ => ctrl.handle_not_found(),
         }
     }
@@ -120,7 +120,7 @@ impl<'a, T: Writer> Controller<'a, T> {
     }
 
 
-    fn handle_pg_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+    fn handle_script_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
 
         // let &(ref user, ref password) = match self.req.basic_auth {
         //     Some(ref x) => x,
