@@ -1,39 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>pgBlackboard</title>
+  <meta charset="utf-8" />
+  <link rel="shortcut icon" href="static/favicon.ico" type="image/vnd.microsoft.icon" />
+  <title>pgBlackboard</title>
+
+  <link href="static/lib/codemirror/4.6.0/codemirror.css" rel="stylesheet" />
+  <link href="static/app.css" rel="stylesheet" />
+
+  <script id="tree-tmpl" type="text/html">
+    <ul data-bind-foreach="nodes">
+      <li class="treenode"
+          data-bind-css.treenode-groupstart="isGroupStart">
+
+        <button class="treenode-toggler"
+                data-bind-click="toggle"
+                data-bind-visible="hasChildren">
+
+          <i class="fontello treenode-toggler-icon"
+             data-bind-css.fontello-triangle-right="isCollapsed"
+             data-bind-css.fontello-triangle-down="isExpanded"
+             data-bind-css.spinner="childrenAreLoading"></i>
+
+        </button>
+
+        <header class="itemheader"
+                data-bind-css.itemheader-active="isOpened">
+
+          <a data-bind-click="$root.openTreeNode.bind($root)"
+             data-bind-attr.title="comment">
+            <i class="treenode-icon" data-bind-css="'treenode-icon_'+type"></i>
+            <span data-bind-text="name"></span>
+            <small data-bind-text="comment"></small>
+          </a>
+
+        </header>
+
+        <!-- ko template: {
+          name : 'tree-tmpl',
+          if   : isExpanded
+        } --><!-- /ko -->
+
+      </li>
+    </ul>
+  </script>
+
+  <script id="queries-tmpl" type="text/html">
+    <ul data-bind-foreach="items">
+      <li>
+        <header class="itemheader itemheader-has-btn"
+                data-bind-css.itemheader-active="isOpened">
+          <a data-bind-click="$root.openStoredQuery.bind($root)">
+            <i class="icon-code"></i>
+            <span data-bind-text="name"></span>
+          </a>
+
+          <button data-bind-click="$root.removeStoredQuery.bind($root)"
+                  data-bind-visible="isOpened"
+                  class="btn-action">remove</button>
+
+        </header>
+      </li>
+    </ul>
+  </script>
 </head>
-<body>
-
-    <form method="POST">
-        <textarea name="script">
-
-             begin;
+<body class="stretch" data-bind-css="theme">
 
 
-
-            create function raise_notice() returns text language plpgsql as $$
-             begin
-            raise warning 'hello';
-             return 'hello_ret';
-            end
-             $$;
-
-            select raise_notice()
-             union all
-             select raise_notice();
-
-             select pg_sleep(1);
-
-               select * from pg_database;
-
-            select row_to_json(pg_database) from pg_database;
+  <div class="leftbar bg-body">
+    <button class="leftbar-btn fontello fontello-lamp"
+            data-bind-click="toggleTheme">
+    </button>
+  </div>
 
 
-              rollback;
-        </textarea>
-        <button>execute</button>
-    </form>
+  <div class="root-splitpanel splitpanel bg-body">
 
+    <div class="leftpanel splitpanel-left scrollbox bg-panel">
+      <div class="leftpanel-inner">
+        <!-- ko template: { name: 'queries-tmpl', data: queries } --><!-- /ko -->
+        <!-- ko template: { name: 'tree-tmpl', data: tree } --><!-- /ko -->
+      </div>
+    </div>
+
+    <div class="splitter-v"></div>
+
+    <div class="splitpanel-right splitpanel">
+      <div class="splitpanel-top bg-panel">
+        <form id="queryform"
+              method="POST"
+              target="result"
+              class="stretch"
+              enctype="application/x-www-form-urlencoded">
+
+          <textarea id="query" name="query" class="stretch"
+            >\connect postgres&#13;&#10;select 'hello, ' || current_user; -- Alt+X to execute</textarea>
+
+          <input type="hidden" name="selection" />
+
+          <div id="execbar" class="bg-body">
+            <button class="btn-action"
+                    type="submit"
+                    title="alt-m"
+                    accesskey="m"
+                    name="view"
+                    value="map">
+              map
+            </button>
+
+            <button class="execute-action btn-action"
+                    type="submit"
+                    title="alt-x"
+                    accesskey="x"
+                    name="view"
+                    value="table">
+              execute
+            </button>
+          </div>
+
+          <div class="spinner-shield" data-bind-visible="queryTextIsLoading()">
+            <div class="spinner"></div>
+          </div>
+
+        </form>
+      </div>
+      <div class="splitter-h"></div>
+      <div class="splitpanel-bottom bg-panel">
+        <iframe id="result" name="result" class="stretch"></iframe>
+      </div>
+    </div>
+
+
+    <button id="share-action" accesskey="s" style="display:none"></button>
+  </div>
+
+  <script src="static/lib/knockout/3.2.0/knockout.js"></script>
+  <script src="static/lib/knockout-att/1.0.0/knockout-att.js"></script>
+  <script src="static/lib/codemirror/4.6.0/codemirror.js"></script>
+  <script src="static/lib/codemirror/4.6.0/mode/sql/sql.js"></script>
+  <script src="static/codemirror-pgsql.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/search/searchcursor.js"></script>
+  <script src="static/lib/codemirror/4.6.0/keymap/sublime.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/edit/matchbrackets.js"></script>
+  <script src="static/lib/codemirror/4.6.0/addon/edit/closebrackets.js"></script>
+
+  <script src="static/app.js"></script>
+  <script>pgbb.main(/*INITIAL_DATA_PLACEHOLDER*/);</script>
 </body>
 </html>

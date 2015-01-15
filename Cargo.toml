@@ -1,9 +1,8 @@
 [package]
 
 name = "pgblackboard"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
 [dependencies]
 rust-crypto = "*"
-

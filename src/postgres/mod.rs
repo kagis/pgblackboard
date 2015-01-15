@@ -497,8 +497,8 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
             match try!(self.stream.read_message()) {
                 AuthenticationMD5Password { salt } => {
                     let mut hasher = Md5::new();
-                    hasher.input_str(&password[]);
-                    hasher.input_str(&user[]);
+                    hasher.input_str(password);
+                    hasher.input_str(user);
                     let output = hasher.result_str();
                     hasher.reset();
                     hasher.input_str(&output[]);
@@ -541,6 +541,17 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
         //     try!(self.stream.read_message());
         // }
         Ok(ScriptResultIterator::new(self))
+    }
+
+    pub fn execute_query(&mut self, query: &str) -> IoResult<Vec<Row>> {
+        self.execute_script(query)
+            .map(|msg_iter| msg_iter
+                .filter_map(|msg| match msg {
+                    Ok(ScriptResultItem::Row(row)) => Some(row),
+                    _ => None,
+                })
+                .collect::<Vec<Row>>()
+            )
     }
 
     // pub fn next_result(&mut self) -> IoResult<Option<StatementResult>> {

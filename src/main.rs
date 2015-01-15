@@ -1,7 +1,7 @@
 #![allow(unstable)]
 
-//extern crate hyper;
-//extern crate postgres;
+extern crate serialize;
+
 
 //use std::io::net::ip::Ipv4Addr;
 //use hyper::server::{Request, Response};
@@ -32,20 +32,20 @@ fn guess_content_type(extension: &[u8]) -> &str {
 
 
 
-struct Controller<'a, T: Writer> {
+struct Controller<'a, THttpWriter: Writer> {
     req: &'a http::Request,
-    res: http::ResponseStarter<T>,
+    res: http::ResponseStarter<THttpWriter>,
 }
 
-impl<'a, T: Writer> Controller<'a, T> {
+impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
 
-    fn handle_req(req: http::Request, res: http::ResponseStarter<T>) -> IoResult<()> {
+    fn handle_req(req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         use http::Method::{ Get, Post };
 
         let ctrl = Controller { req: &req, res: res };
 
         match (req.method, &req.path[]) {
-            (Get, "/") => ctrl.handle_index_req(),
+            (Get, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_index_req(conn)),
             (Get, "/favicon.ico") => ctrl.handle_static_req("src/static/favicon.ico"),
             (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_script_req(conn)),
             _ => ctrl.handle_not_found(),
@@ -62,8 +62,55 @@ impl<'a, T: Writer> Controller<'a, T> {
         Ok(())
     }
 
-    fn handle_index_req(self) -> IoResult<()> {
-        self.handle_static_req("src/index.html")
+    fn handle_index_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+        use serialize::json;
+
+
+        // #[derive(Encodable)]
+        // struct RowTuple {
+        //     name: String,
+        //     comment: Option<String>,
+        //     type: String,
+
+        // }
+
+        let rows = dbconn.execute_query("
+            SELECT datname AS name
+                     ,shobj_description(oid, 'pg_database') AS comment
+               FROM pg_database
+               WHERE NOT datistemplate
+               ORDER BY datname
+        ").unwrap();
+
+        let mut row_tuples = vec![];
+        for row in rows.iter() {
+            // let mut row = rows.pop().unwrap();
+            // let comment = row.pop().unwrap();
+            // let name = row.pop().unwrap().unwrap();
+
+            if let [ref name, ref comment] = &row[] {
+                use serialize::json::ToJson;
+                let mut dict = ::std::collections::BTreeMap::new();
+                dict.insert("id", name.to_json());
+                dict.insert("type", "database".to_json());
+                dict.insert("name", name.to_json());
+                dict.insert("comment", comment.to_json());
+                dict.insert("database", name.to_json());
+                dict.insert("hasChildren", true.to_json());
+                row_tuples.push(dict);
+            }
+        }
+
+        let index_html = include_str!("index.html");
+        let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
+                                            &json::encode(&row_tuples)[]);
+
+
+        let mut resp_writer = try!(self.res.start_ok());
+        try!(resp_writer.write_content_type("text/html"));
+        try!(resp_writer.write_content(index_html.as_bytes()));
+
+        Ok(())
     }
 
     fn handle_static_req(self, path: &str) -> IoResult<()> {
