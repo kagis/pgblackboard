@@ -64,15 +64,8 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
 
     fn handle_index_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
         use serialize::json;
-
-
-        // #[derive(Encodable)]
-        // struct RowTuple {
-        //     name: String,
-        //     comment: Option<String>,
-        //     type: String,
-
-        // }
+        use serialize::json::Json;
+        use std::collections::BTreeMap;
 
         let rows = dbconn.execute_query("
             SELECT datname AS name
@@ -82,24 +75,24 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
                ORDER BY datname
         ").unwrap();
 
-        let mut row_tuples = vec![];
-        for row in rows.iter() {
-            // let mut row = rows.pop().unwrap();
-            // let comment = row.pop().unwrap();
-            // let name = row.pop().unwrap().unwrap();
-
+        let row_tuples = rows.iter().map(|row| {
+            use serialize::json::ToJson;
             if let [ref name, ref comment] = &row[] {
-                use serialize::json::ToJson;
-                let mut dict = ::std::collections::BTreeMap::new();
-                dict.insert("id", name.to_json());
-                dict.insert("type", "database".to_json());
-                dict.insert("name", name.to_json());
-                dict.insert("comment", comment.to_json());
-                dict.insert("database", name.to_json());
-                dict.insert("hasChildren", true.to_json());
-                row_tuples.push(dict);
+                let mut obj = BTreeMap::new();
+                obj.insert("id", name.to_json());
+                obj.insert("type", "database".to_json());
+                obj.insert("name", name.to_json());
+                obj.insert("comment", comment.to_json());
+                obj.insert("database", name.to_json());
+                obj.insert("hasChildren", true.to_json());
+                obj
+            } else {
+                panic!("Row with unexpected structure was recived
+                        while querying database nodes.");
             }
-        }
+        }).collect::<Vec<BTreeMap<&str, Json>>>();
+
+
 
         let index_html = include_str!("index.html");
         let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",

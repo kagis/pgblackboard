@@ -77,6 +77,15 @@ pub enum Method {
     Post,
 }
 
+impl ::std::fmt::String for Method {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}", match *self {
+            Method::Get => "GET",
+            Method::Post => "POST",
+        })
+    }
+}
+
 pub struct Request {
     pub method: Method,
     pub path: String,
@@ -451,8 +460,20 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
                     let mut reader = BufferedReader::with_capacity(1024, stream.by_ref());
                     Request::read_from(&mut reader).unwrap()
                 };
+
+                println!("{user} {method} {path}",
+                         method=req.method,
+                         path=req.path,
+                         user=req.basic_auth
+                                 .as_ref()
+                                 .map_or("", |x| &x.0[]));
+
                 let res = ResponseStarter(stream);
-                handler.handle(req, res).unwrap(); // todo log error
+                let handle_res = handler.handle(req, res);
+
+                if let Err(e) = handle_res {
+                    println!("error while sending response {}", e);
+                }
             })
         }
     }
