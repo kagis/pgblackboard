@@ -45,9 +45,10 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         let ctrl = Controller { req: &req, res: res };
 
         match (req.method, &req.path[]) {
-            (Get, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_index_req(conn)),
-            (Get, "/favicon.ico") => ctrl.handle_static_req("src/static/favicon.ico"),
-            (Post, "/") => ctrl.handle_db_req(|ctrl, conn| ctrl.handle_script_req(conn)),
+            (Get, "/") => ctrl.handle_db_req(Controller::handle_index_req),
+            (Get, "/favicon.ico") => ctrl.handle_static_req("/static/favicon.ico"),
+            (Get, path) if path.starts_with("/static/") => ctrl.handle_static_req(path),
+            (Post, "/") => ctrl.handle_db_req(Controller::handle_script_req),
             _ => ctrl.handle_not_found(),
         }
     }
@@ -92,11 +93,14 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
             }
         }).collect::<Vec<BTreeMap<&str, Json>>>();
 
+        let mut initial_data = BTreeMap::new();
+        initial_data.insert("databases", row_tuples);
+
 
 
         let index_html = include_str!("index.html");
         let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
-                                            &json::encode(&row_tuples)[]);
+                                            &json::encode(&initial_data)[]);
 
 
         let mut resp_writer = try!(self.res.start_ok());
@@ -109,6 +113,8 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
     fn handle_static_req(self, path: &str) -> IoResult<()> {
         use std::io::File;
         use std::path::Path;
+
+        let path: String = ["src", path].concat();
 
         let path = Path::new(path);
 
@@ -171,7 +177,7 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         let script = match self.req.content {
             Some(http::RequestContent::UrlEncoded(ref params)) => {
                 params.iter()
-                    .find(|x| x.0 == "script")
+                    .find(|x| x.0 == "sql_script")
                     .unwrap()
                     .1
                     .as_slice()
