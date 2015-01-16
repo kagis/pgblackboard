@@ -48,6 +48,7 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         match (req.method, &req.path[]) {
             (Get, "/") => ctrl.handle_db_req(Controller::handle_index_req),
             (Get, "/favicon.ico") => ctrl.handle_static_req("/static/favicon.ico"),
+            (Get, "/tree") => ctrl.handle_db_req(Controller::handle_tree_req),
             (Get, path) if path.starts_with("/static/") => ctrl.handle_static_req(path),
             (Post, "/") => ctrl.handle_db_req(Controller::handle_script_req),
             _ => ctrl.handle_not_found(),
@@ -60,6 +61,21 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         let mut a = try!(self.res.start(NotFound));
         try!(a.write_content_type("text/plain"));
         try!(a.write_content(b"Not Found"));
+
+        Ok(())
+    }
+
+    fn handle_tree_req(self, dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+        use serialize::json;
+        let children = tree::NodeService {
+            dbconn: dbconn,
+            nodeid: "10".to_string(),
+            nodetype: "database".to_string(),
+        }.get_children().unwrap();
+
+        let mut a = try!(self.res.start_ok());
+        try!(a.write_content_type("application/json"));
+        try!(a.write_content(json::encode(&children).as_bytes()));
 
         Ok(())
     }

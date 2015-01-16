@@ -24,6 +24,7 @@ use self::sqlstate::{ SqlState, SqlStateClass };
 use self::BackendMessage::*;
 
 mod sqlstate;
+mod decoder;
 
 pub type Oid = u32;
 
@@ -551,6 +552,23 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
                     _ => None,
                 })
                 .collect::<Vec<Row>>()
+            )
+    }
+
+    pub fn query<TRel: ::serialize::Decodable>(&mut self, query: &str) -> IoResult<Vec<TRel>> {
+        use ::serialize::Decodable;
+        use self::decoder::RowDecoder;
+        self.execute_script(query)
+            .map(|msg_iter| msg_iter
+                .filter_map(|msg| match msg {
+                    Ok(ScriptResultItem::Row(row)) => Some(row),
+                    _ => None,
+                })
+                .map(|row| {
+                    let mut decoder = RowDecoder::new(row);
+                    Decodable::decode(&mut decoder).unwrap()
+                })
+                .collect::<Vec<TRel>>()
             )
     }
 
