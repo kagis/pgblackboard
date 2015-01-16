@@ -18,6 +18,7 @@ use std::io::{
 mod postgres;
 mod http;
 
+mod tree;
 
 
 fn guess_content_type(extension: &[u8]) -> &str {
