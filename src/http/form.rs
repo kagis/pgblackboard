@@ -1,6 +1,10 @@
+use serialize::Decodable;
+
+type DecodeResult<T> = Result<T, DecodeError>;
+
 type FormEntry = (String, String);
 
-pub struct FormDecoder {
+struct FormDecoder {
     form: Vec<FormEntry>,
     reading_values: Vec<String>,
 }
@@ -24,47 +28,45 @@ enum DecodeError {
 impl ::serialize::Decoder for FormDecoder {
     type Error = DecodeError;
 
-    fn read_nil(&mut self) -> Result<(), DecodeError> { unimplemented!() }
-    fn read_uint(&mut self) -> Result<usize, DecodeError> { unimplemented!() }
-    fn read_u64(&mut self) -> Result<u64, DecodeError> { unimplemented!() }
-    fn read_u32(&mut self) -> Result<u32, DecodeError> { unimplemented!() }
-    fn read_u16(&mut self) -> Result<u16, DecodeError> { unimplemented!() }
-    fn read_u8(&mut self) -> Result<u8, DecodeError> { unimplemented!() }
-    fn read_int(&mut self) -> Result<isize, DecodeError> { unimplemented!() }
-    fn read_i64(&mut self) -> Result<i64, DecodeError> { unimplemented!() }
-    fn read_i32(&mut self) -> Result<i32, DecodeError> { unimplemented!() }
-    fn read_i16(&mut self) -> Result<i16, DecodeError> { unimplemented!() }
-    fn read_i8(&mut self) -> Result<i8, DecodeError> { unimplemented!() }
-    fn read_bool(&mut self) -> Result<bool, DecodeError> { unimplemented!() }
-    fn read_f64(&mut self) -> Result<f64, DecodeError> { unimplemented!() }
-    fn read_f32(&mut self) -> Result<f32, DecodeError> { unimplemented!() }
-    fn read_char(&mut self) -> Result<char, DecodeError> { unimplemented!() }
+    fn read_nil(&mut self) -> DecodeResult<()> { unimplemented!() }
+    fn read_uint(&mut self) -> DecodeResult<usize> { unimplemented!() }
+    fn read_u64(&mut self) -> DecodeResult<u64> { unimplemented!() }
+    fn read_u32(&mut self) -> DecodeResult<u32> { unimplemented!() }
+    fn read_u16(&mut self) -> DecodeResult<u16> { unimplemented!() }
+    fn read_u8(&mut self) -> DecodeResult<u8> { unimplemented!() }
+    fn read_int(&mut self) -> DecodeResult<isize> { unimplemented!() }
+    fn read_i64(&mut self) -> DecodeResult<i64> { unimplemented!() }
+    fn read_i32(&mut self) -> DecodeResult<i32> { unimplemented!() }
+    fn read_i16(&mut self) -> DecodeResult<i16> { unimplemented!() }
+    fn read_i8(&mut self) -> DecodeResult<i8> { unimplemented!() }
+    fn read_bool(&mut self) -> DecodeResult<bool> { unimplemented!() }
+    fn read_f64(&mut self) -> DecodeResult<f64> { unimplemented!() }
+    fn read_f32(&mut self) -> DecodeResult<f32> { unimplemented!() }
+    fn read_char(&mut self) -> DecodeResult<char> { unimplemented!() }
 
-    fn read_str(&mut self) -> Result<String, DecodeError> {
-        match self.reading_values.pop() {
-            Some(val) => Ok(val),
-            None => Err(DecodeError::MissingValue),
-        }
+    fn read_str(&mut self) -> DecodeResult<String> {
+        self.reading_values.pop()
+            .ok_or(DecodeError::MissingValue)
     }
 
-    fn read_enum<T, F>(&mut self, name: &str, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, DecodeError> where F: FnMut(&mut Self, usize) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_enum_variant_arg<T, F>(&mut self, a_idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, DecodeError> where F: FnMut(&mut Self, usize) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_enum_struct_variant_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> {
+    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
+    fn read_enum_variant_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
+    fn read_enum_struct_variant_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
         // if (len != self.len) {
         //     panic!("Fields count mismatch.");
         // }
         f(self)
     }
 
-    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> {
+    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
         let mut i = self.form.len();
         while (i > 0) {
             i -= 1;
             if self.form[i].0 == f_name {
-                let val = self.form.swap_remove(i).1;
+                let (_, val) = self.form.swap_remove(i);
                 self.reading_values.push(val);
             }
         }
@@ -72,26 +74,32 @@ impl ::serialize::Decoder for FormDecoder {
         f(self)
     }
 
-    fn read_tuple<T, F>(&mut self, len: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_option<T, F>(&mut self, mut f: F) -> Result<T, DecodeError> where F: FnMut(&mut Self, bool) -> Result<T, DecodeError> {
+    fn read_tuple<T, F>(&mut self, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where F: FnMut(&mut Self, bool) -> DecodeResult<T> {
         let has_values = !self.reading_values.is_empty();
         f(self, has_values)
     }
 
-    fn read_seq<T, F>(&mut self, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self, usize) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_map<T, F>(&mut self, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self, usize) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
-    fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> Result<T, DecodeError> where F: FnOnce(&mut Self) -> Result<T, DecodeError> { unimplemented!() }
+    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
+    fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
+    fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
+    fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
     fn error(&mut self, err: &str) -> DecodeError { unimplemented!() }
+}
+
+
+pub fn decode_form<T: Decodable>(form: Vec<(String, String)>) -> DecodeResult<T> {
+    let mut decoder = FormDecoder::new(form);
+    Decodable::decode(&mut decoder)
 }
 
 mod test {
     use super::{
-        FormDecoder,
+        decode_form,
         DecodeError
     };
 
@@ -104,12 +112,10 @@ mod test {
             sql_script: String,
         }
 
-        let mut decoder = FormDecoder::new(vec![
+        let decoded: FooBar = decode_form(vec![
             ("database".to_string(), "postgres".to_string()),
             ("sql_script".to_string(), "select 'hello'".to_string()),
-        ]);
-
-        let decoded: FooBar = ::serialize::Decodable::decode(&mut decoder).unwrap();
+        ]).unwrap();
 
 
         assert_eq!(decoded, FooBar {

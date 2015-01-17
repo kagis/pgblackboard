@@ -33,24 +33,30 @@ fn guess_content_type(extension: &[u8]) -> &str {
 
 
 
-struct Controller<'a, THttpWriter: Writer> {
-    req: &'a http::Request,
+struct Controller<THttpWriter: Writer> {
+    req: http::Request,
     res: http::ResponseStarter<THttpWriter>,
 }
 
-impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
+impl<THttpWriter: Writer> Controller<THttpWriter> {
 
     fn handle_req(req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         use http::Method::{ Get, Post };
 
-        let ctrl = Controller { req: &req, res: res };
+        println!("{:?}", req);
 
-        match (req.method, &req.path[]) {
-            (Get, "/") => ctrl.handle_db_req(Controller::handle_index_req),
-            (Get, "/favicon.ico") => ctrl.handle_static_req("/static/favicon.ico"),
-            (Get, "/tree") => ctrl.handle_db_req(Controller::handle_tree_req),
-            (Get, path) if path.starts_with("/static/") => ctrl.handle_static_req(path),
-            (Post, "/") => ctrl.handle_db_req(Controller::handle_script_req),
+        let path = &req.path.clone()[];
+        let method = req.method;
+
+        let ctrl = Controller { req: req, res: res };
+
+        match (method, path) {
+            (Get, b"/") => ctrl.handle_db_req(Controller::handle_index_req),
+            (Get, b"/favicon.ico") => ctrl.handle_static_req(b"/static/favicon.ico"),
+            (Get, path) if path.starts_with(b"/tree/") => ctrl.handle_tree_req(),
+            //(Get, b"/tree/children") => ctrl.handle_db_req(Controller::handle_tree_req),
+            (Get, path) if path.starts_with(b"/static/") => ctrl.handle_static_req(path),
+            (Post, b"/") => ctrl.handle_db_req(Controller::handle_script_req),
             _ => ctrl.handle_not_found(),
         }
     }
@@ -65,12 +71,36 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         Ok(())
     }
 
-    fn handle_tree_req(self, dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+    fn handle_tree_req(self) -> IoResult<()> {
+        use http::form::decode_form;
+
+        #[derive(Decodable)]
+        struct Params {
+            nodeid: String,
+            nodetype: String,
+            database: String,
+        }
+
+        let Params {
+            nodeid,
+            nodetype,
+            database,
+        } = decode_form(self.req.query_string.clone()).unwrap();
+
+        self.handle_db_req(|ctrl, dbconn| ctrl._handle_tree_req(dbconn,
+                                                                nodeid.clone(),
+                                                                nodetype.clone()))
+
+
+    }
+
+    fn _handle_tree_req(self, dbconn: postgres::DatabaseConnection<TcpStream>, nodeid: String, nodetype: String) -> IoResult<()> {
         use serialize::json;
+
         let children = tree::NodeService {
             dbconn: dbconn,
-            nodeid: "10".to_string(),
-            nodetype: "database".to_string(),
+            nodeid: nodeid,
+            nodetype: nodetype,
         }.get_children().unwrap();
 
         let mut a = try!(self.res.start_ok());
@@ -79,6 +109,7 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
 
         Ok(())
     }
+
 
     fn handle_index_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
         use serialize::json;
@@ -127,11 +158,11 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
         Ok(())
     }
 
-    fn handle_static_req(self, path: &str) -> IoResult<()> {
+    fn handle_static_req(self, path: &[u8]) -> IoResult<()> {
         use std::io::File;
         use std::path::Path;
 
-        let path: String = ["src", path].concat();
+        let path = [b"src", path].concat();
 
         let path = Path::new(path);
 
@@ -161,16 +192,18 @@ impl<'a, THttpWriter: Writer> Controller<'a, THttpWriter> {
     fn handle_db_req<TConnConsumer>(self, consumer: TConnConsumer) -> IoResult<()>
         where TConnConsumer: Fn(Self, postgres::DatabaseConnection<TcpStream>) -> IoResult<()>
     {
-        let &(ref user, ref password) = match self.req.basic_auth {
-            Some(ref x) => x,
-            None => return self.handle_unauthorized_req(),
+
+        let dbconn_res = {
+            let &(ref user, ref password) = match self.req.basic_auth {
+                Some(ref x) => x,
+                None => return self.handle_unauthorized_req(),
+            };
+
+            let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+            server_conn.connect_database("postgres",
+                                          &user[],
+                                          &password[])
         };
-
-        let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-
-        let dbconn_res = server_conn.connect_database("postgres",
-                                                      &user[],
-                                                      &password[]);
 
         let dbconn = match dbconn_res {
             Ok(conn) => conn,

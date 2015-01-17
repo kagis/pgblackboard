@@ -28,7 +28,7 @@ use std::sync::{ TaskPool, Arc };
 
 
 mod response;
-mod form;
+pub mod form;
 
 
 
@@ -87,9 +87,10 @@ impl ::std::fmt::String for Method {
     }
 }
 
+#[derive(Show)]
 pub struct Request {
     pub method: Method,
-    pub path: String,
+    pub path: Vec<u8>,
     pub query_string: Vec<(String, String)>,
     pub content: Option<RequestContent>,
     pub basic_auth: Option<(String, String)>,
@@ -125,7 +126,14 @@ impl Request {
             });
         }
 
-        let path = req_line[(left_space_pos + 1)..right_space_pos].to_string();
+        let url = req_line[(left_space_pos + 1)..right_space_pos].as_bytes();
+        let (path, query_string) = match url.position_elem(&b'?') {
+            Some(question_pos) => (
+                &url[0..question_pos],
+                parse_qs(&url[(question_pos + 1)..]),
+            ),
+            None => (url, vec![]),
+        };
 
 
         let mut content_length = 0us;
@@ -180,8 +188,8 @@ impl Request {
 
         Ok(Request {
             method: method,
-            path: path,
-            query_string: vec![],
+            path: path.to_vec(),
+            query_string: query_string,
             content: content,
             basic_auth: authorization,
         })
@@ -464,7 +472,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
 
                 println!("{user} {method} {path}",
                          method=req.method,
-                         path=req.path,
+                         path=String::from_utf8_lossy(&req.path[]),
                          user=req.basic_auth
                                  .as_ref()
                                  .map_or("", |x| &x.0[]));

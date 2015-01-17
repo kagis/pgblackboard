@@ -556,20 +556,29 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
     }
 
     pub fn query<TRel: ::serialize::Decodable>(&mut self, query: &str) -> IoResult<Vec<TRel>> {
-        use ::serialize::Decodable;
-        use self::decoder::RowDecoder;
-        self.execute_script(query)
-            .map(|msg_iter| msg_iter
-                .filter_map(|msg| match msg {
-                    Ok(ScriptResultItem::Row(row)) => Some(row),
-                    _ => None,
-                })
-                .map(|row| {
-                    let mut decoder = RowDecoder::new(row);
-                    Decodable::decode(&mut decoder).unwrap()
-                })
-                .collect::<Vec<TRel>>()
-            )
+        use self::ScriptResultItem::{
+            Row,
+            Error,
+        };
+
+        let mut res = vec![];
+        for msg_res in try!(self.execute_script(query)) {
+            match try!(msg_res) {
+                Row(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| IoError {
+                    kind: OtherIoError,
+                    desc: "Row decode error",
+                    detail: None,
+                }))),
+                Error(err) => return Err(IoError {
+                    kind: OtherIoError,
+                    desc: "Error response while queriyng",
+                    detail: Some(format!("{:?}", err)),
+                }),
+                _ => {},
+            }
+        }
+        Ok(res)
+
     }
 
     // pub fn next_result(&mut self) -> IoResult<Option<StatementResult>> {
