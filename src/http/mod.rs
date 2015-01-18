@@ -90,7 +90,7 @@ impl ::std::fmt::String for Method {
 #[derive(Show)]
 pub struct Request {
     pub method: Method,
-    pub path: Vec<u8>,
+    pub path: Vec<String>,
     pub query_string: Vec<(String, String)>,
     pub content: Option<RequestContent>,
     pub basic_auth: Option<(String, String)>,
@@ -188,7 +188,7 @@ impl Request {
 
         Ok(Request {
             method: method,
-            path: path.to_vec(),
+            path: path.split(|&x| x == b'/').map(|x| url_decode(x)).collect(),
             query_string: query_string,
             content: content,
             basic_auth: authorization,
@@ -470,9 +470,9 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
                     Request::read_from(&mut reader).unwrap()
                 };
 
-                println!("{user} {method} {path}",
+                println!("{user} {method} {path:?}",
                          method=req.method,
-                         path=String::from_utf8_lossy(&req.path[]),
+                         path=req.path,
                          user=req.basic_auth
                                  .as_ref()
                                  .map_or("", |x| &x.0[]));

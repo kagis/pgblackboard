@@ -2,6 +2,7 @@
 
 extern crate serialize;
 
+#[macro_use] extern crate log;
 
 //use std::io::net::ip::Ipv4Addr;
 //use hyper::server::{Request, Response};
@@ -45,21 +46,78 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 
         println!("{:?}", req);
 
-        let path = &req.path.clone()[];
-        let method = req.method;
+        //let path = &req.path.clone()[];
+        //let method = req.method;
+
+        let path_vec = req.path.clone();
+        let path_slices_vec = path_vec
+            .iter()
+            .map(|x| x.as_slice())
+            .collect::<Vec<&str>>();
+
+        let path = &path_slices_vec[];
 
         let ctrl = Controller { req: req, res: res };
 
-        match (method, path) {
-            (Get, b"/") => ctrl.handle_db_req(Controller::handle_index_req),
-            (Get, b"/favicon.ico") => ctrl.handle_static_req(b"/static/favicon.ico"),
-            (Get, path) if path.starts_with(b"/tree/") => ctrl.handle_tree_req(),
-            //(Get, b"/tree/children") => ctrl.handle_db_req(Controller::handle_tree_req),
-            (Get, path) if path.starts_with(b"/static/") => ctrl.handle_static_req(path),
-            (Post, b"/") => ctrl.handle_db_req(Controller::handle_script_req),
-            _ => ctrl.handle_not_found(),
-        }
+
+        // /db/postgres/execute
+        // /db/postgres/map
+        // /db/postgres/nodes/<schema>/<100>/definition
+        // /db/postgres/edit
+
+
+        let resource = match path {
+            // [ /* root */ ]
+            // => IndexResource::new(),
+
+            // ["db", database, "execute"]
+            // => DbResource::new(database, ),
+
+            ["static", filename..]
+            => StaticResource::new(filename),
+
+            ["favicon.ico"]
+            => StaticResource::new("favicon.ico"),
+
+            _
+            => NotFoundResource::new(),
+        };
+
+        resource.handle_req(req, res)
+
+
+        // match path {
+        //     []
+        //         => ctrl.handle_db_req("postgres", &[]),
+
+        //     ["db", database, subpath..]
+        //         => ctrl.handle_db_req(database, subpath),
+
+        //     ["favicon.ico"]
+        //         => ctrl.handle_static_req("favicon.ico"),
+
+        //     ["static", filename..]
+        //         => ctrl.handle_static_req(&filename.connect("/")[]),
+
+        //     _
+        //         => ctrl.handle_not_found(),
+        // }
+
+        // let (database, db_consumer) = match (method, path) {
+        //     (Get, []) => ("postgres", Controller::handle_index_req),
+        //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
+        //     //(Post, ["map", database]) => Controller::handle_
+        //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+        //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+
+        //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
+        //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
+        //     _ => return ctrl.handle_not_found(),
+        // };
+
+        // ctrl.handle_db_req(database, db_consumer)
     }
+
 
 
     fn handle_not_found(self) -> IoResult<()> {
@@ -71,52 +129,201 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         Ok(())
     }
 
-    fn handle_tree_req(self) -> IoResult<()> {
-        use http::form::decode_form;
+    // fn handle_tree_req(self) -> IoResult<()> {
+    //     use http::form::decode_form;
 
-        #[derive(Decodable)]
-        struct Params {
-            nodeid: String,
-            nodetype: String,
-            database: String,
-        }
+    //     #[derive(Decodable)]
+    //     struct Params {
+    //         nodeid: String,
+    //         nodetype: String,
+    //         database: String,
+    //     }
 
-        let Params {
-            nodeid,
-            nodetype,
-            database,
-        } = decode_form(self.req.query_string.clone()).unwrap();
+    //     let Params {
+    //         nodeid,
+    //         nodetype,
+    //         database,
+    //     } = decode_form(self.req.query_string.clone()).unwrap();
 
-        self.handle_db_req(|ctrl, dbconn| ctrl._handle_tree_req(dbconn,
-                                                                nodeid.clone(),
-                                                                nodetype.clone()))
+    //     self.handle_db_req(|ctrl, dbconn| ctrl._handle_tree_req(dbconn,
+    //                                                             nodeid.clone(),
+    //                                                             nodetype.clone()))
 
 
-    }
+    // }
 
-    fn _handle_tree_req(self, dbconn: postgres::DatabaseConnection<TcpStream>, nodeid: String, nodetype: String) -> IoResult<()> {
-        use serialize::json;
+    // fn _handle_tree_req(self, dbconn: postgres::DatabaseConnection<TcpStream>, nodeid: String, nodetype: String) -> IoResult<()> {
+    //     use serialize::json;
 
-        let children = tree::NodeService {
-            dbconn: dbconn,
-            nodeid: nodeid,
-            nodetype: nodetype,
-        }.get_children().unwrap();
+    //     let children = tree::NodeService {
+    //         dbconn: dbconn,
+    //         nodeid: nodeid,
+    //         nodetype: nodetype,
+    //     }.get_children().unwrap();
+
+    //     let mut a = try!(self.res.start_ok());
+    //     try!(a.write_content_type("application/json"));
+    //     try!(a.write_content(json::encode(&children).as_bytes()));
+
+    //     Ok(())
+    // }
+
+
+    fn handle_static_req(self, path: &str) -> IoResult<()> {
+        use std::io::File;
+        use std::path::Path;
+
+        let path: String = ["src/static/", path].concat();
+
+        let path = Path::new(path);
+
+        let content = File::open(&path)
+                            .read_to_end()
+                            .unwrap();
+
+        let ext = path.extension().unwrap_or(b"");
 
         let mut a = try!(self.res.start_ok());
-        try!(a.write_content_type("application/json"));
-        try!(a.write_content(json::encode(&children).as_bytes()));
+        try!(a.write_content_type(guess_content_type(ext)));
+        try!(a.write_content(&content[]));
 
         Ok(())
     }
 
+    fn handle_unauthorized_req(self) -> IoResult<()> {
+        use http::Status::Unauthorized;
 
-    fn handle_index_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
+        let mut a = try!(self.res.start(Unauthorized));
+        try!(a.write_www_authenticate_basic("postgres"));
+        try!(a.write_content_type("text/html"));
+        try!(a.write_content(b"ololo"));
+        Ok(())
+    }
+
+    fn handle_db_req(self, database: &str, path: &[&str]) -> IoResult<()> {
+
+
+
+        let dbconn_res = {
+            let &(ref user, ref password) = match self.req.basic_auth {
+                Some(ref x) => x,
+                None => return self.handle_unauthorized_req(),
+            };
+
+            let server_conn = try!(postgres::connect_tcp("localhost:5432"));
+            server_conn.connect_database(database,
+                                          &user[],
+                                          &password[])
+        };
+
+        let dbconn = match dbconn_res {
+            Ok(conn) => conn,
+            Err(postgres::ConnectError::AuthenticationFailed) => {
+                return self.handle_unauthorized_req();
+            },
+            Err(e) => { println!("{:?}", e); panic!("err"); },
+        };
+
+        let ctrl = DbHandler {
+            req: self.req,
+            res: self.res,
+            dbconn: dbconn,
+        };
+
+        match path {
+            []
+                => ctrl.handle_index(),
+
+            ["execute"] | ["map"]
+                => ctrl.handle_script_req::<TableView<THttpWriter>>(),
+
+            ["nodes", nodetype, nodeid, action]
+                => ctrl.handle_node_req(action, nodetype, nodeid),
+
+            _
+                => ctrl.handle_not_found(),
+        }
+    }
+
+
+}
+
+
+trait Resource<THttpWriter: Writer> {
+
+    fn handle(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        match req.method {
+            http::Method::Get => self.get(req, res),
+            http::Method::Post => self.post(req, res),
+        }
+    }
+
+    fn get(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        self.method_not_allowed(res)
+    }
+
+    fn post(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        self.method_not_allowed(res)
+    }
+
+    fn method_not_allowed(self, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        let mut resp_writer = try!(res.start(http::Status::MethodNotAllowed));
+        resp_writer.write_content("MethodNotAllowed")
+    }
+}
+
+struct StaticResource {
+    filename: String,
+}
+
+impl StaticResource {
+    fn new(filename: String) -> Box<Resource> {
+        Box::new(StaticResource { filename: filename })
+    }
+}
+
+impl<THttpWriter: Writer> Resource<THttpWriter> for StaticResource {
+
+}
+
+
+struct NotFoundResource;
+
+impl NotFoundResource {
+    fn new(filename: String) -> Box<Resource> {
+        Box::new(StaticResource { filename: filename })
+    }
+}
+
+impl<THttpWriter: Writer> Resource<THttpWriter> for NotFoundResource {
+
+}
+
+
+
+struct DbResource {
+    database: String,
+}
+
+
+
+
+
+
+
+struct DbHandler<THttpWriter: Writer> {
+    req: http::Request,
+    res: http::ResponseStarter<THttpWriter>,
+    dbconn: postgres::DatabaseConnection<TcpStream>,
+}
+
+impl<THttpWriter: Writer> DbHandler<THttpWriter> {
+    fn handle_index(mut self) -> IoResult<()> {
         use serialize::json;
         use serialize::json::Json;
         use std::collections::BTreeMap;
 
-        let rows = dbconn.execute_query("
+        let rows = self.dbconn.execute_query("
             SELECT datname AS name
                      ,shobj_description(oid, 'pg_database') AS comment
                FROM pg_database
@@ -158,71 +365,9 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         Ok(())
     }
 
-    fn handle_static_req(self, path: &[u8]) -> IoResult<()> {
-        use std::io::File;
-        use std::path::Path;
-
-        let path = [b"src", path].concat();
-
-        let path = Path::new(path);
-
-        let content = File::open(&path)
-                            .read_to_end()
-                            .unwrap();
-
-        let ext = path.extension().unwrap_or(b"");
-
-        let mut a = try!(self.res.start_ok());
-        try!(a.write_content_type(guess_content_type(ext)));
-        try!(a.write_content(&content[]));
-
-        Ok(())
-    }
-
-    fn handle_unauthorized_req(self) -> IoResult<()> {
-        use http::Status::Unauthorized;
-
-        let mut a = try!(self.res.start(Unauthorized));
-        try!(a.write_www_authenticate_basic("postgres"));
-        try!(a.write_content_type("text/html"));
-        try!(a.write_content(b"ololo"));
-        Ok(())
-    }
-
-    fn handle_db_req<TConnConsumer>(self, consumer: TConnConsumer) -> IoResult<()>
-        where TConnConsumer: Fn(Self, postgres::DatabaseConnection<TcpStream>) -> IoResult<()>
-    {
-
-        let dbconn_res = {
-            let &(ref user, ref password) = match self.req.basic_auth {
-                Some(ref x) => x,
-                None => return self.handle_unauthorized_req(),
-            };
-
-            let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-            server_conn.connect_database("postgres",
-                                          &user[],
-                                          &password[])
-        };
-
-        let dbconn = match dbconn_res {
-            Ok(conn) => conn,
-            Err(postgres::ConnectError::AuthenticationFailed) => {
-                return self.handle_unauthorized_req();
-            },
-            Err(e) => { println!("{:?}", e); panic!("err"); },
-        };
-
-        consumer(self, dbconn)
-    }
 
 
-    fn handle_script_req(self, mut dbconn: postgres::DatabaseConnection<TcpStream>) -> IoResult<()> {
-
-        // let &(ref user, ref password) = match self.req.basic_auth {
-        //     Some(ref x) => x,
-        //     None => return self.handle_unauthorized_req(),
-        // };
+    fn handle_script_req<TView: View>(mut self) -> IoResult<()> {
 
         let script = match self.req.content {
             Some(http::RequestContent::UrlEncoded(ref params)) => {
@@ -257,7 +402,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 
         {
             let mut view = TableView(writer.by_ref());
-            for r in try!(dbconn.execute_script(script)) {
+            for r in try!(self.dbconn.execute_script(script)) {
                 use postgres::ScriptResultItem::*;
                 try!(match r.unwrap() {
                     RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
@@ -273,15 +418,46 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         try!(writer.write(b"\r\n"));
         try!(writer.end());
 
-        dbconn.finish()
+        self.dbconn.finish()
+    }
+
+    fn handle_node_req(self, action: &str, nodetype: &str, nodeid: &str) -> IoResult<()> {
+        // let node_service = NodeService {
+        //     dbconn: self.dbconn,
+        //     nodeid: nodeid.to_string(),
+        //     nodetype: nodetype.to_string(),
+
+        // };
+           //     use serialize::json;
+
+    //     let children = tree::NodeService {
+    //         dbconn: dbconn,
+    //         nodeid: nodeid,
+    //         nodetype: nodetype,
+    //     }.get_children().unwrap();
+
+    //     let mut a = try!(self.res.start_ok());
+    //     try!(a.write_content_type("application/json"));
+    //     try!(a.write_content(json::encode(&children).as_bytes()));
+
+        match action {
+            "children" => {},
+            "definition" => {},
+            _ => {},
+        };
+
+        Ok(())
+    }
+
+    fn handle_not_found(self) -> IoResult<()> {
+        use http::Status::NotFound;
+        let mut a = try!(self.res.start(NotFound));
+        try!(a.write_content_type("text/plain"));
+        try!(a.write_content(b"Not Found"));
+
+        Ok(())
     }
 }
-
-
-
-
-
-
 
 
 
