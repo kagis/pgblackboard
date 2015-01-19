@@ -188,7 +188,7 @@ impl Request {
 
         Ok(Request {
             method: method,
-            path: path.split(|&x| x == b'/').map(|x| url_decode(x)).collect(),
+            path: path.split(|&x| x == b'/').skip(1).map(|x| url_decode(x)).collect(),
             query_string: query_string,
             content: content,
             basic_auth: authorization,
