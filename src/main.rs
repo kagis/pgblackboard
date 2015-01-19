@@ -66,7 +66,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         // /db/postgres/edit
 
 
-        let resource = match path {
+        match path {
             // [ /* root */ ]
             // => IndexResource::new(),
 
@@ -74,16 +74,14 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
             // => DbResource::new(database, ),
 
             ["static", filename..]
-            => StaticResource::new(filename),
+            => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
 
             ["favicon.ico"]
-            => StaticResource::new("favicon.ico"),
+            => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
 
             _
-            => NotFoundResource::new(),
-        };
-
-        resource.handle_req(req, res)
+            => ctrl.use_resource(NotFoundResource),
+        }
 
 
         // match path {
@@ -116,6 +114,10 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         // };
 
         // ctrl.handle_db_req(database, db_consumer)
+    }
+
+    fn use_resource<TRes: Resource>(self, resource: TRes) -> IoResult<()> {
+        resource.handle(self.req, self.res)
     }
 
 
@@ -249,26 +251,26 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 }
 
 
-trait Resource<THttpWriter: Writer> {
+trait Resource: Sized {
 
-    fn handle(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+    fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         match req.method {
             http::Method::Get => self.get(req, res),
             http::Method::Post => self.post(req, res),
         }
     }
 
-    fn get(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+    fn get<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         self.method_not_allowed(res)
     }
 
-    fn post(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+    fn post<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         self.method_not_allowed(res)
     }
 
-    fn method_not_allowed(self, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+    fn method_not_allowed<THttpWriter: Writer>(self, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         let mut resp_writer = try!(res.start(http::Status::MethodNotAllowed));
-        resp_writer.write_content("MethodNotAllowed")
+        resp_writer.write_content(b"MethodNotAllowed")
     }
 }
 
@@ -277,26 +279,45 @@ struct StaticResource {
 }
 
 impl StaticResource {
-    fn new(filename: String) -> Box<Resource> {
-        Box::new(StaticResource { filename: filename })
+    fn new(filename: String) -> StaticResource {
+        StaticResource { filename: filename }
     }
 }
 
-impl<THttpWriter: Writer> Resource<THttpWriter> for StaticResource {
+impl Resource for StaticResource {
+    fn get<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        use std::io::File;
+        use std::path::Path;
 
+        let path: String = ["src/static/", &self.filename[]].concat();
+
+        let path = Path::new(path);
+
+        let content = File::open(&path)
+                            .read_to_end()
+                            .unwrap();
+
+        let ext = path.extension().unwrap_or(b"");
+
+        let mut a = try!(res.start_ok());
+        try!(a.write_content_type(guess_content_type(ext)));
+        try!(a.write_content(&content[]));
+
+        Ok(())
+    }
 }
 
 
 struct NotFoundResource;
 
-impl NotFoundResource {
-    fn new(filename: String) -> Box<Resource> {
-        Box::new(StaticResource { filename: filename })
+impl Resource for NotFoundResource {
+    fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+        let mut resp_writer = try!(res.start(http::Status::NotFound));
+        try!(resp_writer.write_content_type("text/plain"));
+        try!(resp_writer.write_content(b"Not Found"));
+
+        Ok(())
     }
-}
-
-impl<THttpWriter: Writer> Resource<THttpWriter> for NotFoundResource {
-
 }
 
 
