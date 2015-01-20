@@ -1,15 +1,15 @@
 use ::serialize::Decodable;
 
 struct RowDecoder {
-    len: usize,
-    row: ::std::iter::Peekable<Option<String>, ::std::vec::IntoIter<Option<String>>>,
+    row: ::std::vec::IntoIter<Option<String>>,
+    reading_value: Option<String>,
 }
 
 impl RowDecoder {
     pub fn new(row: Vec<Option<String>>) -> RowDecoder {
         RowDecoder {
-            len: row.len(),
-            row: row.into_iter().peekable(),
+            reading_value: None,
+            row: row.into_iter(),
         }
     }
 }
@@ -87,9 +87,7 @@ impl ::serialize::Decoder for RowDecoder {
     }
 
     fn read_str(&mut self) -> DecodeResult<String> {
-        self.row.next()
-            .ok_or(DecodeError::MissingField)
-            .and_then(|val_opt| val_opt.ok_or(DecodeError::MissingValue))
+        self.reading_value.take().ok_or(DecodeError::MissingValue)
     }
 
     fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
@@ -113,13 +111,11 @@ impl ::serialize::Decoder for RowDecoder {
     }
 
     fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
-        // if (len != self.len) {
-        //     panic!("Fields count mismatch.");
-        // }
         f(self)
     }
 
     fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+        self.reading_value = try!(self.row.next().ok_or(DecodeError::MissingField));
         f(self)
     }
 
@@ -140,12 +136,8 @@ impl ::serialize::Decoder for RowDecoder {
     }
 
     fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where F: FnMut(&mut Self, bool) -> DecodeResult<T> {
-        let next_is_some = match self.row.peek() {
-            Some(maybe_val) => maybe_val.is_some(),
-            None => return Err(DecodeError::MissingField),
-        };
-
-        f(self, next_is_some)
+        let has_value = self.reading_value.is_some();
+        f(self, has_value)
     }
 
     fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self, usize) -> DecodeResult<T> {
@@ -213,16 +205,19 @@ mod test {
         struct FooBar {
             foo: String,
             bar: Option<String>,
+            buz: String,
         }
 
         let decoded: FooBar = decode_row(vec![
-            Some("postgres".to_string()),
+            Some("one".to_string()),
             None,
+            Some("three".to_string()),
         ]).unwrap();
 
         assert_eq!(decoded, FooBar {
-            foo: "postgres".to_string(),
-            bar: None
+            foo: "one".to_string(),
+            bar: None,
+            buz: "three".to_string()
         });
     }
 }
