@@ -3,7 +3,7 @@ use std::io::IoResult;
 use std::io::Stream;
 
 pub struct NodeService<T: Stream> {
-    pub dbconn: postgres::DatabaseConnection<T>,
+    pub dbconn: postgres::Connection<T>,
     pub nodeid: String,
     pub nodetype: String,
 }

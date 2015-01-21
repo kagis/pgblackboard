@@ -11,7 +11,6 @@ use std::io::{
     IoError,
     OtherIoError,
     Stream,
-
 };
 
 use std::io::net::ip::ToSocketAddr;
@@ -25,6 +24,8 @@ use self::BackendMessage::*;
 
 mod sqlstate;
 mod decoder;
+
+
 
 pub type Oid = u32;
 
@@ -43,7 +44,7 @@ pub enum ColumnFormat {
 
 
 #[derive(Show)]
-pub struct ColumnDescription {
+pub struct FieldDescription {
     pub name: String,
     pub table_oid: Option<Oid>,
     pub column_id: Option<i16>,
@@ -144,15 +145,11 @@ pub enum BackendMessage {
     //ParseComplete,
     //PortalSuspended,
     ReadyForQuery(ConnectionStatus),
-    RowDescription(Vec<ColumnDescription>),
+    RowDescription(Vec<FieldDescription>),
 }
 
 trait MessageReader: Sized {
     fn read_message(&mut self) -> IoResult<BackendMessage>;
-    fn read_auth_message(&mut self) -> IoResult<BackendMessage>;
-    fn read_data_row(&mut self) -> IoResult<Vec<Option<String>>>;
-    fn read_error_or_notice(&mut self) -> IoResult<ErrorOrNotice>;
-    fn read_row_description(&mut self) -> IoResult<Vec<ColumnDescription>>;
 
     fn messages(&mut self) -> MessageIterator<Self> {
         MessageIterator { msg_reader: self }
@@ -164,23 +161,23 @@ impl<T: Buffer> MessageReader for T  {
         let ident = try!(self.read_u8());
         let msg_len_including_self = try!(self.read_be_i32());
         let msg_len = msg_len_including_self as usize - mem::size_of::<i32>();
-        let mut limrdr = LimitReader::new(self.by_ref(), msg_len);
+        let ref mut limrdr = LimitReader::new(self.by_ref(), msg_len);
 
         let ret = match ident {
-            b'R' => try!(limrdr.read_auth_message()),
-            b'E' => ErrorResponse(try!(limrdr.read_error_or_notice())),
-            b'N' => NoticeResponse(try!(limrdr.read_error_or_notice())),
+            b'R' => try!(read_auth_message(limrdr)),
+            b'E' => ErrorResponse(try!(read_error_or_notice(limrdr))),
+            b'N' => NoticeResponse(try!(read_error_or_notice(limrdr))),
             b'S' => ParameterStatus {
                 parameter: try!(limrdr.read_cstr()),
                 value: try!(limrdr.read_cstr()),
             },
-            b'T' => RowDescription(try!(limrdr.read_row_description())),
+            b'T' => RowDescription(try!(read_row_description(limrdr))),
             b'C' => CommandComplete(try!(limrdr.read_cstr())),
             b'K' => BackendKeyData {
                 process_id: try!(limrdr.read_be_u32()),
                 secret_key: try!(limrdr.read_be_u32())
             },
-            b'D' => DataRow(try!(limrdr.read_data_row())),
+            b'D' => DataRow(try!(read_data_row(limrdr))),
             b'Z' => ReadyForQuery(match try!(limrdr.read_u8()) {
                 b'I' => ConnectionStatus::Idle,
                 b'T' => ConnectionStatus::InTransaction,
@@ -198,16 +195,15 @@ impl<T: Buffer> MessageReader for T  {
             },
             b'I' => EmptyQueryResponse,
             b'n' => NoData,
-            b'G' => {
-                let format = try!(limrdr.read_u8());
-                let mut column_formats = vec![];
-                for _ in range(0, try!(limrdr.read_be_u16())) {
-                    column_formats.push(try!(limrdr.read_be_u16()));
-                }
-                CopyInResponse {
-                    format: format,
-                    column_formats: column_formats,
-                }
+            b'G' => CopyInResponse {
+                format: try!(limrdr.read_u8()),
+                column_formats: {
+                    let mut column_formats = vec![];
+                    for _ in range(0, try!(limrdr.read_be_u16())) {
+                        column_formats.push(try!(limrdr.read_be_u16()));
+                    }
+                    column_formats
+                },
             },
             unknown => {
                 try!(limrdr.read_to_end());
@@ -222,148 +218,145 @@ impl<T: Buffer> MessageReader for T  {
         debug!("-> {:?}", ret);
         Ok(ret)
     }
-
-    fn read_auth_message(&mut self) -> IoResult<BackendMessage> {
-        Ok(match try!(self.read_be_i32()) {
-            0 => AuthenticationOk,
-            2 => AuthenticationKerberosV5,
-            3 => AuthenticationCleartextPassword,
-            5 => AuthenticationMD5Password {
-                salt: {
-                    let mut salt = [0; 4];
-                    try!(self.read_at_least(salt.len(), &mut salt));
-                    salt
-                }
-            },
-            6 => AuthenticationSCMCredential,
-            7 => AuthenticationGSS,
-            9 => AuthenticationSSPI,
-            unknown => return Err(IoError {
-                kind: OtherIoError,
-                desc: "Unexpected authentication tag",
-                detail: Some(format!("got {}", unknown)),
-            }),
-        })
-    }
-
-    fn read_data_row(&mut self) -> IoResult<Vec<Option<String>>> {
-        let len = try!(self.read_be_i16()) as usize;
-        let mut values = Vec::with_capacity(len);
-
-        for _ in range(0, len) {
-            values.push(match try!(self.read_be_i32()) {
-                -1 => None,
-                len => {
-                    let binval = try!(self.read_exact(len as usize));
-                    let strval = try!(String::from_utf8(binval).map_err(|_| IoError {
-                        kind: OtherIoError,
-                        desc: "Received a non-utf8 string from server",
-                        detail: None
-                    }));
-                    Some(strval)
-                }
-            });
-        }
-
-        Ok(values)
-    }
-
-    fn read_error_or_notice(&mut self) -> IoResult<ErrorOrNotice> {
-        let mut severity = None;
-        let mut code = None;
-        let mut message = None;
-        let mut detail = None;
-        let mut hint = None;
-        let mut position = None;
-        let mut internal_position = None;
-        let mut internal_query = None;
-        let mut where_ = None;
-        let mut file = None;
-        let mut line = None;
-        let mut routine = None;
-        loop {
-            let field_code = try!(self.read_u8());
-            if field_code == 0 {
-                break;
-            }
-            let field_val = Some(try!(self.read_cstr()));
-            *match field_code {
-                b'S' => &mut severity,
-                b'C' => &mut code,
-                b'M' => &mut message,
-                b'D' => &mut detail,
-                b'H' => &mut hint,
-                b'P' => &mut position,
-                b'p' => &mut internal_position,
-                b'q' => &mut internal_query,
-                b'W' => &mut where_,
-                b'F' => &mut file,
-                b'L' => &mut line,
-                b'R' => &mut routine,
-                _ => continue,
-            } = field_val;
-        }
-
-        let code = code.unwrap();
-        let (sqlstate_class, sqlstate) = code.parse().unwrap();
-
-        Ok(ErrorOrNotice {
-            severity: severity.unwrap(),
-            sqlstate: sqlstate,
-            sqlstate_class: sqlstate_class,
-            code: code,
-            message: message.unwrap(),
-            detail: detail,
-            hint: hint,
-            position: position.map(|x| x.parse().unwrap()),
-            internal_position: internal_position.map(|x| x.parse().unwrap()),
-            internal_query: internal_query,
-            where_: where_,
-            file: file,
-            line: line.map(|x| x.parse().unwrap()),
-            routine: routine,
-        })
-    }
-
-    fn read_row_description(&mut self) -> IoResult<Vec<ColumnDescription>> {
-        let len = try!(self.read_be_i16()) as usize;
-        let mut cols_descr = Vec::with_capacity(len);
-
-        for _ in range(0, len) {
-            cols_descr.push(ColumnDescription {
-                name: try!(self.read_cstr()),
-                table_oid: match try!(self.read_be_u32()) {
-                    0 => None,
-                    oid => Some(oid)
-                },
-                column_id: match try!(self.read_be_i16()) {
-                    0 => None,
-                    id => Some(id)
-                },
-                type_oid: try!(self.read_be_u32()),
-                type_size: match try!(self.read_be_i16()) {
-                    len if len < 0 => TypeSize::Variable,
-                    len => TypeSize::Fixed(len as usize),
-                },
-                type_modifier: try!(self.read_be_i32()),
-                format: match try!(self.read_be_i16()) {
-                    0 => ColumnFormat::Text,
-                    1 => ColumnFormat::Binary,
-                    unknown => return Err(IoError {
-                        kind: OtherIoError,
-                        desc: "Unknown column format code",
-                        detail: Some(format!("Got {}", unknown)),
-                    })
-                }
-            });
-        }
-
-        Ok(cols_descr)
-    }
-
-
 }
 
+fn read_auth_message<T: Reader>(reader: &mut T) -> IoResult<BackendMessage> {
+    Ok(match try!(reader.read_be_i32()) {
+        0 => AuthenticationOk,
+        2 => AuthenticationKerberosV5,
+        3 => AuthenticationCleartextPassword,
+        5 => AuthenticationMD5Password {
+            salt: {
+                let mut salt = [0; 4];
+                try!(reader.read_at_least(salt.len(), &mut salt));
+                salt
+            }
+        },
+        6 => AuthenticationSCMCredential,
+        7 => AuthenticationGSS,
+        9 => AuthenticationSSPI,
+        unknown => return Err(IoError {
+            kind: OtherIoError,
+            desc: "Unexpected authentication tag",
+            detail: Some(format!("got {}", unknown)),
+        }),
+    })
+}
+
+fn read_data_row<T: Reader>(reader: &mut T) -> IoResult<Vec<Option<String>>> {
+    let fields_count = try!(reader.read_be_i16()) as usize;
+    let mut values = Vec::with_capacity(fields_count);
+
+    for _ in range(0, fields_count) {
+        values.push(match try!(reader.read_be_i32()) {
+            -1 => None,
+            len => {
+                let binval = try!(reader.read_exact(len as usize));
+                let strval = try!(String::from_utf8(binval).map_err(|_| IoError {
+                    kind: OtherIoError,
+                    desc: "Received a non-utf8 string from server",
+                    detail: None
+                }));
+                Some(strval)
+            }
+        });
+    }
+
+    Ok(values)
+}
+
+fn read_error_or_notice<T: Buffer>(reader: &mut T) -> IoResult<ErrorOrNotice> {
+    let mut severity = None;
+    let mut code = None;
+    let mut message = None;
+    let mut detail = None;
+    let mut hint = None;
+    let mut position = None;
+    let mut internal_position = None;
+    let mut internal_query = None;
+    let mut where_ = None;
+    let mut file = None;
+    let mut line = None;
+    let mut routine = None;
+    loop {
+        let field_code = try!(reader.read_u8());
+        if field_code == 0 {
+            break;
+        }
+        let field_val = Some(try!(reader.read_cstr()));
+        *match field_code {
+            b'S' => &mut severity,
+            b'C' => &mut code,
+            b'M' => &mut message,
+            b'D' => &mut detail,
+            b'H' => &mut hint,
+            b'P' => &mut position,
+            b'p' => &mut internal_position,
+            b'q' => &mut internal_query,
+            b'W' => &mut where_,
+            b'F' => &mut file,
+            b'L' => &mut line,
+            b'R' => &mut routine,
+            _ => continue,
+        } = field_val;
+    }
+
+    let code = code.unwrap();
+    let (sqlstate_class, sqlstate) = code.parse().unwrap();
+
+    Ok(ErrorOrNotice {
+        severity: severity.unwrap(),
+        sqlstate: sqlstate,
+        sqlstate_class: sqlstate_class,
+        code: code,
+        message: message.unwrap(),
+        detail: detail,
+        hint: hint,
+        position: position.map(|x| x.parse().unwrap()),
+        internal_position: internal_position.map(|x| x.parse().unwrap()),
+        internal_query: internal_query,
+        where_: where_,
+        file: file,
+        line: line.map(|x| x.parse().unwrap()),
+        routine: routine,
+    })
+}
+
+fn read_row_description<T: Buffer>(reader: &mut T) -> IoResult<Vec<FieldDescription>> {
+    let len = try!(reader.read_be_i16()) as usize;
+    let mut cols_descr = Vec::with_capacity(len);
+
+    for _ in range(0, len) {
+        cols_descr.push(FieldDescription {
+            name: try!(reader.read_cstr()),
+            table_oid: match try!(reader.read_be_u32()) {
+                0 => None,
+                oid => Some(oid)
+            },
+            column_id: match try!(reader.read_be_i16()) {
+                0 => None,
+                id => Some(id)
+            },
+            type_oid: try!(reader.read_be_u32()),
+            type_size: match try!(reader.read_be_i16()) {
+                len if len < 0 => TypeSize::Variable,
+                len => TypeSize::Fixed(len as usize),
+            },
+            type_modifier: try!(reader.read_be_i32()),
+            format: match try!(reader.read_be_i16()) {
+                0 => ColumnFormat::Text,
+                1 => ColumnFormat::Binary,
+                unknown => return Err(IoError {
+                    kind: OtherIoError,
+                    desc: "Unknown column format code",
+                    detail: Some(format!("Got {}", unknown)),
+                })
+            }
+        });
+    }
+
+    Ok(cols_descr)
+}
 
 
 
@@ -460,42 +453,50 @@ impl ::std::error::FromError<IoError> for ConnectError {
 //     pub host: String,
 // }
 
-pub struct ServerConnection<TStream: Stream> {
-    stream: BufferedStream<TStream>
-}
 
-pub struct DatabaseConnection<TStream: Stream> {
-    stream: BufferedStream<TStream>
+pub struct Connection<TStream: Stream> {
+    stream: BufferedStream<TStream>,
 }
 
 // pub enum StatementResult {
 //     NonQuery(String),
-//     Rowset(Vec<ColumnDescription>),
+//     Rowset(Vec<FieldDescription>),
 // }
 
-pub fn connect_tcp<T: ToSocketAddr>(addr: T) -> IoResult<ServerConnection<TcpStream>> {
+pub fn connect_tcp<T: ToSocketAddr>(addr: T,
+                                    database: &str,
+                                    user: &str,
+                                    password: &str)
+                                    -> ConnectResult<TcpStream> {
+
     let stream = try!(TcpStream::connect(addr));
-    Ok(ServerConnection::new(stream))
+    Connection::connect_database(
+        stream,
+        database,
+        user,
+        password,
+    )
 }
 
 
-type ConnectResult<TStream> = Result<DatabaseConnection<TStream>, ConnectError>;
+type ConnectResult<TStream> = Result<Connection<TStream>, ConnectError>;
 
-impl<TStream> ServerConnection<TStream> where TStream: Stream {
 
-    pub fn new(stream: TStream) -> ServerConnection<TStream> {
-        ServerConnection {
-            stream: BufferedStream::new(stream),
-            //is_executing_script: false,
-            //is_connected_to_database: false
-        }
-    }
+impl<TStream: Stream> Connection<TStream> {
 
-    pub fn connect_database(mut self, database: &str, user: &str, password: &str) -> ConnectResult<TStream> {
-        try!(self.stream.write_startup_message(user, database));
+    pub fn connect_database(stream: TStream,
+                            database: &str,
+                            user: &str,
+                            password: &str)
+                            -> ConnectResult<TStream>
+    {
+
+        let mut stream = BufferedStream::new(stream);
+
+        try!(stream.write_startup_message(user, database));
 
         loop {
-            match try!(self.stream.read_message()) {
+            match try!(stream.read_message()) {
                 AuthenticationMD5Password { salt } => {
                     let mut hasher = Md5::new();
                     hasher.input_str(password);
@@ -505,10 +506,10 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
                     hasher.input_str(&output[]);
                     hasher.input(&salt);
                     let output = format!("md5{}", hasher.result_str());
-                    try!(self.stream.write_password_message(&output[]));
+                    try!(stream.write_password_message(&output[]));
                 },
                 AuthenticationCleartextPassword => {
-                    try!(self.stream.write_password_message(password));
+                    try!(stream.write_password_message(password));
                 },
                 AuthenticationOk => { /* pass */ },
                 ErrorResponse(e) => {
@@ -525,30 +526,19 @@ impl<TStream> ServerConnection<TStream> where TStream: Stream {
             }
         }
 
-        Ok(DatabaseConnection { stream: self.stream })
+        Ok(Connection { stream: stream })
     }
-}
 
-impl<TStream: Stream> DatabaseConnection<TStream> {
-
-    pub fn execute_script(&mut self, script: &str) -> IoResult<ScriptResultIterator<TStream>> {
-        // if !self.is_connected_to_database {
-        //     panic!("Connect to database first");
-        // }
-
+    pub fn execute_script(&mut self, script: &str) -> IoResult<ExecuteEventIterator<BufferedStream<TStream>>> {
         try!(self.stream.write_query_message(script));
-       // self.is_executing_script = true;
-        // loop {
-        //     try!(self.stream.read_message());
-        // }
-        Ok(ScriptResultIterator::new(self))
+        Ok(ExecuteEventIterator::new(&mut self.stream))
     }
 
     pub fn execute_query(&mut self, query: &str) -> IoResult<Vec<Row>> {
         self.execute_script(query)
             .map(|msg_iter| msg_iter
                 .filter_map(|msg| match msg {
-                    Ok(ScriptResultItem::Row(row)) => Some(row),
+                    Ok(ExecuteEvent::RowFetched(row)) => Some(row),
                     _ => None,
                 })
                 .collect::<Vec<Row>>()
@@ -556,20 +546,20 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
     }
 
     pub fn query<TRel: ::serialize::Decodable>(&mut self, query: &str) -> IoResult<Vec<TRel>> {
-        use self::ScriptResultItem::{
-            Row,
-            Error,
+        use self::ExecuteEvent::{
+            RowFetched,
+            ErrorOccured,
         };
 
         let mut res = vec![];
         for msg_res in try!(self.execute_script(query)) {
             match try!(msg_res) {
-                Row(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| IoError {
+                RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| IoError {
                     kind: OtherIoError,
                     desc: "Row decode error",
                     detail: None,
                 }))),
-                Error(err) => return Err(IoError {
+                ErrorOccured(err) => return Err(IoError {
                     kind: OtherIoError,
                     desc: "Error response while queriyng",
                     detail: Some(format!("{:?}", err)),
@@ -577,6 +567,7 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
                 _ => {},
             }
         }
+
         Ok(res)
 
     }
@@ -618,7 +609,15 @@ impl<TStream: Stream> DatabaseConnection<TStream> {
 
 
 
-trait MessageWriter: Writer + CStringWriter {
+trait MessageWriter {
+    fn write_startup_message(&mut self, user: &str, database: &str) -> IoResult<()>;
+    fn write_password_message(&mut self, password: &str) -> IoResult<()>;
+    fn write_query_message(&mut self, query: &str) -> IoResult<()>;
+    fn write_terminate_message(&mut self) -> IoResult<()>;
+}
+
+impl<T> MessageWriter for T where T: Writer + CStringWriter {
+
     fn write_startup_message(&mut self, user: &str, database: &str) -> IoResult<()> {
         let msg_len = i32::BYTES + // self
                       i32::BYTES + // protocol
@@ -665,8 +664,6 @@ trait MessageWriter: Writer + CStringWriter {
     }
 }
 
-impl<T> MessageWriter for T where T: Writer + CStringWriter { }
-
 
 trait CStringWriter {
     fn write_cstr(&mut self, s: &str) -> IoResult<()>;
@@ -704,64 +701,74 @@ impl<'a, T: MessageReader> Iterator<> for MessageIterator<'a, T> {
 
 
 #[derive(Show)]
-pub enum ScriptResultItem {
-    NonQuery(String),
-    RowsetBegin(Vec<ColumnDescription>),
-    Row(Vec<Option<String>>),
+pub enum ExecuteEvent {
+    NonQueryExecuted(String),
+    RowsetBegin(Vec<FieldDescription>),
+    RowFetched(Vec<Option<String>>),
     RowsetEnd,
-    Error(ErrorOrNotice),
+    ErrorOccured(ErrorOrNotice),
     Notice(ErrorOrNotice),
 }
 
-struct ScriptResultIterator<'a, TStream: 'a> {
-    conn: &'a mut DatabaseConnection<TStream>,
+struct ExecuteEventIterator<'a, TMessageReader: MessageReader +'a> {
+    msg_reader: &'a mut TMessageReader,
     is_exhausted: bool,
     is_in_rowset: bool,
 }
 
-impl<'a, TStream> ScriptResultIterator<'a, TStream> {
-    fn new(conn: &'a mut DatabaseConnection<TStream>) -> ScriptResultIterator<'a, TStream> {
-        ScriptResultIterator {
-            conn: conn,
+impl<'a, TMessageReader: MessageReader> ExecuteEventIterator<'a, TMessageReader> {
+    fn new(msg_reader: &'a mut TMessageReader) -> ExecuteEventIterator<'a, TMessageReader> {
+        ExecuteEventIterator {
+            msg_reader: msg_reader,
             is_exhausted: false,
             is_in_rowset: false,
         }
     }
 }
 
-impl<'a, TStream> Iterator for ScriptResultIterator<'a, TStream>
-    where TStream: Stream
-{
-    type Item = IoResult<ScriptResultItem>;
+impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TMessageReader> {
 
-    fn next(&mut self) -> Option<IoResult<ScriptResultItem>> {
+    type Item = IoResult<ExecuteEvent>;
+
+    fn next(&mut self) -> Option<IoResult<ExecuteEvent>> {
+        use self::ExecuteEvent::*;
+
         if self.is_exhausted {
             return None;
         }
 
         loop {
-            match self.conn.stream.read_message() {
-                Ok(ReadyForQuery(..)) => {
+            let msg = match self.msg_reader.read_message() {
+                Ok(msg) => msg,
+                Err(err) => return Some(Err(err)),
+            };
+
+            return Some(Ok(match msg {
+
+                ReadyForQuery(..) => {
                     self.is_exhausted = true;
                     return None;
                 },
-                Ok(RowDescription(descr)) => {
+
+                RowDescription(descr) => {
                     self.is_in_rowset = true;
-                    return Some(Ok(ScriptResultItem::RowsetBegin(descr)));
+                    RowsetBegin(descr)
                 },
-                Ok(ErrorResponse(e)) => return Some(Ok(ScriptResultItem::Error(e))),
-                Ok(NoticeResponse(n)) => return Some(Ok(ScriptResultItem::Notice(n))),
-                Ok(DataRow(row)) => return Some(Ok(ScriptResultItem::Row(row))),
-                Ok(CommandComplete(tag)) => {
-                    return Some(Ok(if self.is_in_rowset {
-                        ScriptResultItem::RowsetEnd
-                    } else {
-                        ScriptResultItem::NonQuery(tag)
-                    }))
-                },
-                Ok(m) => panic!("unexpected msg {:?}", m),
-                Err(e) => return Some(Err(e)),
-            }
+
+                ErrorResponse(e) => ErrorOccured(e),
+                NoticeResponse(n) => Notice(n),
+                DataRow(row) => RowFetched(row),
+
+                CommandComplete(tag) => if self.is_in_rowset { RowsetEnd }
+                                        else { NonQueryExecuted(tag) },
+
+                unexpected => return Some(Err(IoError {
+                    kind: OtherIoError,
+                    desc: "Unexpected message recived.",
+                    detail: Some(format!("Got {:?}", unexpected)),
+                })),
+
+            }))
         }
     }
 }

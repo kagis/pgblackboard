@@ -212,10 +212,10 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
                 None => return self.handle_unauthorized_req(),
             };
 
-            let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-            server_conn.connect_database(database,
-                                          &user[],
-                                          &password[])
+            postgres::connect_tcp("localhost:5432",
+                                  database,
+                                  &user[],
+                                  &password[])
         };
 
         let dbconn = match dbconn_res {
@@ -335,7 +335,7 @@ struct DbResource {
 struct DbHandler<THttpWriter: Writer> {
     req: http::Request,
     res: http::ResponseStarter<THttpWriter>,
-    dbconn: postgres::DatabaseConnection<TcpStream>,
+    dbconn: postgres::Connection<TcpStream>,
 }
 
 impl<THttpWriter: Writer> DbHandler<THttpWriter> {
@@ -424,13 +424,13 @@ impl<THttpWriter: Writer> DbHandler<THttpWriter> {
         {
             let mut view = TableView(writer.by_ref());
             for r in try!(self.dbconn.execute_script(script)) {
-                use postgres::ScriptResultItem::*;
+                use postgres::ExecuteEvent::*;
                 try!(match r.unwrap() {
                     RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
                     RowsetEnd => view.render_rowset_end(),
-                    Row(row) => view.render_row(&row[]),
-                    NonQuery(cmd) => view.render_nonquery(&cmd[]),
-                    Error(err) => view.render_error(err),
+                    RowFetched(row) => view.render_row(&row[]),
+                    NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
+                    ErrorOccured(err) => view.render_error(err),
                     Notice(notice) => view.render_error(notice),
                 });
             }
@@ -499,7 +499,7 @@ impl<THttpWriter: Writer> DbHandler<THttpWriter> {
 
 
 trait View {
-    fn render_rowset_begin(&mut self, &[postgres::ColumnDescription]) -> IoResult<()>;
+    fn render_rowset_begin(&mut self, &[postgres::FieldDescription]) -> IoResult<()>;
     fn render_rowset_end(&mut self) -> IoResult<()>;
     fn render_row(&mut self, &[Option<String>]) -> IoResult<()>;
     fn render_error(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
@@ -509,7 +509,7 @@ trait View {
 struct TableView<T: Writer>(T);
 
 impl<T: Writer> View for TableView<T> {
-    fn render_rowset_begin(&mut self, cols_descr: &[postgres::ColumnDescription]) -> IoResult<()> {
+    fn render_rowset_begin(&mut self, cols_descr: &[postgres::FieldDescription]) -> IoResult<()> {
         let writer = &mut self.0;
         try!(writer.write(b"<table>"));
         try!(writer.write(b"<tr>"));
