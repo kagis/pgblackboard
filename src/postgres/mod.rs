@@ -20,10 +20,17 @@ use std::char;
 use std::i32;
 use self::sqlstate::{ SqlState, SqlStateClass };
 
+use self::cstr::{
+    CStringWriter,
+    CStringReader,
+    cstr_len,
+};
+
 use self::BackendMessage::*;
 
 mod sqlstate;
 mod decoder;
+mod cstr;
 
 
 
@@ -148,12 +155,8 @@ pub enum BackendMessage {
     RowDescription(Vec<FieldDescription>),
 }
 
-trait MessageReader: Sized {
+trait MessageReader {
     fn read_message(&mut self) -> IoResult<BackendMessage>;
-
-    fn messages(&mut self) -> MessageIterator<Self> {
-        MessageIterator { msg_reader: self }
-    }
 }
 
 impl<T: Buffer> MessageReader for T  {
@@ -360,19 +363,6 @@ fn read_row_description<T: Buffer>(reader: &mut T) -> IoResult<Vec<FieldDescript
 
 
 
-trait CStringReader: Buffer {
-    fn read_cstr(&mut self) -> IoResult<String> {
-        let mut buf = try!(self.read_until(0));
-        buf.pop();
-        String::from_utf8(buf).map_err(|_| IoError {
-            kind: OtherIoError,
-            desc: "Received a non-utf8 string from server",
-            detail: None
-        })
-    }
-}
-
-impl<T: Buffer> CStringReader for T { }
 
 
 
@@ -572,36 +562,6 @@ impl<TStream: Stream> Connection<TStream> {
 
     }
 
-    // pub fn next_result(&mut self) -> IoResult<Option<StatementResult>> {
-    //     Ok(match try!(self.stream.read_message()) {
-    //         CommandComplete(tag) => Some(StatementResult::NonQuery(tag)),
-    //         RowDescription(descriptions)=> Some(StatementResult::Rowset(descriptions)),
-    //         ReadyForQuery(..) => None,
-    //         m => return Err(IoError {
-    //             kind: OtherIoError,
-    //             desc: "Unexpected response",
-    //             detail: Some(format!("got {}", m)),
-    //         })
-    //     })
-    // }
-
-    // pub fn fetch_row(&mut self) -> IoResult<Option<Row>> {
-    //     Ok(match try!(self.stream.read_message()) {
-    //         DataRow(row) => Some(row),
-    //         CommandComplete { .. } => None,
-    //         m => return Err(IoError {
-    //             kind: OtherIoError,
-    //             desc: "Unexpected response",
-    //             detail: Some(format!("got {}", m)),
-    //         })
-    //     })
-    // }
-
-
-    // pub fn iter_messages(&mut self) -> MessageIterator<TStream> {
-    //     MessageIterator { conn: self }
-    // }
-
     pub fn finish(&mut self) -> IoResult<()> {
         self.stream.write_terminate_message()
     }
@@ -616,7 +576,7 @@ trait MessageWriter {
     fn write_terminate_message(&mut self) -> IoResult<()>;
 }
 
-impl<T> MessageWriter for T where T: Writer + CStringWriter {
+impl<T> MessageWriter for T where T: Writer {
 
     fn write_startup_message(&mut self, user: &str, database: &str) -> IoResult<()> {
         let msg_len = i32::BYTES + // self
@@ -662,23 +622,6 @@ impl<T> MessageWriter for T where T: Writer + CStringWriter {
 
         self.flush()
     }
-}
-
-
-trait CStringWriter {
-    fn write_cstr(&mut self, s: &str) -> IoResult<()>;
-}
-
-impl<T> CStringWriter for T where T: Writer {
-    fn write_cstr(&mut self, s: &str) -> IoResult<()> {
-        try!(self.write_str(s));
-        self.write_u8(0)
-    }
-}
-
-
-fn cstr_len(s: &str) -> usize {
-    s.len() + 1
 }
 
 
