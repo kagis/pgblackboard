@@ -38,3 +38,22 @@ pub fn cstr_len(s: &str) -> usize {
 }
 
 
+mod test {
+
+    use super::*;
+    use std::io::BufReader;
+
+    #[test]
+    fn read_cstr() {
+        let buf = b"some awesome\0";
+        let mut reader = BufReader::new(buf);
+        assert_eq!(reader.read_cstr(), Ok("some awesome".to_string()));
+    }
+
+    #[test]
+    fn write_cstr() {
+        let mut buf = vec![];
+        buf.write_cstr("some awesome");
+        assert_eq!(&buf[], b"some awesome\0");
+    }
+}

@@ -220,7 +220,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 
         let dbconn = match dbconn_res {
             Ok(conn) => conn,
-            Err(postgres::ConnectError::AuthenticationFailed) => {
+            Err(postgres::ConnectError::ErrorResponse(postgres::ErrorOrNotice { sqlstate_class: postgres::SqlStateClass::InvalidAuthorizationSpecification, .. })) => {
                 return self.handle_unauthorized_req();
             },
             Err(e) => { println!("{:?}", e); panic!("err"); },

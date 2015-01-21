@@ -18,7 +18,11 @@ use std::io::util::LimitReader;
 use std::mem;
 use std::char;
 use std::i32;
-use self::sqlstate::{ SqlState, SqlStateClass };
+
+pub use self::sqlstate::{
+    SqlState,
+    SqlStateClass,
+};
 
 use self::cstr::{
     CStringWriter,
@@ -44,7 +48,7 @@ pub enum TypeSize {
 }
 
 #[derive(Show)]
-pub enum ColumnFormat {
+pub enum FieldFormat {
     Text,
     Binary
 }
@@ -58,7 +62,7 @@ pub struct FieldDescription {
     pub type_oid: Oid,
     pub type_size: TypeSize,
     pub type_modifier: i32,
-    pub format: ColumnFormat,
+    pub format: FieldFormat,
 }
 
 #[derive(Show)]
@@ -71,44 +75,44 @@ enum ConnectionStatus {
 #[derive(Show)]
 pub struct ErrorOrNotice {
     // S
-    severity: String, //, the field contents are ERROR, FATAL, or PANIC (in an error message), or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message), or a localized translation of one of these. Always present.
+    pub severity: String, //, the field contents are ERROR, FATAL, or PANIC (in an error message), or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message), or a localized translation of one of these. Always present.
 
     // C
-    code: String, //the SQLSTATE code for the error (see Appendix A). Not localizable. Always present.
+    pub code: String, //the SQLSTATE code for the error (see Appendix A). Not localizable. Always present.
 
-    sqlstate: SqlState,
+    pub sqlstate: SqlState,
 
-    sqlstate_class: SqlStateClass,
+    pub sqlstate_class: SqlStateClass,
 
     // M
-    message: String, // the primary human-readable error message. This should be accurate but terse (typically one line). Always present.
+    pub message: String, // the primary human-readable error message. This should be accurate but terse (typically one line). Always present.
 
     // D
-    detail: Option<String>, // an optional secondary error message carrying more detail about the problem. Might run to multiple lines.
+    pub detail: Option<String>, // an optional secondary error message carrying more detail about the problem. Might run to multiple lines.
 
     // H
-    hint: Option<String>, //an optional suggestion what to do about the problem. This is intended to differ from Detail in that it offers advice (potentially inappropriate) rather than hard facts. Might run to multiple lines.
+    pub hint: Option<String>, //an optional suggestion what to do about the problem. This is intended to differ from Detail in that it offers advice (potentially inappropriate) rather than hard facts. Might run to multiple lines.
 
     // P
-    position: Option<usize>, // the field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string. The first character has index 1, and positions are measured in characters not bytes.
+    pub position: Option<usize>, // the field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string. The first character has index 1, and positions are measured in characters not bytes.
 
     // p
-    internal_position: Option<usize>, // this is defined the same as the P field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client. The q field will always appear when this field appears.
+    pub internal_position: Option<usize>, // this is defined the same as the P field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client. The q field will always appear when this field appears.
 
     // q
-    internal_query: Option<String>, // the text of a failed internally-generated command. This could be, for example, a SQL query issued by a PL/pgSQL function.
+    pub internal_query: Option<String>, // the text of a failed internally-generated command. This could be, for example, a SQL query issued by a PL/pgSQL function.
 
     // W
-    where_: Option<String>, // an indication of the context in which the error occurred. Presently this includes a call stack traceback of active procedural language functions and internally-generated queries. The trace is one entry per line, most recent first.
+    pub where_: Option<String>, // an indication of the context in which the error occurred. Presently this includes a call stack traceback of active procedural language functions and internally-generated queries. The trace is one entry per line, most recent first.
 
     // F
-    file: Option<String>, // the file name of the source-code location where the error was reported.
+    pub file: Option<String>, // the file name of the source-code location where the error was reported.
 
     // L
-    line: Option<usize>, // the line number of the source-code location where the error was reported.
+    pub line: Option<usize>, // the line number of the source-code location where the error was reported.
 
     // R
-    routine: Option<String>, // the name of the source-code routine reporting the error.
+    pub routine: Option<String>, // the name of the source-code routine reporting the error.
 }
 
 
@@ -347,8 +351,8 @@ fn read_row_description<T: Buffer>(reader: &mut T) -> IoResult<Vec<FieldDescript
             },
             type_modifier: try!(reader.read_be_i32()),
             format: match try!(reader.read_be_i16()) {
-                0 => ColumnFormat::Text,
-                1 => ColumnFormat::Binary,
+                0 => FieldFormat::Text,
+                1 => FieldFormat::Binary,
                 unknown => return Err(IoError {
                     kind: OtherIoError,
                     desc: "Unknown column format code",
@@ -415,17 +419,13 @@ fn read_row_description<T: Buffer>(reader: &mut T) -> IoResult<Vec<FieldDescript
 
 #[derive(Show)]
 pub enum ConnectError {
-    AuthenticationFailed,
-    DatabaseNotExists,
     ErrorResponse(ErrorOrNotice),
-    //NoServer,
-    UnexpectedMessage(BackendMessage),
-    TransportError(IoError),
+    IoError(IoError),
 }
 
 impl ::std::error::FromError<IoError> for ConnectError {
     fn from_error(err: IoError) -> ConnectError {
-        ConnectError::TransportError(err)
+        ConnectError::IoError(err)
     }
 }
 
@@ -502,17 +502,15 @@ impl<TStream: Stream> Connection<TStream> {
                     try!(stream.write_password_message(password));
                 },
                 AuthenticationOk => { /* pass */ },
-                ErrorResponse(e) => {
-                    return Err(match e.sqlstate_class {
-                        SqlStateClass::InvalidAuthorizationSpecification => ConnectError::AuthenticationFailed,
-                        SqlStateClass::InvalidCatalogName => ConnectError::DatabaseNotExists,
-                        _ => ConnectError::ErrorResponse(e),
-                    });
-                },
+                ErrorResponse(e) => return Err(ConnectError::ErrorResponse(e)),
                 BackendKeyData { .. } => {},
                 ParameterStatus { .. } => {},
                 ReadyForQuery(ConnectionStatus::Idle) => break,
-                unexpected => return Err(ConnectError::UnexpectedMessage(unexpected)),
+                unexpected => return Err(ConnectError::IoError(IoError {
+                    kind: OtherIoError,
+                    desc: "Unexpected message while startup.",
+                    detail: Some(format!("{:?}", unexpected)),
+                })),
             }
         }
 
@@ -653,6 +651,8 @@ pub enum ExecuteEvent {
     Notice(ErrorOrNotice),
 }
 
+
+
 struct ExecuteEventIterator<'a, TMessageReader: MessageReader +'a> {
     msg_reader: &'a mut TMessageReader,
     is_exhausted: bool,
@@ -702,8 +702,13 @@ impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TM
                 NoticeResponse(n) => Notice(n),
                 DataRow(row) => RowFetched(row),
 
-                CommandComplete(tag) => if self.is_in_rowset { RowsetEnd }
-                                        else { NonQueryExecuted(tag) },
+                CommandComplete(tag) => {
+                    if self.is_in_rowset {
+                        RowsetEnd
+                    } else {
+                        NonQueryExecuted(tag)
+                    }
+                },
 
                 unexpected => return Some(Err(IoError {
                     kind: OtherIoError,
