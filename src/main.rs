@@ -14,6 +14,7 @@ use std::io::{
     IoResult,
     // Listener,
     ByRefWriter,
+    Stream,
 };
 
 mod postgres;
@@ -326,6 +327,73 @@ struct DbResource {
     database: String,
 }
 
+impl Resource for DbResource {
+    fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
+
+        let dbconn_res = {
+            let &(ref user, ref password) = match req.basic_auth {
+                Some(ref x) => x,
+                None => return respond_unauthorized(res),
+            };
+
+            postgres::connect_tcp("localhost:5432",
+                                  &self.database[],
+                                  &user[],
+                                  &password[])
+        };
+
+        let dbconn = match dbconn_res {
+            Ok(conn) => conn,
+            Err(postgres::ConnectError::ErrorResponse(postgres::ErrorOrNotice { sqlstate_class: postgres::SqlStateClass::InvalidAuthorizationSpecification, .. })) => {
+                return return respond_unauthorized(res);
+            },
+            Err(e) => { println!("{:?}", e); panic!("err"); },
+        };
+
+
+
+        let mut resp_writer = try!(res.start(http::Status::NotFound));
+        try!(resp_writer.write_content_type("text/plain"));
+        try!(resp_writer.write_content(b"Not Found"));
+
+        Ok(())
+    }
+}
+
+
+fn respond_unauthorized<TWriter: Writer>(res: http::ResponseStarter<TWriter>) -> IoResult<()> {
+    let mut a = try!(res.start(http::Status::Unauthorized));
+    try!(a.write_www_authenticate_basic("postgres"));
+    try!(a.write_content_type("text/html"));
+    try!(a.write_content(b"ololo"));
+    Ok(())
+}
+
+
+
+trait DbConsumer<THttpWriter: Writer, TDbStream: Stream> {
+
+    fn get_database_name(&self) -> String;
+
+    fn consume_connection(
+        &self,
+        dbconn: postgres::Connection<TDbStream>,
+        // req: http::Request,
+        // res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>;
+
+    fn respond_database_not_found(
+        &self,
+        // req: http::Request,
+        // res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>;
+
+    fn respond_unauthorized(
+        &self,
+        // req: http::Request,
+        // res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>;
+}
 
 
 
