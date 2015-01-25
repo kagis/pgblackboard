@@ -68,8 +68,38 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 
 
         match path {
-            // [ /* root */ ]
-            // => IndexResource::new(),
+            ["" /* root */ ]
+            => ctrl.handle_db_req(IndexResource),
+
+            ["db", database, "nodes", nodetype, nodeid, "children"]
+            => ctrl.handle_db_req(NodeChidrenResource {
+                database: database.to_string(),
+                nodetype: nodetype.to_string(),
+                nodeid: nodeid.to_string(),
+            }),
+
+            ["db", database, "nodes", nodetype, nodeid, "definition"]
+            => ctrl.handle_db_req(NodeDefinitionResource {
+                database: database,
+                nodetype: nodetype,
+                nodeid: nodeid,
+            }),
+
+            ["db", database, "execute"]
+            => {
+
+                #[derive(Decodable)]
+                struct Params {
+                    sql_script: String,
+                }
+
+                ctrl.decode_urlencoded_form::<Params>()
+                    .map(|(ctrl, params)| ctrl.handle_db_req(ExecuteResource {
+                        database: database,
+                        sql_script: &params.sql_script[],
+                    }))
+                    .unwrap_or_else(|err| err)
+            },
 
             // ["db", database, "execute"]
             // => DbResource::new(database, ),
@@ -115,6 +145,22 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         // };
 
         // ctrl.handle_db_req(database, db_consumer)
+    }
+
+    fn decode_urlencoded_form<TForm: ::serialize::Decodable>(self) -> Result<(Self, TForm), IoResult<()>> {
+        let content = self.req.content.clone();
+        if let Some(http::RequestContent::UrlEncoded(form)) = content {
+            return match http::form::decode_form(form) {
+                Ok(ret) => Ok((self, ret)),
+                Err(decode_err) => Err(
+                    self.res.start(http::Status::BadRequest)
+                    .and_then(|resp_writer| resp_writer.write_content(b"invalid form"))),
+            };
+        }
+
+        Err(self.res.start(http::Status::BadRequest)
+            .and_then(|resp_writer| resp_writer.write_content(b"invalid form")))
+
     }
 
     fn use_resource<TRes: Resource>(self, resource: TRes) -> IoResult<()> {
@@ -203,9 +249,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         Ok(())
     }
 
-    fn handle_db_req(self, database: &str, path: &[&str]) -> IoResult<()> {
-
-
+    fn handle_db_req<TDbConsumer: DbConsumer>(self, db_consumer: TDbConsumer) -> IoResult<()> {
 
         let dbconn_res = {
             let &(ref user, ref password) = match self.req.basic_auth {
@@ -214,7 +258,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
             };
 
             postgres::connect_tcp("localhost:5432",
-                                  database,
+                                  &db_consumer.get_database_name()[],
                                   &user[],
                                   &password[])
         };
@@ -227,25 +271,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
             Err(e) => { println!("{:?}", e); panic!("err"); },
         };
 
-        let ctrl = DbHandler {
-            req: self.req,
-            res: self.res,
-            dbconn: dbconn,
-        };
-
-        match path {
-            []
-                => ctrl.handle_index(),
-
-            ["execute"] | ["map"]
-                => ctrl.handle_script_req::<TableView<THttpWriter>>(),
-
-            ["nodes", nodetype, nodeid, action]
-                => ctrl.handle_node_req(action, nodetype, nodeid),
-
-            _
-                => ctrl.handle_not_found(),
-        }
+        db_consumer.consume_connection(dbconn, self.req, self.res)
     }
 
 
@@ -323,42 +349,6 @@ impl Resource for NotFoundResource {
 
 
 
-struct DbResource {
-    database: String,
-}
-
-impl Resource for DbResource {
-    fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
-
-        let dbconn_res = {
-            let &(ref user, ref password) = match req.basic_auth {
-                Some(ref x) => x,
-                None => return respond_unauthorized(res),
-            };
-
-            postgres::connect_tcp("localhost:5432",
-                                  &self.database[],
-                                  &user[],
-                                  &password[])
-        };
-
-        let dbconn = match dbconn_res {
-            Ok(conn) => conn,
-            Err(postgres::ConnectError::ErrorResponse(postgres::ErrorOrNotice { sqlstate_class: postgres::SqlStateClass::InvalidAuthorizationSpecification, .. })) => {
-                return return respond_unauthorized(res);
-            },
-            Err(e) => { println!("{:?}", e); panic!("err"); },
-        };
-
-
-
-        let mut resp_writer = try!(res.start(http::Status::NotFound));
-        try!(resp_writer.write_content_type("text/plain"));
-        try!(resp_writer.write_content(b"Not Found"));
-
-        Ok(())
-    }
-}
 
 
 fn respond_unauthorized<TWriter: Writer>(res: http::ResponseStarter<TWriter>) -> IoResult<()> {
@@ -371,31 +361,241 @@ fn respond_unauthorized<TWriter: Writer>(res: http::ResponseStarter<TWriter>) ->
 
 
 
-trait DbConsumer<THttpWriter: Writer, TDbStream: Stream> {
+trait DbConsumer {
 
     fn get_database_name(&self) -> String;
 
-    fn consume_connection(
+    fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
         dbconn: postgres::Connection<TDbStream>,
-        // req: http::Request,
-        // res: http::ResponseStarter<THttpWriter>
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
         ) -> IoResult<()>;
 
-    fn respond_database_not_found(
+    fn respond_database_not_found<THttpWriter: Writer>(
         &self,
-        // req: http::Request,
-        // res: http::ResponseStarter<THttpWriter>
-        ) -> IoResult<()>;
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        let mut resp_writer = try!(res.start(http::Status::BadRequest));
+        try!(resp_writer.write_content_type("application/json"));
+        try!(resp_writer.write_content(b"\"Database not found!\""));
 
-    fn respond_unauthorized(
+        Ok(())
+    }
+
+
+    fn respond_missing_credentials<THttpWriter: Writer>(
         &self,
-        // req: http::Request,
-        // res: http::ResponseStarter<THttpWriter>
-        ) -> IoResult<()>;
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        let mut resp_writer = try!(res.start(http::Status::Unauthorized));
+
+        try!(resp_writer.write_www_authenticate_basic("postgres"));
+        try!(resp_writer.write_content_type("application/json"));
+        try!(resp_writer.write_content(b"\"Username and password required!\""));
+
+        Ok(())
+    }
+
+
+    fn respond_invalid_credentials<THttpWriter: Writer>(
+        &self,
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+
+        let mut resp_writer = try!(res.start(http::Status::Unauthorized));
+
+        try!(resp_writer.write_www_authenticate_basic("postgres"));
+        try!(resp_writer.write_content_type("application/json"));
+        try!(resp_writer.write_content(b"\"Invalid username or password!\""));
+
+        Ok(())
+    }
 }
 
 
+struct IndexResource;
+
+impl DbConsumer for IndexResource {
+    fn get_database_name(&self) -> String { "postgres".to_string() }
+
+    fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
+        &self,
+        mut dbconn: postgres::Connection<TDbStream>,
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        use serialize::json;
+        use serialize::json::Json;
+        use std::collections::BTreeMap;
+
+        let rows = dbconn.execute_query("
+            SELECT datname AS name
+                     ,shobj_description(oid, 'pg_database') AS comment
+               FROM pg_database
+               WHERE NOT datistemplate
+               ORDER BY datname
+        ").unwrap();
+
+        let row_tuples = rows.iter().map(|row| {
+            use serialize::json::ToJson;
+            if let [ref name, ref comment] = &row[] {
+                let mut obj = BTreeMap::new();
+                obj.insert("id", name.to_json());
+                obj.insert("type", "database".to_json());
+                obj.insert("name", name.to_json());
+                obj.insert("comment", comment.to_json());
+                obj.insert("database", name.to_json());
+                obj.insert("hasChildren", true.to_json());
+                obj
+            } else {
+                panic!("Row with unexpected structure was recived
+                        while querying database nodes.");
+            }
+        }).collect::<Vec<BTreeMap<&str, Json>>>();
+
+        let mut initial_data = BTreeMap::new();
+        initial_data.insert("databases", row_tuples);
+
+
+
+        let index_html = include_str!("index.html");
+        let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
+                                            &json::encode(&initial_data)[]);
+
+
+        let mut resp_writer = try!(res.start_ok());
+        try!(resp_writer.write_content_type("text/html; charset=utf-8"));
+        try!(resp_writer.write_content(index_html.as_bytes()));
+
+        Ok(())
+    }
+}
+
+
+struct NodeChidrenResource {
+    database: String,
+    nodetype: String,
+    nodeid: String,
+}
+
+impl DbConsumer for NodeChidrenResource {
+    fn get_database_name(&self) -> String { self.database.clone() }
+
+    fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
+        &self,
+        dbconn: postgres::Connection<TDbStream>,
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        use serialize::json;
+
+        let mut node_service = tree::NodeService {
+            dbconn: dbconn,
+            nodeid: self.nodeid.clone(),
+            nodetype: self.nodetype.clone(),
+
+        };
+
+
+        let children = node_service.get_children().unwrap();
+
+        let mut a = try!(res.start_ok());
+        try!(a.write_content_type("application/json; charset=utf-8"));
+        try!(a.write_content(json::encode(&children).as_bytes()));
+
+        Ok(())
+    }
+}
+
+
+struct NodeDefinitionResource<'a> {
+    database: &'a str,
+    nodetype: &'a str,
+    nodeid: &'a str,
+}
+
+impl<'a> DbConsumer for NodeDefinitionResource<'a> {
+    fn get_database_name(&self) -> String { self.database.to_string() }
+
+    fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
+        &self,
+        dbconn: postgres::Connection<TDbStream>,
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        use serialize::json;
+
+        let mut node_service = tree::NodeService {
+            dbconn: dbconn,
+            nodeid: self.nodeid.to_string(),
+            nodetype: self.nodetype.to_string(),
+        };
+
+        let children = node_service.get_definition().unwrap();
+
+        let mut a = try!(res.start_ok());
+        try!(a.write_content_type("application/json; charset=utf-8"));
+        try!(a.write_content(json::encode(&children).as_bytes()));
+
+        Ok(())
+    }
+}
+
+
+
+
+struct ExecuteResource<'a> {
+    database: &'a str,
+    sql_script: &'a str,
+}
+
+impl<'a> DbConsumer for ExecuteResource<'a> {
+    fn get_database_name(&self) -> String { self.database.to_string() }
+
+    fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
+        &self,
+        mut dbconn: postgres::Connection<TDbStream>,
+        req: http::Request,
+        res: http::ResponseStarter<THttpWriter>
+        ) -> IoResult<()>
+    {
+        let mut a = try!(res.start_ok());
+        try!(a.write_content_type("text/html; charset=utf-8"));
+        let writer = &mut try!(a.start_chunked());
+
+        {
+            let mut view = TableView(writer.by_ref());
+            for r in try!(dbconn.execute_script(self.sql_script)) {
+                use postgres::ExecuteEvent::*;
+                try!(match r.unwrap() {
+                    RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
+                    RowsetEnd => view.render_rowset_end(),
+                    RowFetched(row) => view.render_row(&row[]),
+                    NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
+                    ErrorOccured(err) => view.render_error(err),
+                    Notice(notice) => view.render_error(notice),
+                });
+            }
+        }
+
+        try!(writer.write(b"\r\n"));
+        try!(writer.end());
+
+        dbconn.finish();
+
+        Ok(())
+    }
+}
 
 
 
@@ -618,114 +818,8 @@ impl<T: Writer> View for TableView<T> {
 
 
 fn main() {
-
     http::serve_forever_tcp("0.0.0.0:7890", Controller::handle_req);
-
-    //pg_talk().unwrap();
-
-    // for stmt_result in postgres::execute_script(dsn, script) {
-    //     match stmt_result {
-    //         NonQueryResult(tag) => println!("{}", tag),
-    //         Rowset(row_descr, rows) => {
-    //             for row in rows {
-    //                 println!("{}", row);
-    //             }
-    //         }
-    //     }
-    // }
-
-
-    // let conn_params = postgres::ConnectParams {
-    //     database: "postgres".to_string(),
-    //     host: "localhost".to_string(),
-    //     port: 5432,
-    //     user: "xed".to_string(),
-    //     password: "passpass".to_string(),
-    // };
-
-
-
-    // match postgres::connect(conn_params) {
-    //     Ok(conn) => println!("connected"),
-    //     _ => println!("alalala")
-    // };
-
-    //let mut buf = [0];
-    //let _ = stream.read(&mut buf); // ignore here too
 }
-
-
-// fn pg_talk() -> IoResult<()> {
-
-//     let mut conn = try!(postgres::connect_tcp("localhost:5432"));
-
-//     try!(conn.connect_database("postgres", "xed", "passpass"));
-
-
-//     let script = "
-//         begin;
-
-//         create function raise_notice() returns text language plpgsql as $$
-//         begin
-//             raise warning 'hello';
-//             return 'hello_ret';
-//         end
-//         $$;
-
-//         select raise_notice()
-//         union all
-//         select raise_notice();
-
-//         rollback;
-//     ";
-
-
-//     // let mut result_iter =
-//     //     // " select 1.0/generate_series(-10, 10);
-//     //     //  select * from pg_database limit 10;
-//     //     //  --select * from not_existing;
-//     //     //  select 1/0;
-//     //     //  select array['1', '\"2\"'];
-//     //     //  begin;"
-
-
-
-//     // ));
-
-
-//     for res in try!(conn.execute_script(script)) {
-
-//         println!("{:?}", res.unwrap());
-//         // match maybe_message {
-//         //     Some(postgres::BackendMessage::ReadyForQuery(..))
-//         // }
-//     }
-
-//     try!(conn.finish());
-
-//     // loop {
-//     //     match try!(conn.next_result()) {
-//     //         Some(postgres::StatementResult::Rowset(description)) => {
-//     //             let mut count = 0i;
-//     //             loop {
-//     //                 match try!(conn.fetch_row()) {
-//     //                     Some(row) => { count += 1; },
-//     //                     None => break
-//     //                 }
-//     //             }
-//     //             println!("count = {}", count);
-//     //         },
-//     //         Some(postgres::StatementResult::NonQuery(tag)) => {
-
-//     //         },
-//     //         None => break
-//     //     }
-//     // }
-
-
-
-//     Ok(())
-// }
 
 
 

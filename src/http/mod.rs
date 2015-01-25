@@ -66,7 +66,7 @@ fn malformed_request_line_err() -> IoError {
 
 
 
-#[derive(Show)]
+#[derive(Show, Clone)]
 pub enum RequestContent {
     UrlEncoded(Vec<(String, String)>),
     Binary(Vec<u8>),
