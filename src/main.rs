@@ -15,6 +15,7 @@ use std::io::{
     // Listener,
     ByRefWriter,
     Stream,
+    IoError,
 };
 
 mod postgres;
@@ -575,15 +576,16 @@ impl<'a> DbConsumer for ExecuteResource<'a> {
 
         {
             let mut view = TableView(writer.by_ref());
-            for r in try!(dbconn.execute_script(self.sql_script)) {
+            for exec_event in try!(dbconn.execute_script(self.sql_script)) {
                 use postgres::ExecuteEvent::*;
-                try!(match r.unwrap() {
+                try!(match exec_event {
                     RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
                     RowsetEnd => view.render_rowset_end(),
                     RowFetched(row) => view.render_row(&row[]),
                     NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
-                    ErrorOccured(err) => view.render_error(err),
-                    Notice(notice) => view.render_error(notice),
+                    SqlErrorOccured(err) => view.render_sql_error(err),
+                    IoErrorOccured(err) => view.render_io_error(err),
+                    Notice(notice) => view.render_notice(notice),
                 });
             }
         }
@@ -598,179 +600,15 @@ impl<'a> DbConsumer for ExecuteResource<'a> {
 }
 
 
-
-
-struct DbHandler<THttpWriter: Writer> {
-    req: http::Request,
-    res: http::ResponseStarter<THttpWriter>,
-    dbconn: postgres::Connection<TcpStream>,
-}
-
-impl<THttpWriter: Writer> DbHandler<THttpWriter> {
-    fn handle_index(mut self) -> IoResult<()> {
-        use serialize::json;
-        use serialize::json::Json;
-        use std::collections::BTreeMap;
-
-        let rows = self.dbconn.execute_query("
-            SELECT datname AS name
-                     ,shobj_description(oid, 'pg_database') AS comment
-               FROM pg_database
-               WHERE NOT datistemplate
-               ORDER BY datname
-        ").unwrap();
-
-        let row_tuples = rows.iter().map(|row| {
-            use serialize::json::ToJson;
-            if let [ref name, ref comment] = &row[] {
-                let mut obj = BTreeMap::new();
-                obj.insert("id", name.to_json());
-                obj.insert("type", "database".to_json());
-                obj.insert("name", name.to_json());
-                obj.insert("comment", comment.to_json());
-                obj.insert("database", name.to_json());
-                obj.insert("hasChildren", true.to_json());
-                obj
-            } else {
-                panic!("Row with unexpected structure was recived
-                        while querying database nodes.");
-            }
-        }).collect::<Vec<BTreeMap<&str, Json>>>();
-
-        let mut initial_data = BTreeMap::new();
-        initial_data.insert("databases", row_tuples);
-
-
-
-        let index_html = include_str!("index.html");
-        let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
-                                            &json::encode(&initial_data)[]);
-
-
-        let mut resp_writer = try!(self.res.start_ok());
-        try!(resp_writer.write_content_type("text/html"));
-        try!(resp_writer.write_content(index_html.as_bytes()));
-
-        Ok(())
-    }
-
-
-
-    fn handle_script_req<TView: View>(mut self) -> IoResult<()> {
-
-        let script = match self.req.content {
-            Some(http::RequestContent::UrlEncoded(ref params)) => {
-                params.iter()
-                    .find(|x| x.0 == "sql_script")
-                    .unwrap()
-                    .1
-                    .as_slice()
-            },
-            _ => panic!("bad request"),
-        };
-
-
-
-
-        // let server_conn = try!(postgres::connect_tcp("localhost:5432"));
-        // let dbconn_res = server_conn.connect_database(
-        //     "postgres", &user[], &password[]
-        // );
-
-        // let mut dbconn = match dbconn_res {
-        //     Ok(conn) => conn,
-        //     Err(postgres::ConnectError::AuthenticationFailed) => {
-        //         return self.handle_unauthorized_req();
-        //     },
-        //     Err(e) => { println!("{:?}", e); panic!("err"); },
-        // };
-
-        let mut a = try!(self.res.start_ok());
-        try!(a.write_content_type("text/html"));
-        let writer = &mut try!(a.start_chunked());
-
-        {
-            let mut view = TableView(writer.by_ref());
-            for r in try!(self.dbconn.execute_script(script)) {
-                use postgres::ExecuteEvent::*;
-                try!(match r.unwrap() {
-                    RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
-                    RowsetEnd => view.render_rowset_end(),
-                    RowFetched(row) => view.render_row(&row[]),
-                    NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
-                    ErrorOccured(err) => view.render_error(err),
-                    Notice(notice) => view.render_error(notice),
-                });
-            }
-        }
-
-        try!(writer.write(b"\r\n"));
-        try!(writer.end());
-
-        self.dbconn.finish()
-    }
-
-    fn handle_node_req(self, action: &str, nodetype: &str, nodeid: &str) -> IoResult<()> {
-        // let node_service = NodeService {
-        //     dbconn: self.dbconn,
-        //     nodeid: nodeid.to_string(),
-        //     nodetype: nodetype.to_string(),
-
-        // };
-           //     use serialize::json;
-
-    //     let children = tree::NodeService {
-    //         dbconn: dbconn,
-    //         nodeid: nodeid,
-    //         nodetype: nodetype,
-    //     }.get_children().unwrap();
-
-    //     let mut a = try!(self.res.start_ok());
-    //     try!(a.write_content_type("application/json"));
-    //     try!(a.write_content(json::encode(&children).as_bytes()));
-
-        match action {
-            "children" => {},
-            "definition" => {},
-            _ => {},
-        };
-
-        Ok(())
-    }
-
-    fn handle_not_found(self) -> IoResult<()> {
-        use http::Status::NotFound;
-        let mut a = try!(self.res.start(NotFound));
-        try!(a.write_content_type("text/plain"));
-        try!(a.write_content(b"Not Found"));
-
-        Ok(())
-    }
-}
-
-
-
-
-// trait DatabaseAction<TStream: Stream> {
-//     fn get_database_name(self) -> String;
-//     fn consume_db_connection(self, DatabaseConnection<TStream>) -> IoResult<()>;
-// }
-
-
-
-
-
-
-
-
-
-
-
 trait View {
+    //fn new<TWriter: Writer>(writer: TWriter) -> Self;
+
     fn render_rowset_begin(&mut self, &[postgres::FieldDescription]) -> IoResult<()>;
     fn render_rowset_end(&mut self) -> IoResult<()>;
     fn render_row(&mut self, &[Option<String>]) -> IoResult<()>;
-    fn render_error(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
+    fn render_notice(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
+    fn render_sql_error(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
+    fn render_io_error(&mut self, IoError) -> IoResult<()>;
     fn render_nonquery(&mut self, &str) -> IoResult<()>;
 }
 
@@ -807,7 +645,15 @@ impl<T: Writer> View for TableView<T> {
         Ok(())
     }
 
-    fn render_error(&mut self, err: postgres::ErrorOrNotice) -> IoResult<()> {
+    fn render_io_error(&mut self, err: IoError) -> IoResult<()> {
+        write!(&mut self.0, "<pre>{:?}</pre>", err)
+    }
+
+    fn render_sql_error(&mut self, err: postgres::ErrorOrNotice) -> IoResult<()> {
+        write!(&mut self.0, "<pre>{:?}</pre>", err)
+    }
+
+    fn render_notice(&mut self, err: postgres::ErrorOrNotice) -> IoResult<()> {
         write!(&mut self.0, "<pre>{:?}</pre>", err)
     }
 

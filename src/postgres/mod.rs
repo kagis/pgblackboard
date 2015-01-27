@@ -526,7 +526,7 @@ impl<TStream: Stream> Connection<TStream> {
         self.execute_script(query)
             .map(|msg_iter| msg_iter
                 .filter_map(|msg| match msg {
-                    Ok(ExecuteEvent::RowFetched(row)) => Some(row),
+                    ExecuteEvent::RowFetched(row) => Some(row),
                     _ => None,
                 })
                 .collect::<Vec<Row>>()
@@ -536,18 +536,18 @@ impl<TStream: Stream> Connection<TStream> {
     pub fn query<TRel: ::serialize::Decodable>(&mut self, query: &str) -> IoResult<Vec<TRel>> {
         use self::ExecuteEvent::{
             RowFetched,
-            ErrorOccured,
+            SqlErrorOccured,
         };
 
         let mut res = vec![];
         for msg_res in try!(self.execute_script(query)) {
-            match try!(msg_res) {
+            match msg_res {
                 RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| IoError {
                     kind: OtherIoError,
                     desc: "Row decode error",
                     detail: None,
                 }))),
-                ErrorOccured(err) => return Err(IoError {
+                SqlErrorOccured(err) => return Err(IoError {
                     kind: OtherIoError,
                     desc: "Error response while queriyng",
                     detail: Some(format!("{:?}", err)),
@@ -628,17 +628,6 @@ impl<T> MessageWriter for T where T: Writer {
 type Row = Vec<Option<String>>;
 
 
-struct MessageIterator<'a, T: MessageReader + 'a> {
-    msg_reader: &'a mut T
-}
-
-impl<'a, T: MessageReader> Iterator<> for MessageIterator<'a, T> {
-    type Item = IoResult<BackendMessage>;
-    fn next(&mut self) -> Option<IoResult<BackendMessage>> {
-        Some(self.msg_reader.read_message())
-    }
-}
-
 
 
 #[derive(Show)]
@@ -647,7 +636,8 @@ pub enum ExecuteEvent {
     RowsetBegin(Vec<FieldDescription>),
     RowFetched(Vec<Option<String>>),
     RowsetEnd,
-    ErrorOccured(ErrorOrNotice),
+    SqlErrorOccured(ErrorOrNotice),
+    IoErrorOccured(IoError),
     Notice(ErrorOrNotice),
 }
 
@@ -671,52 +661,53 @@ impl<'a, TMessageReader: MessageReader> ExecuteEventIterator<'a, TMessageReader>
 
 impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TMessageReader> {
 
-    type Item = IoResult<ExecuteEvent>;
+    type Item = ExecuteEvent;
 
-    fn next(&mut self) -> Option<IoResult<ExecuteEvent>> {
+    fn next(&mut self) -> Option<ExecuteEvent> {
         use self::ExecuteEvent::*;
 
         if self.is_exhausted {
             return None;
         }
 
-        loop {
-            let msg = match self.msg_reader.read_message() {
-                Ok(msg) => msg,
-                Err(err) => return Some(Err(err)),
-            };
+        let message = match self.msg_reader.read_message() {
+            Ok(message) => message,
+            Err(err) => return Some(IoErrorOccured(err)),
+        };
 
-            return Some(Ok(match msg {
+        match message {
 
-                ReadyForQuery(..) => {
-                    self.is_exhausted = true;
-                    return None;
-                },
+            ReadyForQuery(..) => {
+                self.is_exhausted = true;
+                None
+            },
 
-                RowDescription(descr) => {
-                    self.is_in_rowset = true;
-                    RowsetBegin(descr)
-                },
+            RowDescription(descr) => {
+                self.is_in_rowset = true;
+                Some(RowsetBegin(descr))
+            },
 
-                ErrorResponse(e) => ErrorOccured(e),
-                NoticeResponse(n) => Notice(n),
-                DataRow(row) => RowFetched(row),
+            ErrorResponse(e) => Some(SqlErrorOccured(e)),
 
-                CommandComplete(tag) => {
-                    if self.is_in_rowset {
-                        RowsetEnd
-                    } else {
-                        NonQueryExecuted(tag)
-                    }
-                },
+            NoticeResponse(n) => Some(Notice(n)),
 
-                unexpected => return Some(Err(IoError {
-                    kind: OtherIoError,
-                    desc: "Unexpected message recived.",
-                    detail: Some(format!("Got {:?}", unexpected)),
-                })),
+            DataRow(row) => Some(RowFetched(row)),
 
-            }))
+            CommandComplete(tag) => {
+                Some(if self.is_in_rowset {
+                    self.is_in_rowset = false;
+                    RowsetEnd
+                } else {
+                    NonQueryExecuted(tag)
+                })
+            },
+
+            unexpected => Some(IoErrorOccured(IoError {
+                kind: OtherIoError,
+                desc: "Unexpected message recived.",
+                detail: Some(format!("Got {:?}", unexpected)),
+            })),
+
         }
     }
 }
