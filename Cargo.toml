@@ -5,4 +5,9 @@ version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
 [dependencies]
-rust-crypto = "*"
+regex_macros = "*"
+regex = "*"
+rustc-serialize="*"
+
+[dependencies.rust-md5]
+git = "https://github.com/exe-dealer/rust-md5.git"

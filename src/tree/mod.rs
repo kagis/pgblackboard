@@ -1,6 +1,6 @@
 use super::postgres;
-use std::io::IoResult;
-use std::io::Stream;
+use std::old_io::IoResult;
+use std::old_io::Stream;
 
 pub struct NodeService<T: Stream> {
     pub dbconn: postgres::Connection<T>,

@@ -1,14 +1,20 @@
 #![allow(unstable)]
+#![feature(plugin)]
 
 extern crate serialize;
 
 #[macro_use] extern crate log;
 
+
+extern crate regex;
+
+#[plugin] #[no_link] extern crate regex_macros;
+
 //use std::io::net::ip::Ipv4Addr;
 //use hyper::server::{Request, Response};
 //use postgres::{Connection, SslMode};
 
-use std::io::{
+use std::old_io::{
     // TcpListener,
     TcpStream,
     IoResult,
@@ -34,6 +40,24 @@ fn guess_content_type(extension: &[u8]) -> &str {
     }
 }
 
+fn extract_connect_metacmd(sql_script: &str) -> Option<((&str, usize), (&str, usize))> {
+    let pat = regex!(r"(?ms)^\s*\\c(?:onnect)?[ \t]+(\w+)[ \t]*[\r\n]+(.*)");
+    pat.captures(sql_script)
+        .map(|captures| (
+            (captures.at(1).unwrap(), captures.pos(1).unwrap().0),
+            (captures.at(2).unwrap(), captures.pos(2).unwrap().0),
+        ))
+}
+
+#[test]
+fn test_extract_connect_metacmd() {
+    let result = extract_connect_metacmd(
+        "\\connect postgres\nselect 'awesome'"
+    );
+
+    assert_eq!(result, Some(("postgres", "select 'awesome'")));
+}
+
 
 
 struct Controller<THttpWriter: Writer> {
@@ -49,7 +73,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         println!("{:?}", req);
 
         //let path = &req.path.clone()[];
-        //let method = req.method;
+        let method = req.method;
 
         let path_vec = req.path.clone();
         let path_slices_vec = path_vec
@@ -68,25 +92,25 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
         // /db/postgres/edit
 
 
-        match path {
-            ["" /* root */ ]
+        match (method, path) {
+            (Get, ["" /* root */ ])
             => ctrl.handle_db_req(IndexResource),
 
-            ["db", database, "nodes", nodetype, nodeid, "children"]
+            (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
             => ctrl.handle_db_req(NodeChidrenResource {
                 database: database.to_string(),
                 nodetype: nodetype.to_string(),
                 nodeid: nodeid.to_string(),
             }),
 
-            ["db", database, "nodes", nodetype, nodeid, "definition"]
+            (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
             => ctrl.handle_db_req(NodeDefinitionResource {
                 database: database,
                 nodetype: nodetype,
                 nodeid: nodeid,
             }),
 
-            ["db", database, "execute"]
+            (Post, [""])
             => {
 
                 #[derive(Decodable)]
@@ -95,20 +119,29 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
                 }
 
                 ctrl.decode_urlencoded_form::<Params>()
-                    .map(|(ctrl, params)| ctrl.handle_db_req(ExecuteResource {
-                        database: database,
-                        sql_script: &params.sql_script[],
-                    }))
+                    .map(|(ctrl, params)| {
+                        let (
+                            (database, connect_pos),
+                            (sql_script, script_pos_offset)
+                        ) = extract_connect_metacmd(
+                            &params.sql_script[]
+                        ).expect("must starts with \\connect db");
+
+                        ctrl.handle_db_req(ExecuteResource {
+                            database: database,
+                            sql_script: sql_script,
+                        })
+                    })
                     .unwrap_or_else(|err| err)
             },
 
             // ["db", database, "execute"]
             // => DbResource::new(database, ),
 
-            ["static", filename..]
+            (Get, ["static", filename..])
             => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
 
-            ["favicon.ico"]
+            (Get, ["favicon.ico"])
             => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
 
             _
@@ -220,7 +253,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 
 
     fn handle_static_req(self, path: &str) -> IoResult<()> {
-        use std::io::File;
+        use std::old_io::File;
         use std::path::Path;
 
         let path: String = ["src/static/", path].concat();
@@ -314,7 +347,7 @@ impl StaticResource {
 
 impl Resource for StaticResource {
     fn get<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
-        use std::io::File;
+        use std::old_io::File;
         use std::path::Path;
 
         let path: String = ["src/static/", &self.filename[]].concat();
@@ -360,7 +393,7 @@ fn respond_unauthorized<TWriter: Writer>(res: http::ResponseStarter<TWriter>) ->
     Ok(())
 }
 
-
+type HttpResult = IoResult<()>;
 
 trait DbConsumer {
 
@@ -570,33 +603,56 @@ impl<'a> DbConsumer for ExecuteResource<'a> {
         res: http::ResponseStarter<THttpWriter>
         ) -> IoResult<()>
     {
-        let mut a = try!(res.start_ok());
-        try!(a.write_content_type("text/html; charset=utf-8"));
-        let writer = &mut try!(a.start_chunked());
 
         {
-            let mut view = TableView(writer.by_ref());
-            for exec_event in try!(dbconn.execute_script(self.sql_script)) {
-                use postgres::ExecuteEvent::*;
-                try!(match exec_event {
-                    RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
-                    RowsetEnd => view.render_rowset_end(),
-                    RowFetched(row) => view.render_row(&row[]),
-                    NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
-                    SqlErrorOccured(err) => view.render_sql_error(err),
-                    IoErrorOccured(err) => view.render_io_error(err),
-                    Notice(notice) => view.render_notice(notice),
-                });
+            match dbconn.execute_script(self.sql_script) {
+                Ok(events) => {
+                    let mut resp_writer = try!(res.start_ok());
+                    try!(resp_writer.write_content_type("text/html; charset=utf-8"));
+                    let ref mut writer = &mut try!(resp_writer.start_chunked());
+
+                    try!(dispatch_exec_events(events, TableView(writer.by_ref())));
+
+                    try!(writer.write(b"\r\n"));
+                    try!(writer.end());
+                },
+                Err(io_err) => {
+                    let mut resp_writer = try!(res.start_ok());
+                    try!(resp_writer.write_content_type("text/html; charset=utf-8"));
+                    try!(resp_writer.write_content(b"Everything is broken."));
+                },
             }
         }
 
-        try!(writer.write(b"\r\n"));
-        try!(writer.end());
 
-        dbconn.finish();
+
+        if let Err(e) = dbconn.finish() {
+            println!("db finish err = {:?}", e);
+        }
 
         Ok(())
     }
+}
+
+
+fn dispatch_exec_events<TEventsIter, TView>(mut events_iter: TEventsIter, mut view: TView) -> IoResult<()>
+    where TEventsIter: Iterator<Item=postgres::ExecuteEvent>,
+          TView: View
+{
+    for event in events_iter {
+        use postgres::ExecuteEvent::*;
+        try!(match event {
+            RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
+            RowsetEnd => view.render_rowset_end(),
+            RowFetched(row) => view.render_row(&row[]),
+            NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
+            SqlErrorOccured(err) => view.render_sql_error(err),
+            IoErrorOccured(err) => view.render_io_error(err),
+            Notice(notice) => view.render_notice(notice),
+        });
+    }
+
+    Ok(())
 }
 
 

@@ -1,4 +1,4 @@
-use std::io::IoResult;
+use std::old_io::IoResult;
 
 /// http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html#sec6.1
 #[derive(Show, Copy)]
@@ -86,7 +86,7 @@ impl<T: Writer> ResponseStarter<T> {
 struct ResponseWriter<T: Writer>(T);
 
 impl<T: Writer> ResponseWriter<T> {
-    pub fn write_header<TVal: ::std::fmt::String>(&mut self, name: &str, value: TVal) -> IoResult<&mut Self> {
+    pub fn write_header<TVal: ::std::fmt::Display>(&mut self, name: &str, value: TVal) -> IoResult<&mut Self> {
         try!(write!(&mut self.0, "{}: {}\r\n", name, value));
         Ok(self)
     }
@@ -132,5 +132,9 @@ impl<T: Writer> Writer for ChunkedWriter<T> {
         try!(write!(inner, "{:x}\r\n", buf.len()));
         try!(inner.write(buf));
         inner.write(b"\r\n")
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.write(buf)
     }
 }

@@ -1,4 +1,4 @@
-use std::io::{
+use std::old_io::{
     IoResult,
     IoError,
     OtherIoError,
@@ -41,7 +41,7 @@ pub fn cstr_len(s: &str) -> usize {
 mod test {
 
     use super::*;
-    use std::io::BufReader;
+    use std::old_io::BufReader;
 
     #[test]
     fn read_cstr() {

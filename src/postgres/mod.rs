@@ -1,9 +1,8 @@
-extern crate crypto;
+extern crate md5;
 
-use self::crypto::md5::Md5;
-use self::crypto::digest::Digest;
+use self::md5::Md5;
 
-use std::io::{
+use std::old_io::{
     TcpStream,
     BufferedStream,
     ByRefReader,
@@ -13,8 +12,8 @@ use std::io::{
     Stream,
 };
 
-use std::io::net::ip::ToSocketAddr;
-use std::io::util::LimitReader;
+use std::old_io::net::ip::ToSocketAddr;
+use std::old_io::util::LimitReader;
 use std::mem;
 use std::char;
 use std::i32;
@@ -560,7 +559,7 @@ impl<TStream: Stream> Connection<TStream> {
 
     }
 
-    pub fn finish(&mut self) -> IoResult<()> {
+    pub fn finish(mut self) -> IoResult<()> {
         self.stream.write_terminate_message()
     }
 }

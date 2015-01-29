@@ -1,13 +1,14 @@
 extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 
 pub use self::response::{
     ResponseStarter,
     Status,
 };
 
-use self::serialize::base64::FromBase64;
+use self::rustc_serialize::base64::FromBase64;
 
-use std::io::{
+use std::old_io::{
     IoResult,
     BufferedReader,
     ByRefReader,
@@ -22,7 +23,7 @@ use std::io::{
 };
 
 use std::ascii::AsciiExt;
-use std::io::net::ip::ToSocketAddr;
+use std::old_io::net::ip::ToSocketAddr;
 
 use std::sync::{ TaskPool, Arc };
 
