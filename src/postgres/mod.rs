@@ -544,7 +544,7 @@ impl<TStream: Stream> Connection<TStream> {
                 RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| IoError {
                     kind: OtherIoError,
                     desc: "Row decode error",
-                    detail: None,
+                    detail: Some(format!("{:?}", decode_err)),
                 }))),
                 SqlErrorOccured(err) => return Err(IoError {
                     kind: OtherIoError,

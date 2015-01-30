@@ -71,7 +71,11 @@ impl ::serialize::Decoder for RowDecoder {
     }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
-        unimplemented!()
+        self.read_str().and_then(|s| match &s[] {
+            "t" => Ok(true),
+            "f" => Ok(false),
+            nonbool => Err(DecodeError::ParseError),
+        })
     }
 
     fn read_f64(&mut self) -> DecodeResult<f64> {

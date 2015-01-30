@@ -55,7 +55,7 @@ fn test_extract_connect_metacmd() {
         "\\connect postgres\nselect 'awesome'"
     );
 
-    assert_eq!(result, Some(("postgres", "select 'awesome'")));
+    assert_eq!(result, Some((("postgres", 9), ("select 'awesome'", 18))));
 }
 
 
@@ -483,11 +483,11 @@ impl DbConsumer for IndexResource {
             if let [ref name, ref comment] = &row[] {
                 let mut obj = BTreeMap::new();
                 obj.insert("id", name.to_json());
-                obj.insert("type", "database".to_json());
+                obj.insert("typ", "database".to_json());
                 obj.insert("name", name.to_json());
                 obj.insert("comment", comment.to_json());
                 obj.insert("database", name.to_json());
-                obj.insert("hasChildren", true.to_json());
+                obj.insert("has_children", true.to_json());
                 obj
             } else {
                 panic!("Row with unexpected structure was recived
@@ -690,6 +690,7 @@ impl<T: Writer> View for TableView<T> {
     fn render_row(&mut self, row: &[Option<String>]) -> IoResult<()> {
         let writer = &mut self.0;
         try!(writer.write(b"<tr>"));
+        try!(writer.write(b"<th></th>"));
         for maybe_val in row.iter() {
             try!(match maybe_val {
                 &Some(ref val) if val.is_empty() => writer.write(b"<td class=\"emptystr\"></td>"),

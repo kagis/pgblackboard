@@ -135,13 +135,13 @@ pgbb.TreeNode = function (tuple) {
 
     this.isOpened = ko.observable(false);
 
-    this.database = tuple.database;
-    this.hasChildren = tuple.hasChildren;
-    this.name = tuple.name;
-    this.type = tuple.type;
-    this.id = tuple.id;
-    this.isGroupStart = tuple.isGroupStart;
-    this.comment = tuple.comment;
+    this.database = tuple['database'];
+    this.hasChildren = tuple['has_children'];
+    this.name = tuple['name'];
+    this.type = tuple['typ'];
+    this.id = tuple['id'];
+    this.isGroupStart = tuple['isGroupStart'];
+    this.comment = tuple['comment'];
 };
 
 ko.utils.extend(pgbb.TreeNode.prototype, {
@@ -190,7 +190,7 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
             success: function (resp) {
                 onComplete.call(context,
                     '\\connect ' + quotedDatabase +
-                    '\n\n' + resp.definition
+                    '\n\n' + resp
                 );
             },
             error: function () {
@@ -203,12 +203,15 @@ ko.utils.extend(pgbb.TreeNode.prototype, {
         var req = new XMLHttpRequest();
         req.onload = onLoad;
         req.onerror = onLoadEnd;
-        req.open('GET', 'tree?' + [
-            'database=' + encodeURIComponent(this.database),
-            'q=' + encodeURIComponent(options.query),
-            'nodeid=' + encodeURIComponent(this.id || ''),
-            'nodetype=' + encodeURIComponent(this.type)
-        ].join('&'));
+        req.open('GET', [
+            'db',
+            this.database,
+            'nodes',
+            this.type,
+            this.id || '_',
+            options.query
+        ].map(encodeURIComponent).join('/'));
+
         req.send();
 
 

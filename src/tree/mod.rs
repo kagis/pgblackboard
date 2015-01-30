@@ -12,10 +12,12 @@ pub struct NodeService<T: Stream> {
 
 #[derive(Decodable, Encodable)]
 pub struct Node {
-    nodeid: String,
-    nodetype: String,
+    database: String,
+    id: String,
+    typ: String,
     name: String,
     comment: Option<String>,
+    has_children: bool,
 }
 
 
