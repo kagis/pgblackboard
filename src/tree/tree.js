@@ -84,24 +84,20 @@ TreeNode.prototype.getDefinition = function (onComplete, context) {
 };
 
 TreeNode.prototype._getChildren = function (options) {
-    return this._sqlexec({
-        query: 'children',
-        success: this._onChildrenLoaded,
-        error: this._onChildrenLoadError
-    });
-}
+    return this._sqlexec('children', options);
+};
 
-TreeNode.prototype._sqlexec = function (options) {
+TreeNode.prototype._sqlexec = function (action, options) {
     var req = new XMLHttpRequest();
     req.onload = onLoad;
     req.onerror = onLoadEnd;
     req.open('GET', [
         'db',
-        this.database,
+        options.nodeDTO['database'],
         'nodes',
-        this.type,
-        this.id || '_',
-        options.query
+        options.nodeDTO['typ'],
+        options.nodeDTO['id'] || '_',
+        action
     ].map(encodeURIComponent).join('/'));
 
     req.send();
