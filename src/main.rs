@@ -118,15 +118,14 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
                     sql_script: String,
                 }
 
-                ctrl.decode_urlencoded_form::<Params>()
-                    .map(|(ctrl, params)| {
-                        let (
-                            (database, connect_pos),
-                            (sql_script, script_pos_offset)
-                        ) = extract_connect_metacmd(
-                            &params.sql_script[]
-                        ).expect("must starts with \\connect db");
+                let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
+                    Ok(res) => res,
+                    Err(err) => return err,
+                };
 
+                let (res, )
+                    .and_then(|(ctrl, params)| ExecuteResource::new(&params.sql_script[], ctrl.res))
+                    .map()
                         ctrl.handle_db_req(ExecuteResource {
                             database: database,
                             sql_script: sql_script,
@@ -292,7 +291,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
             };
 
             postgres::connect_tcp("localhost:5432",
-                                  &db_consumer.get_database_name()[],
+                                  &db_consumer.get_dbname()[],
                                   &user[],
                                   &password[])
         };
@@ -312,7 +311,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 }
 
 
-trait Resource: Sized {
+trait Resource {
 
     fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         match req.method {
@@ -397,7 +396,7 @@ type HttpResult = IoResult<()>;
 
 trait DbConsumer {
 
-    fn get_database_name(&self) -> String;
+    fn get_dbname(&self) -> String;
 
     fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
@@ -457,7 +456,7 @@ trait DbConsumer {
 struct IndexResource;
 
 impl DbConsumer for IndexResource {
-    fn get_database_name(&self) -> String { "postgres".to_string() }
+    fn get_dbname(&self) -> String { "postgres".to_string() }
 
     fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
@@ -521,7 +520,7 @@ struct NodeChidrenResource {
 }
 
 impl DbConsumer for NodeChidrenResource {
-    fn get_database_name(&self) -> String { self.database.clone() }
+    fn get_dbname(&self) -> String { self.database.clone() }
 
     fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
@@ -558,7 +557,7 @@ struct NodeDefinitionResource<'a> {
 }
 
 impl<'a> DbConsumer for NodeDefinitionResource<'a> {
-    fn get_database_name(&self) -> String { self.database.to_string() }
+    fn get_dbname(&self) -> String { self.database.to_string() }
 
     fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
@@ -589,12 +588,43 @@ impl<'a> DbConsumer for NodeDefinitionResource<'a> {
 
 
 struct ExecuteResource<'a> {
-    database: &'a str,
+    dbname: &'a str,
+    connect_metacmd_pos: usize,
     sql_script: &'a str,
+    sql_script_pos: usize,
 }
 
+
+impl<'a> ExecuteResource<'a> {
+    fn new<THttpWriter: Writer>(sql_script_with_dbname: &str,
+                                res: http::ResponseStarter<THttpWriter>
+                                ) -> Result<(ExecuteResource, http::ResponseStarter<THttpWriter>), HttpResult>
+    {
+        match extract_connect_metacmd(sql_script_with_dbname) {
+            Some(((dbname, connect_metacmd_pos), (sql_script, sql_script_pos))) => (
+                ExecuteResource {
+                    dbname: dbname.to_string(),
+                    connect_metacmd_pos: connect_metacmd_pos,
+                    sql_script: sql_script,
+                    sql_script_pos: sql_script_pos,
+                },
+                res
+            ),
+
+            None => {
+                res.start_ok()
+                   .write_content(b"\\connect dbname expected on first line.")
+            }
+        }
+    }
+}
+
+
+
 impl<'a> DbConsumer for ExecuteResource<'a> {
-    fn get_database_name(&self) -> String { self.database.to_string() }
+
+
+    fn get_dbname(&self) -> String { self.dbname.to_string() }
 
     fn consume_connection<THttpWriter: Writer, TDbStream: Stream>(
         &self,
