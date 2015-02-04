@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <script src="tree.js"></script>
+  <script src="../static/lib/knockout/3.2.0/knockout.js"></script>
+  <script src="../static/lib/knockout-att/1.0.0/knockout-att.js"></script>
+  <link href="../static/app.css" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ko template: { name: 'tree-tmpl' } --><!-- /ko -->
+
+  <script>
+    var req = new XMLHttpRequest();
+    req.open('GET', 'tree.html', false);
+    req.send();
+    document.write(req.responseText);
+  </script>
+
+  <script>
+    ko.bindingProvider.instance = new ko.flatBindingProvider();
+    ko.applyBindings({ nodes: [
+      database('postgres', [
+        schema('foo'),
+        schema('bar'),
+      ]),
+
+      { name: 'one', typ: 'database', has_children: true, children: [
+        { name: 'foo', typ: 'table', has_children: true, children: [
+        ]},
+      ]},
+
+      { name: 'three', typ: 'database', has_children: true, children: [
+        { name: 'foo', typ: 'table', has_children: true, children: [
+
+        ]},
+      ]},
+
+    ].map(createTreeNode) });
+
+    function createTreeNode(dto) {
+      return new TreeNode(
+        dto,
+        function (options) {
+          setTimeout(
+            options.success.bind(
+              window,
+              options.parent.children || []
+            ),
+            1000
+          );
+        }
+      );
+    }
+
+    function database(name, children) {
+      return {
+        name: name,
+        typ: 'database',
+        has_children: true,
+        children: children
+      };
+    }
+
+    function schema(name, children) {
+      return {
+        name: name,
+        typ: 'schema',
+        has_children: true,
+        children: children
+      };
+    }
+
+    function table(name, children) {
+      return {
+        name: name,
+        typ: 'table',
+        has_children: true,
+        children: children
+      };
+    }
+  </script>
+</body>
+</html>

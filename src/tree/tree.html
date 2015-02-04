@@ -1,0 +1,39 @@
+<template id="tree-tmpl">
+  <ul data-bind-foreach="nodes">
+    <li class="treenode"
+        data-bind-css.treenode-groupstart="isGroupStart">
+
+      <button class="treenode-toggler"
+              data-bind-click="toggle"
+              data-bind-visible="hasChildren">
+
+        <i class="fontello treenode-toggler-icon"
+           data-bind-css.fontello-triangle-right="isCollapsed"
+           data-bind-css.fontello-triangle-down="isExpanded"
+           data-bind-css.spinner="childrenAreLoading"></i>
+
+      </button>
+
+      <div class="itemheader"
+           data-bind-css.itemheader-active="isOpened">
+
+        <a data-bind-click="open"
+           data-bind-attr.title="comment">
+
+          <i class="treenode-icon"
+             data-bind-css="'treenode-icon_'+type"></i>
+
+          <span data-bind-text="name"></span>
+          <small data-bind-text="comment"></small>
+        </a>
+
+      </div>
+
+      <!-- ko template: {
+        name : 'tree-tmpl',
+        if   : isExpanded
+      } --><!-- /ko -->
+
+    </li>
+  </ul>
+</template>

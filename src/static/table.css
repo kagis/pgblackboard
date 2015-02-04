@@ -2,7 +2,7 @@
 .dark .rowset { border-color: #555; }
 .dark .rowset th { background-color: #444; }
 .dark .rowset-invalid-row td { background-color: #551414; }
-.dark .message-error { color: #ff4c4c; }
+.dark .error { color: #ff4c4c; }
 .dark .message { border-bottom-color: #333; }
 .dark .rowset tr:nth-child(even) { color: #aaa; }
 
@@ -33,7 +33,7 @@
 .light .rowset { border-color: #aaa; }
 .light .rowset th { background-color: #ddd; }
 .light .rowset-invalid-row td { background-color: #ffd7d7; }
-.light .message-error { color: #ff4c4c; }
+.light .error { color: #ff4c4c; }
 .light .message { border-bottom-color: #eee; }
 .light .rowset tr:nth-child(even) { background-color: #eee; }
 
@@ -98,7 +98,7 @@ body,
     border-bottom-style: solid;
     }
 
-.message-error {
+.error {
     white-space: pre;
     }
 
@@ -149,7 +149,7 @@ body,
     |         |      */
 .rowset-coltype {
     display: block;
-    opacity: .5;
+    opacity: .5; /* mute color */
     font-size: .5em;
     text-transform: uppercase;
     }
@@ -158,7 +158,7 @@ body,
 
 
 /* row number */
-.rowset-rowheader::before {
+.rowset-corner::before {
     content: '#';
     }
 .rowset > tbody th {

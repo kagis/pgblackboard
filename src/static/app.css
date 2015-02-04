@@ -9,7 +9,8 @@
 .light .treenode-icon_view::after { background-color: red; }
 .light .treenode-icon_matview::after { background-color: green; }
 .light .treenode-icon_foreigntable::after { background-color: purple; }
-.light .treenode-icon_fkcolumn::after { background-color: #ddd; color: inherit; }.light .itemheader:hover { background-color: rgba(0,0,0,.1); }
+.light .treenode-icon_fkcolumn::after { background-color: #ddd; color: inherit; }
+.light .itemheader:hover { background-color: rgba(0,0,0,.1); }
 .light .itemheader-active { background-color: rgba(0,0,0,.1); }
 
 
