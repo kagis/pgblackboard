@@ -19,6 +19,22 @@
   </script>
 
   <script>
+
+    var openedTreeNode = ko.observable();
+    openedTreeNode.subscribe(
+      function (openingNode) { openingNode && openingNode.isOpened(true); }
+    );
+    openedTreeNode.subscribe(
+      function (closingNode) { closingNode && closingNode.isOpened(false); },
+      null,
+      'beforeChange'
+    );
+
+    // openedTreeNode observable will be
+    // setted to opening node
+    TreeNode.prototype.open = openedTreeNode;
+
+
     TreeNode.prototype._loadChildren = function (options) {
       setTimeout(
         options.success.bind(

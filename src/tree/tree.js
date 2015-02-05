@@ -1,11 +1,8 @@
 /**
-@constructor
-@param {function({isOpen})} openFunc */
-function TreeNode(nodeDTO, openFunc) {
+@constructor */
+function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
-
-    this.open = openFunc;
 
     this.isExpanding = ko.observable(false);
     this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
