@@ -1,8 +1,11 @@
 /**
-@constructor */
-function TreeNode(nodeDTO) {
+@constructor
+@param {function({isOpen})} openFunc */
+function TreeNode(nodeDTO, openFunc) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
+
+    this.open = openFunc;
 
     this.isExpanding = ko.observable(false);
     this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
@@ -10,13 +13,15 @@ function TreeNode(nodeDTO) {
 
     this.isOpened = ko.observable(false);
 
-    this.database = nodeDTO['database'];
-    this.hasChildren = nodeDTO['has_children'];
     this.name = nodeDTO['name'];
     this.type = nodeDTO['typ'];
-    this.id = nodeDTO['id'];
-    this.isGroupStart = nodeDTO['isGroupStart'];
     this.comment = nodeDTO['comment'];
+
+    // toggler is visible when hasChildren is true
+    this.hasChildren = nodeDTO['has_children'];
+
+    // horizontal line is drawn above groupStart node
+    this.isGroupStart = nodeDTO['isGroupStart'];
 };
 
 TreeNode.prototype.toggle = function () {
@@ -60,10 +65,6 @@ TreeNode.prototype._checkIsExpanded = function () {
 
 TreeNode.prototype._checkIsCollapsed = function () {
     return !this.nodes() && !this.isExpanding();
-};
-
-TreeNode.prototype.open = function () {
-    alert('open');
 };
 
 TreeNode.prototype.getDefinition = function (onComplete, context) {
