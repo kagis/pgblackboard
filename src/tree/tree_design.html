@@ -19,6 +19,16 @@
   </script>
 
   <script>
+    TreeNode.prototype._loadChildren = function (options) {
+      setTimeout(
+        options.success.bind(
+          this,
+          options.parent.children || []
+        ),
+        500
+      );
+    };
+
     ko.bindingProvider.instance = new ko.flatBindingProvider();
     ko.applyBindings({ nodes: [
       database('postgres', [
@@ -74,19 +84,10 @@
     ].map(createTreeNode) });
 
     function createTreeNode(dto) {
-      return new TreeNode(
-        dto,
-        function (options) {
-          setTimeout(
-            options.success.bind(
-              window,
-              options.parent.children || []
-            ),
-            500
-          );
-        }
-      );
+      return new TreeNode(dto);
     }
+
+
 
     function database(name, children) {
       return {

@@ -1,17 +1,12 @@
 /**
 @constructor */
-function TreeNode(nodeDTO, getChildren) {
+function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
-    this._getChildren = getChildren || this._getChildren;
     this.nodes = ko.observable();
-    this.childrenAreLoading = ko.observable(false);
 
-    this.isExpanded = ko.pureComputed(function () {
-        return this.nodes() && !this.childrenAreLoading();
-    }, this);
-    this.isCollapsed = ko.pureComputed(function () {
-        return !this.nodes() && !this.childrenAreLoading();
-    }, this);
+    this.isExpanding = ko.observable(false);
+    this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
+    this.isCollapsed = ko.pureComputed(this._checkIsCollapsed, this);
 
     this.isOpened = ko.observable(false);
 
@@ -37,8 +32,8 @@ TreeNode.prototype.collapse = function () {
 };
 
 TreeNode.prototype.expand = function () {
-    this.childrenAreLoading(true);
-    this._getChildren({
+    this.isExpanding(true);
+    this._loadChildren({
         parent: this._nodeDTO,
         success: this._onChildrenLoaded.bind(this),
         error: this._onChildrenLoadError.bind(this)
@@ -46,17 +41,25 @@ TreeNode.prototype.expand = function () {
 };
 
 TreeNode.prototype._onChildrenLoaded = function (nodeDTOs) {
-    this.childrenAreLoading(false);
+    this.isExpanding(false);
     this.nodes(nodeDTOs.map(this._createChild, this));
 };
 
 TreeNode.prototype._createChild = function (dto) {
-    return new this.constructor(dto, this._getChildren);
+    return new this.constructor(dto);
 };
 
 TreeNode.prototype._onChildrenLoadError = function () {
-    this.childrenAreLoading(false);
+    this.isExpanding(false);
     alert('ERROR while loading child tree nodes.');
+};
+
+TreeNode.prototype._checkIsExpanded = function () {
+    return this.nodes() && !this.isExpanding();
+};
+
+TreeNode.prototype._checkIsCollapsed = function () {
+    return !this.nodes() && !this.isExpanding();
 };
 
 TreeNode.prototype.open = function () {
@@ -83,7 +86,7 @@ TreeNode.prototype.getDefinition = function (onComplete, context) {
     });
 };
 
-TreeNode.prototype._getChildren = function (options) {
+TreeNode.prototype._loadChildren = function (options) {
     return this._sqlexec('children', options);
 };
 
@@ -93,10 +96,10 @@ TreeNode.prototype._sqlexec = function (action, options) {
     req.onerror = onLoadEnd;
     req.open('GET', [
         'db',
-        options.nodeDTO['database'],
+        this._nodeDTO['database'],
         'nodes',
-        options.nodeDTO['typ'],
-        options.nodeDTO['id'] || '_',
+        this._nodeDTO['typ'],
+        this._nodeDTO['id'] || '_',
         action
     ].map(encodeURIComponent).join('/'));
 

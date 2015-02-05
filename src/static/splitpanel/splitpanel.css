@@ -1,0 +1,76 @@
+.splitter-h,
+.splitting-h {
+    cursor: ns-resize;
+    }
+
+.splitter-h {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 50%;
+    height: 6px;
+    }
+
+.splitter-v,
+.splitting-v {
+    cursor: ew-resize;
+    }
+
+.splitter-v {
+    position: absolute;
+    right: 70%;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    }
+
+.splitpanel {
+    position: relative;
+    }
+
+.splitpanel-left {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 70%;
+    margin-right: 6px;
+    }
+
+.splitpanel-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 30%;
+    }
+
+.splitpanel-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 50%;
+    margin-bottom: 6px;
+    }
+
+.splitpanel-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 50%;
+
+    }
+
+
+.splitting {
+    -webkit-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
+    }
+
+.splitting iframe {
+    pointer-events: none;
+    }
