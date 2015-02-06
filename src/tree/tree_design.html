@@ -4,7 +4,6 @@
   <title></title>
   <script src="tree.js"></script>
   <script src="../static/lib/knockout/3.2.0/knockout.js"></script>
-  <script src="../static/lib/knockout-att/1.0.0/knockout-att.js"></script>
   <link href="../static/app.css" rel="stylesheet" />
 </head>
 <body class="light">
@@ -45,7 +44,6 @@
       );
     };
 
-    ko.bindingProvider.instance = new ko.flatBindingProvider();
     ko.applyBindings({ nodes: [
       database('postgres', [
         schema('information_schema', [
