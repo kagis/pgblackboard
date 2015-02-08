@@ -16,16 +16,14 @@
 	/*.splitpanel-right,*/
 	.splitpanel-top,
 	.splitpanel-bottom {
-		outline: thin solid red;
+		background-color: #ccc;
 		overflow: hidden;
 		font-family: 'ubuntu';
 		font-size: small;
 	}
 
 	.splitpanel-left::before,
-	.splitpanel-right::before,
-	.splitpanel-top::before,
-	.splitpanel-bottom::before {
+	.splitpanel-top::before {
 		content: attr(data-width);
 		display: block;
 		width: -webkit-fit-content;
@@ -44,8 +42,7 @@
 		box-sizing: border-box;
 	}
 
-	.splitpanel-top::after,
-	.splitpanel-bottom::after {
+	.splitpanel-top::after {
 		content: attr(data-height);
 		position: absolute;
 		right: .5em;
@@ -55,6 +52,14 @@
 		border-radius: 2px;
 		padding: .1em .5em;
 		color: #ccc;
+	}
+
+	iframe {
+		width: 100%;
+		height: 100%;
+		border: none;
+		margin: 0;
+		padding: 0;
 	}
 
 	</style>
@@ -96,6 +101,8 @@
 			<div class="splitter-h"></div>
 			<div class="splitpanel-bottom">
 
+				<!-- iframe must not eat mousemove event when splitting -->
+				<iframe src="http://www.yr.no/place/Russia/Moscow/Moscow/avansert_meteogram.png"></iframe>
 
 			</div>
 		</div>

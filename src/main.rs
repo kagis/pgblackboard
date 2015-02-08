@@ -123,15 +123,15 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
                     Err(err) => return err,
                 };
 
-                let (res, )
-                    .and_then(|(ctrl, params)| ExecuteResource::new(&params.sql_script[], ctrl.res))
-                    .map()
-                        ctrl.handle_db_req(ExecuteResource {
-                            database: database,
-                            sql_script: sql_script,
-                        })
-                    })
-                    .unwrap_or_else(|err| err)
+                let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
+                    Ok(x) => x,
+                    Err(err) => return err,
+                };
+
+                let ctrl = Controller { req: ctrl.req, res: res };
+
+
+                ctrl.handle_db_req(exec_res)
             },
 
             // ["db", database, "execute"]
@@ -311,7 +311,7 @@ impl<THttpWriter: Writer> Controller<THttpWriter> {
 }
 
 
-trait Resource {
+trait Resource: Sized {
 
     fn handle<THttpWriter: Writer>(self, req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
         match req.method {
@@ -601,19 +601,19 @@ impl<'a> ExecuteResource<'a> {
                                 ) -> Result<(ExecuteResource, http::ResponseStarter<THttpWriter>), HttpResult>
     {
         match extract_connect_metacmd(sql_script_with_dbname) {
-            Some(((dbname, connect_metacmd_pos), (sql_script, sql_script_pos))) => (
+            Some(((dbname, connect_metacmd_pos), (sql_script, sql_script_pos))) => Ok((
                 ExecuteResource {
-                    dbname: dbname.to_string(),
+                    dbname: dbname,
                     connect_metacmd_pos: connect_metacmd_pos,
                     sql_script: sql_script,
                     sql_script_pos: sql_script_pos,
                 },
                 res
-            ),
+            )),
 
             None => {
-                res.start_ok()
-                   .write_content(b"\\connect dbname expected on first line.")
+                Err(res.start_ok()
+                    .and_then(|resp| resp.write_content(b"\\connect dbname expected on first line.")))
             }
         }
     }

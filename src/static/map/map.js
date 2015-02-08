@@ -39,11 +39,11 @@ var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x
 var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
 
 var basemap = L.tileLayer();
-
-window.parent.ko.computed(function () {
-    var isLightsOn = window.parent.pgbb.model.isLightsOn();
-    basemap.setUrl(isLightsOn ? lightBasemapUrl : darkBasemapUrl);
-});
+basemap.setUrl(lightBasemapUrl);
+// window.parent.ko.computed(function () {
+//     var isLightsOn = window.parent.pgbb.model.isLightsOn();
+//     basemap.setUrl(isLightsOn ? lightBasemapUrl : darkBasemapUrl);
+// });
 
 var imagery = L.tileLayer('http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z', bingOptions);
 

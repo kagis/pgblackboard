@@ -23,17 +23,17 @@
 
 
 
-.light .scrollbox::-webkit-scrollbar,
-.light .scrollbox::-webkit-scrollbar-corner {
+.light *::-webkit-scrollbar,
+.light *::-webkit-scrollbar-corner {
     background-color: #ddd;
     }
 
-.light .scrollbox::-webkit-scrollbar-thumb {
+.light *::-webkit-scrollbar-thumb {
     background-color: #999;
     color: #ddd;
     }
 
-/*.light .scrollbox {
+/*.light * {
     scrollbar-base-color: #333;
     scrollbar-3dlight-color: #222;
     scrollbar-highlight-color: #222;
@@ -86,17 +86,17 @@
 .dark .itemheader-active { background-color: rgba(255,255,255,.1); }
 .dark .itemheader:hover { background-color: rgba(255,255,255,.1); }
 
-.dark .scrollbox::-webkit-scrollbar,
-.dark .scrollbox::-webkit-scrollbar-corner {
+.dark *::-webkit-scrollbar,
+.dark *::-webkit-scrollbar-corner {
     background-color: #222;
     }
 
-.dark .scrollbox::-webkit-scrollbar-thumb {
+.dark *::-webkit-scrollbar-thumb {
     background-color: rgba(255,255,255,.2);
     color: #222;
     }
 
-.dark .scrollbox {
+.dark * {
     scrollbar-base-color: #333;
     scrollbar-3dlight-color: #222;
     scrollbar-highlight-color: #222;
@@ -526,21 +526,21 @@ a > small {
 
 
 
-.scrollbox::-webkit-scrollbar {
+*::-webkit-scrollbar {
     width: 12px;
     height: 12px;
     padding: 2px;
     }
 
-.scrollbox::-webkit-scrollbar-button:start:decrement,
-.scrollbox::-webkit-scrollbar-button:end:increment {
+*::-webkit-scrollbar-button:start:decrement,
+*::-webkit-scrollbar-button:end:increment {
     display: block;
     height: 0;
     width: 0;
     background-color: transparent;
     }
 
-.scrollbox::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
     border-radius: 6px;
     border: 2px solid;
     }

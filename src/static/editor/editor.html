@@ -1,0 +1,37 @@
+<template id="editor-tmpl">
+  <div class="editor-container">
+    <textarea id="sql_script"
+              name="sql_script"
+              class="stretch"
+              data-bind="value: doc, codemirror: editorOptions"
+              ></textarea>
+
+      <!-- >\connect postgres&#13;&#10;select 'hello, ' || current_user; - - Alt+X to execute</textarea> -->
+
+    <input type="hidden" name="selection" />
+
+    <div id="execbar" class="bg-body">
+      <button class="btn-action"
+              type="submit"
+              title="alt-m"
+              accesskey="m"
+              name="view"
+              value="map"
+              >map</button>
+
+      <button class="btn-action"
+              type="submit"
+              title="alt-x"
+              accesskey="x"
+              name="view"
+              value="table"
+              ><b>execute</b></button>
+    </div>
+
+    <div class="spinner-shield"
+         data-bind="visible: isLoading">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+</template>
