@@ -499,7 +499,7 @@ impl DbConsumer for IndexResource {
 
 
 
-        let index_html = include_str!("index.html");
+        let index_html = include_str!("index_.html");
         let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
                                             &json::encode(&initial_data)[]);
 

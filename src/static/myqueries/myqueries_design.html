@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <link href="myqueries.css" rel="stylesheet" />
+
+  <script src="http://knockoutjs.com/downloads/knockout-3.2.0.debug.js"></script>
+  <script src="myqueries.js"></script>
+
+  <script>
+    var req = new XMLHttpRequest();
+    req.open('GET', 'myqueries.html', false);
+    req.send();
+    document.write(req.responseText);
+  </script>
+</head>
+<body>
+
+  <!-- ko template: { name: 'myqueries-tmpl' } --><!-- /ko -->
+  <textarea></textarea>
+  <button data-bind="click: newQuery">new query</button>
+
+  <script>
+    ko.applyBindings(new MyQueryRepo());
+  </script>
+</body>
+</html>

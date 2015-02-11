@@ -1,0 +1,18 @@
+<template id="myqueries-tmpl">
+  <ul data-bind="foreach: items">
+    <li>
+      <div class="itemheader itemheader-has-btn"
+           data-bind="css: { 'itemheader-active': isOpened }">
+
+        <a data-bind="click: open">
+          <i class="icon-code"></i>
+          <span data-bind="text: name"></span>
+        </a>
+
+        <button data-bind="click: remove, visible: isOpened"
+                class="btn-action">remove</button>
+
+      </div>
+    </li>
+  </ul>
+</template>

@@ -4,7 +4,7 @@ function MyQueryRepo() {
     var saveDirty = this.saveDirty.bind(this);
     window.addEventListener('beforeunload', saveDirty);
     setInterval(saveDirty, 5000);
-};
+}
 
 MyQueryRepo.prototype._load = function () {
     for (var i = 0; i < localStorage.length; i++) {
@@ -58,7 +58,7 @@ function MyQuery(localStorageKey, editSession) {
 
     this.name = ko.pureComputed(this._getName, this)
                     .extend({ rateLimit: 500 });
-};
+}
 
 MyQuery.prototype._getName = function () {
     var queryText = this.queryText().trim();
