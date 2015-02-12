@@ -1,4 +1,7 @@
-function MyQueryRepo() {
+/**
+@constructor */
+function MyQueryRepo(storage) {
+    this._storage = storage;
     this.items = ko.observableArray();
     this._load();
     var saveDirty = this.saveDirty.bind(this);
@@ -7,12 +10,13 @@ function MyQueryRepo() {
 }
 
 MyQueryRepo.prototype._load = function () {
-    for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
+    for (var i = 0; i < this._storage.length; i++) {
+        var key = this._storage.key(i);
         if (/^pgblackboard_query_\d+$/.exec(key)) {
-            var queryText = localStorage.getItem(key);
-            var editSession = new CodeMirror.Doc(queryText, "text/x-pgsql");
-            var item = new pgbb.StoredQuery(key, editSession);
+            var queryText = this._storage.getItem(key);
+            var queryTextDoc = ko.observable(queryText)
+                                    .extend({ 'editorDoc': true })
+            var item = new MyQuery(key, queryTextDoc);
             item.isDirty = false;
             this.items.push(item);
         }
@@ -45,19 +49,19 @@ MyQueryRepo.prototype.remove = function (item) {
 
 
 
-function MyQuery(localStorageKey, editSession) {
-    this.queryText = ko.observable(editSession.getValue());
-    this.editSessionIsReady = ko.observable(true);
+function MyQuery(localStorageKey, valueObservable) {
+    this.queryText = valueObservable;
     this.isOpened = ko.observable(false);
 
     this.isDirty = true;
-
-    this._editSession = editSession;
-    this._editSession.on('change', this._onChange.bind(this));
     this.localStorageKey = localStorageKey;
 
     this.name = ko.pureComputed(this._getName, this)
                     .extend({ rateLimit: 500 });
+
+    this.queryText.subscribe(function () {
+        this.isDirty = true;
+    }, this);
 }
 
 MyQuery.prototype._getName = function () {
@@ -76,9 +80,4 @@ MyQuery.prototype._getName = function () {
 
 MyQuery.prototype.getEditSession = function () {
     return this._editSession;
-};
-
-MyQuery.prototype._onChange = function () {
-    this.queryText(this._editSession.getValue());
-    this.isDirty = true;
 };

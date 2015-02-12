@@ -7,6 +7,19 @@ function Editor(value) {
     };
 }
 
+ko.extenders['editorDoc'] = function (target) {
+    var doc = new CodeMirror.Doc(target.peek(), "text/x-pgsql");
+    target.codemirrorDocument = doc;
+    doc.on('change', function () {
+        target(doc.getValue());
+    });
+    ko.computed(function () {
+        doc.setValue(target());
+    });
+    return target;
+};
+
+
 ko.bindingHandlers['codemirror'] = {
     'after': ['value'],
     'init': initCodemirror
