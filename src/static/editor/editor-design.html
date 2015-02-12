@@ -46,13 +46,14 @@
 
   <form data-bind="submit: onSubmit, template: editorTmpl"></form>
   <script>
+
     ko.applyBindings({
       editorTmpl: {
         name: 'editor-tmpl',
-        data: new Editor('\\connect postgres\n\n' +
-                           'select \'awesome\';\n\n' +
-                           'select \'long line to make horizontal scroll visibleblebleblebleble\';\n\n' +
-                           '-- more lines\n--\n--\n--\n--\n--\n--\n'),
+        data: new EditorForm('\\connect postgres\n\n' +
+                             'select \'awesome\';\n\n' +
+                             'select \'long line to make horizontal scroll visibleblebleblebleble\';\n\n' +
+                             '-- more lines\n--\n--\n--\n--\n--\n--\n'),
       },
 
       onSubmit: function (form) {

@@ -1,12 +1,13 @@
 <template id="editor-tmpl">
   <div class="editor-container">
+
     <textarea id="sql_script"
               name="sql_script"
               class="stretch"
-              data-bind="value: doc, codemirror: editorOptions"
+              data-bind="codemirrorDoc: doc"
               ></textarea>
 
-      <!-- >\connect postgres&#13;&#10;select 'hello, ' || current_user; - - Alt+X to execute</textarea> -->
+      <!-- \connect postgres&#13;&#10;select 'hello, ' || current_user; - - Alt+X to execute -->
 
     <input type="hidden" name="selection" />
 
@@ -28,8 +29,7 @@
               ><b>execute</b></button>
     </div>
 
-    <div class="spinner-shield"
-         data-bind="visible: isLoading">
+    <div class="spinner-shield" data-bind="visible: isLoading">
       <div class="spinner"></div>
     </div>
 

@@ -1,14 +1,23 @@
-function Editor(value) {
-    this.doc = ko.observable(value);
-    this.isLoading = false;
+function EditorForm(doc) {
+    this.doc = ko.observable(doc);
+    this.isLoading = ko.pureComputed(function () {
+        return this.doc().isLoading && this.doc().isLoading();
+    }, this);
 
     this.editorOptions = {
         value: value
     };
 }
 
+function EditorDoc(text) {
+    this.text = ko.observable(text);
+    this.isLoading = ko.observable(false);
+    this.errors = ko.observableArray();
+    this._codemirrorDoc = new CodeMirror.Doc(target.peek(), 'text/x-pgsql');
+}
+
 ko.extenders['editorDoc'] = function (target) {
-    var doc = new CodeMirror.Doc(target.peek(), "text/x-pgsql");
+    var doc = new CodeMirror.Doc(target.peek(), 'text/x-pgsql');
     target.codemirrorDocument = doc;
     doc.on('change', function () {
         target(doc.getValue());
@@ -20,12 +29,12 @@ ko.extenders['editorDoc'] = function (target) {
 };
 
 
-ko.bindingHandlers['codemirror'] = {
-    'after': ['value'],
+ko.bindingHandlers['codemirrorDoc'] = {
     'init': initCodemirror
 };
 
 function initCodemirror(element, valueAccessor) {
+
     var codemirrorInst = CodeMirror.fromTextArea(element, {
         lineNumbers: true,
         matchBrackets: true,
@@ -47,6 +56,10 @@ function initCodemirror(element, valueAccessor) {
             'CodeMirror-gutters--overlaying',
             codemirrorInst.getScrollInfo().left > 1
         );
+    });
+
+    codemirrorInst.on('change', function () {
+        element.value = codemirrorInst.getValue();
     });
 
 

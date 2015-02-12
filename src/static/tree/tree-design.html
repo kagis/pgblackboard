@@ -3,8 +3,16 @@
 <head>
   <title></title>
   <script src="tree.js"></script>
-  <script src="../static/lib/knockout/3.2.0/knockout.js"></script>
-  <link href="../static/app.css" rel="stylesheet" />
+  <script src="http://knockoutjs.com/downloads/knockout-3.2.0.debug.js"></script>
+  <link href="tree.css" rel="stylesheet" />
+  <style>
+  html {
+    font-family: 'DejaVu Sans', 'Verdana', sans;
+    font-size: 16px;
+    background-color: #fcfcfc;
+    color: #555;
+  }
+  </style>
 </head>
 <body class="light">
 
@@ -12,7 +20,7 @@
 
   <script>
     var req = new XMLHttpRequest();
-    req.open('GET', 'tree.html', false);
+    req.open('GET', 'tree.template.html', false);
     req.send();
     document.write(req.responseText);
   </script>

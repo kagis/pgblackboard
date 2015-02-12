@@ -35,7 +35,7 @@ MyQueryRepo.prototype.saveDirty = function () {
     for (var i = items.length - 1; i >= 0; i--) {
         var item = items[i];
         if (item.isDirty) {
-            localStorage.setItem(item.localStorageKey, item.queryText());
+            this._storage.setItem(item.storageKey, item.queryText());
             item.isDirty = false;
         }
     }
@@ -43,18 +43,18 @@ MyQueryRepo.prototype.saveDirty = function () {
 
 MyQueryRepo.prototype.remove = function (item) {
     this.items.remove(item);
-    localStorage.removeItem(item.localStorageKey);
+    this._storage.removeItem(item.storageKey);
 };
 
 
 
 
-function MyQuery(localStorageKey, valueObservable) {
+function MyQuery(storageKey, valueObservable) {
     this.queryText = valueObservable;
     this.isOpened = ko.observable(false);
 
     this.isDirty = true;
-    this.localStorageKey = localStorageKey;
+    this.storageKey = storageKey;
 
     this.name = ko.pureComputed(this._getName, this)
                     .extend({ rateLimit: 500 });
