@@ -43,3 +43,25 @@ $(BUILDDIR)/codemirror-closebrackets.js:
 
 $(BUILDDIR)/codemirror-sql.js:
 	curl $(CODEMIRROR_DIR)/mode/sql/sql.min.js > $@
+
+
+
+$(BUILDDIR)/pgblackboard.js: $(BUILDDIR)/pgblackboard.src.js
+	closure-compiler --compilation_level SIMPLE_OPTIMIZATIONS $^ > $@
+	# curl -d compilation_level=SIMPLE_OPTIMIZATIONS \
+	# 	-d output_format=json \
+	# 	-d output_info=errors \
+	# 	-d output_info=compiled_code \
+	# 	--data-urlencode "js_code@$^" \
+	# 	http://closure-compiler.appspot.com/compile \
+	# 	> $@
+
+$(BUILDDIR)/pgblackboard.src.js: \
+	src/static/tree/tree.js \
+	src/static/splitpanel/splitpanel.js \
+	src/static/myqueries/myqueries.js \
+	src/static/editor/editor.js
+	{ echo "(function(){"; cat $^; echo "})();"; } > $@
+
+
+
