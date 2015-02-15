@@ -78,6 +78,9 @@
 <body data-bind="css: theme">
 
   <div class="main" data-bind="template: $data">
+    <!-- loader will be replaced with root view
+         when page will be loaded and bindings
+         will be applied. -->
     <div class="loader-outer">
       <div class="loader-inner">
         <div class="loader-bounce1">
@@ -86,6 +89,7 @@
       </div>
     </div>
   </div>
+
   <!--
   <script src="bundle.js"></script>
   <script>main(/*INITIAL_DATA_PLACEHOLDER*/);</script>

@@ -1,0 +1,53 @@
+<template id="app-tmpl">
+  <div class="leftbar bg-body">
+    <button class="leftbar-btn fontello fontello-lamp"
+            data-bind="click: toggleTheme"
+            ></button>
+  </div>
+
+
+  <div class="root-splitpanel splitpanel bg-body">
+
+    <div class="leftpanel splitpanel-left scrollbox bg-panel">
+      <div class="leftpanel-inner">
+
+        <!-- ko template: {
+          name: 'queries-tmpl',
+          data: queries
+        } --><!-- /ko -->
+
+        <!-- ko template: {
+          name: 'tree-tmpl',
+          data: tree
+        } --><!-- /ko -->
+
+      </div>
+    </div>
+
+    <div class="splitter-v"></div>
+
+    <div class="splitpanel-right splitpanel">
+      <div class="splitpanel-top bg-panel">
+        <form id="queryform"
+              method="POST"
+              target="result"
+              class="stretch"
+              enctype="application/x-www-form-urlencoded"
+              data-bind="template: editorForm"
+              ></form>
+      </div>
+      <div class="splitter-h"></div>
+      <div class="splitpanel-bottom bg-panel">
+        <iframe id="result"
+                name="result"
+                class="stretch"
+                ></iframe>
+      </div>
+    </div>
+
+    <button id="share-action"
+            accesskey="s"
+            style="display:none"
+            ></button>
+  </div>
+</template>

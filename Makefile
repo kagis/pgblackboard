@@ -16,7 +16,9 @@ CSS_FILES=$(BUILDDIR)/codemirror.css
 
 $(BUILDDIR)/bundle.js: $(JS_FILES) $(CSS_FILES)
 	{ \
-		printf "document.write('<style>%q</style>');" "$$(cat $(CSS_FILES))"; \
+		echo "document.write('<style>"; \
+		cat $(CSS_FILES) | sed -e 's/\\/\\\\/'  -e "s/'/\\\'/g"; \
+		echo "</style>');"; \
 		cat $(JS_FILES); \
 	} > $@
 
