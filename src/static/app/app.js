@@ -102,6 +102,9 @@ AppModel.prototype.toggleTheme = function () {
 pgbb.editor = pgbb.initEditor();
 
 window['main'] = function (initialData) {
+
+    var myQueryRepo = new MyQueryRepo(window['localStorage']);
+
     pgbb.model = new pgbb.AppModel(pgbb.editor, initialData);
     ko.applyBindings(pgbb.model);
 };

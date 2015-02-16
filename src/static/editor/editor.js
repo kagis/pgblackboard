@@ -1,32 +1,42 @@
-function EditorForm(doc) {
-    this.doc = ko.observable(doc);
-    this.isLoading = ko.pureComputed(function () {
-        return this.doc().isLoading && this.doc().isLoading();
-    }, this);
+function EditorForm(params) {
 
-    this.editorOptions = {
-        value: value
-    };
+    this.doc = params.doc;
+    this.isLoading = ko.pureComputed(function () {
+        return this.doc() && this.doc().isLoading();
+    }, this);
 }
 
 function EditorDoc(text) {
     this.text = ko.observable(text);
     this.isLoading = ko.observable(false);
     this.errors = ko.observableArray();
-    this._codemirrorDoc = new CodeMirror.Doc(target.peek(), 'text/x-pgsql');
+    this._codemirrorDoc = new CodeMirror.Doc(text, 'text/x-pgsql');
 }
 
-ko.extenders['editorDoc'] = function (target) {
-    var doc = new CodeMirror.Doc(target.peek(), 'text/x-pgsql');
-    target.codemirrorDocument = doc;
+ko.extenders['editorDoc'] = attachCodemirrorDocToObservable;
+
+function attachCodemirrorDocToObservable(targetObservable) {
+    var doc = new CodeMirror.Doc(targetObservable.peek(), 'text/x-pgsql');
+    targetObservable.codemirrorDoc = doc;
     doc.on('change', function () {
-        target(doc.getValue());
+        targetObservable(doc.getValue());
     });
-    ko.computed(function () {
-        doc.setValue(target());
-    });
+    targetObservable.subscribe(doc.setValue.bind(doc));
     return target;
 };
+
+ko.templates = {};
+ko.templates['editorForm'] = function (doc) {
+    return {
+        data: new EditorForm({ doc: doc }),
+        name: 'editor-tmpl'
+    };
+}
+
+ko.components.register('editorForm', {
+    viewModel: EditorForm,
+    template: {element: 'editor-tmpl'}
+});
 
 
 ko.bindingHandlers['codemirrorDoc'] = {
@@ -45,6 +55,9 @@ function initCodemirror(element, valueAccessor) {
         keyMap: 'sublime',
         gutters: ['CodeMirror-linenumbers', 'errors-gutter']
     });
+
+    codemirrorInst.swapDoc(ko.unwrap(valueAccessor())._codemirrorDoc);
+
 
     window.codemirrorInst = codemirrorInst;
 

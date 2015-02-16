@@ -89,3 +89,10 @@ function initSplitter(splitter) {
         }
     }
 }
+
+
+ko.bindingHandlers['splitter'] = {
+    'init': function (element) {
+        initSplitter(element);
+    }
+};

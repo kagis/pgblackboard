@@ -19,7 +19,7 @@
   <script src="editor.js"></script>
   <script>
     var req = new XMLHttpRequest();
-    req.open('GET', 'editor.html', false);
+    req.open('GET', 'editor.template.html', false);
     req.send();
     document.write(req.responseText);
   </script>
@@ -28,6 +28,7 @@
   <style>
     html {
       font-family: 'DejaVu Sans', 'Verdana', sans;
+      background-color: #eee;
     }
 
     form {
@@ -44,17 +45,15 @@
 </head>
 <body>
 
-  <form data-bind="submit: onSubmit, template: editorTmpl"></form>
-  <script>
+  <form data-bind="submit: onSubmit, template: ko.templates.editorForm(doc)"></form>
 
+  <script>
     ko.applyBindings({
-      editorTmpl: {
-        name: 'editor-tmpl',
-        data: new EditorForm('\\connect postgres\n\n' +
-                             'select \'awesome\';\n\n' +
-                             'select \'long line to make horizontal scroll visibleblebleblebleble\';\n\n' +
-                             '-- more lines\n--\n--\n--\n--\n--\n--\n'),
-      },
+      doc: ko.observable(new EditorDoc(
+          '\\connect postgres\n\n' +
+          'select \'awesome\';\n\n' +
+          'select \'long line to make horizontal scroll visibleblebleblebleble\';\n\n' +
+          '-- more lines\n--\n--\n--\n--\n--\n--\n')),
 
       onSubmit: function (form) {
         console.dir(form);
