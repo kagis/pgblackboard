@@ -21,7 +21,16 @@
   <button data-bind="click: newQuery">new query</button>
 
   <script>
-    ko.applyBindings(new MyQueryRepo());
+    var storage = {
+      _items: {
+        "pgblackboard_query_1": "some query",
+        "pgblackboard_query_2": "select awesome",
+      },
+      keys: function () { return Object.keys(this._items); },
+      getItem: function (key) { return this._items[key]; },
+      removeItem: function (key) { delete this._items[key]; }
+    };
+    ko.applyBindings(new MyQueryRepo(storage));
   </script>
 </body>
 </html>

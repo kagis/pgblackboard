@@ -1,15 +1,17 @@
 <template id="editor-tmpl">
   <div class="editor-container">
 
-    <textarea id="sql_script"
-              name="sql_script"
+    <textarea name="sql_script"
               class="stretch"
               data-bind="codemirrorDoc: doc"
               ></textarea>
 
       <!-- \connect postgres&#13;&#10;select 'hello, ' || current_user; - - Alt+X to execute -->
 
-    <input type="hidden" name="selection" />
+    <input type="hidden"
+           name="selection"
+           data-bind="value: selection"
+           />
 
     <div id="execbar" class="bg-body">
       <button class="btn-action"
