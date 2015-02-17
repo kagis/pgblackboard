@@ -13,24 +13,85 @@
     req.send();
     document.write(req.responseText);
   </script>
+
+  <style>
+    html {
+      font-family: 'DejaVu Sans', 'Verdana', sans;
+      background-color: #eee;
+      font-style: 16px;
+    }
+
+    #myqueries-container {
+      display: inline-block;
+      width: 300px;
+      vertical-align: top;
+    }
+
+    #editor-container {
+      display: inline-block;
+      vertical-align: top;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- ko template: { name: 'myqueries-tmpl' } --><!-- /ko -->
-  <textarea></textarea>
-  <button data-bind="click: newQuery">new query</button>
+  <div data-bind="template: { name: 'myqueries-tmpl', data: repo }"
+       id="myqueries-container"
+       ></div>
+
+  <div id="editor-container">
+    <!-- ko with: currentDoc -->
+      <textarea data-bind="textInput: $rawData, hasFocus: $parent.isEditorFocused()"></textarea>
+    <!-- /ko -->
+    <br />
+    <button data-bind="click: blank">blank</button>
+  </div>
 
   <script>
-    var storage = {
-      _items: {
-        "pgblackboard_query_1": "some query",
-        "pgblackboard_query_2": "select awesome",
-      },
-      keys: function () { return Object.keys(this._items); },
+    var repo = new MyQueryRepo({
+      get length() { return Object.keys(this._items).length; },
+      key: function (i) { return Object.keys(this._items)[i]; },
       getItem: function (key) { return this._items[key]; },
-      removeItem: function (key) { delete this._items[key]; }
+      setItem: function (key, val) { return this._items[key] = val; },
+      removeItem: function (key) { delete this._items[key]; },
+      _items: {}
+    });
+
+    repo.newQuery(ko.observable('some query'));
+    repo.newQuery(ko.observable('select awesome'));
+
+    var currentQuery = ko.observable();
+    var currentDoc = ko.observable();
+    currentQuery.subscribe(function (opening) { opening && opening.isOpened(true); })
+    currentQuery.subscribe(
+      function (closing) { closing && closing.isOpened(false); },
+      null,
+      'beforeChange'
+    );
+
+    MyQuery.prototype.open = function () {
+      currentQuery(this);
+      currentDoc(this.doc);
     };
-    ko.applyBindings(new MyQueryRepo(storage));
+
+    ko.applyBindings({
+      isEditorFocused: ko.observable(false),
+      repo: repo,
+      currentDoc: currentDoc,
+      blank: function () {
+        var newDoc = ko.observable('');
+        this.currentDoc(newDoc);
+        currentQuery(null);
+        this.isEditorFocused(true);
+
+        // subscribe once
+        var subscribtion = newDoc.subscribe(function () {
+          subscribtion.dispose();
+          var newQuery = this.repo.newQuery(newDoc);
+          currentQuery(newQuery);
+        }, this);
+      }
+    });
   </script>
 </body>
 </html>

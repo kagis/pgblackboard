@@ -1,4 +1,26 @@
-.itemheader > a {
+.myqueries {
+    padding: 0;
+    margin: 0;
+    padding-left: 1em;
+    list-style-type: none;
+    white-space: nowrap;
+    }
+
+.myqueries-item {
+    padding: .125em .25em;
+    }
+
+.myqueries-item:hover,
+.myqueries-item--active {
+    background-color: #ccc;
+    }
+
+.myqueries-item--active .myqueries-item__name {
+    font-weight: bold;
+    width: calc(100% - 4em);
+    }
+
+.myqueries-item__name {
     display: inline-block;
     vertical-align: bottom;
     width: 100%;
@@ -8,20 +30,36 @@
     overflow: hidden;
     }
 
-.itemheader-has-btn.itemheader-active > a {
-    width: calc(100% - 4em);
-    }
+.myqueries-item__remove {
+    border-top: 1px solid transparent; /* for simmetric align */
+    border-bottom: 1px dotted;
+    margin-left: .2em;
+    margin-right: .2em;
+    font-size: 0.8125em;
 
-.itemheader-has-btn > .btn-action {
     vertical-align: bottom;
     display: inline-block;
     margin-bottom: .25em;
+
+    outline: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: none;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1em;
+    cursor: pointer;
+    white-space: nowrap;
     }
 
-.itemheader {
-    padding: .125em .25em;
+.myqueries-item__remove::-webkit-focus-inner {
+    border: 0;
+    padding: 0;
     }
 
-.itemheader-active {
-    font-weight: bold;
+.myqueries-item__remove::-moz-focus-inner {
+    border: 0;
+    padding: 0;
     }
