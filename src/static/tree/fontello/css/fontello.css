@@ -1,0 +1,66 @@
+@font-face {
+  font-family: 'fontello';
+  src: url('../font/fontello.eot?80522443');
+  src: url('../font/fontello.eot?80522443#iefix') format('embedded-opentype'),
+       url('../font/fontello.woff?80522443') format('woff'),
+       url('../font/fontello.ttf?80522443') format('truetype'),
+       url('../font/fontello.svg?80522443#fontello') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+/* Chrome hack: SVG is rendered more smooth in Windozze. 100% magic, uncomment if you need it. */
+/* Note, that will break hinting! In other OS-es font will be not as sharp as it could be */
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: 'fontello';
+    src: url('../font/fontello.svg?80522443#fontello') format('svg');
+  }
+}
+*/
+ 
+ [class^="fontello-"]:before, [class*=" fontello-"]:before {
+  font-family: "fontello";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+ 
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  /* opacity: .8; */
+ 
+  /* For safety - reset parent styles, that can break glyph codes*/
+  font-variant: normal;
+  text-transform: none;
+     
+  /* fix buttons height, for twitter bootstrap */
+  line-height: 1em;
+ 
+  /* Animation center compensation - margins should be symmetric */
+  /* remove if not needed */
+  margin-left: .2em;
+ 
+  /* you can be more comfortable with increased icons size */
+  /* font-size: 120%; */
+ 
+  /* Uncomment for 3D effect */
+  /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+ 
+.fontello-table:before { content: '\e800'; } /* '' */
+.fontello-database:before { content: '\e801'; } /* '' */
+.fontello-link:before { content: '\e803'; } /* '' */
+.fontello-trigger:before { content: '\e805'; } /* '' */
+.fontello-schema:before { content: '\e806'; } /* '' */
+.fontello-check:before { content: '\e807'; } /* '' */
+.fontello-extension:before { content: '\e808'; } /* '' */
+.fontello-forward:before { content: '\e809'; } /* '' */
+.fontello-uniqkey:before { content: '\e80a'; } /* '' */
+.fontello-func:before { content: '\e80b'; } /* '' */
+.fontello-key:before { content: '\e80c'; } /* '' */
+.fontello-column:before { content: '\e80d'; } /* '' */
+.fontello-triangle-right:before { content: '\e80e'; } /* '' */
+.fontello-index:before { content: '\e80f'; } /* '' */

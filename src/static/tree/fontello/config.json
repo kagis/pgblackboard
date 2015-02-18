@@ -13,12 +13,6 @@
       "src": "fontawesome"
     },
     {
-      "uid": "5278ef7773e948d56c4d442c8c8c98cf",
-      "css": "lightbulb",
-      "code": 59408,
-      "src": "fontawesome"
-    },
-    {
       "uid": "3212f42c65d41ed91cb435d0490e29ed",
       "css": "trigger",
       "code": 59397,
@@ -35,12 +29,6 @@
       "css": "index",
       "code": 59407,
       "src": "fontawesome"
-    },
-    {
-      "uid": "bf45c39702763f1803b550c36a0ceb12",
-      "css": "error",
-      "code": 59394,
-      "src": "entypo"
     },
     {
       "uid": "1189604bf305b6b03a74685ce60e6632",
@@ -62,7 +50,7 @@
     },
     {
       "uid": "8b202d3dd1fd0541ed0d47d1279ec8f3",
-      "css": "code",
+      "css": "func",
       "code": 59403,
       "src": "typicons"
     },

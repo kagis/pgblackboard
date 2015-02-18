@@ -1,30 +1,32 @@
 <template id="tree-tmpl">
   <ul class="tree" data-bind="foreach: nodes">
-    <li class="treenode"
-        data-bind="css: { 'treenode-groupstart': isGroupStart }">
+    <li class="tree__node"
+        data-bind="css: { 'tree__node--groupstart': isGroupStart }">
 
-      <button class="treenode-toggler"
-              data-bind="click: toggle,
-                         visible: hasChildren">
+      <button class="tree__node-toggler"
+              data-bind="click: toggle, visible: hasChildren">
 
-        <i class="fontello treenode-toggler-icon"
-           data-bind="css: { 'fontello-triangle-right': isCollapsed,
-                             'fontello-triangle-down': isExpanded,
-                             'spinner': isExpanding }"></i>
+        <i class="tree__node-toggler-icon"
+           data-bind="css: { 'tree__node-toggler-icon--collapsed': isCollapsed,
+                             'tree__node-toggler-icon--expanded': isExpanded,
+                             'tree__node-toggler-icon--expanding': isExpanding }"></i>
 
       </button>
 
-      <div class="itemheader"
-           data-bind="css: { 'itemheader-active': isOpened }">
+      <div class="tree__node-header"
+           data-bind="css: { 'tree__node-header--active': isOpened }">
 
-        <a data-bind="click: open,
-                      attr: { title: comment }">
+        <a class="tree__node-link"
+           data-bind="click: open, attr: { title: comment }">
 
-          <i class="treenode-icon"
-             data-bind="css: 'treenode-icon_'+type"></i>
+          <i class="tree__node-icon"
+             data-bind="css: 'tree__node-icon--' + type"></i>
 
           <span data-bind="text: name"></span>
-          <small data-bind="text: comment"></small>
+
+          <small class="tree__node-comment"
+                 data-bind="text: comment"
+                 ></small>
         </a>
 
       </div>
