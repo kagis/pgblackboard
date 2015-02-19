@@ -7,6 +7,7 @@ function TreeNode(nodeDTO) {
     this.isExpanding = ko.observable(false);
     this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
     this.isCollapsed = ko.pureComputed(this._checkIsCollapsed, this);
+    this.expansionState = ko.pureComputed(this._getExpansionState, this);
 
     this.isOpened = ko.observable(false);
 
@@ -55,6 +56,11 @@ TreeNode.prototype._onChildrenLoadError = function () {
     this.isExpanding(false);
     alert('ERROR while loading child tree nodes.');
 };
+
+TreeNode.prototype._getExpansionState = function (argument) {
+    return this.isExpanding() ? 'expanding' :
+           this.isExpanded() ? 'expanded' : 'collapsed';
+}
 
 TreeNode.prototype._checkIsExpanded = function () {
     return this.nodes() && !this.isExpanding();
@@ -118,5 +124,30 @@ TreeNode.prototype._sqlexec = function (action, options) {
 
     function onLoadEnd(e) {
         options.error.call(callbackContext);
+    }
+};
+
+
+ko.bindingHandlers['mod'] = {
+    'before': ['css'],
+    'init': function (element, valueAccessor) {
+        var modSplitter = '--';
+        var firstClassPref = element.className.trimLeft().split(' ')[0] + modSplitter;
+        var currentMod;
+        ko.computed(function () {
+            var value = ko.unwrap(valueAccessor());
+            if (typeof value == 'object') {
+                ko.utils.objectForEach(value, function (modName, shouldHaveMod) {
+                    ko.utils.toggleDomNodeCssClass(element,
+                                                   firstClassPref + modName,
+                                                   ko.unwrap(shouldHaveMod));
+                });
+            } else {
+                value = String(value || '');
+                ko.utils.toggleDomNodeCssClass(element, firstClassPref + currentMod, false);
+                ko.utils.toggleDomNodeCssClass(element, firstClassPref + value, true);
+                currentMod = value;
+            }
+        }, null, { 'disposeWhenNodeIsRemoved': element });
     }
 };

@@ -1,26 +1,25 @@
 <template id="tree-tmpl">
   <ul class="tree" data-bind="foreach: nodes">
     <li class="tree__node"
-        data-bind="css: { 'tree__node--groupstart': isGroupStart }">
+        data-bind="mod: { groupstart: isGroupStart }">
 
       <button class="tree__node-toggler"
               data-bind="click: toggle, visible: hasChildren">
 
         <i class="tree__node-toggler-icon"
-           data-bind="css: { 'tree__node-toggler-icon--collapsed': isCollapsed,
-                             'tree__node-toggler-icon--expanded': isExpanded,
-                             'tree__node-toggler-icon--expanding': isExpanding }"></i>
+           data-bind="mod: expansionState"
+           ></i>
 
       </button>
 
       <div class="tree__node-header"
-           data-bind="css: { 'tree__node-header--active': isOpened }">
+           data-bind="mod: { active: isOpened }">
 
         <a class="tree__node-link"
            data-bind="click: open, attr: { title: comment }">
 
           <i class="tree__node-icon"
-             data-bind="css: 'tree__node-icon--' + type"></i>
+             data-bind="mod: type"></i>
 
           <span data-bind="text: name"></span>
 
