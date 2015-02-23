@@ -6,25 +6,19 @@
   </div>
 
 
-  <div class="root-splitpanel splitpanel bg-body">
+  <h-splitpanel class="root-splitpanel splitpanel bg-body">
 
-    <div class="leftpanel splitpanel-left scrollbox bg-panel">
-      <div class="leftpanel-inner">
+    <doc-nav class="leftpanel-inner"
+             params="editorDocument: editorDocument"
+             ></doc-nav>
 
-        <!-- ko template: {
-          name: 'queries-tmpl',
-          data: queries
-        } --><!-- /ko -->
+    <v-splitpanel>
+      <form target="output-iframe" method="POST" class="stretch">
+        <sql-editor params="doc: editorDocument"></sql-editor>
+      </form>
 
-        <!-- ko template: {
-          name: 'tree-tmpl',
-          data: tree
-        } --><!-- /ko -->
-
-      </div>
-    </div>
-
-    <div class="splitter-v"></div>
+      <iframe name="output-iframe" class="stretch"></iframe>
+    </v-splitpanel>
 
     <div class="splitpanel-right splitpanel">
       <div class="splitpanel-top bg-panel">
@@ -33,7 +27,8 @@
               target="result"
               class="stretch"
               enctype="application/x-www-form-urlencoded"
-              data-bind="template: editorForm"
+              data-bind="component: { name: 'editor-form',
+                                      params: { doc: editorDocument } }"
               ></form>
       </div>
       <div class="splitter-h"></div>

@@ -1,11 +1,11 @@
 function AppModel(editor, initialData) {
-    TreeNode.prototype.open = this.openTreeNode.bind(this);
-    MyQuery.prototype.open = this.openStoredQuery.bind(this);
-
     this.isLightsOn = ko.observable(true);
     this.theme = ko.pureComputed(function () {
         return this.isLightsOn() ? 'light' : 'dark';
     }, this);
+
+
+    this.editorDocument = ko.observable();
 
     this._onBlankEditSessionChangedBinded =
         this._onBlankEditSessionChanged.bind(this);
@@ -105,8 +105,14 @@ window['main'] = function (initialData) {
 
     var myQueryRepo = new MyQueryRepo(window['localStorage']);
 
-    pgbb.model = new pgbb.AppModel(pgbb.editor, initialData);
-    ko.applyBindings(pgbb.model);
+    var tree = {
+        nodes: initialData['databases'].map(function (options) {
+            return new TreeNode(options);
+        })
+    };
+
+    var appModel = new AppModel(pgbb.editor, initialData);
+    ko.applyBindings(appModel);
 };
 
 

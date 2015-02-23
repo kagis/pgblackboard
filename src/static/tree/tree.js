@@ -1,6 +1,6 @@
 /**
 @constructor */
-function TreeNode(nodeDTO) {
+function TreeNode(nodeDTO, selectedTreeNodeObservable) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
 
@@ -60,7 +60,7 @@ TreeNode.prototype._onChildrenLoadError = function () {
 TreeNode.prototype._getExpansionState = function (argument) {
     return this.isExpanding() ? 'expanding' :
            this.isExpanded() ? 'expanded' : 'collapsed';
-}
+};
 
 TreeNode.prototype._checkIsExpanded = function () {
     return this.nodes() && !this.isExpanding();

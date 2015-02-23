@@ -1,9 +1,9 @@
-.splitter-h,
-.splitting-h {
+.v-splitpanel__splitter,
+.v-splitpanel--splitting {
     cursor: ns-resize;
     }
 
-.splitter-h {
+.v-splitpanel__splitter {
     position: absolute;
     left: 0;
     right: 0;
@@ -11,12 +11,12 @@
     height: 6px;
     }
 
-.splitter-v,
-.splitting-v {
+.h-splitpanel__splitter,
+.h-splitpanel--splitting {
     cursor: ew-resize;
     }
 
-.splitter-v {
+.h-splitpanel__splitter {
     position: absolute;
     right: 70%;
     top: 0;
@@ -24,11 +24,13 @@
     width: 6px;
     }
 
-.splitpanel {
+.h-splitpanel,
+.v-splitpanel {
     position: relative;
+    height: 100%;
     }
 
-.splitpanel-left {
+.h-splitpanel__left {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -37,7 +39,7 @@
     margin-right: 6px;
     }
 
-.splitpanel-right {
+.h-splitpanel__right {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -45,7 +47,7 @@
     left: 30%;
     }
 
-.splitpanel-top {
+.v-splitpanel__top {
     position: absolute;
     top: 0;
     left: 0;
@@ -54,23 +56,24 @@
     margin-bottom: 6px;
     }
 
-.splitpanel-bottom {
+.v-splitpanel__bottom {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     top: 50%;
-
     }
 
 
-.splitting {
+.h-splitpanel--splitting,
+.v-splitpanel--splitting {
     -webkit-user-select: none;
        -moz-user-select: none;
         -ms-user-select: none;
             user-select: none;
     }
 
-.splitting iframe {
+.h-splitpanel--splitting iframe,
+.v-splitpanel--splitting iframe {
     pointer-events: none;
     }

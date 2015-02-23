@@ -1,0 +1,35 @@
+<template id="h-splitpanel-tmpl">
+  <div class="h-splitpanel"
+       data-bind="css: { 'h-splitpanel--splitting': isSplitting }">
+
+    <div class="h-splitpanel__left"
+         data-bind="style: aPanelPos, template: { nodes: [aPanelContent], data: $parent }"
+         ></div>
+
+    <div class="h-splitpanel__splitter"
+         data-bind="style: splitterPos, event: { mousedown: beginSplit }"
+         ></div>
+
+    <div class="h-splitpanel__right"
+         data-bind="style: bPanelPos, template: { nodes: [bPanelContent], data: $parent }"
+         ></div>
+  </div>
+</template>
+
+<template id="v-splitpanel-tmpl">
+  <div class="v-splitpanel"
+       data-bind="css: { 'v-splitpanel--splitting': isSplitting }">
+
+    <div class="v-splitpanel__top"
+         data-bind="style: aPanelPos, template: { nodes: [aPanelContent], data: $parent }"
+         ></div>
+
+    <div class="v-splitpanel__splitter"
+         data-bind="style: splitterPos, event: { mousedown: beginSplit }"
+         ></div>
+
+    <div class="v-splitpanel__bottom"
+         data-bind="style: bPanelPos, template: { nodes: [bPanelContent], data: $parent }"
+         ></div>
+  </div>
+</template>
