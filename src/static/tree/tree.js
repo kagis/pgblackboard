@@ -1,8 +1,53 @@
+ko.components.register('x-tree', {
+    template: { element: 'tree-tmpl' },
+    viewModel: Tree
+});
+
 /**
 @constructor */
-function TreeNode(nodeDTO, selectedTreeNodeObservable) {
+function Tree(params) {
+    this.selectedNode = ko.observable();
+
+    this.selectedNode.subscribe(
+        this.onSelectedNodeChange,
+        this);
+
+    this.selectedNode.subscribe(
+        this.onSelectedNodeBeforeChange,
+        this,
+        'beforeChange');
+
+    this['nodes'] = params['nodes'].map(this.createNode, this);
+}
+
+/**
+@private */
+Tree.prototype.createNode = function (dto) {
+    return new TreeNode(dto, this.selectedNode);
+};
+
+/**
+@private */
+Tree.prototype.onSelectedNodeBeforeChange = function (unselectingNode) {
+    if (unselectingNode) {
+        unselectingNode.isOpened(false);
+    }
+};
+
+/**
+@private */
+Tree.prototype.onSelectedNodeChange = function (selectingNode) {
+    if (selectingNode) {
+        selectingNode.isOpened(true);
+    }
+};
+
+/**
+@constructor */
+function TreeNode(nodeDTO, selectedNodeObservable) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
+    this['open'] = selectedNodeObservable;
 
     this.isExpanding = ko.observable(false);
     this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
@@ -11,18 +56,18 @@ function TreeNode(nodeDTO, selectedTreeNodeObservable) {
 
     this.isOpened = ko.observable(false);
 
-    this.name = nodeDTO['name'];
-    this.type = nodeDTO['typ'];
-    this.comment = nodeDTO['comment'];
+    this['name'] = nodeDTO['name'];
+    this['type'] = nodeDTO['typ'];
+    this['comment'] = nodeDTO['comment'];
 
-    // toggler is visible when hasChildren is true
-    this.hasChildren = nodeDTO['has_children'];
+    // toggler is visible when['hasChildren'] is true
+    this['hasChildren'] = nodeDTO['has_children'];
 
     // horizontal line is drawn above groupStart node
     this.isGroupStart = nodeDTO['isGroupStart'];
 };
 
-TreeNode.prototype.toggle = function () {
+TreeNode.prototype['toggle'] = function () {
     if (this.isExpanded()) {
         this.collapse();
     } else {
@@ -30,29 +75,39 @@ TreeNode.prototype.toggle = function () {
     }
 };
 
+/**
+@private */
 TreeNode.prototype.collapse = function () {
     this.nodes(null);
 };
 
+/**
+@private */
 TreeNode.prototype.expand = function () {
     this.isExpanding(true);
-    this._loadChildren({
+    this.loadChildren({
         parent: this._nodeDTO,
-        success: this._onChildrenLoaded.bind(this),
-        error: this._onChildrenLoadError.bind(this)
+        success: this.onChildrenLoaded.bind(this),
+        error: this.onChildrenLoadError.bind(this)
     });
 };
 
-TreeNode.prototype._onChildrenLoaded = function (nodeDTOs) {
+/**
+@private */
+TreeNode.prototype.onChildrenLoaded = function (nodeDTOs) {
     this.isExpanding(false);
-    this.nodes(nodeDTOs.map(this._createChild, this));
+    this.nodes(nodeDTOs.map(this.createChild, this));
 };
 
-TreeNode.prototype._createChild = function (dto) {
+/**
+@private */
+TreeNode.prototype.createChild = function (dto) {
     return new this.constructor(dto);
 };
 
-TreeNode.prototype._onChildrenLoadError = function () {
+/**
+@private */
+TreeNode.prototype.onChildrenLoadError = function () {
     this.isExpanding(false);
     alert('ERROR while loading child tree nodes.');
 };
@@ -90,7 +145,9 @@ TreeNode.prototype.getDefinition = function (onComplete, context) {
     });
 };
 
-TreeNode.prototype._loadChildren = function (options) {
+/**
+@private */
+TreeNode.prototype.loadChildren = function (options) {
     return this._sqlexec('children', options);
 };
 

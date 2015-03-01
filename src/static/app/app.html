@@ -6,7 +6,7 @@
   </div>
 
 
-  <h-splitpanel class="root-splitpanel splitpanel bg-body">
+  <h-splitpanel class="root-splitpanel">
 
     <doc-nav class="leftpanel-inner"
              params="editorDocument: editorDocument"
@@ -19,26 +19,6 @@
 
       <iframe name="output-iframe" class="stretch"></iframe>
     </v-splitpanel>
-
-    <div class="splitpanel-right splitpanel">
-      <div class="splitpanel-top bg-panel">
-        <form id="queryform"
-              method="POST"
-              target="result"
-              class="stretch"
-              enctype="application/x-www-form-urlencoded"
-              data-bind="component: { name: 'editor-form',
-                                      params: { doc: editorDocument } }"
-              ></form>
-      </div>
-      <div class="splitter-h"></div>
-      <div class="splitpanel-bottom bg-panel">
-        <iframe id="result"
-                name="result"
-                class="stretch"
-                ></iframe>
-      </div>
-    </div>
 
     <button id="share-action"
             accesskey="s"

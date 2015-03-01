@@ -20,7 +20,7 @@
 </head>
 <body class="light">
 
-  <!-- ko template: { name: 'tree-tmpl' } --><!-- /ko -->
+  <x-tree params="nodes: nodes"></x-tree>
 
   <script>
     var req = new XMLHttpRequest();
@@ -31,22 +31,7 @@
 
   <script>
 
-    var openedTreeNode = ko.observable();
-    openedTreeNode.subscribe(
-      function (openingNode) { openingNode && openingNode.isOpened(true); }
-    );
-    openedTreeNode.subscribe(
-      function (closingNode) { closingNode && closingNode.isOpened(false); },
-      null,
-      'beforeChange'
-    );
-
-    // openedTreeNode observable will be
-    // setted to opening node
-    TreeNode.prototype.open = openedTreeNode;
-
-
-    TreeNode.prototype._loadChildren = function (options) {
+    TreeNode.prototype.loadChildren = function (options) {
       setTimeout(
         options.success.bind(
           this,
@@ -107,7 +92,7 @@
       func('function'),
       agg('aggregate'),
 
-    ].map(createTreeNode) });
+    ]});
 
     function createTreeNode(dto) {
       return new TreeNode(dto);
