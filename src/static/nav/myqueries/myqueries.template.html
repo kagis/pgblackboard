@@ -10,7 +10,7 @@
         </a>
 
         <button class="myquery__remove"
-                data-bind="click: remove, visible: isOpened"
+                data-bind="click: $component.removeItem.bind($component), visible: isOpened"
                 >remove</button>
 
       </div>

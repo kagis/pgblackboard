@@ -1,82 +1,58 @@
 /**
 @constructor */
-function MyQueryRepo(storage) {
+function MyQueries(storage) {
     this._storage = storage;
-    this.items = ko.observableArray();
-    this._load();
-    var saveDirty = this.saveDirty.bind(this);
-    window.addEventListener('beforeunload', saveDirty);
-    setInterval(saveDirty, 5000);
-
-    var repo = this;
-    MyQuery.prototype.remove = function () {
-        repo.remove(this);
-    };
+    this['items'] = this.items = ko.observableArray();
 }
 
-MyQueryRepo.prototype._load = function () {
+MyQueries.prototype.load = function () {
     for (var i = 0; i < this._storage.length; i++) {
         var key = this._storage.key(i);
 
         // if key starts with _storageKeyPrefix
         if (key.lastIndexOf(this._storageKeyPrefix, 0) === 0) {
-            var queryText = this._storage.getItem(key);
-            var doc = ko.observable(queryText).extend({ editorDoc: true });
-            var item = new MyQuery(key, doc);
-            item.isDirty = false;
-            this.items.push(item);
+            this.items.push(this.restoreQuery(key));
         }
     }
 };
 
-MyQueryRepo.prototype._storageKeyPrefix = 'pgblackboard_query_';
+MyQueries.prototype._storageKeyPrefix = 'pgblackboard_query_';
 
-MyQueryRepo.prototype.newQuery = function (doc) {
+MyQueries.prototype.newItem = function (doc) {
     var newStorageKey = this._storageKeyPrefix + new Date().getTime();
-    var query = new MyQuery(newStorageKey, doc);
-    this.items.push(query);
-    return query;
+    this._storage.setItem(newStorageKey, ko.unwrap(doc));
+    var item = this.createItem(newStorageKey, doc);
+    this.items.push(item);
+    return item;
 };
 
-MyQueryRepo.prototype.saveDirty = function () {
-    var items = this.items();
-    for (var i = items.length - 1; i >= 0; i--) {
-        var item = items[i];
-        if (item.isDirty) {
-            this._storage.setItem(item.storageKey, ko.unwrap(item.doc));
-            item.isDirty = false;
-        }
-    }
+MyQueries.prototype.restoreItem = function (storageKey) {
+    var queryText = this._storage.getItem(key);
+    var doc = ko.observable(queryText).extend({ editorDoc: true });
+    return this.createItem(doc, storageKey);
 };
 
-MyQueryRepo.prototype.remove = function (item) {
+MyQueries.prototype.createItem = function (doc, storageKey) {
+    return {
+        'name': ko.pureComputed(this.getQueryName.bind(this, doc))
+                    .extend({ rateLimit: 500 }),
+        'isOpened': ko.observable(false),
+        doc: doc,
+        storageKey: storageKey,
+        docSubscription: doc.subscribe(
+            this._storage.setItem.bind(this._storage, storageKey)
+        )
+    };
+};
+
+MyQueries.prototype.removeItem = function (item) {
+    item.docSubscription.dispose();
     this.items.remove(item);
     this._storage.removeItem(item.storageKey);
 };
 
-
-
-/**
-@constructor */
-function MyQuery(storageKey, doc) {
-    this.doc = doc;
-    this.isOpened = ko.observable(false);
-
-    this.isDirty = true;
-    this.storageKey = storageKey;
-
-    this.name = ko.pureComputed(this._getName, this)
-                  .extend({ rateLimit: 500 });
-
-    this.doc.subscribe(this._markAsDirty, this);
-}
-
-MyQuery.prototype._markAsDirty = function () {
-    this.isDirty = true;
-};
-
-MyQuery.prototype._getName = function () {
-    var queryText = ko.unwrap(this.doc).trim();
+MyQueries.prototype.getQueryName = function (doc) {
+    var queryText = ko.unwrap(doc).trim();
     var m = /\\connect\s+\w+\s*([\s\S]+)/.exec(queryText);
     if (m) {
         queryText = m[1];
@@ -87,8 +63,4 @@ MyQuery.prototype._getName = function () {
     }
 
     return queryText.substr(0, 100) || '(empty)';
-};
-
-MyQuery.prototype.remove = function () {
-
 };
