@@ -1,9 +1,29 @@
+ko.components.register('x-myqueries', {
+    template: 'myqueries-tmpl',
+    viewModel: MyQueries
+})
+
 /**
 @constructor */
-function MyQueries(storage) {
-    this._storage = storage;
+function MyQueries(params) {
+    this._storage = params['storage'];
+    this.activeItem = ko.observable();
+    this.activeItem.subscribe(this.onActivateItem, this);
+    this.activeItem.subscribe(this.onDeactivateItem, this, 'beforeChange');
     this['items'] = this.items = ko.observableArray();
 }
+
+MyQueries.prototype.onActivateItem = function (activatingItem) {
+    if (activatingItem) {
+        activatingItem.isActive(true);
+    }
+};
+
+MyQueries.prototype.onDeactivateItem = function (deactivatingItem) {
+    if (deactivatingItem) {
+        deactivatingItem.isActive(false);
+    }
+};
 
 MyQueries.prototype.load = function () {
     for (var i = 0; i < this._storage.length; i++) {
@@ -35,8 +55,10 @@ MyQueries.prototype.restoreItem = function (storageKey) {
 MyQueries.prototype.createItem = function (doc, storageKey) {
     return {
         'name': ko.pureComputed(this.getQueryName.bind(this, doc))
-                    .extend({ rateLimit: 500 }),
-        'isOpened': ko.observable(false),
+                    .extend({ 'rateLimit': 500 }),
+        'isActive': ko.observable(false),
+        'remove': this.removeItem.bind(this),
+        'activate': this.activateItem.bind(this),
         doc: doc,
         storageKey: storageKey,
         docSubscription: doc.subscribe(

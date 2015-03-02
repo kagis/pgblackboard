@@ -36,9 +36,9 @@
 </head>
 <body>
 
-  <div data-bind="template: { name: 'myqueries-tmpl', data: repo }"
+  <x-myqueries params="storage: storage"
        id="myqueries-container"
-       ></div>
+       ></x-myqueries>
 
   <div id="editor-container">
     <!-- ko with: currentDoc -->
@@ -63,12 +63,7 @@
 
     var currentQuery = ko.observable();
     var currentDoc = ko.observable();
-    currentQuery.subscribe(function (opening) { opening && opening.isOpened(true); })
-    currentQuery.subscribe(
-      function (closing) { closing && closing.isOpened(false); },
-      null,
-      'beforeChange'
-    );
+
 
     MyQuery.prototype.open = function () {
       currentQuery(this);
