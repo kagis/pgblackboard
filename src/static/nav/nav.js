@@ -1,3 +1,9 @@
+ko.components.register('x-nav', {
+    template: { element: 'nav-tmpl' },
+    viewModel: Nav,
+    synchronous: true
+});
+
 /**
 @constructor
 @param {{selectedDoc}} params */

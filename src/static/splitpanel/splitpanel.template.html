@@ -1,34 +1,34 @@
-<template id="h-splitpanel-tmpl">
-  <div class="h-splitpanel"
-       data-bind="css: { 'h-splitpanel--splitting': isSplitting }">
+<template id="splitpanel-h-tmpl">
+  <div class="splitpanel-h"
+       data-bind="css: { 'splitpanel-h--splitting': isSplitting }">
 
-    <div class="h-splitpanel__left"
+    <div class="splitpanel-h__left"
          data-bind="style: aPanelPos, template: { nodes: [aPanelContent], data: $parent }"
          ></div>
 
-    <div class="h-splitpanel__splitter"
+    <div class="splitpanel-h__splitter"
          data-bind="style: splitterPos, event: { mousedown: beginSplit }"
          ></div>
 
-    <div class="h-splitpanel__right"
+    <div class="splitpanel-h__right"
          data-bind="style: bPanelPos, template: { nodes: [bPanelContent], data: $parent }"
          ></div>
   </div>
 </template>
 
-<template id="v-splitpanel-tmpl">
-  <div class="v-splitpanel"
-       data-bind="css: { 'v-splitpanel--splitting': isSplitting }">
+<template id="splitpanel-v-tmpl">
+  <div class="splitpanel-v"
+       data-bind="css: { 'splitpanel-v--splitting': isSplitting }">
 
-    <div class="v-splitpanel__top"
+    <div class="splitpanel-v__top"
          data-bind="style: aPanelPos, template: { nodes: [aPanelContent], data: $parent }"
          ></div>
 
-    <div class="v-splitpanel__splitter"
+    <div class="splitpanel-v__splitter"
          data-bind="style: splitterPos, event: { mousedown: beginSplit }"
          ></div>
 
-    <div class="v-splitpanel__bottom"
+    <div class="splitpanel-v__bottom"
          data-bind="style: bPanelPos, template: { nodes: [bPanelContent], data: $parent }"
          ></div>
   </div>

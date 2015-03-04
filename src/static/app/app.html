@@ -6,23 +6,22 @@
   </div>
 
 
-  <h-splitpanel class="root-splitpanel">
+  <x-splitpanel-h class="root-splitpanel">
 
-    <doc-nav class="leftpanel-inner"
-             params="editorDocument: editorDocument"
-             ></doc-nav>
+    <x-nav class="leftpanel-inner"
+           params="selectedDoc: selectedDoc"></x-nav>
 
-    <v-splitpanel>
+    <x-splitpanel-v>
       <form target="output-iframe" method="POST" class="stretch">
-        <sql-editor params="doc: editorDocument"></sql-editor>
+        <sql-editor params="doc: selectedDoc"></sql-editor>
       </form>
 
       <iframe name="output-iframe" class="stretch"></iframe>
-    </v-splitpanel>
+    </x-splitpanel-v>
 
     <button id="share-action"
             accesskey="s"
             style="display:none"
             ></button>
-  </div>
+  </x-splitpanel-h>
 </template>
