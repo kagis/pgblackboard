@@ -1,22 +1,13 @@
 ko.components.register('x-tree', {
     template: { element: 'tree-tmpl' },
-    viewModel: Tree
+    viewModel: Tree,
+    synchronous: true
 });
 
 /**
 @constructor */
 function Tree(params) {
-    this.selectedNode = ko.observable();
-
-    this.selectedNode.subscribe(
-        this.onSelectedNodeChange,
-        this);
-
-    this.selectedNode.subscribe(
-        this.onSelectedNodeBeforeChange,
-        this,
-        'beforeChange');
-
+    this['selectNode'] = params['selectNodeCallback'];
     this['nodes'] = params['nodes'].map(this.createNode, this);
 }
 
@@ -26,35 +17,19 @@ Tree.prototype.createNode = function (dto) {
     return new TreeNode(dto, this.selectedNode);
 };
 
-/**
-@private */
-Tree.prototype.onSelectedNodeBeforeChange = function (unselectingNode) {
-    if (unselectingNode) {
-        unselectingNode.isOpened(false);
-    }
-};
-
-/**
-@private */
-Tree.prototype.onSelectedNodeChange = function (selectingNode) {
-    if (selectingNode) {
-        selectingNode.isOpened(true);
-    }
-};
 
 /**
 @constructor */
-function TreeNode(nodeDTO, selectedNodeObservable) {
+function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
-    this['open'] = selectedNodeObservable;
 
     this.isExpanding = ko.observable(false);
     this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
     this.isCollapsed = ko.pureComputed(this._checkIsCollapsed, this);
     this.expansionState = ko.pureComputed(this._getExpansionState, this);
 
-    this.isOpened = ko.observable(false);
+    this['isSelected'] = ko.observable(false);
 
     this['name'] = nodeDTO['name'];
     this['type'] = nodeDTO['typ'];

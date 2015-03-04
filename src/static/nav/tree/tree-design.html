@@ -2,7 +2,7 @@
 <html>
 <head>
   <title></title>
-  <script src="http://knockoutjs.com/downloads/knockout-3.2.0.debug.js"></script>
+  <script src="http://knockoutjs.com/downloads/knockout-3.3.0.debug.js"></script>
 
   <link href="tree.less" rel="stylesheet/less" />
   <script src="http://cdnjs.cloudflare.com/ajax/libs/less.js/2.4.0/less.js"></script>
@@ -20,7 +20,7 @@
 </head>
 <body class="light">
 
-  <x-tree params="nodes: nodes"></x-tree>
+  <x-tree params="nodes: nodes, selectNodeCallback: selectNode"></x-tree>
 
   <script>
     var req = new XMLHttpRequest();
@@ -41,58 +41,61 @@
       );
     };
 
-    ko.applyBindings({ nodes: [
-      database('postgres', [
-        schema('information_schema', [
+    ko.applyBindings({
+      selectNode: function () {},
+      nodes: [
+        database('postgres', [
+          schema('information_schema', [
+
+          ]),
+          schema('pg_catalog', [
+          ]),
+          schema('public'),
+        ]),
+
+        database('database', [
 
         ]),
-        schema('pg_catalog', [
+
+        schema('schema', [
         ]),
-        schema('public'),
-      ]),
 
-      database('database', [
+        extension('extension', [
+          table('table', [
+            pkcolumn('id : int'),
+            column('message : text'),
+            fkcolumn('foreign_id: int'),
+          ]),
 
-      ]),
+          func('function'),
+          agg('aggregate'),
+        ]),
 
-      schema('schema', [
-      ]),
-
-      extension('extension', [
         table('table', [
           pkcolumn('id : int'),
           column('message : text'),
           fkcolumn('foreign_id: int'),
         ]),
 
+        view('view'),
+        matview('materialized view'),
+        foreigntable('foreign table'),
+
+        pkcolumn('primary key column'),
+        fkcolumn('foreign key column'),
+        column('regular column : type'),
+
+        index('index'),
+        trigger('trigger'),
+        foreignkey('foreignkey'),
+        check('check constraint'),
+        unique('unique constraint'),
+
         func('function'),
         agg('aggregate'),
-      ]),
 
-      table('table', [
-        pkcolumn('id : int'),
-        column('message : text'),
-        fkcolumn('foreign_id: int'),
-      ]),
-
-      view('view'),
-      matview('materialized view'),
-      foreigntable('foreign table'),
-
-      pkcolumn('primary key column'),
-      fkcolumn('foreign key column'),
-      column('regular column : type'),
-
-      index('index'),
-      trigger('trigger'),
-      foreignkey('foreignkey'),
-      check('check constraint'),
-      unique('unique constraint'),
-
-      func('function'),
-      agg('aggregate'),
-
-    ]});
+      ]
+    });
 
     function createTreeNode(dto) {
       return new TreeNode(dto);

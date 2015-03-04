@@ -2,15 +2,15 @@
   <ul class="myqueries-list" data-bind="foreach: items">
     <li>
       <div class="myquery"
-           data-bind="css: { 'myquery--active': isActive }">
+           data-bind="css: { 'myquery--active': isSelected }">
 
-        <a class="myquery__name" data-bind="click: activate">
+        <a class="myquery__name" data-bind="click: $component.selectItem.bind($component)">
           <i class="myquery__icon"></i>
           <span data-bind="text: name"></span>
         </a>
 
         <button class="myquery__remove"
-                data-bind="click: remove, visible: isOpened"
+                data-bind="click: $component.removeItem.bind($component), visible: isSelected"
                 >remove</button>
 
       </div>

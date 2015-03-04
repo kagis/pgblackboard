@@ -49,35 +49,30 @@
   </div>
 
   <script>
-    var repo = new MyQueryRepo({
+    var storage = {
       get length() { return Object.keys(this._items).length; },
       key: function (i) { return Object.keys(this._items)[i]; },
       getItem: function (key) { return this._items[key]; },
       setItem: function (key, val) { return this._items[key] = val; },
       removeItem: function (key) { delete this._items[key]; },
       _items: {}
-    });
+    };
 
-    repo.newQuery(ko.observable('some query'));
-    repo.newQuery(ko.observable('select awesome'));
+    storage.setItem('pgblackboard_query_1', 'some query');
+    storage.setItem('pgblackboard_query_2', 'some awesome');
 
     var currentQuery = ko.observable();
     var currentDoc = ko.observable();
 
-
-    MyQuery.prototype.open = function () {
-      currentQuery(this);
-      currentDoc(this.doc);
-    };
-
     ko.applyBindings({
       isEditorFocused: ko.observable(false),
-      repo: repo,
+      storage: storage,
       currentDoc: currentDoc,
+      selectedMyQuery: ko.observable(),
       blank: function () {
         var newDoc = ko.observable('');
         this.currentDoc(newDoc);
-        currentQuery(null);
+        this.selectedMyQuery(null);
         this.isEditorFocused(true);
 
         // subscribe once
