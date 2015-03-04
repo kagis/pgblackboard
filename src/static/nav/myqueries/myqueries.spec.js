@@ -1,14 +1,16 @@
 describe('my queries', function () {
     var myQueries;
+    var storage;
     var selectedItem;
     var addEvent;
+    var storageKeyPrefix = MyQueries.prototype._storageKeyPrefix;
     var initialQueries = [
         'some query',
         'some awesome'
     ];
 
     beforeEach(function () {
-        MyQueries.prototype._storage = {
+    	storage = {
             get length() { return Object.keys(this._items).length; },
             key: function (i) { return Object.keys(this._items)[i]; },
             getItem: function (key) { return this._items[key]; },
@@ -18,10 +20,11 @@ describe('my queries', function () {
         };
 
         initialQueries.forEach(function (x, i) {
-            MyQueries.prototype._storage.setItem(
-                MyQueries.prototype._storageKeyPrefix.concat(i),
-                x);
+            storage.setItem(storageKeyPrefix.concat(i), x);
         });
+
+        MyQueries.prototype._storage = storage;
+
 
         selectedItem = ko.observable();
         selectedItem.subscribe(function (selectingItem) {
@@ -58,5 +61,12 @@ describe('my queries', function () {
     	var newDoc = ko.observable('new doc');
     	addEvent.notifySubscribers(newDoc);
     	expect(myQueries.items()[0].getDoc()).toBe(newDoc);
+    });
+
+    it('should save changes to storage', function () {
+    	var newContent = 'changed content';
+    	var firstItem = myQueries.items()[0];
+    	firstItem.getDoc()(newContent);
+    	expect(storage.getItem(firstItem.storageKey)).toEqual(newContent);
     });
 });
