@@ -3,10 +3,8 @@
 
     <textarea name="sql_script"
               class="stretch"
-              data-bind="codemirrorDoc: doc"
+              data-bind="editor: { doc: doc }"
               ></textarea>
-
-      <!-- \connect postgres&#13;&#10;select 'hello, ' || current_user; - - Alt+X to execute -->
 
     <input type="hidden"
            name="selection"

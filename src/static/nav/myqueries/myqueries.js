@@ -8,45 +8,45 @@ ko.components.register('x-myqueries', {
 @constructor
 @params {{selectItemCallback, addEvent}} params */
 function MyQueries(params) {
+    this.storage = params['storage'];
     this['selectItem'] = params['selectItemCallback'];
     this['items'] = this.items = ko.observableArray(this.load());
 
     this.addEventSubscription = params['addEvent'].subscribe(this.newItem, this);
 }
 
-MyQueries.prototype._storage = window.localStorage;
-
 /**
 @private */
 MyQueries.prototype.load = function () {
-    var itemsCount = this._storage.length;
+    var itemsCount = this.storage.length;
     var items = new Array(itemsCount);
     for (var i = 0; i < itemsCount; i++) {
-        var key = this._storage.key(i);
-        if (key.lastIndexOf(this._storageKeyPrefix, 0) === 0) {
+        var key = this.storage.key(i);
+        if (key.lastIndexOf(this.storageKeyPrefix, 0) === 0) {
             items[i] = this.restoreItem(key);
         }
     }
     return items;
 };
 
-MyQueries.prototype._storageKeyPrefix = 'pgblackboard_query_';
+MyQueries.prototype.storageKeyPrefix = 'pgblackboard_query_';
 
 /**
 @private */
 MyQueries.prototype.newItem = function (doc) {
-    var newStorageKey = this._storageKeyPrefix + new Date().getTime();
-    this._storage.setItem(newStorageKey, ko.unwrap(doc));
+    var newStorageKey = this.storageKeyPrefix + new Date().getTime();
+    this.storage.setItem(newStorageKey, ko.unwrap(doc));
     var item = this.createItem(doc, newStorageKey);
     this.items.push(item);
+    this.selectItem(item);
     return item;
 };
 
 /**
 @private */
 MyQueries.prototype.restoreItem = function (storageKey) {
-    var queryText = this._storage.getItem(storageKey);
-    var doc = ko.observable(queryText).extend({ editorDoc: true });
+    var queryText = this.storage.getItem(storageKey);
+    var doc = ko.observable(queryText).extend({ codeEditorDoc: true });
     return this.createItem(doc, storageKey);
 };
 
@@ -60,7 +60,7 @@ MyQueries.prototype.createItem = function (doc, storageKey) {
         getDoc: function () { return doc; },
         storageKey: storageKey,
         docSubscription: doc.subscribe(
-            this._storage.setItem.bind(this._storage, storageKey)
+            this.storage.setItem.bind(this.storage, storageKey)
         )
     };
 };
@@ -68,7 +68,7 @@ MyQueries.prototype.createItem = function (doc, storageKey) {
 MyQueries.prototype['removeItem'] = function (removingItem) {
     removingItem.docSubscription.dispose();
     this.items.remove(removingItem);
-    this._storage.removeItem(removingItem.storageKey);
+    this.storage.removeItem(removingItem.storageKey);
 
     if (removingItem['isSelected']()) {
         this['selectItem'](null);

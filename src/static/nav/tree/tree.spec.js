@@ -23,7 +23,7 @@ describe('tree node', function () {
         expect(treeNodeState()).toEqual(['collapsed']);
     });
 
-    it('should begin expanding when toggle collapsed', function () {
+    it('should begin expanding when toggle', function () {
         treeNode.toggle();
         expect(treeNodeState()).toEqual(['expanding']);
     });
@@ -36,7 +36,7 @@ describe('tree node', function () {
         expect(treeNode.nodes()[0].name).toBe('childNode');
     });
 
-    it('should collapse when toggle expanded', function () {
+    it('should collapse when toggle again', function () {
         treeNode.toggle();
         finishChildrenLoad([]);
         treeNode.toggle();

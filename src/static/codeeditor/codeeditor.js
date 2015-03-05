@@ -1,46 +1,62 @@
-function EditorForm(params) {
+ko.components.register('x-codeeditor', {
+    template: { element: 'codeeditor-tmpl' },
+    viewModel: CodeEditor,
+    synchronous: true
+});
 
-    this.doc = params.doc;
-    this.isLoading = ko.pureComputed(function () {
-        return this.doc() && this.doc().isLoading();
-    }, this);
+ko.extenders.codeEditorDoc = attachDocToObservable;
+
+/**
+@constructor
+@param {{doc}} params */
+function CodeEditor(params) {
+    this.doc = params['doc'];
+    this.isLoading = ko.pureComputed(this.checkIsLoading, this);
 }
 
-function EditorDoc(text) {
-    this.text = ko.observable(text);
-    this.isLoading = ko.observable(false);
-    this.errors = ko.observableArray();
-    this._codemirrorDoc = new CodeMirror.Doc(text, 'text/x-pgsql');
-}
+/**
+@private */
+CodeEditor.prototype.checkIsLoading = function () {
+    return this.doc() && !this.doc().isReady();
+};
 
-ko.extenders['editorDoc'] = attachCodemirrorDocToObservable;
-
-function attachCodemirrorDocToObservable(targetObservable) {
-    var doc = new CodeMirror.Doc(targetObservable.peek(), 'text/x-pgsql');
-    targetObservable.codemirrorDoc = doc;
-    doc.on('change', function () {
-        targetObservable(doc.getValue());
+function attachDocToObservable(target) {
+    ko.utils.extend(target, {
+        codemirrorDoc: new CodeMirror.Doc(target.peek(), 'text/x-pgsql'),
+        isReady: ko.observable(false),
+        errors: ko.observableArray(),
+        selectionRange: ko.observable()
     });
-    targetObservable.subscribe(doc.setValue.bind(doc));
+
+    target.codemirrorDoc.on('change', function () {
+        target(target.codemirrorDoc.getValue());
+    });
+
+    target.subscribe(function (value) {
+        target.codemirrorDoc.setValue(value);
+    });
+
+    if (typeof target.peek() === 'undefined') {
+        // set isReady to true when 'ready' topic triggered
+        target.subscribe(
+            target.isReady.bind(null, true),
+            null,
+            'ready');
+    } else {
+        target.isReady(true);
+    }
+
     return target;
 };
 
-ko.templates = {};
-ko.templates['editorForm'] = function (doc) {
-    return {
-        data: new EditorForm({ doc: doc }),
-        name: 'editor-tmpl'
-    };
-}
+ko.bindingHandlers['codeeditorWidget'] = {
+    'init': initCodemirror,
+    'update': function (element, valueAccessor) {
+        var doc = ko.unwrap(ko.unwrap(valueAccessor()).doc),
+            codemirrorInst = element['__codemirror'];
 
-ko.components.register('editorForm', {
-    viewModel: EditorForm,
-    template: {element: 'editor-tmpl'}
-});
-
-
-ko.bindingHandlers['codemirrorDoc'] = {
-    'init': initCodemirror
+        codemirrorInst.swapDoc(doc.codemirrorDoc);
+    }
 };
 
 function initCodemirror(element, valueAccessor) {
@@ -56,8 +72,7 @@ function initCodemirror(element, valueAccessor) {
         gutters: ['CodeMirror-linenumbers', 'errors-gutter']
     });
 
-    codemirrorInst.swapDoc(ko.unwrap(valueAccessor())._codemirrorDoc);
-
+    element['__codemirror'] = codemirrorInst;
 
     window.codemirrorInst = codemirrorInst;
 
@@ -74,8 +89,6 @@ function initCodemirror(element, valueAccessor) {
     codemirrorInst.on('change', function () {
         element.value = codemirrorInst.getValue();
     });
-
-
 
     function onSubmit() {
         editor.clearGutter('errors-gutter');

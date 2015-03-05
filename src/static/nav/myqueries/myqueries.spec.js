@@ -3,7 +3,7 @@ describe('my queries', function () {
     var storage;
     var selectedItem;
     var addEvent;
-    var storageKeyPrefix = MyQueries.prototype._storageKeyPrefix;
+    var storageKeyPrefix = MyQueries.prototype.storageKeyPrefix;
     var initialQueries = [
         'some query',
         'some awesome'
@@ -23,9 +23,6 @@ describe('my queries', function () {
             storage.setItem(storageKeyPrefix.concat(i), x);
         });
 
-        MyQueries.prototype._storage = storage;
-
-
         selectedItem = ko.observable();
         selectedItem.subscribe(function (selectingItem) {
         	selectingItem && selectingItem.isSelected(true);
@@ -37,7 +34,8 @@ describe('my queries', function () {
         addEvent = new ko.subscribable();
         myQueries = new MyQueries({
             selectItemCallback: selectedItem,
-            addEvent: addEvent
+            addEvent: addEvent,
+            storage: storage
         });
     });
 
@@ -48,7 +46,7 @@ describe('my queries', function () {
     	expect(loadedQueries).toEqual(initialQueries);
     });
 
-    it('shoud reset selection when selected item removed', function () {
+    it('should reset selection when selected item removed', function () {
     	var firstItem = myQueries.items()[0];
     	myQueries.selectItem(firstItem);
     	expect(selectedItem()).toBe(firstItem);
@@ -61,6 +59,12 @@ describe('my queries', function () {
     	var newDoc = ko.observable('new doc');
     	addEvent.notifySubscribers(newDoc);
     	expect(myQueries.items()[0].getDoc()).toBe(newDoc);
+    });
+
+    it('should select added item', function () {
+        var newDoc = ko.observable('new doc');
+        addEvent.notifySubscribers(newDoc);
+        expect(selectedItem().getDoc()).toBe(newDoc);
     });
 
     it('should save changes to storage', function () {

@@ -100,7 +100,9 @@ TreeNode.prototype._checkIsCollapsed = function () {
     return !this.nodes() && !this.isExpanding();
 };
 
-TreeNode.prototype.getDefinition = function (onComplete, context) {
+TreeNode.prototype.getDoc = function () {
+    var doc = ko.observable().extend({ codeEditorDoc: true });
+
     var quotedDatabase = this.database;
     if (quotedDatabase.indexOf('"') !== -1) {
         quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
@@ -109,15 +111,17 @@ TreeNode.prototype.getDefinition = function (onComplete, context) {
     this._sqlexec({
         query: 'definition',
         success: function (resp) {
-            onComplete.call(context,
-                '\\connect ' + quotedDatabase +
-                '\n\n' + resp
-            );
+            doc('\\connect ' + quotedDatabase +
+                '\n\n' + resp);
+            doc.notifySubscribers(doc(), 'ready');
         },
         error: function () {
-            onComplete.call(context, '/*\n  ERROR while loading definition.\n*/');
+            doc('/*\n  ERROR while loading definition.\n*/');
+            doc.notifySubscribers(doc(), 'ready');
         }
     });
+
+    return doc;
 };
 
 /**

@@ -1,8 +1,10 @@
 <template id="nav-tmpl">
 
 	<x-myqueries params="selectItemCallback: selectMyQuery,
-						 addEvent: addMyQueryEvent"></x-myqueries>
+						 addEvent: addMyQueryEvent,
+						 storage: myQueriesStorage"></x-myqueries>
 
-	<x-tree params="selectNodeCallback: selectTreeNode"></x-tree>
+	<x-tree params="selectNodeCallback: selectTreeNode,
+	 			    nodes: databases"></x-tree>
 
 </template>

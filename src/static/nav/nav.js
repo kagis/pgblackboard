@@ -8,6 +8,9 @@ ko.components.register('x-nav', {
 @constructor
 @param {{selectedDoc}} params */
 function Nav(params) {
+	this['myQueriesStorage'] = params['myQueriesStorage'];
+	this['databases'] = params['databases'];
+
 	this.selectedDoc = params['selectedDoc'];
 
 	this.selectedItem = ko.observable();
@@ -21,7 +24,7 @@ function Nav(params) {
         this,
         'beforeChange');
 
-	this.addMyQueryEvent = new ko.subscribable();
+	this['addMyQueryEvent'] = new ko.subscribable();
 
 	this.navigateToGreetingDoc();
 }
@@ -49,7 +52,7 @@ Nav.prototype['selectMyQuery'] = function (selectingMyQuery) {
 /**
 @private */
 Nav.prototype.createGreetingDoc = function () {
-	return ko.observable('hello').extend({ editorDoc: true });
+	return ko.observable('hello').extend({ codeEditorDoc: true });
 };
 
 /**

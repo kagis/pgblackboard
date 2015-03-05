@@ -77,10 +77,9 @@
 </head>
 <body data-bind="css: theme">
 
-  <div class="main" data-bind="template: $data">
+  <div class="main" data-bind="component: { name: 'main', params: $data }">
     <!-- loader will be replaced with root view
-         when page will be loaded and bindings
-         will be applied. -->
+         when bindings will be applied. -->
     <div class="loader-outer">
       <div class="loader-inner">
         <div class="loader-bounce1">
