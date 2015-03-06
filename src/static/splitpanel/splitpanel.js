@@ -100,5 +100,5 @@ SplitPanel.prototype.resizeV = function (splitterX, _, containerBounds, splitter
 };
 
 SplitPanel.prototype.fireResize = function () {
-
+    ko.utils.triggerEvent(window.document, 'resize');
 };

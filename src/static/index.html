@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
 
-  <link rel="shortcut icon"
-        href="static/favicon.ico"
+  <link href="static/favicon.ico"
+        rel="shortcut icon"
         type="image/vnd.microsoft.icon" />
 
   <title>pgBlackboard</title>
@@ -77,7 +77,7 @@
 </head>
 <body data-bind="css: theme">
 
-  <div class="main" data-bind="component: { name: 'main', params: $data }">
+  <!-- ko component: { name: 'main', params: $data } -->
     <!-- loader will be replaced with root view
          when bindings will be applied. -->
     <div class="loader-outer">
@@ -87,7 +87,7 @@
         </div><div class="loader-bounce3"></div>
       </div>
     </div>
-  </div>
+  <!-- /ko -->
 
   <!--
   <script src="bundle.js"></script>

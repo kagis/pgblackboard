@@ -1,5 +1,5 @@
 ko.components.register('x-myqueries', {
-    template: 'myqueries-tmpl',
+    template: { element: 'myqueries-tmpl' },
     viewModel: MyQueries,
     synchronous: true
 });
@@ -11,6 +11,7 @@ function MyQueries(params) {
     this.storage = params['storage'];
     this['selectItem'] = params['selectItemCallback'];
     this['items'] = this.items = ko.observableArray(this.load());
+    this['removeItem'] = this.removeItem.bind(this);
 
     this.addEventSubscription = params['addEvent'].subscribe(this.newItem, this);
 }
@@ -65,7 +66,7 @@ MyQueries.prototype.createItem = function (doc, storageKey) {
     };
 };
 
-MyQueries.prototype['removeItem'] = function (removingItem) {
+MyQueries.prototype.removeItem = function (removingItem) {
     removingItem.docSubscription.dispose();
     this.items.remove(removingItem);
     this.storage.removeItem(removingItem.storageKey);

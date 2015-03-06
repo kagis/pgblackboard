@@ -10,6 +10,8 @@ ko.components.register('x-nav', {
 function Nav(params) {
 	this['myQueriesStorage'] = params['myQueriesStorage'];
 	this['databases'] = params['databases'];
+	this['selectTreeNode'] = this.selectTreeNode.bind(this);
+	this['selectMyQuery'] = this.selectMyQuery.bind(this);
 
 	this.selectedDoc = params['selectedDoc'];
 
@@ -29,7 +31,7 @@ function Nav(params) {
 	this.navigateToGreetingDoc();
 }
 
-Nav.prototype['selectTreeNode'] = function (selectingTreeNode) {
+Nav.prototype.selectTreeNode = function (selectingTreeNode) {
 	this.selectedItem(selectingTreeNode);
 	var doc = selectingTreeNode.getDoc();
 	this.selectedDoc(doc);
@@ -40,7 +42,7 @@ Nav.prototype['selectTreeNode'] = function (selectingTreeNode) {
 		'ready');
 };
 
-Nav.prototype['selectMyQuery'] = function (selectingMyQuery) {
+Nav.prototype.selectMyQuery = function (selectingMyQuery) {
 	this.selectedItem(selectingMyQuery);
 	if (selectingMyQuery) {
 		this.selectedDoc(selectingMyQuery.getDoc());

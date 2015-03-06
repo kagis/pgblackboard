@@ -1,5 +1,5 @@
-ko.components.register('main', {
-    template: 'main-tmpl',
+ko.components.register('x-main', {
+    template: { element: 'main-tmpl' },
     viewModel: Main,
     synchronous: true
 });
@@ -14,7 +14,7 @@ function Main(params) {
 
     this['myQueriesStorage'] = params.myQueriesStorage;
     this['databases'] = params.databases;
-    this['selectedDocument'] = ko.observable(
+    this['selectedDoc'] = ko.observable(
         ko.observable(params.initialCode)
             .extend({ codeEditorDoc: true }));
 }
@@ -28,25 +28,25 @@ window['main'] = function (initialData) {
     ko.applyBindings({
         myQueriesStorage: window.localStorage,
         databases: initialData['databases'],
-        initialCode: window.location.hash
+        initialCode: window.location.hash || 'select \'awesome\''
     });
 };
 
 
 
-pgbb.initResult = function (resultWindow) {
-    resultWindow.pgbb = pgbb;
-    ko.computed(function () {
-        ko.utils.toggleDomNodeCssClass(
-            resultWindow.document.body,
-            'light',
-            pgbb.model.isLightsOn()
-        );
+// pgbb.initResult = function (resultWindow) {
+//     resultWindow.pgbb = pgbb;
+//     ko.computed(function () {
+//         ko.utils.toggleDomNodeCssClass(
+//             resultWindow.document.body,
+//             'light',
+//             pgbb.model.isLightsOn()
+//         );
 
-        ko.utils.toggleDomNodeCssClass(
-            resultWindow.document.body,
-            'dark',
-            !pgbb.model.isLightsOn()
-        );
-    });
-};
+//         ko.utils.toggleDomNodeCssClass(
+//             resultWindow.document.body,
+//             'dark',
+//             !pgbb.model.isLightsOn()
+//         );
+//     });
+// };

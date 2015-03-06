@@ -1,27 +1,46 @@
-<template id="app-tmpl">
-  <div class="leftbar bg-body">
-    <button class="leftbar-btn fontello fontello-lamp"
-            data-bind="click: toggleTheme"
-            ></button>
+<template id="main-tmpl">
+  <div class="main">
+
+<!--     <div class="main__leftbar bg-body">
+      <button class="leftbar-btn fontello fontello-lamp"
+              data-bind="click: toggleTheme"></button>
+    </div> -->
+
+
+    <div class="main__splitpanel-h"
+         data-bind="component: 'x-splitpanel-h'">
+
+      <div class="main__nav"
+           data-bind="component: {
+             name: 'x-nav',
+             params: {
+               selectedDoc: selectedDoc,
+               databases: databases,
+               myQueriesStorage: myQueriesStorage
+             }
+           }"></div>
+
+      <div class="main__splitpanel-v"
+           data-bind="component: 'x-splitpanel-v'">
+
+        <form class="main__codeform"
+              target="output-iframe"
+              method="POST"
+              data-bind="component: {
+                name: 'codeform',
+                params: { doc: selectedDoc }
+              }"></form>
+
+        <iframe class="main__output"
+                name="output-iframe"></iframe>
+
+      </div>
+
+      <button id="share-action"
+              accesskey="s"
+              style="display:none"
+              ></button>
+
+    </div>
   </div>
-
-
-  <x-splitpanel-h class="root-splitpanel">
-
-    <x-nav class="leftpanel-inner"
-           params="selectedDoc: selectedDoc"></x-nav>
-
-    <x-splitpanel-v>
-      <form target="output-iframe" method="POST" class="stretch">
-        <x-codeeditor params="doc: selectedDoc"></x-codeeditor>
-      </form>
-
-      <iframe name="output-iframe" class="stretch"></iframe>
-    </x-splitpanel-v>
-
-    <button id="share-action"
-            accesskey="s"
-            style="display:none"
-            ></button>
-  </x-splitpanel-h>
 </template>

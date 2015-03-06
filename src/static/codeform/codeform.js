@@ -1,6 +1,6 @@
-ko.components.register('x-codeeditor', {
-    template: { element: 'codeeditor-tmpl' },
-    viewModel: CodeEditor,
+ko.components.register('codeform', {
+    template: { element: 'codeform-tmpl' },
+    viewModel: CodeForm,
     synchronous: true
 });
 
@@ -9,20 +9,20 @@ ko.extenders.codeEditorDoc = attachDocToObservable;
 /**
 @constructor
 @param {{doc}} params */
-function CodeEditor(params) {
+function CodeForm(params) {
     this.doc = params['doc'];
     this.isLoading = ko.pureComputed(this.checkIsLoading, this);
 }
 
 /**
 @private */
-CodeEditor.prototype.checkIsLoading = function () {
+CodeForm.prototype.checkIsLoading = function () {
     return this.doc() && !this.doc().isReady();
 };
 
 function attachDocToObservable(target) {
     ko.utils.extend(target, {
-        codemirrorDoc: new CodeMirror.Doc(target.peek(), 'text/x-pgsql'),
+        codemirrorDoc: new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
         isReady: ko.observable(false),
         errors: ko.observableArray(),
         selectionRange: ko.observable()
@@ -33,7 +33,9 @@ function attachDocToObservable(target) {
     });
 
     target.subscribe(function (value) {
-        target.codemirrorDoc.setValue(value);
+        if (target.codemirrorDoc.getValue() !== value) {
+            target.codemirrorDoc.setValue(value);
+        }
     });
 
     if (typeof target.peek() === 'undefined') {
@@ -49,13 +51,13 @@ function attachDocToObservable(target) {
     return target;
 };
 
-ko.bindingHandlers['codeeditorWidget'] = {
+ko.bindingHandlers['codeEditorWidget'] = {
     'init': initCodemirror,
     'update': function (element, valueAccessor) {
-        var doc = ko.unwrap(ko.unwrap(valueAccessor()).doc),
+        var updatedDoc = ko.unwrap(ko.unwrap(valueAccessor()).doc),
             codemirrorInst = element['__codemirror'];
 
-        codemirrorInst.swapDoc(doc.codemirrorDoc);
+        codemirrorInst.swapDoc(updatedDoc.codemirrorDoc);
     }
 };
 

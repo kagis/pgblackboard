@@ -17,7 +17,6 @@ Tree.prototype.createNode = function (dto) {
     return new TreeNode(dto, this.selectedNode);
 };
 
-
 /**
 @constructor */
 function TreeNode(nodeDTO) {
@@ -103,16 +102,15 @@ TreeNode.prototype._checkIsCollapsed = function () {
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
 
-    var quotedDatabase = this.database;
-    if (quotedDatabase.indexOf('"') !== -1) {
-        quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
-    }
+    // var quotedDatabase = this.database;
+    // if (quotedDatabase.indexOf('"') !== -1) {
+    //     quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
+    // }
 
     this._sqlexec({
         query: 'definition',
         success: function (resp) {
-            doc('\\connect ' + quotedDatabase +
-                '\n\n' + resp);
+            doc(resp);
             doc.notifySubscribers(doc(), 'ready');
         },
         error: function () {
@@ -160,30 +158,5 @@ TreeNode.prototype._sqlexec = function (action, options) {
 
     function onLoadEnd(e) {
         options.error.call(callbackContext);
-    }
-};
-
-
-ko.bindingHandlers['mod'] = {
-    'before': ['css'],
-    'init': function (element, valueAccessor) {
-        var modSplitter = '--';
-        var firstClassPref = element.className.trimLeft().split(' ')[0] + modSplitter;
-        var currentMod;
-        ko.computed(function () {
-            var value = ko.unwrap(valueAccessor());
-            if (typeof value == 'object') {
-                ko.utils.objectForEach(value, function (modName, shouldHaveMod) {
-                    ko.utils.toggleDomNodeCssClass(element,
-                                                   firstClassPref + modName,
-                                                   ko.unwrap(shouldHaveMod));
-                });
-            } else {
-                value = String(value || '');
-                ko.utils.toggleDomNodeCssClass(element, firstClassPref + currentMod, false);
-                ko.utils.toggleDomNodeCssClass(element, firstClassPref + value, true);
-                currentMod = value;
-            }
-        }, null, { 'disposeWhenNodeIsRemoved': element });
     }
 };

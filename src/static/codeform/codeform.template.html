@@ -1,31 +1,29 @@
-<template id="editor-tmpl">
+<template id="codeform-tmpl">
   <div class="editor-container">
 
     <textarea name="sql_script"
-              class="stretch"
-              data-bind="editor: { doc: doc }"
-              ></textarea>
+              data-bind="codeEditorWidget: { doc: doc }"
+              class="stretch"></textarea>
 
-    <input type="hidden"
-           name="selection"
-           data-bind="value: selection"
-           />
+    <input name="selection"
+           data-bind="value: ko.toJSON(doc().selectionRange)"
+           type="hidden" />
 
     <div id="execbar" class="bg-body">
-      <button class="btn-action"
+      <button name="view"
+              value="map"
+              class="btn-action"
               type="submit"
               title="alt-m"
               accesskey="m"
-              name="view"
-              value="map"
               >map</button>
 
-      <button class="btn-action"
+      <button name="view"
+              value="table"
+              class="btn-action"
               type="submit"
               title="alt-x"
               accesskey="x"
-              name="view"
-              value="table"
               ><b>execute</b></button>
     </div>
 
