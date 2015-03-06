@@ -36,7 +36,7 @@ MyQueries.prototype.storageKeyPrefix = 'pgblackboard_query_';
 @private */
 MyQueries.prototype.newItem = function (doc) {
     var newStorageKey = this.storageKeyPrefix + new Date().getTime();
-    this.storage.setItem(newStorageKey, ko.unwrap(doc));
+    this.storage.setItem(newStorageKey, doc());
     var item = this.createItem(doc, newStorageKey);
     this.items.push(item);
     this.selectItem(item);
