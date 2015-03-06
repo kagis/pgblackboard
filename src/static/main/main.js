@@ -7,10 +7,7 @@ ko.components.register('x-main', {
 /**
 @constructor */
 function Main(params) {
-    this.isLightsOn = ko.observable(true);
-    this.theme = ko.pureComputed(function () {
-        return this.isLightsOn() ? 'light' : 'dark';
-    }, this);
+    this.lightsAreOn = ko.observable(true);
 
     this['myQueriesStorage'] = params.myQueriesStorage;
     this['databases'] = params.databases;
@@ -20,7 +17,7 @@ function Main(params) {
 }
 
 Main.prototype['toggleTheme'] = function () {
-    this.isLightsOn(!this.isLightsOn());
+    this.lightsAreOn(!this.lightsAreOn());
 };
 
 
@@ -40,13 +37,13 @@ window['main'] = function (initialData) {
 //         ko.utils.toggleDomNodeCssClass(
 //             resultWindow.document.body,
 //             'light',
-//             pgbb.model.isLightsOn()
+//             pgbb.model.lightsAreOn()
 //         );
 
 //         ko.utils.toggleDomNodeCssClass(
 //             resultWindow.document.body,
 //             'dark',
-//             !pgbb.model.isLightsOn()
+//             !pgbb.model.lightsAreOn()
 //         );
 //     });
 // };
