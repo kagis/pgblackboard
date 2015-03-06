@@ -4,13 +4,13 @@
       <div class="myquery"
            data-bind="css: { 'myquery--active': isSelected }">
 
-        <a class="myquery__name" data-bind="click: $component.selectItem.bind($component)">
+        <a class="myquery__name" data-bind="click: $component.selectItem">
           <i class="myquery__icon"></i>
           <span data-bind="text: name"></span>
         </a>
 
         <button class="myquery__remove"
-                data-bind="click: $component.removeItem.bind($component), visible: isSelected"
+                data-bind="click: $component.removeItem, visible: isSelected"
                 >remove</button>
 
       </div>
