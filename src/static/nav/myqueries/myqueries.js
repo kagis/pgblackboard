@@ -1,4 +1,4 @@
-ko.components.register('x-myqueries', {
+ko.components.register('myqueries', {
     template: { element: 'myqueries-tmpl' },
     viewModel: MyQueries,
     synchronous: true

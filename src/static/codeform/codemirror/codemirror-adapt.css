@@ -1,0 +1,73 @@
+.CodeMirror {
+    height: 100% !important;
+    width: 100% !important;
+    }
+
+.CodeMirror-vscrollbar {
+    bottom: 25px !important;
+    }
+
+.CodeMirror-hscrollbar {
+    right: 109px !important;
+    left: 0 !important;
+    }
+
+.CodeMirror-gutters {
+    border-right: 0px;
+    }
+
+
+.CodeMirror div.CodeMirror-cursor {
+    border-left-width: 1px;
+    border-left-style: solid;
+    border-left-color: inherit;
+    }
+
+.CodeMirror-matchingbracket {
+    text-decoration: underline;
+    }
+
+
+
+
+.CodeMirror {
+    font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
+    font-size: 20px;
+    height: 100%;
+    }
+
+.errors-gutter {
+    width: 1em;
+    }
+
+
+
+
+
+.gutter-marker-error::before {
+    width: 1em;
+    line-height: 1.2em;
+    font-size: .8em;
+    content: '\e802';
+    color: #ff4848;
+    font-family: 'fontello';
+    font-style: normal;
+    font-weight: normal;
+    speak: none;
+    display: inline-block;
+    margin-right: .2em;
+    text-align: center;
+    font-variant: normal;
+    text-transform: none;
+    }
+
+.gutter-marker-error:hover::after {
+    content: attr(data-title);
+    display: block;
+    position: absolute;
+    font-size: 14px;
+    white-space: pre;
+    border-radius: .3em;
+    padding: .3em;
+    left: 2em;
+    }

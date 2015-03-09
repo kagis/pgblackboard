@@ -1,4 +1,4 @@
-ko.components.register('x-tree', {
+ko.components.register('tree', {
     template: { element: 'tree-tmpl' },
     viewModel: Tree,
     synchronous: true

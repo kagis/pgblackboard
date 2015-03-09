@@ -1,10 +1,22 @@
 <template id="nav-tmpl">
 
-  <x-myqueries params="selectItemCallback: selectMyQuery,
-                       addEvent: addMyQueryEvent,
-                       storage: myQueriesStorage"></x-myqueries>
+  <div class="nav__myqueries"
+       data-bind="component: {
+         name: 'myqueries',
+         params: {
+           selectItemCallback: selectMyQuery,
+           addEvent: addMyQueryEvent,
+           storage: myQueriesStorage
+         }
+       }"></div>
 
-  <x-tree params="selectNodeCallback: selectTreeNode,
-                  nodes: databases"></x-tree>
+  <div class="nav__tree"
+       data-bind="component: {
+         name: 'tree',
+         params: {
+           selectNodeCallback: selectTreeNode,
+           nodes: databases
+         }
+       }"></div>
 
 </template>

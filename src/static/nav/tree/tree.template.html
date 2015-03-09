@@ -1,35 +1,31 @@
 <template id="tree-tmpl">
   <ul class="tree" data-bind="foreach: nodes">
-    <li class="tree__node"
-        data-bind="css: { 'tree__node--groupstart': isGroupStart }">
+    <li class="treenode"
+        data-bind="css: { 'treenode--groupstart': isGroupStart }">
 
-      <button class="tree__node-toggler"
+      <button class="treenode__toggler"
               data-bind="click: toggle, visible: hasChildren">
 
-        <i class="tree__node-toggler-icon"
-           data-bind="css: { 'tree__node-toggler-icon--collapsed': isCollapsed,
-                             'tree__node-toggler-icon--expanding': isExpanding,
-                             'tree__node-toggler-icon--expanded': isExpanded }"></i>
+        <i class="treenode__toggler-icon"
+           data-bind="css: { 'treenode__toggler-icon--collapsed': isCollapsed,
+                             'treenode__toggler-icon--expanding': isExpanding,
+                             'treenode__toggler-icon--expanded': isExpanded }"></i>
 
       </button>
 
-      <div class="tree__node-header"
-           data-bind="css: { 'tree__node-header--active': isSelected }">
+      <a class="treenode__header"
+         data-bind="css: { 'treenode__header--active': isSelected },
+                    click: $component.selectNode,
+                    attr: { title: comment }">
 
-        <a class="tree__node-link"
-           data-bind="click: $component.selectNode.bind($component),
-                      attr: { title: comment }">
+        <i class="treenode__icon"
+           data-bind="css: 'treenode__icon--' + type"></i>
 
-          <i class="tree__node-icon"
-             data-bind="css: 'tree__node-icon--' + type"></i>
+        <span data-bind="text: name"></span>
 
-          <span data-bind="text: name"></span>
-
-          <small class="tree__node-comment"
-                 data-bind="text: comment"></small>
-        </a>
-
-      </div>
+        <small class="treenode__comment"
+               data-bind="text: comment"></small>
+      </a>
 
       <!-- ko template: {
         name : 'tree-tmpl',

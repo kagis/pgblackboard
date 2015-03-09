@@ -1,15 +1,15 @@
 <template id="codeform-tmpl">
-  <div class="editor-container">
+  <div class="codeform">
 
     <textarea name="sql_script"
-              data-bind="codeEditorWidget: { doc: doc }"
+              data-bind="codeEditorWidget: { doc: readyDoc }"
               class="stretch"></textarea>
 
     <input name="selection"
            data-bind="value: ko.toJSON(doc().selectionRange)"
            type="hidden" />
 
-    <div id="execbar" class="bg-body">
+    <div class="codeform__execbar">
       <button name="view"
               value="map"
               class="btn-action"
@@ -27,9 +27,8 @@
               ><b>execute</b></button>
     </div>
 
-    <div class="spinner-shield" data-bind="visible: isLoading">
-      <div class="spinner"></div>
-    </div>
+    <div data-bind="css: { 'codeform__spinner--visible': isLoading }"
+         class="codeform__spinner"></div>
 
   </div>
 </template>

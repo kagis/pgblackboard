@@ -31,6 +31,7 @@
     }
 
 .splitpanel-h__left {
+    overflow: hidden;
     position: absolute;
     top: 0;
     bottom: 0;
@@ -40,6 +41,7 @@
     }
 
 .splitpanel-h__right {
+    overflow: hidden;
     position: absolute;
     top: 0;
     bottom: 0;
@@ -48,6 +50,7 @@
     }
 
 .splitpanel-v__top {
+    overflow: hidden;
     position: absolute;
     top: 0;
     left: 0;
@@ -57,6 +60,7 @@
     }
 
 .splitpanel-v__bottom {
+    overflow: hidden;
     position: absolute;
     bottom: 0;
     left: 0;

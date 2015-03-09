@@ -1,4 +1,4 @@
-ko.components.register('x-main', {
+ko.components.register('main', {
     template: { element: 'main-tmpl' },
     viewModel: Main,
     synchronous: true
@@ -29,7 +29,12 @@ window['main'] = function (initialData) {
     });
 };
 
-
+ko.bindingHandlers['resetSrcBy'] = {
+    'update': function (element, valueAccessor) {
+        ko.unwrap(valueAccessor());
+        element.src = 'about:blank';
+    }
+};
 
 // pgbb.initResult = function (resultWindow) {
 //     resultWindow.pgbb = pgbb;

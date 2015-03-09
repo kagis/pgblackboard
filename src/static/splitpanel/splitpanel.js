@@ -1,11 +1,13 @@
 ko.components.register('x-splitpanel-h', {
     template: { element: 'splitpanel-h-tmpl' },
-    viewModel: splitPanelViewModel(true /* horizontal */)
+    viewModel: splitPanelViewModel(true /* horizontal */),
+    synchronous: true
 });
 
 ko.components.register('x-splitpanel-v', {
     template: { element: 'splitpanel-v-tmpl' },
-    viewModel: splitPanelViewModel(false /* vertical */)
+    viewModel: splitPanelViewModel(false /* vertical */),
+    synchronous: true
 });
 
 function splitPanelViewModel(isHorizontal){
