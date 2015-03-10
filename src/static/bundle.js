@@ -103,10 +103,10 @@ if (typeof module === 'object' && module.exports) {
         cssSources: cssSources,
         htmlSources: htmlSources,
 
-        jsLib: LIBS.map(function (it) { return it.debug; })
+        jsLib: LIBS.map(function (it) { return it.min; })
                     .filter(RegExp.prototype.test.bind(/\.js$/)),
 
-        cssLib: LIBS.map(function (it) { return it.debug; })
+        cssLib: LIBS.map(function (it) { return it.min; })
                     .filter(RegExp.prototype.test.bind(/\.(css|less)$/))
     };
 }
