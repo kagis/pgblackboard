@@ -96,3 +96,17 @@ if (typeof document === 'object') {
 
     document.write('<script src="demo.js"></script>');
 }
+
+if (typeof module === 'object' && module.exports) {
+    module.exports = {
+        jsSources: jsSources,
+        cssSources: cssSources,
+        htmlSources: htmlSources,
+
+        jsLib: LIBS.map(function (it) { return it.debug; })
+                    .filter(RegExp.prototype.test.bind(/\.js$/)),
+
+        cssLib: LIBS.map(function (it) { return it.debug; })
+                    .filter(RegExp.prototype.test.bind(/\.(css|less)$/))
+    };
+}
