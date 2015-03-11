@@ -15,13 +15,13 @@ JS_FILES=$(BUILDDIR)/knockout.js \
 CSS_FILES=$(BUILDDIR)/codemirror.css
 
 
-all: index.html favicon.ico bundle.js bundle-map.js bundle-table.js
+all: index.html favicon.ico bundle-index.js bundle-map.js bundle-table.js
 
 
 
-$(BUILDDIR)/thirdparty.js: src/static/bundle.js
+$(BUILDDIR)/thirdparty.js: src/static/bundle-index.js
 	-rm $@.tmp
-	(for url in $$(nodejs -e "require('./src/static/bundle').jsLib.forEach(function (url) { console.log(url); })"); do \
+	(for url in $$(nodejs -p "require('./src/static/bundle-index').jsLib.join('\\n')"); do \
 	 echo downloading $$url; \
 	 curl --silent $$url >> $@.tmp; \
 	 done)

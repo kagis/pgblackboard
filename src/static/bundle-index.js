@@ -26,8 +26,8 @@ var SOURCES = [
 
 var LIBS = [
 
-    { debug: "http://knockoutjs.com/downloads/knockout-3.3.0.debug.js",
-        min: "http://knockoutjs.com/downloads/knockout-3.3.0.js" },
+    { debug: "node_modules/knockout/build/output/knockout-latest.debug.js",
+        min: "node_modules/knockout/build/output/knockout-latest.js" },
 ];
 
 var codeEditor = 'codemirror';
@@ -41,31 +41,28 @@ if (codeEditor === 'codemirror') {
 
     LIBS = LIBS.concat([
 
-        { debug: "codemirror.js",
-            min: "codemirror.min.js" },
+        { debug: "node_modules/codemirror/lib/codemirror.js",
+            min: "node_modules/codemirror/lib/codemirror.min.js" },
 
-        { debug: "codemirror.css",
-            min: "codemirror.min.css" },
+        { debug: "node_modules/codemirror/lib/codemirror.css",
+            min: "node_modules/codemirror/lib/codemirror.min.css" },
 
-        { debug: "addon/search/searchcursor.js",
-            min: "addon/search/searchcursor.min.js" },
+        { debug: "node_modules/codemirror/addon/search/searchcursor.js",
+            min: "node_modules/codemirror/addon/search/searchcursor.min.js" },
 
-        { debug: "keymap/sublime.js",
-            min: "keymap/sublime.min.js" },
+        { debug: "node_modules/codemirror/keymap/sublime.js",
+            min: "node_modules/codemirror/keymap/sublime.min.js" },
 
-        { debug: "addon/edit/matchbrackets.js",
-            min: "addon/edit/matchbrackets.min.js" },
+        { debug: "node_modules/codemirror/addon/edit/matchbrackets.js",
+            min: "node_modules/codemirror/addon/edit/matchbrackets.min.js" },
 
-        { debug: "addon/edit/closebrackets.js",
-            min: "addon/edit/closebrackets.min.js" },
+        { debug: "node_modules/codemirror/addon/edit/closebrackets.js",
+            min: "node_modules/codemirror/addon/edit/closebrackets.min.js" },
 
-        { debug: "mode/sql/sql.js",
-            min: "mode/sql/sql.min.js" },
+        { debug: "node_modules/codemirror/mode/sql/sql.js",
+            min: "node_modules/codemirror/mode/sql/sql.min.js" },
 
-    ].map(function (lib) {
-        var dir = "http://cdnjs.cloudflare.com/ajax/libs/codemirror/4.12.0/";
-        return { debug: dir + lib.debug, min: dir + lib.min };
-    }))
+    ])
 }
 
 var libFiles = LIBS.map(function (it) { return it.debug; });
@@ -77,15 +74,23 @@ var htmlSources = SOURCES.filter(RegExp.prototype.test.bind(/\.html$/));
 
 if (typeof document === 'object') {
 
-    libJs.concat(jsSources).forEach(function (url) {
+    libJs.forEach(function (url) {
         document.write("<script src='" + url + "'></script>");
     });
 
-    libCss.concat(cssSources).forEach(function (url) {
+    libCss.forEach(function (url) {
+        document.write("<link href='" + url + "' rel='stylesheet' />");
+    });
+
+    jsSources.forEach(function (url) {
+        document.write("<script src='" + url + "'></script>");
+    });
+
+    cssSources.forEach(function (url) {
         document.write("<link href='" + url + "' rel='stylesheet/less' />");
     });
 
-    document.write('<script src="http://cdnjs.cloudflare.com/ajax/libs/less.js/2.4.0/less.js"></script>');
+    document.write('<script src="node_modules/less/dist/less.js"></script>');
 
     htmlSources.forEach(function (url) {
         var req = new XMLHttpRequest();

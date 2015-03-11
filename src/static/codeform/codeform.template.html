@@ -2,8 +2,8 @@
   <div class="codeform">
 
     <textarea name="sql_script"
-              data-bind="codeEditorWidget: { doc: readyDoc }"
-              class="stretch"></textarea>
+              data-bind="codeEditorWidget, value: readyDoc()"
+              class="codeform__textarea"></textarea>
 
     <input name="selection"
            data-bind="value: ko.toJSON(doc().selectionRange)"

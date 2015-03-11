@@ -1,7 +1,6 @@
 ko.extenders.codeEditorDoc = function (target) {
     ko.utils.extend(target, {
         codemirrorDoc: new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
-        isReady: ko.observable(false),
         errors: ko.observableArray(),
         selectionRange: ko.observable()
     });
@@ -10,31 +9,31 @@ ko.extenders.codeEditorDoc = function (target) {
         target(target.codemirrorDoc.getValue());
     });
 
+    target.codemirrorDoc.on('cursorActivity', function () {
+        var codemirrorInst = target.codemirrorDoc.getEditor();
+        var selStart = codemirrorInst.getCursor(true),
+            selEnd   = codemirrorInst.getCursor(false);
+
+        target.selectionRange(
+            codemirrorInst.somethingSelected() ?
+            [[selStart.line, selStart.ch],
+             [  selEnd.line,   selEnd.ch]] : null);
+    });
+
     target.subscribe(function (value) {
         if (target.codemirrorDoc.getValue() !== value) {
             target.codemirrorDoc.setValue(value);
         }
     });
 
-    if (typeof target.peek() === 'undefined') {
-        // set isReady to true when 'ready' topic triggered
-        target.subscribe(
-            target.isReady.bind(null, true),
-            null,
-            'ready');
-    } else {
-        target.isReady(true);
-    }
-
     return target;
 };
 
 ko.bindingHandlers['codeEditorWidget'] = {
     'init': initCodemirror,
-    'update': function (element, valueAccessor) {
-        var updatedDoc = ko.unwrap(ko.unwrap(valueAccessor()).doc),
+    'update': function (element, valueAccessor, allBindings) {
+        var updatedDoc = allBindings.get('value'),
             codemirrorInst = element['__codemirror'];
-
 
         codemirrorInst.swapDoc(updatedDoc.codemirrorDoc);
     }
@@ -66,22 +65,6 @@ function initCodemirror(element, valueAccessor) {
             codemirrorInst.getScrollInfo().left > 1
         );
     });
-
-    codemirrorInst.on('change', function () {
-        element.value = codemirrorInst.getValue();
-    });
-
-    function onSubmit() {
-        editor.clearGutter('errors-gutter');
-        var selStart = editor.getCursor(true),
-            selEnd   = editor.getCursor(false);
-        queryform.elements.selection.value = editor.somethingSelected() ?
-            JSON.stringify([[selStart.line, selStart.ch],
-                            [  selEnd.line,   selEnd.ch]]) : null;
-    }
-
-    //var queryform = document.getElementById('queryform');
-    //queryform.onsubmit = onSubmit;
 
 
     // todo: codemirror refresh is expensive, do something

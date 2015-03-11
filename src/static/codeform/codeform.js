@@ -16,7 +16,7 @@ function CodeForm(params) {
 /**
 @private */
 CodeForm.prototype.checkIsLoading = function () {
-    return this.doc() && !this.doc().isReady();
+    return this.doc() && typeof this.doc()() === 'undefined';
 };
 
 /**
