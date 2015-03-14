@@ -1,14 +1,9 @@
-ko.components.register('x-splitpanel-h', {
-    template: { element: 'splitpanel-h-tmpl' },
-    viewModel: splitPanelViewModel(true /* horizontal */),
-    synchronous: true
-});
+var ko = require('knockout');
 
-ko.components.register('x-splitpanel-v', {
-    template: { element: 'splitpanel-v-tmpl' },
-    viewModel: splitPanelViewModel(false /* vertical */),
-    synchronous: true
-});
+module.exports = {
+    horizontal: splitPanelViewModel(true /* horizontal */),
+    vertical: splitPanelViewModel(false /* vertical */)
+};
 
 function splitPanelViewModel(isHorizontal){
     function createViewModel(params, componentInfo) {

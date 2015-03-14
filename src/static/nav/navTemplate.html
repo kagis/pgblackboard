@@ -1,8 +1,8 @@
-<template id="nav-tmpl">
+module.exports = `
 
   <div class="nav__myqueries"
        data-bind="component: {
-         name: 'myqueries',
+         name: 'x-myqueries',
          params: {
            selectItemCallback: selectMyQuery,
            addEvent: addMyQueryEvent,
@@ -12,11 +12,11 @@
 
   <div class="nav__tree"
        data-bind="component: {
-         name: 'tree',
+         name: 'x-tree',
          params: {
            selectNodeCallback: selectTreeNode,
            nodes: databases
          }
        }"></div>
 
-</template>
+`;

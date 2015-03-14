@@ -1,4 +1,4 @@
-<template id="main-tmpl">
+module.exports = `
   <div class="main">
 
 <!--     <div class="main__leftbar bg-body">
@@ -27,7 +27,7 @@
               target="output-iframe"
               method="POST"
               data-bind="component: {
-                name: 'codeform',
+                name: 'x-codeform',
                 params: { doc: selectedDoc }
               }"></form>
 
@@ -44,4 +44,4 @@
 
     </div>
   </div>
-</template>
+`;

@@ -1,8 +1,8 @@
-<template id="codeform-tmpl">
+module.exports = `
   <div class="codeform">
 
     <textarea name="sql_script"
-              data-bind="codeEditorWidget, value: readyDoc()"
+              data-bind="codeEditor, value: readyDoc()"
               class="codeform__textarea"></textarea>
 
     <input name="selection"
@@ -31,4 +31,4 @@
          class="codeform__spinner"></div>
 
   </div>
-</template>
+`;

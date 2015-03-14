@@ -72,7 +72,7 @@ var jsSources = SOURCES.filter(RegExp.prototype.test.bind(/\.js$/));
 var cssSources = SOURCES.filter(RegExp.prototype.test.bind(/\.(css|less)$/));
 var htmlSources = SOURCES.filter(RegExp.prototype.test.bind(/\.html$/));
 
-if (typeof document === 'object') {
+if (typeof document_ === 'object') {
 
     libJs.forEach(function (url) {
         document.write("<script src='" + url + "'></script>");
@@ -115,3 +115,33 @@ if (typeof module === 'object' && module.exports) {
                     .filter(RegExp.prototype.test.bind(/\.(css|less)$/))
     };
 }
+
+document.write(`
+
+    <link href="node_modules/codemirror/lib/codemirror.css" rel="stylesheet" />
+    <link href="main/main.css" rel="stylesheet/less" />
+    <link href="codeform/codeform.less" rel="stylesheet/less" />
+    <link href="splitpanel/splitpanel.css" rel="stylesheet/less" />
+    <link href="nav/nav.less" rel="stylesheet/less" />
+    <link href="nav/myqueries/myqueries.less" rel="stylesheet/less" />
+    <link href="nav/tree/tree.less" rel="stylesheet/less" />
+
+    <script src="node_modules/less/dist/less.js"></script>
+
+    <script src="node_modules/systemjs/node_modules/es6-module-loader/dist/es6-module-loader.src.js"></script>
+    <script src="node_modules/systemjs/dist/system.src.js"></script>
+    <script>
+        System.config({
+          "paths": {
+            "*.html": "*.html",
+          },
+          "map": {
+            "rootBindingContext": "demo",
+            "knockout": "node_modules/knockout/build/output/knockout-latest.debug",
+            "codemirror": "node_modules/codemirror/lib/codemirror"
+          },
+        });
+        System.import('app');
+    </script>
+
+`);

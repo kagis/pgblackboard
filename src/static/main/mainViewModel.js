@@ -1,8 +1,6 @@
-ko.components.register('main', {
-    template: { element: 'main-tmpl' },
-    viewModel: Main,
-    synchronous: true
-});
+var ko = require('knockout');
+
+module.exports = Main;
 
 /**
 @constructor */

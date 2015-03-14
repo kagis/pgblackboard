@@ -1,4 +1,5 @@
-
+var ko = require('knockout'),
+    TreeNode = require('./nav/tree/treeViewModel').TreeNode;
 
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
@@ -19,63 +20,60 @@ TreeNode.prototype.loadChildren = function (options) {
     );
 };
 
-window['main'] = function () {
-    ko.applyBindings({
-        myQueriesStorage: window.sessionStorage,
-        databases: [
-            database('postgres', [
-                schema('information_schema', [
-
-                ]),
-                schema('pg_catalog', [
-                ]),
-                schema('public'),
-            ]),
-
-            database('database', [
+module.exports = {
+    myQueriesStorage: window.sessionStorage,
+    databases: [
+        database('postgres', [
+            schema('information_schema', [
 
             ]),
-
-            schema('schema', [
+            schema('pg_catalog', [
             ]),
+            schema('public'),
+        ]),
 
-            extension('extension', [
-                table('table', [
-                    pkcolumn('id : int'),
-                    column('message : text'),
-                    fkcolumn('foreign_id: int'),
-                ]),
+        database('database', [
 
-                func('function'),
-                agg('aggregate'),
-            ]),
+        ]),
 
+        schema('schema', [
+        ]),
+
+        extension('extension', [
             table('table', [
                 pkcolumn('id : int'),
                 column('message : text'),
                 fkcolumn('foreign_id: int'),
             ]),
 
-            view('view'),
-            matview('materialized view'),
-            foreigntable('foreign table'),
-
-            pkcolumn('primary key column'),
-            fkcolumn('foreign key column'),
-            column('regular column : type'),
-
-            index('index'),
-            trigger('trigger'),
-            foreignkey('foreignkey'),
-            check('check constraint'),
-            unique('unique constraint'),
-
             func('function'),
             agg('aggregate'),
-        ],
-        initialCode: 'demo'
-    });
+        ]),
 
+        table('table', [
+            pkcolumn('id : int'),
+            column('message : text'),
+            fkcolumn('foreign_id: int'),
+        ]),
+
+        view('view'),
+        matview('materialized view'),
+        foreigntable('foreign table'),
+
+        pkcolumn('primary key column'),
+        fkcolumn('foreign key column'),
+        column('regular column : type'),
+
+        index('index'),
+        trigger('trigger'),
+        foreignkey('foreignkey'),
+        check('check constraint'),
+        unique('unique constraint'),
+
+        func('function'),
+        agg('aggregate'),
+    ],
+    initialCode: 'demo'
 };
 
 window.addEventListener('click', function (e) {

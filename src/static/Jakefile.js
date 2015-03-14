@@ -9,13 +9,14 @@ task('default', ['dist/index.html', 'dist/bundle-index.js'], function () {
 });
 
 file('dist/index.html', ['loader/loader.min.css'], function () {
-    // var loaderCss = processCss(
-    //      fs.readFileSync(this.source).toString());
-
     var indexHtml = fs.readFileSync('index.html').toString();
+
+    // embeding loader styles
     indexHtml = indexHtml.replace(
         '<link href="loader/loader.css" rel="stylesheet" />',
         '<style>' + fs.readFileSync('loader/loader.min.css') + '</style>');
+
+
 
     fs.writeFileSync(this.name, indexHtml);
 });

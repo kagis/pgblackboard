@@ -1,12 +1,11 @@
-ko.components.register('x-nav', {
-    template: { element: 'nav-tmpl' },
-    viewModel: Nav,
-    synchronous: true
-});
+var ko = require('knockout');
+
+module.exports = Nav;
 
 /**
-@constructor
-@param {{selectedDoc}} params */
+ * @constructor
+ * @param {{selectedDoc}} params
+ */
 function Nav(params) {
     this['myQueriesStorage'] = params['myQueriesStorage'];
     this['databases'] = params['databases'];
@@ -51,38 +50,33 @@ Nav.prototype.selectMyQuery = function (selectingMyQuery) {
     }
 };
 
-/**
-@private */
+/** @private */
 Nav.prototype.createGreetingDoc = function () {
     return ko.observable('hello').extend({ codeEditorDoc: true });
 };
 
-/**
-@private */
+/** @private */
 Nav.prototype.navigateToGreetingDoc = function () {
     var greetingDoc = this.createGreetingDoc();
     this.createMyQueryWhenDocChange(greetingDoc);
     this.selectedDoc(greetingDoc);
 };
 
-/**
-@private */
+/** @private */
 Nav.prototype.onUnselectingItem = function (unselectingItem) {
     if (unselectingItem) {
         unselectingItem.isSelected(false);
     }
 };
 
-/**
-@private */
+/** @private */
 Nav.prototype.onSelectingItem = function (selectingItem) {
     if (selectingItem) {
         selectingItem.isSelected(true);
     }
 };
 
-/**
-@private */
+/** @private */
 Nav.prototype.createMyQueryWhenDocChange = function (doc) {
     this.docSubscription = doc.subscribe(function () {
         this.docSubscription.dispose();

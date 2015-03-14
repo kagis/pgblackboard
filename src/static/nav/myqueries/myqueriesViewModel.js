@@ -1,12 +1,11 @@
-ko.components.register('myqueries', {
-    template: { element: 'myqueries-tmpl' },
-    viewModel: MyQueries,
-    synchronous: true
-});
+var ko = require('knockout');
+
+module.exports = MyQueries;
 
 /**
-@constructor
-@params {{selectItemCallback, addEvent}} params */
+ * @constructor
+ * @params {{selectItemCallback, addEvent}} params
+ */
 function MyQueries(params) {
     this.storage = params['storage'];
     this['selectItem'] = params['selectItemCallback'];
@@ -16,8 +15,7 @@ function MyQueries(params) {
     this.addEventSubscription = params['addEvent'].subscribe(this.newItem, this);
 }
 
-/**
-@private */
+/** @private */
 MyQueries.prototype.load = function () {
     var itemsCount = this.storage.length;
     var items = new Array(itemsCount);
@@ -32,8 +30,7 @@ MyQueries.prototype.load = function () {
 
 MyQueries.prototype.storageKeyPrefix = 'pgblackboard_query_';
 
-/**
-@private */
+/** @private */
 MyQueries.prototype.newItem = function (doc) {
     var newStorageKey = this.storageKeyPrefix + new Date().getTime();
     this.storage.setItem(newStorageKey, doc());
@@ -43,16 +40,14 @@ MyQueries.prototype.newItem = function (doc) {
     return item;
 };
 
-/**
-@private */
+/** @private */
 MyQueries.prototype.restoreItem = function (storageKey) {
     var queryText = this.storage.getItem(storageKey);
     var doc = ko.observable(queryText).extend({ codeEditorDoc: true });
     return this.createItem(doc, storageKey);
 };
 
-/**
-@private */
+/** @private */
 MyQueries.prototype.createItem = function (doc, storageKey) {
     return {
         'name': ko.pureComputed(this.getQueryName.bind(this, doc))
@@ -76,8 +71,7 @@ MyQueries.prototype.removeItem = function (removingItem) {
     }
 };
 
-/**
-@private */
+/** @private */
 MyQueries.prototype.getQueryName = function (doc) {
     var queryText = ko.unwrap(doc).trim();
     var m = /\\connect\s+\w+\s*([\s\S]+)/.exec(queryText);

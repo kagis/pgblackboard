@@ -1,8 +1,6 @@
-ko.components.register('tree', {
-    template: { element: 'tree-tmpl' },
-    viewModel: Tree,
-    synchronous: true
-});
+var ko = require('knockout');
+
+module.exports = Tree;
 
 /**
 @constructor */
@@ -10,6 +8,8 @@ function Tree(params) {
     this['selectNode'] = params['selectNodeCallback'];
     this['nodes'] = params['nodes'].map(this.createNode, this);
 }
+
+Tree.TreeNode = TreeNode;
 
 /**
 @private */

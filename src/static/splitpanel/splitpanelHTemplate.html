@@ -1,0 +1,17 @@
+module.exports = `
+  <div class="splitpanel-h"
+       data-bind="css: { 'splitpanel-h--splitting': isSplitting }">
+
+    <div class="splitpanel-h__left"
+         data-bind="style: aPanelPos, template: { nodes: [aPanelContent], data: $parent }"
+         ></div>
+
+    <div class="splitpanel-h__splitter"
+         data-bind="style: splitterPos, event: { mousedown: beginSplit }"
+         ></div>
+
+    <div class="splitpanel-h__right"
+         data-bind="style: bPanelPos, template: { nodes: [bPanelContent], data: $parent }"
+         ></div>
+  </div>
+`;

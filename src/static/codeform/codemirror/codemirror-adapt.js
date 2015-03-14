@@ -1,4 +1,7 @@
-ko.extenders.codeEditorDoc = function (target) {
+var ko = require('knockout'),
+    CodeMirror = require('codemirror');
+
+module.exports.codeEditorDocExtender = function (target) {
     ko.utils.extend(target, {
         codemirrorDoc: new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
         errors: ko.observableArray(),
@@ -29,7 +32,7 @@ ko.extenders.codeEditorDoc = function (target) {
     return target;
 };
 
-ko.bindingHandlers['codeEditorWidget'] = {
+module.exports.codeEditorBindingHandler = {
     'init': initCodemirror,
     'update': function (element, valueAccessor, allBindings) {
         var updatedDoc = allBindings.get('value'),
