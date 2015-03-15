@@ -119,8 +119,10 @@ if (typeof module === 'object' && module.exports) {
 document.write(`
 
     <link href="node_modules/codemirror/lib/codemirror.css" rel="stylesheet" />
-    <link href="main/main.css" rel="stylesheet/less" />
-    <link href="codeform/codeform.less" rel="stylesheet/less" />
+    <link href="codeform/codemirror/codemirror-adapt.css" rel="stylesheet" />
+
+    <link href="main/main.css" rel="stylesheet" />
+    <link href="codeform/codeform.css" rel="stylesheet/less" />
     <link href="splitpanel/splitpanel.css" rel="stylesheet/less" />
     <link href="nav/nav.less" rel="stylesheet/less" />
     <link href="nav/myqueries/myqueries.less" rel="stylesheet/less" />

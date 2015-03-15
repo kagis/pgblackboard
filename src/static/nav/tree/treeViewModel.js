@@ -3,7 +3,8 @@ var ko = require('knockout');
 module.exports = Tree;
 
 /**
-@constructor */
+ * @constructor
+ */
 function Tree(params) {
     this['selectNode'] = params['selectNodeCallback'];
     this['nodes'] = params['nodes'].map(this.createNode, this);
@@ -11,14 +12,14 @@ function Tree(params) {
 
 Tree.TreeNode = TreeNode;
 
-/**
-@private */
+/** @private */
 Tree.prototype.createNode = function (dto) {
     return new TreeNode(dto, this.selectedNode);
 };
 
 /**
-@constructor */
+ * @constructor
+ */
 function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
     this.nodes = ko.observable();
@@ -49,14 +50,12 @@ TreeNode.prototype['toggle'] = function () {
     }
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.collapse = function () {
     this.nodes(null);
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.expand = function () {
     this.isExpanding(true);
     this.loadChildren({
@@ -66,21 +65,18 @@ TreeNode.prototype.expand = function () {
     });
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.onChildrenLoaded = function (nodeDTOs) {
     this.isExpanding(false);
     this.nodes(nodeDTOs.map(this.createChild, this));
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.createChild = function (dto) {
     return new this.constructor(dto);
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.onChildrenLoadError = function () {
     this.isExpanding(false);
     alert('ERROR while loading child tree nodes.');
@@ -122,8 +118,7 @@ TreeNode.prototype.getDoc = function () {
     return doc;
 };
 
-/**
-@private */
+/** @private */
 TreeNode.prototype.loadChildren = function (options) {
     return this._sqlexec('children', options);
 };

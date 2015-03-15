@@ -27,11 +27,17 @@ module.exports = `
                data-bind="text: comment"></small>
       </a>
 
-      <!-- ko template: {
-        name : 'tree-tmpl',
-        if   : isExpanded
-      } --><!-- /ko -->
-
+      <!-- ugly recursive template call -->
+      <ul class="tree tree--children"
+          data-bind="template: {
+            if: isExpanded,
+            foreach: nodes,
+            nodes: ko.nativeTemplateEngine.instance.renderTemplate(
+                      $element.parentNode.parentNode,
+                      $context,
+                      {},
+                      $element.ownerDocument)
+          }"></ul>
     </li>
   </ul>
 `;

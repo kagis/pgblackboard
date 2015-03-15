@@ -1,4 +1,7 @@
 describe('tree node', function () {
+    var TreeNode = require('../nav/tree/treeViewModel').TreeNode,
+        ko = require('knockout');
+
     var treeNode;
     var finishChildrenLoad;
 

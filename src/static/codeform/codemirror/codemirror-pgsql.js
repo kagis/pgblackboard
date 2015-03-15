@@ -1,6 +1,8 @@
 (function () {
 'use strict';
 
+var CodeMirror = require('codemirror');
+
 // turn a space-separated list into an array
 function set(str) {
     var obj = {}, words = str.split(" ");

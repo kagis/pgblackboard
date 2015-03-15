@@ -1,7 +1,14 @@
 var ko = require('knockout'),
     CodeMirror = require('codemirror');
 
-module.exports.codeEditorDocExtender = function (target) {
+require('node_modules/codemirror/addon/search/searchcursor');
+require('node_modules/codemirror/keymap/sublime');
+require('node_modules/codemirror/addon/edit/matchbrackets');
+require('node_modules/codemirror/addon/edit/closebrackets');
+require('node_modules/codemirror/mode/sql/sql');
+require('./codemirror-pgsql');
+
+exports.codeEditorDocExtender = function (target) {
     ko.utils.extend(target, {
         codemirrorDoc: new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
         errors: ko.observableArray(),
@@ -12,15 +19,12 @@ module.exports.codeEditorDocExtender = function (target) {
         target(target.codemirrorDoc.getValue());
     });
 
-    target.codemirrorDoc.on('cursorActivity', function () {
-        var codemirrorInst = target.codemirrorDoc.getEditor();
-        var selStart = codemirrorInst.getCursor(true),
-            selEnd   = codemirrorInst.getCursor(false);
-
-        target.selectionRange(
-            codemirrorInst.somethingSelected() ?
-            [[selStart.line, selStart.ch],
-             [  selEnd.line,   selEnd.ch]] : null);
+    target.codemirrorDoc.on('beforeSelectionChange', function (_, params) {
+        var range = params.ranges[0];
+        target.selectionRange([
+            [range.anchor.line, range.anchor.ch],
+            [range.head.line, range.head.ch]
+        ]);
     });
 
     target.subscribe(function (value) {
@@ -32,7 +36,7 @@ module.exports.codeEditorDocExtender = function (target) {
     return target;
 };
 
-module.exports.codeEditorBindingHandler = {
+exports.codeEditorBindingHandler = {
     'init': initCodemirror,
     'update': function (element, valueAccessor, allBindings) {
         var updatedDoc = allBindings.get('value'),
@@ -59,7 +63,6 @@ function initCodemirror(element, valueAccessor) {
 
     window.codemirrorInst = codemirrorInst;
 
-
     // add gutter shadow when scrolled horizontal
     codemirrorInst.on('scroll', function () {
         ko.utils.toggleDomNodeCssClass(
@@ -84,4 +87,3 @@ var setError = function (line, message) {
     marker.dataset.title = message;
     pgbb.editor.setGutterMarker(line, 'errors-gutter', marker);
 };
-

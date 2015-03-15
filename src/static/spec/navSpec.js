@@ -1,4 +1,7 @@
 describe('nav', function () {
+    var Nav = require('../nav/navViewModel'),
+        ko = require('knockout');
+
     var nav;
     var selectedDoc;
     var greetingDoc;

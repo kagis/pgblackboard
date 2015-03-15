@@ -1,4 +1,7 @@
 describe('my queries', function () {
+    var MyQueries = require('../nav/myqueries/myqueriesViewModel'),
+        ko = require('knockout');
+
     var myQueries;
     var storage;
     var selectedItem;
