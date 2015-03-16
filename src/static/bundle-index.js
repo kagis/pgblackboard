@@ -118,6 +118,7 @@ if (typeof module === 'object' && module.exports) {
 
 document.write(`
 
+
     <link href="node_modules/codemirror/lib/codemirror.css" rel="stylesheet" />
     <link href="codeform/codemirror/codemirror-adapt.css" rel="stylesheet" />
 
@@ -130,20 +131,23 @@ document.write(`
 
     <script src="node_modules/less/dist/less.js"></script>
 
+
     <script src="node_modules/systemjs/node_modules/es6-module-loader/dist/es6-module-loader.src.js"></script>
     <script src="node_modules/systemjs/dist/system.src.js"></script>
     <script>
         System.config({
           "paths": {
             "*.html": "*.html",
+            "codemirror": "node_modules/codemirror/lib/codemirror.js",
+            "codemirror/*": "node_modules/codemirror/*.js",
+            "knockout": "node_modules/knockout/build/output/knockout-latest.debug.js",
           },
           "map": {
             "rootBindingContext": "demo",
-            "knockout": "node_modules/knockout/build/output/knockout-latest.debug",
-            "codemirror": "node_modules/codemirror/lib/codemirror"
+            "codemirror/lib/codemirror": "codemirror"
           },
         });
-        System.import('app');
+        System.import("app");
     </script>
 
 `);

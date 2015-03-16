@@ -8,7 +8,8 @@
     "jscs": "~1.11.3",
     "less": "~2.4.0",
     "systemjs": "^0.15.0",
-    "uglify-js": "~2.4.17"
+    "uglify-js": "~2.4.17",
+    "require-list": "~0.1.6"
   },
   "dependencies": {
     "codemirror": "~5.0.0",

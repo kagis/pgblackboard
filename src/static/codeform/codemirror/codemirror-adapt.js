@@ -1,12 +1,12 @@
+require('codemirror/addon/search/searchcursor');
+require('codemirror/keymap/sublime');
+require('codemirror/addon/edit/matchbrackets');
+require('codemirror/addon/edit/closebrackets');
+require('codemirror/mode/sql/sql');
+require('./codemirror-pgsql');
 var ko = require('knockout'),
     CodeMirror = require('codemirror');
 
-require('node_modules/codemirror/addon/search/searchcursor');
-require('node_modules/codemirror/keymap/sublime');
-require('node_modules/codemirror/addon/edit/matchbrackets');
-require('node_modules/codemirror/addon/edit/closebrackets');
-require('node_modules/codemirror/mode/sql/sql');
-require('./codemirror-pgsql');
 
 exports.codeEditorDocExtender = function (target) {
     ko.utils.extend(target, {

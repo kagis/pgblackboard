@@ -14,7 +14,15 @@ var requireFlat = Object.keys((function flatten(modname, deps) {
         }
     }
     return result;
-})('./app.js', requireList('./app.js')));
+})('app.js', requireList('./app.js')));
+
+var path = require('path');
+requireFlat = requireFlat.map(function (modname) {
+    if (modname === 'knockout' || modname.lastIndexOf('codemirror', 0) === 0) {
+        return 'lib/' + modname + '.js';
+    }
+    return path.relative(__dirname, modname);
+});
 
 
 
@@ -36,12 +44,41 @@ file('dist/index.html', ['loader/loader.min.css'], function () {
 });
 
 
-file('dist/bundle-index.js', requireFlat, function () {
+file('dist/bundle-index.js', requireFlat, { async: true }, function () {
+    var targetFileName = this.name;
+    var closureCompiler = require('closurecompiler');
+
+    closureCompiler.compile(requireFlat, {
+        compilation_level: 'ADVANCED_OPTIMIZATIONS', //'SIMPLE_OPTIMIZATIONS',
+        formatting: 'PRETTY_PRINT',
+        language_in: 'ECMASCRIPT6_STRICT',
+        language_out: 'ECMASCRIPT5_STRICT',
+        process_common_js_modules: true,
+        common_js_entry_module: 'app.js',
+        common_js_module_path_prefix: 'lib/',
+
+
+        // If you specify a directory here, all files inside are used
+        //externs: ["externs/file3.js", "externs/contrib/"],
+
+        // ^ As you've seen, multiple options with the same name are
+        //   specified using an array.
+
+    },
+    function (error, result) {
+        if (result) {
+            fs.writeFileSync(targetFileName, result);
+            complete();
+        } else {
+            console.error(error);
+         }
+    }
+);
+
     // var js = bundleIndex.jsLib
     //     .map(function (filename) { return fs.readFileSync(filename).toString(); })
     //     .join('');
 
-    fs.writeFileSync(this.name, js);
 });
 
 rule('.min.css', '.css', function () {

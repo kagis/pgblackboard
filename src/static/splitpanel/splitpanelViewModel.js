@@ -66,7 +66,7 @@ SplitPanel.prototype.beginSplit = function (_, e) {
     }
 };
 
-SplitPanel.prototype.resizeH = function (_, splitterY, containerBounds, _, splitterHeight) {
+SplitPanel.prototype.resizeH = function (_, splitterY, containerBounds, __, splitterHeight) {
     splitterY -= containerBounds.top;
     if (splitterY <= splitterHeight) {
         this.aPanelPos({ bottom: '100%' });
