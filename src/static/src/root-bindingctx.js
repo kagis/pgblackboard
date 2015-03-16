@@ -1,5 +1,5 @@
 module.exports = {
     myQueriesStorage: window.localStorage,
-    databases: initialData['databases'],
+    databases: window.pgbbInitialData['databases'],
     initialCode: window.location.hash || 'select \'awesome\''
 };

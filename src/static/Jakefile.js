@@ -1,10 +1,11 @@
-var fs = require('fs'),
-    autoprefixer = require('autoprefixer-core'),
-    csso = require('csso'),
-    uglifyJs = require('uglify-js');
+var fs = require('fs');
+var autoprefixer = require('autoprefixer-core');
+var csso = require('csso');
+var uglifyjs = require('uglify-js');
+var rlist = require('require-list');
+var path = require('path');
 
 
-var requireList = require('require-list');
 var requireFlat = Object.keys((function flatten(modname, deps) {
     var result = {};
     result[modname] = null;
@@ -14,9 +15,8 @@ var requireFlat = Object.keys((function flatten(modname, deps) {
         }
     }
     return result;
-})('./src/app.js', requireList('src/app.js')));
+})('./src/app.js', rlist('src/app.js')));
 
-var path = require('path');
 requireFlat = requireFlat.map(function (modname) {
     if (modname === 'knockout' || modname.lastIndexOf('codemirror', 0) === 0) {
         return 'src/lib/' + modname + '.js';
@@ -30,8 +30,11 @@ task('default', ['dist/index.html', 'dist/bundle-index.js'], function () {
 
 });
 
-file('dist/index.html', ['src/load-indicator/load-indicator.min.css'], function () {
-    var indexHtml = fs.readFileSync('index.html').toString();
+file('dist/index.html', [
+    'src/index.html',
+    'src/load-indicator/load-indicator.min.css'
+], function () {
+    var indexHtml = fs.readFileSync('src/index.html').toString();
 
     // embeding load indicator styles
     indexHtml = indexHtml.replace(
@@ -90,8 +93,8 @@ rule('.min.css', '.css', function () {
 });
 
 rule('.min.js', '.js', function () {
-    var minifiedJs = uglifyJs.minify(this.source)
-    fs.writeFileSync(this.name, minifiedJs);
+    var minifiedjs = uglifyjs.minify(this.source)
+    fs.writeFileSync(this.name, minifiedjs);
 });
 
 
