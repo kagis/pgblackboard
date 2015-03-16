@@ -1,4 +1,5 @@
 {
+  "name": "pgblackboard-ui",
   "description": "pgBlackboard ui",
   "devDependencies": {
     "autoprefixer-core": "~5.1.7",
@@ -7,7 +8,6 @@
     "jasmine": "~2.2.1",
     "jscs": "~1.11.3",
     "less": "~2.4.0",
-    "systemjs": "^0.15.0",
     "uglify-js": "~2.4.17",
     "require-list": "~0.1.6"
   },
@@ -15,5 +15,11 @@
     "codemirror": "~5.0.0",
     "knockout": "~3.3.0",
     "leaflet": "~0.7.3"
-  }
+  },
+  "version": "0.0.0",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "author": "",
+  "license": "BSD-2-Clause"
 }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine-html.js"></script>
+
+
+
+  <script type="text/javascript">
+    window.jasmine = jasmineRequire.core(jasmineRequire);
+    var env = jasmine.getEnv();
+    var jasmineInterface = jasmineRequire.interface(jasmine, env);
+    extend(window, jasmineInterface);
+    function extend(destination, source) {
+      for (var property in source) destination[property] = source[property];
+      return destination;
+    }
+  </script>
+
+  <script src="https://rawgit.com/ModuleLoader/es6-module-loader/master/dist/es6-module-loader.src.js"></script>
+  <script src="https://rawgit.com/systemjs/systemjs/master/dist/system.src.js"></script>
+  <script>
+  System.config({
+    "paths": {
+      "knockout": "https://cdnjs.cloudflare.com/ajax/libs/knockout/3.3.0/knockout-debug.js",
+    },
+    "map": {
+
+    }
+  });
+  Promise.all([
+    System.load("spec/myqueriesSpec")
+  ]).then(function () {
+    System.load('https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/boot');
+  });
+  </script>
+
+</head>
+<body>
+
+</body>
+</html>

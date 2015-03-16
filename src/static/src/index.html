@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+
+  <link href="favicon.ico"
+        rel="shortcut icon"
+        type="image/vnd.microsoft.icon" />
+
+  <title>pgBlackboard</title>
+
+  <link href="load-indicator/load-indicator.css" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ko component: { name: 'x-main', params: $data } -->
+    <div class="loader-outer">
+      <div class="loader-inner">
+        <div class="loader-bounce1">
+        </div><div class="loader-bounce2">
+        </div><div class="loader-bounce3"></div>
+      </div>
+    </div>
+  <!-- /ko -->
+
+  <script src="bundle-index.js"></script>
+  <script>main(/*INITIAL_DATA_PLACEHOLDER*/);</script>
+
+</body>
+</html>

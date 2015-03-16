@@ -14,12 +14,12 @@ var requireFlat = Object.keys((function flatten(modname, deps) {
         }
     }
     return result;
-})('app.js', requireList('./app.js')));
+})('./src/app.js', requireList('src/app.js')));
 
 var path = require('path');
 requireFlat = requireFlat.map(function (modname) {
     if (modname === 'knockout' || modname.lastIndexOf('codemirror', 0) === 0) {
-        return 'lib/' + modname + '.js';
+        return 'src/lib/' + modname + '.js';
     }
     return path.relative(__dirname, modname);
 });
@@ -30,13 +30,13 @@ task('default', ['dist/index.html', 'dist/bundle-index.js'], function () {
 
 });
 
-file('dist/index.html', ['loader/loader.min.css'], function () {
+file('dist/index.html', ['src/load-indicator/load-indicator.min.css'], function () {
     var indexHtml = fs.readFileSync('index.html').toString();
 
-    // embeding loader styles
+    // embeding load indicator styles
     indexHtml = indexHtml.replace(
-        '<link href="loader/loader.css" rel="stylesheet" />',
-        '<style>' + fs.readFileSync('loader/loader.min.css') + '</style>');
+        '<link href="load-indicator/load-indicator.css" rel="stylesheet" />',
+        '<style>' + fs.readFileSync('src/load-indicator/load-indicator.min.css') + '</style>');
 
 
 
@@ -55,7 +55,7 @@ file('dist/bundle-index.js', requireFlat, { async: true }, function () {
         language_out: 'ECMASCRIPT5_STRICT',
         process_common_js_modules: true,
         common_js_entry_module: 'app.js',
-        common_js_module_path_prefix: 'lib/',
+        common_js_module_path_prefix: 'src/lib/',
 
 
         // If you specify a directory here, all files inside are used
