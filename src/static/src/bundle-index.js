@@ -123,13 +123,11 @@ document.write(`
     <link href="codeform/codemirror/codemirror-adapt.css" rel="stylesheet" />
 
     <link href="main/main.css" rel="stylesheet" />
-    <link href="codeform/codeform.css" rel="stylesheet/less" />
-    <link href="splitpanel/splitpanel.css" rel="stylesheet/less" />
+    <link href="codeform/codeform.css" rel="stylesheet" />
+    <link href="splitpanel/splitpanel.css" rel="stylesheet" />
     <link href="nav/nav.css" rel="stylesheet" />
-    <link href="myqueries/myqueries.less" rel="stylesheet/less" />
-    <link href="tree/tree.less" rel="stylesheet/less" />
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.4.0/less.js"></script>
+    <link href="myqueries/myqueries.css" rel="stylesheet" />
+    <link href="tree/tree.css" rel="stylesheet" />
 
 
     <script src="https://rawgit.com/ModuleLoader/es6-module-loader/master/dist/es6-module-loader.src.js"></script>
