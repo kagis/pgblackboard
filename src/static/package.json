@@ -19,7 +19,8 @@
   },
   "version": "0.0.0",
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine",
+    "build": "jake"
   },
   "author": "",
   "license": "BSD-2-Clause"

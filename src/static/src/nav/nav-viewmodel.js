@@ -25,7 +25,8 @@ function Nav(params) {
         this,
         'beforeChange');
 
-    this['addMyQueryEvent'] = new ko.subscribable();
+    this['addMyQueryEvent'] =
+    this.addMyQueryEvent = new ko.subscribable();
 
     this.navigateToGreetingDoc();
 }
@@ -65,14 +66,14 @@ Nav.prototype.navigateToGreetingDoc = function () {
 /** @private */
 Nav.prototype.onUnselectingItem = function (unselectingItem) {
     if (unselectingItem) {
-        unselectingItem.isSelected(false);
+        unselectingItem['isSelected'](false);
     }
 };
 
 /** @private */
 Nav.prototype.onSelectingItem = function (selectingItem) {
     if (selectingItem) {
-        selectingItem.isSelected(true);
+        selectingItem['isSelected'](true);
     }
 };
 

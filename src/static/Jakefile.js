@@ -1,12 +1,13 @@
 var fs = require('fs');
 var autoprefixer = require('autoprefixer-core');
 var csso = require('csso');
-var uglifyjs = require('uglify-js');
+var uglifyjs = require('uglify-js'); // for codemirror
 var rlist = require('require-list');
 var path = require('path');
+var closureCompiler = require('closurecompiler');
 
 
-var requireFlat = Object.keys((function flatten(modname, deps) {
+var requiredDeps = Object.keys((function flatten(modname, deps) {
     var result = {};
     result[modname] = null;
     for (var dep in deps || {}) {
@@ -17,12 +18,38 @@ var requireFlat = Object.keys((function flatten(modname, deps) {
     return result;
 })('./src/app.js', rlist('src/app.js')));
 
-requireFlat = requireFlat.map(function (modname) {
+requiredDeps = requiredDeps.map(function (modname) {
     if (modname === 'knockout' || modname.lastIndexOf('codemirror', 0) === 0) {
         return 'src/lib/' + modname + '.js';
     }
     return path.relative(__dirname, modname);
 });
+
+var libs = [];
+requiredDeps.forEach(function (jsFilename) {
+    var js = fs.readFileSync(jsFilename).toString();
+    var resources = js.split('\n')
+        .filter(function (line) { return line.slice(0, 3) === '///'; })
+        .map(function (line) { return line.slice(3).trim(); });
+
+    Array.prototype.push.apply(libs, resources.filter(RegExp.prototype.test.bind(/\.js$/)));
+});
+
+
+var jsExterns = [
+    'src/lib/knockout.extern.js',
+    'src/lib/codemirror.extern.js'
+];
+
+var cssFiles = [
+    'node_modules/codemirror/lib/codemirror.css',
+    'src/main/main.css',
+    'src/nav/nav.css',
+    'src/tree/tree.css',
+    'src/myqueries/myqueries.css',
+    'src/splitpanel/splitpanel.css',
+    'src/codeform/codeform.css',
+];
 
 
 
@@ -39,34 +66,40 @@ file('dist/index.html', [
     // embeding load indicator styles
     indexHtml = indexHtml.replace(
         '<link href="load-indicator/load-indicator.css" rel="stylesheet" />',
-        '<style>' + fs.readFileSync('src/load-indicator/load-indicator.min.css') + '</style>');
-
-
+        embeddedStyle(fs.readFileSync('src/load-indicator/load-indicator.min.css')));
 
     fs.writeFileSync(this.name, indexHtml);
 });
 
+file('dist/app.css', cssFiles, function () {
+    fs.writeFileSync(this.name, processCss(
+        cssFiles.map(function (cssFileName) {
+            var cssSource = readTextFromFile(cssFileName);
+            return cssSource.replace(/url\('(\.[^']+)'\)/, function (_, embeddingUrl) {
+                embeddingUrl = path.join(path.dirname(cssFileName), embeddingUrl);
+                var b64content = fs.readFileSync(embeddingUrl).toString('base64');
+                return 'url(data:application/font-woff;base64,' + b64content + ')';
+            });
+        })
+        .join('')));
+});
 
-file('dist/bundle-index.js', requireFlat, { async: true }, function () {
+file('dist/app.js', requiredDeps.concat(jsExterns), { async: true }, function () {
     var targetFileName = this.name;
-    var closureCompiler = require('closurecompiler');
 
-    closureCompiler.compile(requireFlat, {
-        compilation_level: 'ADVANCED_OPTIMIZATIONS', //'SIMPLE_OPTIMIZATIONS',
+    closureCompiler.compile(requiredDeps, {
+        compilation_level: 'ADVANCED_OPTIMIZATIONS',
+        //compilation_level:'SIMPLE_OPTIMIZATIONS',
         formatting: 'PRETTY_PRINT',
         language_in: 'ECMASCRIPT6_STRICT',
         language_out: 'ECMASCRIPT5_STRICT',
         process_common_js_modules: true,
         common_js_entry_module: 'app.js',
         common_js_module_path_prefix: 'src/lib/',
-
+        output_wrapper: '(function(){%output%})();',
 
         // If you specify a directory here, all files inside are used
-        //externs: ["externs/file3.js", "externs/contrib/"],
-
-        // ^ As you've seen, multiple options with the same name are
-        //   specified using an array.
-
+        externs: jsExterns,
     },
     function (error, result) {
         if (result) {
@@ -74,15 +107,30 @@ file('dist/bundle-index.js', requireFlat, { async: true }, function () {
             complete();
         } else {
             console.error(error);
-         }
-    }
-);
-
-    // var js = bundleIndex.jsLib
-    //     .map(function (filename) { return fs.readFileSync(filename).toString(); })
-    //     .join('');
-
+        }
+    });
 });
+
+
+file('dist/bundle-index.js', [
+    'dist/app.js',
+    'dist/app.css',
+    ].concat(libs),
+    function () {
+
+    var bundleOutput = '';
+
+    bundleOutput += documentWrite(embeddedStyle(
+        fs.readFileSync('dist/app.css')
+          .toString()));
+
+    bundleOutput += libs.map(readTextFromFile).join('\n');
+
+    bundleOutput += readTextFromFile('dist/app.js');
+
+    fs.writeFileSync(this.name, bundleOutput);
+});
+
 
 rule('.min.css', '.css', function () {
     var css;
@@ -93,9 +141,22 @@ rule('.min.css', '.css', function () {
 });
 
 rule('.min.js', '.js', function () {
-    var minifiedjs = uglifyjs.minify(this.source)
+    var minifiedjs = uglifyjs.minify(this.source).code;
     fs.writeFileSync(this.name, minifiedjs);
 });
+
+// rule('.css', '.less', { async: true }, function () {
+//     var less = require('less');
+//     var lessSource = readTextFromFile(this.source);
+//     var targetFileName = this.name;
+//     less.render(lessSource, {
+//         filename: this.source,
+//         paths: [path.dirname(this.source)]
+//     }, function (e, output) {
+//         fs.writeFileSync(targetFileName, output.css);
+//         complete();
+//     });
+// });
 
 
 function processCss(css) {
@@ -104,6 +165,20 @@ function processCss(css) {
     return css;
 }
 
+function readTextFromFile(fileName) {
+    return fs.readFileSync(fileName)
+             .toString();
+}
+
+function embeddedStyle(css) {
+    return '<style>' + css + '</style>';
+}
+
+function documentWrite(html) {
+    return 'document.write("' +
+        html.replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"') +
+        '");\n';
+}
 
 
-console.log(requireFlat)

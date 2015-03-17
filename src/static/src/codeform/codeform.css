@@ -98,7 +98,6 @@ button::-moz-focus-inner {
     box-sizing: border-box;
     transform-origin: center center;
     transition: transform 1000s linear;
-    // animation: 'codeform-spin';
     }
 
 .codeform__spinner--visible::before {

@@ -22,11 +22,15 @@ Tree.prototype.createNode = function (dto) {
  */
 function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
+
+    this['nodes'] =
     this.nodes = ko.observable();
 
+    this['isExpanding'] =
     this.isExpanding = ko.observable(false);
-    this.isExpanded = ko.pureComputed(this._checkIsExpanded, this);
-    this.isCollapsed = ko.pureComputed(this._checkIsCollapsed, this);
+
+    this['isExpanded'] = ko.pureComputed(this._checkIsExpanded, this);
+    this['isCollapsed'] = ko.pureComputed(this._checkIsCollapsed, this);
     this.expansionState = ko.pureComputed(this._getExpansionState, this);
 
     this['isSelected'] = ko.observable(false);
@@ -39,7 +43,7 @@ function TreeNode(nodeDTO) {
     this['hasChildren'] = nodeDTO['has_children'];
 
     // horizontal line is drawn above groupStart node
-    this.isGroupStart = nodeDTO['isGroupStart'];
+    this['isGroupStart'] = nodeDTO['isGroupStart'];
 };
 
 TreeNode.prototype['toggle'] = function () {

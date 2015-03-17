@@ -7,7 +7,7 @@ module.exports = {
 
 function splitPanelViewModel(isHorizontal){
     function createViewModel(params, componentInfo) {
-        var elemTemplateNodes = componentInfo.templateNodes.filter(
+        var elemTemplateNodes = componentInfo['templateNodes'].filter(
             function (node) { return node.nodeType == 1; }
         );
         var panel1 = elemTemplateNodes[0];
@@ -15,20 +15,29 @@ function splitPanelViewModel(isHorizontal){
         return new SplitPanel(panel1, panel2, isHorizontal);
     }
 
-    return { createViewModel: createViewModel };
+    return { 'createViewModel': createViewModel };
 }
 
 function SplitPanel(aPanelContent, bPanelContent, isHorizontal) {
-    this.aPanelContent = aPanelContent;
+    this['aPanelContent'] = aPanelContent;
+    this['bPanelContent'] = bPanelContent;
+
+    this['aPanelPos'] =
     this.aPanelPos = ko.observable();
-    this.bPanelContent = bPanelContent;
+
+    this['bPanelPos'] =
     this.bPanelPos = ko.observable();
+
+    this['splitterPos'] =
     this.splitterPos = ko.observable();
+
+    this['isSplitting'] =
     this.isSplitting = ko.observable(false);
+
     this.resize = (isHorizontal ? this.resizeV : this.resizeH);
 }
 
-SplitPanel.prototype.beginSplit = function (_, e) {
+SplitPanel.prototype['beginSplit'] = function (_, e) {
     var splitterElem = e.target;
     var container = splitterElem.parentNode;
     var containerBounds = container.getBoundingClientRect();
@@ -36,7 +45,7 @@ SplitPanel.prototype.beginSplit = function (_, e) {
     var splitterHeight = splitterElem.offsetHeight;
     var that = this;
 
-    if ('setCapture' in splitterElem) {
+    if (splitterElem.setCapture) {
         splitterElem.setCapture();
     }
     this.isSplitting(true);
@@ -57,7 +66,7 @@ SplitPanel.prototype.beginSplit = function (_, e) {
 
     function onSplitterMouseUp(e) {
         that.isSplitting(false);
-        if ('releaseCapture' in splitterElem) {
+        if (splitterElem.releaseCapture) {
             splitterElem.releaseCapture();
         }
         window.removeEventListener('mousemove', onSplitterMouseMove);

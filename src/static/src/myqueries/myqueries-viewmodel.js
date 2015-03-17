@@ -18,7 +18,7 @@ function MyQueries(params) {
 /** @private */
 MyQueries.prototype.load = function () {
     var itemsCount = this.storage.length;
-    var items = new Array(itemsCount);
+    var items = new Array();
     for (var i = 0; i < itemsCount; i++) {
         var key = this.storage.key(i);
         if (key.lastIndexOf(this.storageKeyPrefix, 0) === 0) {

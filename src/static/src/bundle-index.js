@@ -147,7 +147,7 @@ document.write(`
             "codemirror/lib/codemirror": "codemirror"
           },
         });
-        System.import("app");
+        System.load("app");
     </script>
 
 `);

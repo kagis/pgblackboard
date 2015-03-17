@@ -1,12 +1,12 @@
+var ko = require('knockout');
+var CodeMirror = require('codemirror');
+
 require('codemirror/addon/search/searchcursor');
 require('codemirror/keymap/sublime');
 require('codemirror/addon/edit/matchbrackets');
 require('codemirror/addon/edit/closebrackets');
 require('codemirror/mode/sql/sql');
 require('./codemirror-pgsql');
-var ko = require('knockout'),
-    CodeMirror = require('codemirror');
-
 
 exports.codeEditorDocExtender = function (target) {
     ko.utils.extend(target, {
@@ -20,10 +20,10 @@ exports.codeEditorDocExtender = function (target) {
     });
 
     target.codemirrorDoc.on('beforeSelectionChange', function (_, params) {
-        var range = params.ranges[0];
+        var range = params['ranges'][0];
         target.selectionRange([
-            [range.anchor.line, range.anchor.ch],
-            [range.head.line, range.head.ch]
+            [range['anchor']['line'], range['anchor']['ch']],
+            [range['head']['line'], range['head']['ch']]
         ]);
     });
 

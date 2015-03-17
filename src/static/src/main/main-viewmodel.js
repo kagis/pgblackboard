@@ -19,20 +19,13 @@ Main.prototype['toggleTheme'] = function () {
 };
 
 
-window['main'] = function (initialData) {
-    ko.applyBindings({
-        myQueriesStorage: window.localStorage,
-        databases: initialData['databases'],
-        initialCode: window.location.hash || 'select \'awesome\''
-    });
-};
-
 ko.bindingHandlers['resetSrcBy'] = {
     'update': function (element, valueAccessor) {
         ko.unwrap(valueAccessor());
         element.src = 'about:blank';
     }
 };
+
 
 // pgbb.initResult = function (resultWindow) {
 //     resultWindow.pgbb = pgbb;

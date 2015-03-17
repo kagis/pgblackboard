@@ -8,8 +8,8 @@ module.exports = CodeForm;
  */
 function CodeForm(params) {
     this.doc = params['doc'];
-    this.isLoading = ko.pureComputed(this.checkIsLoading, this);
-    this.readyDoc = ko.computed(this.getReadyDoc, this);
+    this['isLoading'] = ko.pureComputed(this.checkIsLoading, this);
+    this['readyDoc'] = ko.computed(this.getReadyDoc, this);
 }
 
 /** @private */

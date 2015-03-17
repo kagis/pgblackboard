@@ -1,0 +1,84 @@
+/*ul*/.myqueries-list {
+    padding: 0;
+    margin: 0;
+    padding-left: 1em;
+    list-style-type: none;
+    white-space: nowrap;
+    }
+
+.myquery {
+    padding: .125em .25em;
+    }
+
+.myquery:hover,
+.myquery--active {
+    background-color: rgba(0,0,0,.1);
+    }
+
+.myquery--active .myquery__name {
+    font-weight: bold;
+    width: calc(100% - 4em);
+    }
+
+.myquery__name {
+    display: inline-block;
+    vertical-align: bottom;
+    width: 100%;
+    text-decoration: none;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    }
+
+.myquery__icon::before {
+    font-family: 'myqueries-fontello';
+    font-style: normal;
+    font-weight: normal;
+    speak: none;
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    text-align: center;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1em;
+    content: '\e800';
+    }
+
+.myquery__remove {
+    border-top: 1px solid transparent; /* for simmetric align */
+    border-bottom: 1px dotted;
+    margin-left: .2em;
+    margin-right: .2em;
+    font-size: 0.8125em;
+
+    vertical-align: bottom;
+    display: inline-block;
+    margin-bottom: .25em;
+
+    outline: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: none;
+    font-family: inherit;
+    line-height: 1.2307692307692308em;
+    cursor: pointer;
+    white-space: nowrap;
+    }
+
+.myquery__remove::-webkit-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+.myquery__remove::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+@font-face {
+    font-family: 'myqueries-fontello';
+    src: url('./fontello/font/fontello.woff') format('woff');
+    }
