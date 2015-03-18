@@ -6,18 +6,20 @@
     white-space: nowrap;
     }
 
-.myquery {
-    padding: .125em .25em;
-    }
 
 .myquery:hover,
 .myquery--active {
     background-color: rgba(0,0,0,.1);
     }
 
+.dark .myquery:hover,
+.dark .myquery--active {
+    background-color: rgba(255,255,255,.1);
+    }
+
 .myquery--active .myquery__name {
     font-weight: bold;
-    width: calc(100% - 4em);
+    width: calc(100% - 4.5em);
     }
 
 .myquery__name {
@@ -46,15 +48,7 @@
     }
 
 .myquery__remove {
-    border-top: 1px solid transparent; /* for simmetric align */
-    border-bottom: 1px dotted;
-    margin-left: .2em;
-    margin-right: .2em;
-    font-size: 0.8125em;
-
-    vertical-align: bottom;
     display: inline-block;
-    margin-bottom: .25em;
 
     outline: none;
     margin: 0;
@@ -63,9 +57,12 @@
     color: inherit;
     background: none;
     font-family: inherit;
-    line-height: 1.2307692307692308em;
     cursor: pointer;
     white-space: nowrap;
+
+    font-size: inherit;
+    text-decoration-style: dotted;
+    text-decoration: underline;
     }
 
 .myquery__remove::-webkit-focus-inner {
@@ -76,6 +73,11 @@
 .myquery__remove::-moz-focus-inner {
     border: 0;
     padding: 0;
+    }
+
+.myquery__name,
+.myquery__remove {
+    padding: .125em .25em;
     }
 
 @font-face {

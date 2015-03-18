@@ -5,17 +5,23 @@ module.exports = Main;
 /**
 @constructor */
 function Main(params) {
-    this.lightsAreOn = ko.observable(true);
+    this['isDark'] =
+    this.isDark = ko.observable(true).extend({
+        persist: 'pgblackboard_isdark'
+    });
 
     this['myQueriesStorage'] = params.myQueriesStorage;
     this['databases'] = params.databases;
-    this['selectedDoc'] = ko.observable(
-        ko.observable(params.initialCode)
-            .extend({ codeEditorDoc: true }));
+
+    var initialDoc = ko.observable(params.initialCode).extend({
+        codeEditorDoc: true
+    });
+
+    this['selectedDoc'] = ko.observable(initialDoc);
 }
 
 Main.prototype['toggleTheme'] = function () {
-    this.lightsAreOn(!this.lightsAreOn());
+    this.isDark(!this.isDark());
 };
 
 

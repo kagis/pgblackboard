@@ -1,11 +1,12 @@
 module.exports = `
 
-  <div class="main">
+  <div class="main"
+       data-bind="css: { 'dark': isDark }">
 
-<!--     <div class="main__leftbar bg-body">
-      <button class="leftbar-btn fontello fontello-lamp"
+    <div class="main__leftbar">
+      <button class="main__theme-toggler"
               data-bind="click: toggleTheme"></button>
-    </div> -->
+    </div>
 
 
     <div class="main__splitpanel-h"
