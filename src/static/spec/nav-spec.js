@@ -5,6 +5,7 @@ describe('nav', function () {
     var nav;
     var selectedDoc;
     var greetingDoc;
+    var initialDoc;
 
     Nav.prototype.createGreetingDoc = function () {
         return greetingDoc;
@@ -12,17 +13,14 @@ describe('nav', function () {
 
     beforeEach(function () {
         greetingDoc = ko.observable('hello test');
+        initialDoc = ko.observable('initial doc');
+        selectedDoc = ko.observable(initialDoc);
         nav = new Nav({
-            selectedDoc: selectedDoc = ko.observable()
+            selectedDoc: selectedDoc
         });
     });
 
-    it('should navigate to greeting document initially', function () {
-        expect(selectedDoc()).toBe(greetingDoc);
-    });
-
     it('should navigate to greeting document when selected myquery was removed', function () {
-        selectedDoc({ /* some object */ })
         nav.selectMyQuery(null);
         expect(selectedDoc()).toBe(greetingDoc);
     });
