@@ -15,6 +15,5 @@ module.exports = function (target, key) {
 		if (e.storageArea === storage && e.key === key) {
 			target(ko.utils.parseJson(e.newValue));
 		}
-		console.log(e);
 	});
 };
