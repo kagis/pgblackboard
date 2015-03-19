@@ -6,12 +6,14 @@
     right: 0;
     font-size: 16px;
     font-family: 'DejaVu Sans', 'Verdana', sans-serif;
+    }
 
+/* .light */.main {
     color: #555;
     background-color: #eee;
     }
 
-.dark {
+.dark.main {
     color: #ddd;
     background-color: #333;
     }
@@ -22,7 +24,9 @@
     top: 0;
     left: 0;
     padding: .5em .1em;
+    }
 
+/* .light */ .main__leftbar {
     background-color: #eee;
     box-shadow: 0 0 .5em #ccc;
     }
@@ -97,13 +101,13 @@
     overflow-y: auto;
     }
 
-/*iframe*/.main__output {
+/* iframe */.main__output {
     border: none;
     }
 
-.main__nav,
-.main__codeform,
-.main__output {
+/* .light */ .main__nav,
+/* .light */ .main__codeform,
+/* .light */ .main__output {
     background-color: #fcfcfc;
     }
 
@@ -120,8 +124,8 @@
     padding: 2px;
     }
 
-*::-webkit-scrollbar,
-*::-webkit-scrollbar-corner {
+/*.light*/ *::-webkit-scrollbar,
+/*.light*/ *::-webkit-scrollbar-corner {
     background-color: #ddd;
     }
 
@@ -141,7 +145,9 @@
 *::-webkit-scrollbar-thumb {
     border-radius: 6px;
     border: 2px solid;
+    }
 
+/*.light*/ *::-webkit-scrollbar-thumb {
     background-color: #999;
     color: #ddd;
     }
@@ -151,8 +157,15 @@
     color: #222;
     }
 
-
-
+.dark * {
+    scrollbar-base-color: #333;
+    scrollbar-3dlight-color: #222;
+    scrollbar-highlight-color: #222;
+    scrollbar-track-color: #222;
+    scrollbar-arrow-color: #888;
+    scrollbar-shadow-color: #222;
+    scrollbar-dark-shadow-color: #222;
+    }
 
 @font-face {
     font-family: 'fontello-main';

@@ -1,17 +1,22 @@
 /* http://tobiasahlin.com/spinkit/ */
 
-.loader-outer {
+.loading-indicator {
     position: fixed;
     top: 0;
     bottom: 0;
     right: 0;
     left: 0;
+    }
 
-    background-color: #333;
+/*.light*/.loading-indicator {
     background-color: #fcfcfc;
     }
 
-.loader-inner {
+.dark.loading-indicator {
+    background-color: #333;
+    }
+
+.loading-indicator__inner {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -22,14 +27,12 @@
     font-size: 25px;
     }
 
-.loader-bounce1,
-.loader-bounce2,
-.loader-bounce3 {
+.loading-indicator__bounce1,
+.loading-indicator__bounce2,
+.loading-indicator__bounce3 {
     width: 1em;
     height: 1em;
     margin: .1em;
-    background-color: #ccc;
-    background-color: #888;
 
     border-radius: 100%;
     display: inline-block;
@@ -40,12 +43,24 @@
     animation-fill-mode: both;
     }
 
-.loader-bounce1 {
+/*.light*/ .loading-indicator__bounce1,
+/*.light*/ .loading-indicator__bounce2,
+/*.light*/ .loading-indicator__bounce3 {
+    background-color: #888;
+    }
+
+.dark .loading-indicator__bounce1,
+.dark .loading-indicator__bounce2,
+.dark .loading-indicator__bounce3 {
+    background-color: #ccc;
+    }
+
+.loading-indicator__bounce1 {
     -webkit-animation-delay: -0.32s;
     animation-delay: -0.32s;
     }
 
-.loader-bounce2 {
+.loading-indicator__bounce2 {
     -webkit-animation-delay: -0.16s;
     animation-delay: -0.16s;
     }

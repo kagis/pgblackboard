@@ -49,6 +49,7 @@ var cssFiles = [
     'src/myqueries/myqueries.css',
     'src/splitpanel/splitpanel.css',
     'src/codeform/codeform.css',
+    'src/codeform/codemirror/codemirror-adapt.css',
 ];
 
 
@@ -59,14 +60,14 @@ task('default', ['dist/index.html', 'dist/bundle-index.js'], function () {
 
 file('dist/index.html', [
     'src/index.html',
-    'src/load-indicator/load-indicator.min.css'
+    'src/loading-indicator/loading-indicator.min.css'
 ], function () {
     var indexHtml = fs.readFileSync('src/index.html').toString();
 
-    // embeding load indicator styles
+    // embeding loading indicator styles
     indexHtml = indexHtml.replace(
-        '<link href="load-indicator/load-indicator.css" rel="stylesheet" />',
-        embeddedStyle(fs.readFileSync('src/load-indicator/load-indicator.min.css')));
+        '<link href="loading-indicator/loading-indicator.css" rel="stylesheet" />',
+        embeddedStyle(fs.readFileSync('src/loading-indicator/loading-indicator.min.css')));
 
     fs.writeFileSync(this.name, indexHtml);
 });

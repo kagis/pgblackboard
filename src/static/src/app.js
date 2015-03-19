@@ -16,4 +16,6 @@ var codeEditorAdapt = require('./codeform/codemirror/codemirror-adapt');
 ko.bindingHandlers['codeEditor'] = codeEditorAdapt.codeEditorBindingHandler;
 ko.extenders.codeEditorDoc = codeEditorAdapt.codeEditorDocExtender;
 
+ko.extenders.persist = require('./main/persist-extender');
+
 ko.applyBindings(require('./root-bindingctx'));

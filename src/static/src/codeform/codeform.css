@@ -19,18 +19,18 @@
     padding: .2em;
     border-top-left-radius: .3em;
     white-space: nowrap;
+    }
 
+/*.light*/ .codeform__execbar {
     background-color: #eee;
+    }
+
+.dark .codeform__execbar {
+    background-color: #333;
     }
 
 /*button*/.codeform__exec-table,
 /*button*/.codeform__exec-map {
-    border-top: 1px solid transparent; /* for simmetric align */
-    border-bottom: 1px dotted;
-    margin-left: .2em;
-    margin-right: .2em;
-    font-size: 0.8125em;
-
     outline: none;
     margin: 0;
     padding: 0;
@@ -42,18 +42,36 @@
     line-height: 1em;
     cursor: pointer;
     white-space: nowrap;
+
+    border-top: 1px solid transparent; /* for simmetric align */
+    border-bottom: 1px dotted;
+    margin-left: .2em;
+    margin-right: .2em;
+    font-size: 0.8125em;
+    }
+
+/*.light*/ /*button*/.codeform__exec-table:hover,
+/*.light*/ /*button*/.codeform__exec-map:hover {
+    color: #333;
+    }
+
+.dark /*button*/.codeform__exec-table:hover,
+.dark /*button*/.codeform__exec-map:hover {
+    color: orange;
     }
 
 /*button*/.codeform__exec-table {
     font-weight: bold;
     }
 
-button::-webkit-focus-inner {
+/*button*/.codeform__exec-table::-webkit-focus-inner,
+/*button*/.codeform__exec-map::-webkit-focus-inner {
     border: 0;
     padding: 0;
     }
 
-button::-moz-focus-inner {
+/*button*/.codeform__exec-table::-moz-focus-inner,
+/*button*/.codeform__exec-map::-moz-focus-inner {
     border: 0;
     padding: 0;
     }
@@ -103,4 +121,3 @@ button::-moz-focus-inner {
 .codeform__spinner--visible::before {
     transform: rotate(700000deg);
     }
-

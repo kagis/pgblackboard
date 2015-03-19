@@ -71,3 +71,58 @@
     padding: .3em;
     left: 2em;
     }
+
+
+
+/* .light */ .CodeMirror { color: #2e383c; background-color: #fcfcfc; }
+/* .light */ div.CodeMirror-selected { background: #ddd; }
+/* .light */ div.CodeMirror span.CodeMirror-matchingbracket { color: black; }
+/* .light */ .CodeMirror-gutters { background-color: #f5f5f5; }
+/* .light */ .CodeMirror-gutters--overlaying { box-shadow: 0 0 .5em #ccc; }
+/* .light */ .CodeMirror-guttermarker { color: #1d75b3; }
+/* .light */ .CodeMirror-guttermarker-subtle { color: #e0e2e5; }
+/* .light */ .CodeMirror-linenumber { color: #aaa; }
+
+/* .light */ .cm-comment   { color: #75787b; }
+/* .light */ .cm-keyword   { color: #1d75b3; }
+/* .light */ .cm-property  { color: #1d75b3; }
+/* .light */ .cm-atom      { color: #75438a; }
+/* .light */ .cm-number    { color: #75438a; }
+/* .light */ .cm-node      { color: #9c3328; }
+/* .light */ .cm-tag       { color: #9c3328; }
+/* .light */ .cm-string    { color: #b35e14; }
+/* .light */ .cm-variable  { color: #047d65; }
+/* .light */ .cm-qualifier { color: #047d65; }
+/* .light */ .cm-builtin   { color: #1cadf1; }
+
+
+.dark .CodeMirror { color: #f8f8f2; background: #272822; }
+.dark div.CodeMirror-selected { background: #49483E; }
+.dark div.CodeMirror span.CodeMirror-matchingbracket { color: white; }
+.dark .CodeMirror-gutters { background: #2F3129; }
+.dark .CodeMirror-gutters--overlaying { box-shadow: 0 0 .5em #111; }
+.dark .CodeMirror-guttermarker { color: white; }
+.dark .CodeMirror-guttermarker-subtle { color: #8f908a; }
+.dark .CodeMirror-linenumber { color: #8f908a; }
+
+.dark .cm-comment { color: #75715e; }
+.dark .cm-atom { color: #ae81ff; }
+.dark .cm-number { color: #ae81ff; }
+.dark .cm-property,
+.dark .cm-attribute { color: #a6e22e; }
+.dark .cm-keyword { color: #f92672; }
+.dark .cm-string { color: #e6db74; }
+.dark .cm-variable { color: #a6e22e; }
+.dark .cm-variable-2 { color: #9effff; }
+.dark .cm-def { color: #fd971f; }
+.dark .cm-bracket { color: #f8f8f2; }
+.dark .cm-tag { color: #f92672; }
+.dark .cm-link { color: #ae81ff; }
+.dark .cm-error { color: #f8f8f0; background: #f92672; }
+.dark .cm-builtin { color: #8bdaff; }
+
+.dark .gutter-marker-error:hover::after {
+    background-color: #151515;
+    color: #c2c2c2;
+    box-shadow: 0 0 .5em #111;
+    }

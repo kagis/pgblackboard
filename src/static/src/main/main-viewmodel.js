@@ -6,7 +6,7 @@ module.exports = Main;
 @constructor */
 function Main(params) {
     this['isDark'] =
-    this.isDark = ko.observable(true).extend({
+    this.isDark = ko.observable().extend({
         persist: 'pgblackboard_isdark'
     });
 

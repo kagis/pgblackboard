@@ -22,9 +22,13 @@ describe('my queries', function () {
             _items: {}
         };
 
+        storage.setItem('key_must_be_ignored_1', 'value_must_be_ignored');
+
         initialQueries.forEach(function (x, i) {
             storage.setItem(storageKeyPrefix.concat(i), x);
         });
+
+        storage.setItem('key_must_be_ignored_2', 'value_must_be_ignored');
 
         selectedItem = ko.observable();
         selectedItem.subscribe(function (selectingItem) {

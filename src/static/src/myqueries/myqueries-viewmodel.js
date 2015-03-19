@@ -22,7 +22,7 @@ MyQueries.prototype.load = function () {
     for (var i = 0; i < itemsCount; i++) {
         var key = this.storage.key(i);
         if (key.lastIndexOf(this.storageKeyPrefix, 0) === 0) {
-            items[i] = this.restoreItem(key);
+            items.push(this.restoreItem(key));
         }
     }
     return items;
