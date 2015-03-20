@@ -36,7 +36,7 @@ MyQueries.prototype.newItem = function (doc) {
     this.storage.setItem(newStorageKey, doc());
     var item = this.createItem(doc, newStorageKey);
     this.items.push(item);
-    this.selectItem(item);
+    this['selectItem'](item);
     return item;
 };
 

@@ -107,8 +107,7 @@ TreeNode.prototype.getDoc = function () {
     //     quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
     // }
 
-    this._sqlexec({
-        query: 'definition',
+    this._sqlexec('definition', {
         success: function (resp) {
             doc(resp);
             doc.notifySubscribers(doc(), 'ready');

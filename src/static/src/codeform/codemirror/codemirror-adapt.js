@@ -10,26 +10,26 @@ require('./codemirror-pgsql');
 
 exports.codeEditorDocExtender = function (target) {
     ko.utils.extend(target, {
-        codemirrorDoc: new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
-        errors: ko.observableArray(),
-        selectionRange: ko.observable()
+        'codemirrorDoc': new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql'),
+        'errors': ko.observableArray(),
+        'selectionRange': ko.observable()
     });
 
-    target.codemirrorDoc.on('change', function () {
-        target(target.codemirrorDoc.getValue());
+    target['codemirrorDoc'].on('change', function () {
+        target(target['codemirrorDoc'].getValue());
     });
 
-    target.codemirrorDoc.on('beforeSelectionChange', function (_, params) {
+    target['codemirrorDoc'].on('beforeSelectionChange', function (_, params) {
         var range = params['ranges'][0];
-        target.selectionRange([
+        target['selectionRange']([
             [range['anchor']['line'], range['anchor']['ch']],
             [range['head']['line'], range['head']['ch']]
         ]);
     });
 
     target.subscribe(function (value) {
-        if (target.codemirrorDoc.getValue() !== value) {
-            target.codemirrorDoc.setValue(value);
+        if (target['codemirrorDoc'].getValue() !== value) {
+            target['codemirrorDoc'].setValue(value);
         }
     });
 
@@ -42,21 +42,21 @@ exports.codeEditorBindingHandler = {
         var updatedDoc = allBindings.get('value'),
             codemirrorInst = element['__codemirror'];
 
-        codemirrorInst.swapDoc(updatedDoc.codemirrorDoc);
+        codemirrorInst.swapDoc(updatedDoc['codemirrorDoc']);
     }
 };
 
 function initCodemirror(element, valueAccessor) {
 
     var codemirrorInst = CodeMirror.fromTextArea(element, {
-        lineNumbers: true,
-        matchBrackets: true,
-        showCursorWhenSelecting: true,
-        autoCloseBrackets: true,
-        autofocus: true,
-        mode: 'text/x-pgsql',
-        keyMap: 'sublime',
-        gutters: ['CodeMirror-linenumbers', 'errors-gutter']
+        'lineNumbers': true,
+        'matchBrackets': true,
+        'showCursorWhenSelecting': true,
+        'autoCloseBrackets': true,
+        'autofocus': true,
+        'mode': 'text/x-pgsql',
+        'keyMap': 'sublime',
+        'gutters': ['CodeMirror-linenumbers', 'errors-gutter']
     });
 
     element['__codemirror'] = codemirrorInst;
