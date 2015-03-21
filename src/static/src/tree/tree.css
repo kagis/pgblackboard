@@ -1,196 +1,286 @@
 .tree {
-  padding: 0;
-  margin: 0;
-  padding-left: 1em;
-  list-style-type: none;
-  white-space: nowrap;
-}
+    padding: 0;
+    margin: 0;
+    padding-left: 1em;
+    list-style-type: none;
+    white-space: nowrap;
+    }
+
 .tree--children {
-  padding-left: 1.3em;
-}
+    padding-left: 1.3em;
+    }
+
 .treenode {
-  position: relative;
-  /* for toggler absolute pos */
-}
+    /* for toggler absolute pos */
+    position: relative;
+    }
+
 .treenode--groupstart {
-  border-top-width: 1px;
-  border-top-style: dotted;
-  padding-top: .2em;
-  margin-top: .2em;
-}
+    border-top-width: 1px;
+    border-top-style: dotted;
+    padding-top: .2em;
+    margin-top: .2em;
+    }
+
+/*.light*/ .treenode--groupstart {
+    border-top-color: #ccc;
+    }
+
+.dark .treenode--groupstart {
+    border-top-color: #444;
+    }
+
 .treenode__header {
-  padding: .125em .25em;
-  display: block;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    padding-left: .2em;
+    display: block;
+    line-height: 1.4375;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    }
+
 .treenode__header--active {
-  font-weight: bold;
-}
-.treenode__header--active,
-.treenode__header:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
+    font-weight: bold;
+    }
+
+/*.light*/ .treenode__header--active,
+/*.light*/ .treenode__header:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    }
+
+.dark .treenode__header--active,
+.dark .treenode__header:hover {
+    background-color: rgba(255, 255, 255, .1);
+    }
+
 .treenode__toggler {
-  position: absolute;
-  left: -1.1em;
-  top: .1875em;
-  width: 1em;
-  height: 1em;
-  opacity: 0.5;
-  font-size: .875em;
-  outline: none;
-  margin: 0;
-  padding: 0;
-  border: none;
-  color: inherit;
-  background: none;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: 1em;
-  cursor: pointer;
-  white-space: nowrap;
-}
+    position: absolute;
+    left: -1.1em;
+    top: .1875em;
+    width: 1em;
+    height: 1em;
+    opacity: 0.5;
+    font-size: .875em;
+    outline: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: none;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1em;
+    cursor: pointer;
+    white-space: nowrap;
+    }
+
 .treenode__toggler:hover {
-  opacity: 1;
-}
+    opacity: 1;
+    }
+
 .treenode__toggler::-webkit-focus-inner {
-  border: 0;
-  padding: 0;
-}
+    border: 0;
+    padding: 0;
+    }
+
 .treenode__toggler::-moz-focus-inner {
-  border: 0;
-  padding: 0;
-}
+    border: 0;
+    padding: 0;
+    }
+
 .treenode__toggler-icon {
-  display: block;
-}
+    display: block;
+    }
+
 .treenode__toggler-icon--collapsed::before,
 .treenode__toggler-icon--expanded::before {
-  content: '\e80e';
-  font-family: 'tree-fontello';
-  font-style: normal;
-  font-weight: normal;
-  speak: none;
-  display: inline-block;
-  text-decoration: inherit;
-  width: 1em;
-  text-align: center;
-  font-variant: normal;
-  text-transform: none;
-  line-height: 1em;
-  transition: transform .2s ease;
-}
+    content: '\e80e';
+    font-family: 'tree-fontello';
+    font-style: normal;
+    font-weight: normal;
+    speak: none;
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    text-align: center;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1em;
+    transition: transform .2s ease;
+    }
+
 .treenode__toggler-icon--expanded::before {
-  transform: rotate(90deg);
-}
+    transform: rotate(90deg);
+    }
+
 .treenode__toggler-icon--expanding {
-  width: 1em;
-  height: 1em;
-  border: .2em solid;
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-radius: 50%;
-  box-sizing: border-box;
-  transform-origin: center center;
-  transform: rotate(700000deg);
-  transition: transform 1000s linear;
-}
+    width: 1em;
+    height: 1em;
+    border: .2em solid;
+    border-top-color: transparent;
+    border-left-color: transparent;
+    border-radius: 50%;
+    box-sizing: border-box;
+    transform-origin: center center;
+    transform: rotate(700000deg);
+    transition: transform 1000s linear;
+    }
+
 .treenode__icon {
-  /* subicons */
-}
+    /* subicons */
+    }
+
 .treenode__icon::before,
 .treenode__icon::after {
-  font-family: 'tree-fontello';
-  font-style: normal;
-  font-weight: normal;
-  font-variant: normal;
-  speak: none;
-  display: inline-block;
-  text-decoration: inherit;
-  width: 1em;
-  text-align: center;
-  text-transform: none;
-  line-height: 1em;
-}
+    font-family: 'tree-fontello';
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    speak: none;
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    text-align: center;
+    text-transform: none;
+    line-height: 1em;
+    }
+
 .treenode__icon--database::before {
-  content: '\e801';
-}
+    content: '\e801';
+    }
+
 .treenode__icon--schema::before {
-  content: '\e806';
-}
+    content: '\e806';
+    }
+
 .treenode__icon--extension::before {
-  content: '\e808';
-}
+    content: '\e808';
+    }
+
 .treenode__icon--func::before,
 .treenode__icon--agg::before {
-  content: '\e80b';
-}
+    content: '\e80b';
+    }
+
 .treenode__icon--table::before,
 .treenode__icon--view::before,
 .treenode__icon--matview::before,
 .treenode__icon--foreigntable::before {
-  content: '\e800';
-}
+    content: '\e800';
+    }
+
 .treenode__icon--column::before {
-  content: '\e80d';
-}
+    content: '\e80d';
+    }
+
 .treenode__icon--pkcolumn::before {
-  content: '\e80a';
-}
+    content: '\e80a';
+    }
+
 .treenode__icon--fkcolumn::before {
-  content: '\e80d';
-}
+    content: '\e80d';
+    }
+
 .treenode__icon--index::before {
-  content: '\e80f';
-}
+    content: '\e80f';
+    }
+
 .treenode__icon--trigger::before {
-  content: '\e805';
-}
+    content: '\e805';
+    }
+
 .treenode__icon--foreignkey::before {
-  content: '\e80c';
-}
+    content: '\e80c';
+    }
+
 .treenode__icon--unique::before {
-  content: '\e80a';
-}
+    content: '\e80a';
+    }
+
 .treenode__icon--check::before {
-  content: '\e807';
-}
+    content: '\e807';
+    }
+
 .treenode__icon::after {
-  border-radius: 50%;
-  font-size: .75em;
-  margin-left: -1em;
-  position: relative;
-  top: .2em;
-  left: .2em;
-  background-color: #eee;
-}
+    border-radius: 50%;
+    font-size: .75em;
+    margin-left: -1em;
+    position: relative;
+    top: .2em;
+    left: .2em;
+    background-color: #eee;
+    }
+
+/*.light*/ .treenode__icon::after {
+    color: white;
+    }
+
+
 .treenode__icon--view::after {
-  content: '\e80b';
-}
+    content: '\e80b';
+    }
+
+/*.light*/ .treenode__icon--view::after {
+    background-color: red;
+    }
+
+.dark .treenode__icon--view::after {
+    background-color: #a20000;
+    }
+
 .treenode__icon--matview::after {
-  content: '\e80b';
-}
+    content: '\e80b';
+    }
+
+/*.light*/ .treenode__icon--matview::after {
+    background-color: green;
+    }
+
+.dark .treenode__icon--matview::after {
+    background-color: green;
+    }
+
 .treenode__icon--foreigntable::after {
-  content: '\e809';
-}
+    content: '\e809';
+    }
+
+/*.light*/ .treenode__icon--foreigntable::after {
+    background-color: purple;
+    }
+
+.dark .treenode__icon--foreigntable::after {
+    background-color: purple;
+    }
+
 .treenode__icon--fkcolumn::after {
-  content: '\e803';
-}
+    content: '\e803';
+    }
+
+/*.light*/ .treenode__icon--fkcolumn::after {
+    background-color: #ddd;
+    color: inherit;
+    }
+
+.dark .treenode__icon--fkcolumn::after {
+    background-color: #272822;
+    color: inherit;
+    }
+
 .treenode__name {
-  display: inline-block;
-  vertical-align: bottom;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  text-decoration: none;
-}
+    display: inline-block;
+    vertical-align: bottom;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    text-decoration: none;
+    }
+
 .treenode__comment {
-  opacity: .7;
-}
+    opacity: .7;
+    }
+
 @font-face {
-  font-family: 'tree-fontello';
-  src:  url('./fontello/font/fontello.woff') format('woff')
-}
+    font-family: 'tree-fontello';
+    src: url('./fontello/font/fontello.woff') format('woff')
+    }

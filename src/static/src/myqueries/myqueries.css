@@ -4,8 +4,8 @@
     padding-left: 1em;
     list-style-type: none;
     white-space: nowrap;
-    }
-
+    line-height: 1.4375;
+}
 
 .myquery:hover,
 .myquery--active {
@@ -19,7 +19,7 @@
 
 .myquery--active .myquery__name {
     font-weight: bold;
-    width: calc(100% - 4.5em);
+    width: calc(100% - 4em);
     }
 
 .myquery__name {
@@ -30,7 +30,8 @@
     cursor: pointer;
     text-overflow: ellipsis;
     overflow: hidden;
-    }
+    padding-left: .2em;
+}
 
 .myquery__icon::before {
     font-family: 'myqueries-fontello';
@@ -49,7 +50,6 @@
 
 .myquery__remove {
     display: inline-block;
-
     outline: none;
     margin: 0;
     padding: 0;
@@ -60,6 +60,7 @@
     cursor: pointer;
     white-space: nowrap;
 
+    line-height: inherit;
     font-size: inherit;
     text-decoration-style: dotted;
     text-decoration: underline;
@@ -73,11 +74,6 @@
 .myquery__remove::-moz-focus-inner {
     border: 0;
     padding: 0;
-    }
-
-.myquery__name,
-.myquery__remove {
-    padding: .125em .25em;
     }
 
 @font-face {
