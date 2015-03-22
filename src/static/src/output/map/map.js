@@ -2,17 +2,16 @@
 'use strict';
 
 var map = L.map(document.querySelector('.main'), {
-    //center: [43.260535, 76.945493],
-    center: [20 /* push antarctida down */, 0],
+    center: [
+        20, // push antarctida down
+        0
+    ],
     zoom: 1,
     zoomControl: false,
     attributionControl: false
 });
 
-
-L.control.scale({
-    //imperial: false
-}).addTo(map);
+L.control.scale().addTo(map);
 
 var bingOptions = {
     subdomains: '01234567',
@@ -21,10 +20,10 @@ var bingOptions = {
         for (var i = data.z; i > 0; i--) {
             var digit = 0;
             var mask = 1 << (i - 1);
-            if ((data.x & mask) != 0) {
+            if ((data.x & mask) !== 0) {
                 digit++;
             }
-            if ((data.y & mask) != 0) {
+            if ((data.y & mask) !== 0) {
                 digit++;
                 digit++;
             }
@@ -32,21 +31,22 @@ var bingOptions = {
         }
         return quadKey;
     }
-}
-
+};
 
 var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png';
 var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
 
 var basemap = L.tileLayer();
-basemap.setUrl(lightBasemapUrl);
-// window.parent.ko.computed(function () {
-//     var isLightsOn = window.parent.pgbb.model.isLightsOn();
-//     basemap.setUrl(isLightsOn ? lightBasemapUrl : darkBasemapUrl);
-// });
+
+function setDarkOrLightBasemap() {
+    var isDark = pgBlackboard.isDark();
+    basemap.setUrl(isDark ? darkBasemapUrl : lightBasemapUrl);
+}
+var isDarkSubscription = pgBlackboard.isDark.subscribe(setDarkOrLightBasemap);
+window.addEventListener('beforeunload', isDarkSubscription.dispose.bind(isDarkSubscription));
+setDarkOrLightBasemap();
 
 var imagery = L.tileLayer('http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z', bingOptions);
-
 
 var layersControl = L.control.layers({
     'Map': basemap,
@@ -56,7 +56,6 @@ var layersControl = L.control.layers({
 });
 map.addControl(layersControl);
 map.addLayer(basemap);
-
 
 var overlays = {};
 var overlayOptions = {
@@ -78,7 +77,7 @@ var overlayOptions = {
                 fillOpacity: 1,
                 color: '#333',
                 fillColor: color,
-            }
+            };
         default:
             return {
                 weight: 2,
@@ -122,7 +121,6 @@ function popupHtml(feature) {
         }).join('') + '</table>';
 }
 
-
 // http://colorbrewer2.org/
 var featureColors = [
     // '#ff7f00',
@@ -147,6 +145,5 @@ var featureColors = [
     '#ffff99',
     '#b15928',
 ];
-
 
 })();

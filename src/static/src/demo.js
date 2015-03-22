@@ -1,5 +1,5 @@
-var ko = require('knockout'),
-    TreeNode = require('./tree/tree-viewmodel').TreeNode;
+var ko = require('knockout');
+var TreeNode = require('./tree/tree-viewmodel').TreeNode;
 
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
@@ -78,15 +78,13 @@ module.exports = {
 
 window.addEventListener('click', function (e) {
     if (e.target.classList.contains('codeform__exec-table')) {
-        e.target.form.action = "output/table/table-demo.html";
+        e.target.form.action = 'output/table/table-demo.html';
     }
 
     if (e.target.classList.contains('codeform__exec-map')) {
-        e.target.form.action = "output/map/map-demo.html";
+        e.target.form.action = 'output/map/map-demo.html';
     }
 }, true);
-
-
 
 function database(name, children) {
     return {

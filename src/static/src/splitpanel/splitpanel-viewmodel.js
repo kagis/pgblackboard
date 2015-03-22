@@ -5,7 +5,7 @@ module.exports = {
     vertical: splitPanelViewModel(false /* vertical */)
 };
 
-function splitPanelViewModel(isHorizontal){
+function splitPanelViewModel(isHorizontal) {
     function createViewModel(params, componentInfo) {
         var elemTemplateNodes = componentInfo['templateNodes'].filter(
             function (node) { return node.nodeType == 1; }

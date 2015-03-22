@@ -31,11 +31,14 @@ module.exports = `
               data-bind="component: {
                 name: 'x-codeform',
                 params: { doc: selectedDoc }
-              }"></form>
+              }, submit: onCodeFormSubmit"></form>
 
         <iframe class="main__output"
                 name="output-iframe"
-                data-bind="resetSrcBy: selectedDoc"></iframe>
+                data-bind="outputFrame: {
+                  doc: selectedDoc,
+                  isDark: isDark
+                }"></iframe>
 
       </div>
 

@@ -6,7 +6,9 @@ var CodeMirror = require('codemirror');
 // turn a space-separated list into an array
 function set(words) {
     var obj = {};
-    for (var i = 0; i < words.length; ++i) obj[words[i]] = true;
+    for (var i = 0; i < words.length; ++i) {
+        obj[words[i]] = true;
+    }
     return obj;
 }
 

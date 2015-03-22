@@ -6,7 +6,9 @@
   <link href="table.css" rel="stylesheet" />
   <script src="table.js" async="async"></script>
 </head>
-<body class="light">
+<body>
+
+<script>frameElement.setupPgBlackboardOutputFrame();</script>
 <div class="main scrollbox">
 
   <p class="message error">
@@ -29,6 +31,13 @@
       </tr>
     </tbody>
   </table>
+
+  <script>
+  pgBlackboard.setError({
+    message: 'error ' + (+new Date),
+    line: 0
+  });
+  </script>
 
   <style>
     #table3047419532 td:nth-child(2),

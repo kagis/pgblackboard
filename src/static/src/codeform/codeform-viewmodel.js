@@ -19,7 +19,7 @@ CodeForm.prototype.checkIsLoading = function () {
 
 /** @private */
 CodeForm.prototype.getReadyDoc = function () {
-    if (!this.checkIsLoading()) {
+    if (!this['isLoading']()) {
         this.readyDocVal = this.doc();
     }
     return this.readyDocVal;

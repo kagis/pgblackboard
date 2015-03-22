@@ -25,15 +25,18 @@ requiredDeps = requiredDeps.map(function (modname) {
     return path.relative(__dirname, modname);
 });
 
-var libs = [];
+var libs = {};
 requiredDeps.forEach(function (jsFilename) {
     var js = fs.readFileSync(jsFilename).toString();
     var resources = js.split('\n')
         .filter(function (line) { return line.slice(0, 3) === '///'; })
         .map(function (line) { return line.slice(3).trim(); });
 
-    Array.prototype.push.apply(libs, resources.filter(RegExp.prototype.test.bind(/\.js$/)));
+    resources.filter(RegExp.prototype.test.bind(/\.js$/))
+        .forEach(function (libFileName) { libs[libFileName] = true; });
 });
+
+libs = Object.keys(libs);
 
 
 var jsExterns = [
@@ -49,7 +52,7 @@ var cssFiles = [
     'src/myqueries/myqueries.css',
     'src/splitpanel/splitpanel.css',
     'src/codeform/codeform.css',
-    'src/codeform/codemirror/codemirror-adapt.css',
+    'src/codeform/codemirror/codeeditor.css',
 ];
 
 

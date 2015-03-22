@@ -29,7 +29,6 @@ function Nav(params) {
     this.addMyQueryEvent = new ko.subscribable();
 
     this.createMyQueryWhenDocChange(this.selectedDoc());
-    //this.navigateToGreetingDoc();
 }
 
 Nav.prototype.selectTreeNode = function (selectingTreeNode) {

@@ -1,7 +1,6 @@
 (function () {
 'use strict';
 
-
 window.queryPlan = function (plan) {
 
     var lowHue = 90; /* green */
@@ -21,23 +20,19 @@ window.queryPlan = function (plan) {
         }
     });
 
-
-
-
     var renderer = new dagreD3.Renderer();
     var zoomBehavior = d3.behavior.zoom();
 
     renderer.zoom(function (graph, svg) {
-        return zoomBehavior.on('zoom', function() {
+        return zoomBehavior.on('zoom', function () {
             svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
         });
     });
 
-
     // insert back rect for nodes
     // for color lightening
     var oldDrawNodes = renderer.drawNodes();
-    renderer.drawNodes(function(g, svg) {
+    renderer.drawNodes(function (g, svg) {
         var svgNodes = oldDrawNodes(g, svg);
         svgNodes.selectAll('rect').each(function () {
             var back = this.cloneNode();
@@ -51,11 +46,9 @@ window.queryPlan = function (plan) {
         return svgNodes;
     });
 
-
     var layout = dagreD3.layout()
                         .nodeSep(20)
                         .rankDir('LR');
-
 
     var overlay = d3.select(document.body)
                     .append('div')
@@ -70,17 +63,12 @@ window.queryPlan = function (plan) {
     var renderedLayout = renderer.layout(layout)
                                  .run(graph, svg);
 
-
     // center
     zoomBehavior.translate([
         (document.documentElement.clientWidth - renderedLayout.graph().width) / 2,
         (document.documentElement.clientHeight - renderedLayout.graph().height) / 2
     ]);
     zoomBehavior.event(svg);
-
-
-
-
 
     var tip = new QueryplanTip();
     var zooming = false;
@@ -126,7 +114,9 @@ function QueryplanTip() {
     };
 
     this.updatePosition = function () {
-        if (!_currentTarget) return;
+        if (!_currentTarget) {
+            return;
+        }
 
         var targetCTM = _currentTarget.getScreenCTM();
         var targetBBox = _currentTarget.getBBox();

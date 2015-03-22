@@ -3,7 +3,8 @@ var ko = require('knockout');
 module.exports = Main;
 
 /**
-@constructor */
+ * @constructor
+ */
 function Main(params) {
     this['isDark'] =
     this.isDark = ko.observable().extend({
@@ -24,14 +25,12 @@ Main.prototype['toggleTheme'] = function () {
     this.isDark(!this.isDark());
 };
 
-
-ko.bindingHandlers['resetSrcBy'] = {
-    'update': function (element, valueAccessor) {
-        ko.unwrap(valueAccessor());
-        element.src = 'about:blank';
+Main.prototype['onCodeFormSubmit'] = function () {
+    if (this['selectedDoc']()['errors']) {
+        this['selectedDoc']()['errors'].removeAll();
     }
+    return true;
 };
-
 
 // pgbb.initResult = function (resultWindow) {
 //     resultWindow.pgbb = pgbb;

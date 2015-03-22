@@ -44,7 +44,7 @@ function TreeNode(nodeDTO) {
 
     // horizontal line is drawn above groupStart node
     this['isGroupStart'] = nodeDTO['isGroupStart'];
-};
+}
 
 TreeNode.prototype['toggle'] = function () {
     if (this.isExpanded()) {
@@ -140,7 +140,6 @@ TreeNode.prototype._sqlexec = function (action, options) {
     ].map(encodeURIComponent).join('/'));
 
     req.send();
-
 
     var callbackContext = this;
 

@@ -158,7 +158,7 @@ ko.components.register = function (name, options) {};
 /**
 @param {Object} o
 @return {boolean} */
-ko.isWriteableObservable = function (o) {}
+ko.isWriteableObservable = function (o) {};
 
 ko.utils.domNodeDisposal = {};
 

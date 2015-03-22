@@ -1,27 +1,22 @@
 (function () {
 'use strict';
 
-
 var CONTENT_EDITABLE = 'true';
 if (navigator.userAgent.indexOf('AppleWebKit') !== -1) {
     CONTENT_EDITABLE = 'plaintext-only';
 }
-
 
 function onCell(eventType, handler) {
     window.addEventListener(eventType, function (e) {
         if (e.target.nodeName === 'TD' &&
             hasClass(e.target.parentNode.parentNode.parentNode, 'rowset'))
         {
-            handler(
-                e.target,
-                e.target.parentNode,
-                e.target.parentNode.parentNode.parentNode
-            );
+            handler(e.target,
+                    e.target.parentNode,
+                    e.target.parentNode.parentNode.parentNode);
         }
     }, true);
 }
-
 
 // focus readonly cell expanding oversized content
 onCell('mousedown', function (clickedCell, row, table) {
@@ -30,7 +25,6 @@ onCell('mousedown', function (clickedCell, row, table) {
         clickedCell.focus();
     }
 });
-
 
 // make row editable on click and save original values
 // instead of using contenteditable attribute in html
@@ -56,7 +50,6 @@ onCell('click', function (clickedCell, row, table) {
     }
 });
 
-
 // fix blank row when input
 onCell('input', function (editingCell, editingRow, table) {
     var tBody = editingRow.parentNode;
@@ -77,13 +70,11 @@ onCell('input', function (editingCell, editingRow, table) {
     }
 });
 
-
 onCell('input', function (editingCell) {
     if (editingCell.textContent) {
         removeClass(editingCell, 'emptystr');
     }
 });
-
 
 // submit dirty row when switch to another row
 onCell('blur', function (blurredCell, blurredRow) {
@@ -100,7 +91,6 @@ onCell('blur', function (blurredCell, blurredRow) {
         }
     }, 10);
 });
-
 
 function submitDirtyRow(row) {
     removeClass(row, 'rowset-invalid-row');
@@ -134,14 +124,13 @@ function submitDirtyRow(row) {
     req.onloadend = onLoadEnd;
     req.onload = onLoad;
     req.send(JSON.stringify({
-        action   : row.hasAttribute('data-inserting') ? 'insert' : 'update',
-        database : table.getAttribute('data-database'),
-        table    : table.getAttribute('data-table'),
-        schema   : table.getAttribute('data-schema'),
-        changes  : changes,
-        where    : key
+        'action': row.hasAttribute('data-inserting') ? 'insert' : 'update',
+        'database': table.getAttribute('data-database'),
+        'table': table.getAttribute('data-table'),
+        'schema': table.getAttribute('data-schema'),
+        'changes': changes,
+        'where': key
     }));
-
 
     function onLoad(e) {
         if (e.target.status === 200) {
@@ -173,8 +162,6 @@ function submitDirtyRow(row) {
         removeClass(row, 'rowset-submitting-row');
     }
 }
-
-
 
 function getCellValue(cell) {
     return cell.textContent || (
@@ -209,7 +196,7 @@ function invalidateCellOriginalValue(cell) {
 }
 
 function cellIsDirty(cell) {
-    return !!cell.getAttribute('data-dirty');
+    return Boolean(cell.getAttribute('data-dirty'));
 }
 
 function rowIsDirty(row) {
@@ -224,7 +211,6 @@ function rowIsDirty(row) {
 function tableIsEditable(table) {
     return table.hasAttribute('data-table');
 }
-
 
 var hasClass,
     removeClass,

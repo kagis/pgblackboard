@@ -20,8 +20,21 @@
   "version": "0.0.0",
   "scripts": {
     "test": "jasmine",
-    "build": "jake"
+    "build": "jake",
+    "jshint": "jshint src --exclude src/bundle-index.js",
+    "jscs": "jscs src --exclude src/bundle-index.js --esnext --verbose"
   },
   "author": "",
-  "license": "BSD-2-Clause"
+  "license": "BSD-2-Clause",
+  "jshintConfig": {
+    "sub": true
+  },
+  "jscsConfig": {
+    "preset": "yandex",
+    "requireDotNotation": null,
+    "disallowSpacesInsideObjectBrackets": null,
+    "disallowQuotedKeysInObjects": null,
+    "disallowMultipleVarDecl": "exceptUndefined",
+    "validateIndentation": 4
+  }
 }
