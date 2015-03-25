@@ -53,7 +53,7 @@ sql_state!{
         "003" => NullValueEliminatedInSetFunction,
         "007" => PrivilegeNotGranted,
         "006" => PrivilegeNotRevoked,
-        "004" => Warning_StringDataRightTruncation,
+        "004" => StringDataRightTruncation,
         "P01" => DeprecatedFeature
     },
 
@@ -163,11 +163,11 @@ sql_state!{
         "009" => InvalidTimeZoneDisplacementValue,
         "00C" => InvalidUseOfEscapeCharacter,
         "00G" => MostSpecificTypeMismatch,
-        "004" => DataException_NullValueNotAllowed,
+        "004" => NullValueNotAllowed,
         "002" => NullValueNoIndicatorParameter,
         "003" => NumericValueOutOfRange,
         "026" => StringDataLengthMismatch,
-        "001" => DataException_StringDataRightTruncation,
+        "001" => StringDataRightTruncation,
         "011" => SubstringError,
         "027" => TrimError,
         "024" => UnterminatedCString,
@@ -250,9 +250,9 @@ sql_state!{
 
     "2F" => SqlRoutineException {
         "005" => FunctionExecutedNoReturnStatement,
-        "002" => InvalidTransactionTermination_ModifyingSqlDataNotPermitted,
-        "003" => SqlRoutineException_ProhibitedSqlStatementAttempted,
-        "004" => SqlRoutineException_ReadingSqlDataNotPermitted
+        "002" => ModifyingSqlDataNotPermitted,
+        "003" => ProhibitedSqlStatementAttempted,
+        "004" => ReadingSqlDataNotPermitted
     },
 
     //Class 34 — Invalid Cursor Name
@@ -274,7 +274,7 @@ sql_state!{
 
     "39" => ExternalRoutineInvocationException {
         "001" => InvalidSqlstateReturned,
-        "004" => ExternalRoutineInvocationException_NullValueNotAllowed,
+        "004" => NullValueNotAllowed,
         "P01" => TriggerProtocolViolated,
         "P02" => SrfProtocolViolated
     },
@@ -453,3 +453,19 @@ sql_state!{
         "002" => IndexCorrupted
     }
 }
+
+
+// fn main() {
+//     let sqlstate = SqlState::from_code("28P01");
+
+//     println!("{:?}", sqlstate);
+//     match sqlstate {
+//         SqlState::InvalidAuthorizationSpecification(Some(InvalidAuthorizationSpecification::InvalidPassword)) => {
+//             println!("got it 2");
+//         },
+//         SqlState::InvalidAuthorizationSpecification(..) => {
+//             println!("got it");
+//         },
+//         _ => unreachable!()
+//     };
+// }
