@@ -7,7 +7,7 @@ macro_rules! sql_state {
 
         $(
             #[derive(Debug)]
-            enum $class_name {
+            pub enum $class_name {
                 $(
                     $name,
                 )*
@@ -17,7 +17,7 @@ macro_rules! sql_state {
 
 
         #[derive(Debug)]
-        enum SqlState {
+        pub enum SqlState {
             $(
                 $class_name(Option<$class_name>),
             )*

@@ -1,4 +1,6 @@
-use ::serialize::Decodable;
+extern crate serialize;
+
+use self::serialize::{Decodable, Decoder};
 
 struct RowDecoder {
     row: ::std::vec::IntoIter<Option<String>>,
@@ -14,7 +16,7 @@ impl RowDecoder {
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 enum DecodeError {
     MissingField,
     MissingValue,
@@ -23,7 +25,7 @@ enum DecodeError {
 
 type DecodeResult<T> = Result<T, DecodeError>;
 
-impl ::serialize::Decoder for RowDecoder {
+impl Decoder for RowDecoder {
     type Error = DecodeError;
 
     fn read_nil(&mut self) -> DecodeResult<()> {
@@ -71,7 +73,7 @@ impl ::serialize::Decoder for RowDecoder {
     }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
-        self.read_str().and_then(|s| match &s[] {
+        self.read_str().and_then(|s| match s {
             "t" => Ok(true),
             "f" => Ok(false),
             nonbool => Err(DecodeError::ParseError),
@@ -184,7 +186,7 @@ mod test {
     #[test]
     fn decode_two_strings() {
 
-        #[derive(Decodable, Show, PartialEq)]
+        #[derive(Decodable, Debug, PartialEq)]
         struct FooBar {
             foo: String,
             bar: String,
@@ -205,7 +207,7 @@ mod test {
     #[test]
     fn decode_optional_strings() {
 
-         #[derive(Decodable, Show, PartialEq)]
+        #[derive(Decodable, Debug, PartialEq)]
         struct FooBar {
             foo: String,
             bar: Option<String>,

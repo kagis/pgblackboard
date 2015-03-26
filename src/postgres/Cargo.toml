@@ -1,0 +1,12 @@
+[package]
+name = "postgres"
+version = "0.1.0"
+
+[lib]
+name = "postgres"
+path = "lib.rs"
+
+[dependencies]
+rustc-serialize = "*"
+rust-crypto = "*"
+byteorder = "*"

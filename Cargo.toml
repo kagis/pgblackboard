@@ -7,7 +7,6 @@ authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 [dependencies]
 regex_macros = "*"
 regex = "*"
-rustc-serialize="*"
-
-[dependencies.rust-md5]
-git = "https://github.com/exe-dealer/rust-md5.git"
+rustc-serialize = "*"
+byteorder = "*"
+rust-crypto = "*"

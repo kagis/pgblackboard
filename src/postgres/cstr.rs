@@ -1,34 +1,34 @@
-use std::old_io::{
-    IoResult,
-    IoError,
-    OtherIoError,
-    Buffer,
+use std::io::{
+    self,
+    BufRead,
+    Write
 };
 
 pub trait CStringReader {
-    fn read_cstr(&mut self) -> IoResult<String>;
+    fn read_cstr(&mut self) -> io::Result<String>;
 }
 
-impl<TBuffer: Buffer> CStringReader for TBuffer {
-    fn read_cstr(&mut self) -> IoResult<String> {
-        let mut buf = try!(self.read_until(0));
+impl<T: BufRead> CStringReader for T {
+    fn read_cstr(&mut self) -> io::Result<String> {
+        let mut buf = vec![];
+        try!(self.read_until(0, &mut buf));
         buf.pop();
-        String::from_utf8(buf).map_err(|_| IoError {
-            kind: OtherIoError,
-            desc: "Received a non-utf8 string from server",
-            detail: None
-        })
+        String::from_utf8(buf).map_err(|_| io::Error::new(
+            io::ErrorKind::Other,
+            "Received a non-utf8 string from server",
+            None
+        ))
     }
 }
 
 pub trait CStringWriter {
-    fn write_cstr(&mut self, s: &str) -> IoResult<()>;
+    fn write_cstr(&mut self, s: &str) -> io::Result<()>;
 }
 
-impl<T> CStringWriter for T where T: Writer {
-    fn write_cstr(&mut self, s: &str) -> IoResult<()> {
-        try!(self.write_str(s));
-        self.write_u8(0)
+impl<T: Write> CStringWriter for T {
+    fn write_cstr(&mut self, s: &str) -> io::Result<()> {
+        try!(self.write_all(s.as_bytes()));
+        self.write_all(&[0])
     }
 }
 
@@ -39,21 +39,20 @@ pub fn cstr_len(s: &str) -> usize {
 
 
 mod test {
-
-    use super::*;
-    use std::old_io::BufReader;
+     use super::*;
+     use std::io::Cursor;
 
     #[test]
     fn read_cstr() {
-        let buf = b"some awesome\0";
-        let mut reader = BufReader::new(buf);
+        let buf: &[u8] = b"some awesome\0";
+        let mut reader = Cursor::new(buf);
         assert_eq!(reader.read_cstr(), Ok("some awesome".to_string()));
     }
 
     #[test]
     fn write_cstr() {
         let mut buf = vec![];
-        buf.write_cstr("some awesome");
-        assert_eq!(&buf[], b"some awesome\0");
+        buf.write_cstr("some awesome").unwrap();
+        assert_eq!(&buf, b"some awesome\0");
     }
 }
