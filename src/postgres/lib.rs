@@ -361,11 +361,11 @@ impl<T: BufRead> MessageReader for T  {
             unknown => {
                 let ref mut buf = vec![];
                 try!(body_reader.read_to_end(buf));
-                return Err(io::Error {
-                    kind: io::ErrorKind::Other,
-                    desc: "Unknown message",
-                    detail: Some(format!("Got message type {}", char::from_u32(unknown as u32).unwrap())),
-                })
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Unknown message",
+                    Some(format!("Got message type {}", char::from_u32(unknown as u32).unwrap())),
+                ))
             },
         };
 
@@ -382,7 +382,7 @@ fn read_auth_message<T: Read>(reader: &mut T) -> io::Result<BackendMessage> {
         5 => BackendMessage::AuthenticationMD5Password {
             salt: {
                 let mut salt = [0; 4];
-                try!(reader.read_at_least(salt.len(), &mut salt));
+                try!(read_full(reader, &mut salt));
                 salt
             }
         },
@@ -401,7 +401,7 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
     let fields_count = try!(reader.read_i16::<BigEndian>()) as usize;
     let mut values = Vec::with_capacity(fields_count);
 
-    for _ in (0..fields_count) {
+    for _ in 0..fields_count {
         values.push(match try!(reader.read_i32::<BigEndian>()) {
             -1 => None,
             len => {
@@ -497,11 +497,11 @@ fn read_row_description<T: BufRead>(reader: &mut T) -> io::Result<Vec<FieldDescr
             format: match try!(reader.read_i16::<BigEndian>()) {
                 0 => FieldFormat::Text,
                 1 => FieldFormat::Binary,
-                unknown => return Err(io::Error {
-                    kind: io::ErrorKind::Other,
-                    desc: "Unknown column format code",
-                    detail: Some(format!("Got {}", unknown)),
-                })
+                unknown => return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Unknown column format code",
+                    Some(format!("Got {}", unknown)),
+                ))
             }
         });
     }
@@ -856,3 +856,18 @@ impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TM
     }
 }
 
+
+
+fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
+    let mut nread = 0usize;
+    while nread < buf.len() {
+        match rdr.read(&mut buf[nread..]) {
+            Ok(0) => return io::Error::new(io::ErrorKind::Other,
+                                           "unexpected EOF", None),
+            Ok(n) => nread += n,
+            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
+            e @ Err(..) => return e,
+        }
+    }
+    Ok(())
+}
