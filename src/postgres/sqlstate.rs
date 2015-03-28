@@ -8,9 +8,7 @@ macro_rules! sql_state {
         $(
             #[derive(Debug)]
             pub enum $class_name {
-                $(
-                    $name,
-                )*
+                $( $name, )*
                 Unknown
             }
         )*
@@ -18,23 +16,19 @@ macro_rules! sql_state {
 
         #[derive(Debug)]
         pub enum SqlState {
-            $(
-                $class_name(Option<$class_name>),
-            )*
+            $( $class_name(Option<$class_name>), )*
             Unknown
         }
 
         impl SqlState {
-            fn from_code(code: &str) -> SqlState {
+            pub fn from_code(code: &str) -> SqlState {
                 let class_code = &code[..2];
                 let code_suffix = &code[2..];
                 match class_code {
                     $(
                         $code_pref => SqlState::$class_name(match code_suffix {
                             "000" => None,
-                            $(
-                                $code_suffix => Some($class_name::$name),
-                            )*
+                            $( $code_suffix => Some($class_name::$name), )*
                             _ => Some($class_name::Unknown)
                         }),
                     )*
@@ -70,7 +64,6 @@ sql_state!{
     //Class 08 — Connection Exception
 
     "08" => ConnectionException {
-
         "003" => ConnectionDoesNotExist,
         "006" => ConnectionFailure,
         "001" => SqlclientUnableToEstablishSqlconnection,

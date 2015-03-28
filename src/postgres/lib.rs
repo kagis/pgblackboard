@@ -1,5 +1,11 @@
+#![feature(io)]
+
 //extern crate crypto;
 extern crate byteorder;
+
+mod sqlstate;
+//mod decoder;
+mod cstr;
 
 //use self::crypto::Md5;
 
@@ -10,31 +16,15 @@ use std::mem;
 use std::char;
 use std::i32;
 
-pub use self::sqlstate::SqlState;
+pub use sqlstate::SqlState;
 
-use self::cstr::{CStringWriter, CStringReader, cstr_len};
+use cstr::{CStringWriter, CStringReader, cstr_len};
 
-mod sqlstate;
-//mod decoder;
-mod cstr;
+
 
 
 
 pub type Oid = u32;
-
-
-#[derive(Debug)]
-pub enum FieldTypeSize {
-    Fixed(usize),
-    Variable,
-}
-
-
-#[derive(Debug)]
-pub enum FieldFormat {
-    Text,
-    Binary,
-}
 
 
 #[derive(Debug)]
@@ -69,9 +59,22 @@ pub struct FieldDescription {
     pub format: FieldFormat,
 }
 
+#[derive(Debug)]
+pub enum FieldTypeSize {
+    Fixed(usize),
+    Variable,
+}
+
 
 #[derive(Debug)]
-enum ConnectionStatus {
+pub enum FieldFormat {
+    Text,
+    Binary,
+}
+
+
+#[derive(Debug)]
+pub enum TransactionStatus {
     Idle,
     InTransaction,
     InFailedTransaction,
@@ -288,14 +291,14 @@ pub enum BackendMessage {
         /// Possible values are 'I' if idle (not in a transaction block);
         /// 'T' if in a transaction block; or 'E' if in a failed transaction
         /// block (queries will be rejected until block is ended).
-        connection_status: ConnectionStatus
+        transaction_status: TransactionStatus
     },
 
     /// Byte1('T') Identifies the message as a row description.
     RowDescription(Vec<FieldDescription>),
 }
 
-trait MessageReader {
+pub trait MessageReader {
     fn read_message(&mut self) -> io::Result<BackendMessage>;
 }
 
@@ -330,10 +333,10 @@ impl<T: BufRead> MessageReader for T  {
             },
             b'D' => BackendMessage::DataRow(try!(read_data_row(body_reader))),
             b'Z' => BackendMessage::ReadyForQuery {
-                connection_status: match try!(body_reader.read_u8()) {
-                    b'I' => ConnectionStatus::Idle,
-                    b'T' => ConnectionStatus::InTransaction,
-                    b'E' => ConnectionStatus::InFailedTransaction,
+                transaction_status: match try!(body_reader.read_u8()) {
+                    b'I' => TransactionStatus::Idle,
+                    b'T' => TransactionStatus::InTransaction,
+                    b'E' => TransactionStatus::InFailedTransaction,
                     unknown => return Err(io::Error::new(
                         io::ErrorKind::Other,
                         "Unexpected transaction status indicator",
@@ -405,8 +408,9 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
         values.push(match try!(reader.read_i32::<BigEndian>()) {
             -1 => None,
             len => {
-                let binval = try!(reader.read_exact(len as usize));
-                let strval = try!(String::from_utf8(binval).map_err(|_| io::Error::new(
+                let mut buf = Vec::with_capacity(len as usize);
+                try!(read_full(reader, &mut buf));
+                let strval = try!(String::from_utf8(buf).map_err(|_| io::Error::new(
                     io::ErrorKind::Other,
                     "Received a non-utf8 string from server",
                     None
@@ -613,10 +617,10 @@ pub fn connect_tcp<T: ToSocketAddrs>(addr: T,
 }
 
 
-type ConnectResult<TStream> = Result<Connection<TStream>, ConnectError>;
+pub type ConnectResult<TStream> = Result<Connection<TStream>, ConnectError>;
 
 
-impl<TStream: BufRead+Write> Connection<TStream> {
+impl<TStream: Read+Write> Connection<TStream> {
 
     pub fn connect_database(stream: TStream,
                             database: &str,
@@ -649,12 +653,10 @@ impl<TStream: BufRead+Write> Connection<TStream> {
                 BackendMessage::ErrorResponse(e) => return Err(ConnectError::ErrorResponse(e)),
                 BackendMessage::BackendKeyData { .. } => {},
                 BackendMessage::ParameterStatus { .. } => {},
-                BackendMessage::ReadyForQuery(ConnectionStatus::Idle) => break,
-                unexpected => return Err(ConnectError::IoError(io::Error {
-                    kind: io::ErrorKind::Other,
-                    desc: "Unexpected message while startup.",
-                    detail: Some(format!("{:?}", unexpected)),
-                })),
+                BackendMessage::ReadyForQuery { transaction_status: TransactionStatus::Idle } => break,
+                unexpected => return Err(ConnectError::IoError(io::Error::new(io::ErrorKind::Other,
+                                                               "Unexpected message while startup.",
+                                                               Some(format!("{:?}", unexpected))))),
             }
         }
 
@@ -721,8 +723,8 @@ trait MessageWriter {
 impl<T> MessageWriter for T where T: Write {
 
     fn write_startup_message(&mut self, user: &str, database: &str) -> io::Result<()> {
-        let msg_len = i32::BYTES + // self
-                      i32::BYTES + // protocol
+        let msg_len = mem::size_of::<i32>() + // self
+                      mem::size_of::<i32>() + // protocol
                       cstr_len("user") + cstr_len(user) +
                       cstr_len("database") + cstr_len(database) +
                       1; // terminating zero
@@ -739,7 +741,7 @@ impl<T> MessageWriter for T where T: Write {
     }
 
     fn write_password_message(&mut self, password: &str) -> io::Result<()> {
-        let msg_len = i32::BYTES + cstr_len(password);
+        let msg_len = mem::size_of::<i32>() + cstr_len(password);
 
         try!(self.write_u8(b'p'));
         try!(self.write_i32::<BigEndian>(msg_len as i32));
@@ -749,7 +751,7 @@ impl<T> MessageWriter for T where T: Write {
     }
 
     fn write_query_message(&mut self, query: &str) -> io::Result<()> {
-        let msg_len = i32::BYTES + cstr_len(query);
+        let msg_len = mem::size_of::<i32>() + cstr_len(query);
 
         try!(self.write_u8(b'Q'));
         try!(self.write_i32::<BigEndian>(msg_len as i32));
@@ -760,7 +762,7 @@ impl<T> MessageWriter for T where T: Write {
 
     fn write_terminate_message(&mut self) -> io::Result<()> {
         try!(self.write_u8(b'X'));
-        try!(self.write_i32::<BigEndian>(i32::BYTES as i32));
+        try!(self.write_i32::<BigEndian>(mem::size_of::<i32>() as i32));
 
         self.flush()
     }
@@ -769,7 +771,7 @@ impl<T> MessageWriter for T where T: Write {
 
 
 
-type Row = Vec<Option<String>>;
+pub type Row = Vec<Option<String>>;
 
 
 
@@ -787,7 +789,7 @@ pub enum ExecuteEvent {
 
 
 
-struct ExecuteEventIterator<'a, TMessageReader: MessageReader +'a> {
+pub struct ExecuteEventIterator<'a, TMessageReader: MessageReader +'a> {
     msg_reader: &'a mut TMessageReader,
     is_exhausted: bool,
     is_in_rowset: bool,
@@ -821,7 +823,7 @@ impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TM
 
         match message {
 
-            BackendMessage::ReadyForQuery(..) => {
+            BackendMessage::ReadyForQuery { .. } => {
                 self.is_exhausted = true;
                 None
             },
@@ -837,12 +839,12 @@ impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TM
 
             BackendMessage::DataRow(row) => Some(RowFetched(row)),
 
-            BackendMessage::CommandComplete(tag) => {
+            BackendMessage::CommandComplete { command_tag } => {
                 Some(if self.is_in_rowset {
                     self.is_in_rowset = false;
                     RowsetEnd
                 } else {
-                    NonQueryExecuted(tag)
+                    NonQueryExecuted(command_tag)
                 })
             },
 
@@ -862,11 +864,11 @@ fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
     let mut nread = 0usize;
     while nread < buf.len() {
         match rdr.read(&mut buf[nread..]) {
-            Ok(0) => return io::Error::new(io::ErrorKind::Other,
-                                           "unexpected EOF", None),
+            Ok(0) => return Err(io::Error::new(io::ErrorKind::Other,
+                                               "unexpected EOF", None)),
             Ok(n) => nread += n,
             Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
-            e @ Err(..) => return e,
+            Err(e) => return Err(e),
         }
     }
     Ok(())
