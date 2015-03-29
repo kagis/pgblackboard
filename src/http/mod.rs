@@ -1,31 +1,19 @@
-extern crate serialize;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate threadpool;
+extern crate rustc_serialize;
 
 pub use self::response::{
     ResponseStarter,
     Status,
 };
 
-use self::rustc_serialize::base64::FromBase64;
+use rustc_serialize::base64::FromBase64;
+use threadpool::ThreadPool;
 
-use std::old_io::{
-    IoResult,
-    BufferedReader,
-    ByRefReader,
-    IoError,
-    OtherIoError,
-    InvalidInput,
-    Stream,
-    Acceptor,
-    Listener,
-    TcpListener,
-    TcpStream,
-};
-
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::net::{TcpListener, ToSocketAddrs};
 use std::ascii::AsciiExt;
-use std::old_io::net::ip::ToSocketAddr;
+use std::sync::{Arc};
 
-use std::sync::{ TaskPool, Arc };
 
 
 mod response;
@@ -37,12 +25,12 @@ pub enum AuthenticationScheme {
     Basic,
 }
 
-fn malformed_request_line_err() -> IoError {
-    IoError {
-        kind: InvalidInput,
-        desc: "Malformed request line.",
-        detail: None,
-    }
+fn malformed_request_line_err() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "Malformed request line.",
+        None,
+    )
 }
 
 
@@ -67,28 +55,30 @@ fn malformed_request_line_err() -> IoError {
 
 
 
-#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub enum RequestContent {
     UrlEncoded(Vec<(String, String)>),
     Binary(Vec<u8>),
 }
 
-#[derive(Show, Copy)]
+#[derive(Debug, Copy)]
 pub enum Method {
     Get,
     Post,
+    Patch,
 }
 
-impl ::std::fmt::String for Method {
+impl ::std::fmt::Display for Method {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "{}", match *self {
             Method::Get => "GET",
             Method::Post => "POST",
+            Method::Patch => "PATCH",
         })
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct Request {
     pub method: Method,
     pub path: Vec<String>,
@@ -98,7 +88,7 @@ pub struct Request {
 }
 
 impl Request {
-    fn read_from<T: Buffer>(reader: &mut T) -> IoResult<Request> {
+    fn read_from<T: BufRead>(reader: &mut T) -> io::Result<Request> {
         let req_line = try!(reader.read_crlf_line());
 
         let left_space_pos = try!(req_line.find(' ')
@@ -111,20 +101,20 @@ impl Request {
         let method = match &req_line[0..left_space_pos] {
             "GET" => Method::Get,
             "POST" => Method::Post,
-            unsupported => return Err(IoError {
-                kind: OtherIoError,
-                desc: "Unsupported method",
-                detail: Some(format!("{}", unsupported))
-            }),
+            unsupported => return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Unsupported method",
+                Some(format!("{}", unsupported))
+            )),
         };
 
         let http_version = &req_line[(right_space_pos + 1)..];
         if http_version != "HTTP/1.1" && http_version != "HTTP/1.0" {
-            return Err(IoError {
-                kind: OtherIoError,
-                desc: "Unsupported HTTP protocol version.",
-                detail: Some(http_version.to_string())
-            });
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Unsupported HTTP protocol version.",
+                Some(http_version.to_string())
+            ));
         }
 
         let url = req_line[(left_space_pos + 1)..right_space_pos].as_bytes();
@@ -137,11 +127,11 @@ impl Request {
         };
 
 
-        let mut content_length = 0us;
+        let mut content_length = 0usize;
         let mut authorization = None;
         let mut is_urlenc_content = false;
 
-        fn err_or_line_is_not_empty(line_res: &IoResult<String>) -> bool {
+        fn err_or_line_is_not_empty(line_res: &io::Result<String>) -> bool {
             match line_res {
                 &Ok(ref line) => !line.is_empty(),
                 &Err(..) => true,
@@ -150,22 +140,22 @@ impl Request {
 
         for line_res in CRLFLines(reader.by_ref()).take_while(err_or_line_is_not_empty) {
             let line = try!(line_res);
-            let (header_name, header_value) = try!(parse_header(&line[]));
-            match &header_name.to_ascii_lowercase()[] {
+            let (header_name, header_value) = try!(parse_header(&line));
+            match &header_name.to_ascii_lowercase()[..] {
                 "content-length" => {
-                    content_length = try!(header_value.parse().ok_or(IoError {
-                        kind: InvalidInput,
-                        desc: "Malformed Content-length value.",
-                        detail: Some(format!("got {}", header_value))
-                    }));
-                },
+                    content_length = try!(header_value.parse().ok_or(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "Malformed Content-length value.",
+                        Some(format!("got {}", header_value))
+                    )));
+                }
                 "content-type" => {
                     is_urlenc_content = header_value == "application/x-www-form-urlencoded";
                     //content_type = Some(header_value.to_string());
-                },
+                }
                 "authorization" => {
                     authorization = Some(try!(parse_authorization(header_value)));
-                },
+                }
                 _ => continue,
             };
 
@@ -179,7 +169,7 @@ impl Request {
         let content = if content_length > 0 {
             let content = try!(reader.read_exact(content_length));
             Some(if is_urlenc_content {
-                RequestContent::UrlEncoded(parse_qs(&content[]))
+                RequestContent::UrlEncoded(parse_qs(&content))
             } else {
                 RequestContent::Binary(content)
             })
@@ -198,44 +188,44 @@ impl Request {
 }
 
 
-fn parse_authorization(header_value: &str) -> IoResult<(String, String)> {
+fn parse_authorization(header_value: &str) -> io::Result<(String, String)> {
 
 
-    let colon_pos = try!(header_value.find(' ').ok_or(IoError {
-        kind: InvalidInput,
-        desc: "Malformed Authorization header.",
-        detail: Some("Missing colon between auth scheme and credentials.".to_string()),
-    }));
+    let colon_pos = try!(header_value.find(' ').ok_or(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "Malformed Authorization header.",
+        Some("Missing colon between auth scheme and credentials.".to_string()),
+    )));
 
     let auth_scheme = &header_value[0..colon_pos];
     if auth_scheme != "Basic" {
-        return Err(IoError {
-            kind: OtherIoError,
-            desc: "Unsupported authorization scheme",
-            detail: Some(format!("{}", auth_scheme)),
-        });
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Unsupported authorization scheme",
+            Some(format!("{}", auth_scheme)),
+        ));
     }
 
     let cred_b64 = &header_value[(colon_pos + 1)..];
-    let cred_bytes = try!(cred_b64.from_base64().map_err(|_| IoError {
-        kind: InvalidInput,
-        desc: "Malformed Authorization header.",
-        detail: Some("Invalid base64.".to_string()),
-    }));
-    let cred = try!(String::from_utf8(cred_bytes).map_err(|_| IoError {
-        kind: InvalidInput,
-        desc: "Malformed Authorization header.",
-        detail: Some("Invalid utf-8 credentials.".to_string()),
-    }));
+    let cred_bytes = try!(cred_b64.from_base64().map_err(|_| io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "Malformed Authorization header.",
+        Some("Invalid base64.".to_string()),
+    )));
+    let cred = try!(String::from_utf8(cred_bytes).map_err(|_| io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "Malformed Authorization header.",
+        Some("Invalid utf-8 credentials.".to_string()),
+    )));
 
     Ok({
-        let colon_pos = try!(cred.find(':').ok_or(IoError {
-            kind: InvalidInput,
-            desc: "Malformed Authorization credentials header.",
-            detail: Some("Missing colon between username and password.".to_string()),
-        }));
+        let colon_pos = try!(cred.find(':').ok_or(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Malformed Authorization credentials header.",
+            Some("Missing colon between username and password.".to_string()),
+        )));
 
-        let user = cred[0..colon_pos].to_string();
+        let user = cred[..colon_pos].to_string();
         let password = cred[(colon_pos + 1)..].to_string();
         (user, password)
     })
@@ -243,11 +233,11 @@ fn parse_authorization(header_value: &str) -> IoResult<(String, String)> {
 
 
 trait CRLFLineReader {
-    fn read_crlf_line(&mut self) -> IoResult<String>;
+    fn read_crlf_line(&mut self) -> io::Result<String>;
 }
 
-impl<T: Reader> CRLFLineReader for T {
-    fn read_crlf_line(&mut self) -> IoResult<String> {
+impl<T: Read> CRLFLineReader for T {
+    fn read_crlf_line(&mut self) -> io::Result<String> {
         let mut line = vec![];
         loop {
             match try!(self.read_byte()) {
@@ -256,11 +246,11 @@ impl<T: Reader> CRLFLineReader for T {
                     if mustbe_lf != b'\n' {
                         return Err(invalid_line_ending());
                     }
-                    return String::from_utf8(line).map_err(|_| IoError {
-                        kind: OtherIoError,
-                        desc: "Non ascii string",
-                        detail: None
-                    });
+                    return String::from_utf8(line).map_err(|_| io::Error::new(
+                        io::ErrorKind::Other,
+                        "Non ascii string",
+                        None
+                    ));
                 },
                 b'\n' => return Err(invalid_line_ending()),
                 x => line.push(x),
@@ -269,31 +259,31 @@ impl<T: Reader> CRLFLineReader for T {
     }
 }
 
-fn invalid_line_ending() -> IoError {
-    IoError {
-        kind: InvalidInput,
-        desc: "Invalid line ending.",
-        detail: None,
-    }
+fn invalid_line_ending() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "Invalid line ending.",
+        None,
+    )
 }
 
 struct CRLFLines<TReader>(TReader);
 
 impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
-    type Item = IoResult<String>;
+    type Item = io::Result<String>;
 
-    fn next(&mut self) -> Option<IoResult<String>> {
+    fn next(&mut self) -> Option<io::Result<String>> {
         Some(self.0.read_crlf_line())
     }
 }
 
 
 // trait TokenReader {
-//     fn read_token(&mut self, maxlen: uint) -> IoResult<Vec<u8>>;
+//     fn read_token(&mut self, maxlen: uint) -> io::Result<Vec<u8>>;
 // }
 
 // impl<T: Reader> TokenReader for T {
-//     fn read_token(&mut self, maxlen: uint) -> IoResult<Vec<u8>> {
+//     fn read_token(&mut self, maxlen: uint) -> io::Result<Vec<u8>> {
 //         self.bytes().take_while(|&x| is_token(x))
 //     }
 // }
@@ -325,7 +315,7 @@ impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
 // }
 
 // trait RequestReader: Buffer {
-//     fn read_request(&mut self) -> IoResult<Request> {
+//     fn read_request(&mut self) -> io::Result<Request> {
 //         let method = try!(self.read_method());
 
 //         let mut path = try!(self.read_until(b' '));
@@ -369,13 +359,13 @@ impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
 //         })
 //     }
 
-//     fn read_until_sp(&mut self) -> IoResult<Vec<u8>> {
+//     fn read_until_sp(&mut self) -> io::Result<Vec<u8>> {
 //         let mut buf = try!(self.read_until(b' '));
 //         buf.pop();
 //         Ok(buf)
 //     }
 
-//     fn read_method(&mut self) -> IoResult<Method> {
+//     fn read_method(&mut self) -> io::Result<Method> {
 //         Ok(match try!(self.read_until_sp())[] {
 //             b"GET" => Method::Get,
 //             b"POST" => Method::Post,
@@ -390,16 +380,16 @@ impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
 // struct HeaderIterator<TReader: Reader>(TReader);
 
 // impl<T: Buffer> Iterator for HeaderIterator<T> {
-//     type Item = IoResult<(Vec<u8>, Vec<u8>)>;
+//     type Item = io::Result<(Vec<u8>, Vec<u8>)>;
 
-//     fn next(&mut self) -> Option<IoResult<(Vec<u8>, Vec<u8>)>> {
+//     fn next(&mut self) -> Option<io::Result<(Vec<u8>, Vec<u8>)>> {
 //         let reader = &mut self.0;
 //         let line = match reader.read_until(b'\n') {
 //             Ok(mut line) => {
 //                 line.pop(); // \n
 //                 if line.pop() != Some(b'\r') {
-//                     return Some(Err(IoError {
-//                         kind: InvalidInput,
+//                     return Some(Err(io::Error::new {
+//                         kind: io::ErrorKind::InvalidInput,
 //                         desc: "Invalid line ending.",
 //                         detail: None,
 //                     }));
@@ -417,14 +407,14 @@ impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
 //     }
 // }
 
-fn parse_header(line: &str) -> IoResult<(&str, &str)> {
+fn parse_header(line: &str) -> io::Result<(&str, &str)> {
     let colon_pos = match line.find(':') {
         Some(pos) => pos,
-        None => return Err(IoError {
-            kind: InvalidInput,
-            desc: "Malformed HTTP header.",
-            detail: Some(format!("{}", line)),
-        }),
+        None => return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Malformed HTTP header.",
+            Some(format!("{}", line)),
+        )),
     };
 
     let header_name = &line[0..colon_pos];
@@ -435,39 +425,22 @@ fn parse_header(line: &str) -> IoResult<(&str, &str)> {
 
 
 
-
-pub fn serve_forever_tcp<TAddr, THandler>(addr: TAddr, handler: THandler)
-    where TAddr: ToSocketAddr,
-          THandler: Handler<TcpStream>,
+pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
+    where THandler: Fn(Request, ResponseStarter) -> io::Result<()>,
+          THandler: Sync + Send
 {
-    let listener = TcpListener::bind(addr).unwrap();
-    let acceptor = listener.listen().unwrap();
-    serve_forever(acceptor, handler);
-}
+    let listener = try!(TcpListener::bind(addr));
 
-
-
-pub fn serve_forever<TStream, TAcceptor, THandler>(
-    mut acceptor: TAcceptor,
-    handler: THandler) where
-
-    TStream: Stream + Send,
-    TAcceptor: Acceptor<TStream>,
-    THandler: Handler<TStream>,
-{
-
-
-    let pool = TaskPool::new(10);
-
+    let pool = ThreadPool::new(10);
     let handler = Arc::new(handler);
 
-    for stream_result in acceptor.incoming() {
+    for stream_result in listener.incoming() {
         let handler = handler.clone();
         match stream_result {
             Err(e) => { println!("{}", e); }
             Ok(mut stream) => pool.execute(move || {
                 let req = {
-                    let mut reader = BufferedReader::with_capacity(1024, stream.by_ref());
+                    let mut reader = BufReader::with_capacity(1024, stream.by_ref());
                     Request::read_from(&mut reader).unwrap()
                 };
 
@@ -476,7 +449,7 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
                          path=req.path,
                          user=req.basic_auth
                                  .as_ref()
-                                 .map_or("", |x| &x.0[]));
+                                 .map_or("", |x| &x.0));
 
                 let res = ResponseStarter(stream);
                 let handle_res = handler.handle(req, res);
@@ -494,20 +467,19 @@ pub fn serve_forever<TStream, TAcceptor, THandler>(
 
 
 /// A handler that can handle incoming requests for a server.
-pub trait Handler<TWriter: Writer>: Sync + Send {
+pub trait Handler: Sync + Send {
     /// Receives a `Request`/`Response` pair, and should perform some action on them.
     ///
     /// This could reading from the request, and writing to the response.
-    fn handle(&self, Request, ResponseStarter<TWriter>) -> IoResult<()>;
+    fn handle(&self, Request, ResponseStarter) -> io::Result<()>;
 }
 
-impl<TFunc, TWriter> Handler<TWriter> for TFunc
-    where TFunc: Fn(Request, ResponseStarter<TWriter>) -> IoResult<()>,
-          TFunc: Sync + Send,
-          TWriter: Writer
+impl<TFunc> Handler for TFunc
+    where TFunc: Fn(Request, ResponseStarter) -> io::Result<()>,
+          TFunc: Sync + Send
 {
 
-    fn handle(&self, req: Request, res: ResponseStarter<TWriter>) -> IoResult<()> {
+    fn handle(&self, req: Request, res: ResponseStarter) -> io::Result<()> {
         (*self)(req, res)
     }
 }

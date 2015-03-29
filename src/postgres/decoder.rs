@@ -1,6 +1,6 @@
-extern crate serialize;
+#![allow(unused_variables)]
 
-use self::serialize::{Decodable, Decoder};
+use rustc_serialize::{Decodable, Decoder};
 
 struct RowDecoder {
     row: ::std::vec::IntoIter<Option<String>>,
@@ -17,13 +17,13 @@ impl RowDecoder {
 }
 
 #[derive(Debug)]
-enum DecodeError {
+pub enum DecodeError {
     MissingField,
     MissingValue,
     ParseError,
 }
 
-type DecodeResult<T> = Result<T, DecodeError>;
+pub type DecodeResult<T> = Result<T, DecodeError>;
 
 impl Decoder for RowDecoder {
     type Error = DecodeError;
@@ -32,7 +32,7 @@ impl Decoder for RowDecoder {
         unimplemented!()
     }
 
-    fn read_uint(&mut self) -> DecodeResult<usize> {
+    fn read_usize(&mut self) -> DecodeResult<usize> {
         unimplemented!()
     }
 
@@ -52,7 +52,7 @@ impl Decoder for RowDecoder {
         unimplemented!()
     }
 
-    fn read_int(&mut self) -> DecodeResult<isize> {
+    fn read_isize(&mut self) -> DecodeResult<isize> {
         unimplemented!()
     }
 
@@ -61,7 +61,9 @@ impl Decoder for RowDecoder {
     }
 
     fn read_i32(&mut self) -> DecodeResult<i32> {
-        unimplemented!()
+        self.read_str().and_then(|s| {
+            s.parse().map_err(|err| DecodeError::ParseError)
+        })
     }
 
     fn read_i16(&mut self) -> DecodeResult<i16> {
@@ -73,7 +75,7 @@ impl Decoder for RowDecoder {
     }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
-        self.read_str().and_then(|s| match s {
+        self.read_str().and_then(|s| match &s[..] {
             "t" => Ok(true),
             "f" => Ok(false),
             nonbool => Err(DecodeError::ParseError),
@@ -96,73 +98,107 @@ impl Decoder for RowDecoder {
         self.reading_value.take().ok_or(DecodeError::MissingValue)
     }
 
-    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> {
+    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_enum_variant_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> {
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_enum_struct_variant_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_enum_struct_variant_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         f(self)
     }
 
-    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         self.reading_value = try!(self.row.next().ok_or(DecodeError::MissingField));
         f(self)
     }
 
-    fn read_tuple<T, F>(&mut self, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_tuple<T, F>(&mut self, len: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where F: FnMut(&mut Self, bool) -> DecodeResult<T> {
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Self, bool) -> DecodeResult<T>
+    {
         let has_value = self.reading_value.is_some();
         f(self, has_value)
     }
 
-    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self, usize) -> DecodeResult<T> {
+    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self, usize) -> DecodeResult<T> {
+    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
-    fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         unimplemented!()
     }
 
@@ -177,16 +213,18 @@ pub fn decode_row<T: Decodable>(row: Vec<Option<String>>) -> DecodeResult<T> {
     Decodable::decode(&mut decoder)
 }
 
+#[cfg(test)]
 mod test {
     use super::{
         decode_row,
         DecodeError
     };
 
+
     #[test]
     fn decode_two_strings() {
 
-        #[derive(Decodable, Debug, PartialEq)]
+        #[derive(RustcDecodable, Debug, PartialEq)]
         struct FooBar {
             foo: String,
             bar: String,
@@ -207,7 +245,7 @@ mod test {
     #[test]
     fn decode_optional_strings() {
 
-        #[derive(Decodable, Debug, PartialEq)]
+        #[derive(RustcDecodable, Debug, PartialEq)]
         struct FooBar {
             foo: String,
             bar: Option<String>,

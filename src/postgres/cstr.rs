@@ -38,6 +38,7 @@ pub fn cstr_len(s: &str) -> usize {
 }
 
 
+#[cfg(test)]
 mod test {
      use super::*;
      use std::io::Cursor;

@@ -6,7 +6,7 @@ macro_rules! sql_state {
     }),* ) => {
 
         $(
-            #[derive(Debug)]
+            #[derive(Debug, Copy)]
             pub enum $class_name {
                 $( $name, )*
                 Unknown
@@ -14,7 +14,7 @@ macro_rules! sql_state {
         )*
 
 
-        #[derive(Debug)]
+        #[derive(Debug, Copy)]
         pub enum SqlState {
             $( $class_name(Option<$class_name>), )*
             Unknown
@@ -32,7 +32,7 @@ macro_rules! sql_state {
                             _ => Some($class_name::Unknown)
                         }),
                     )*
-                    unknown_code => SqlState::Unknown
+                    _ => SqlState::Unknown
                 }
             }
         }

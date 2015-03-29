@@ -1,31 +1,66 @@
-#![feature(io)]
+#![feature(io, core)]
 
-//extern crate crypto;
+//! ```rust
+//! extern crate rustc_serialize;
+//! use rustc_serialize;
+//! use postgres;
+//!
+//! let mut conn = postgres::connect("localhost:5432",
+//!                        "postgres",
+//!                        "postgres",
+//!                        "postgres").unwrap();
+//! #[derive(RustcDecodable, PartialEq, Debug)]
+//! struct Foo {
+//!     id: i32,
+//!     name: String,
+//! }
+//! let items = conn.query::<Foo>("select 1, 'one'").unwrap();
+//! assert_eq!(items, vec![
+//!     Foo { id: 1, name: "one".to_string() }
+//! ]);
+//! ```
+
+extern crate crypto;
 extern crate byteorder;
+extern crate rustc_serialize;
 
 mod sqlstate;
-//mod decoder;
+mod decoder;
 mod cstr;
 
-//use self::crypto::Md5;
-
+use crypto::md5::Md5;
+use crypto::digest::Digest;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use rustc_serialize::{Decodable};
+
 use std::io::{self, Read, Write, BufRead, BufStream};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::mem;
 use std::char;
-use std::i32;
 
 pub use sqlstate::SqlState;
 
 use cstr::{CStringWriter, CStringReader, cstr_len};
 
+type InternalStream = TcpStream;
 
 
-
-
+/// [Numeric object identifer.]
+/// (http://www.postgresql.org/docs/9.4/static/datatype-oid.html)
 pub type Oid = u32;
 
+pub type Row = Vec<Option<String>>;
+
+#[derive(Debug)]
+pub enum ExecutionEvent {
+    NonQueryExecuted(String),
+    RowsetBegin(Vec<FieldDescription>),
+    RowFetched(Row),
+    RowsetEnd,
+    SqlErrorOccured(ErrorOrNotice),
+    IoErrorOccured(io::Error),
+    Notice(ErrorOrNotice),
+}
 
 #[derive(Debug)]
 pub struct FieldDescription {
@@ -65,21 +100,18 @@ pub enum FieldTypeSize {
     Variable,
 }
 
-
 #[derive(Debug)]
 pub enum FieldFormat {
     Text,
     Binary,
 }
 
-
 #[derive(Debug)]
-pub enum TransactionStatus {
+enum TransactionStatus {
     Idle,
     InTransaction,
     InFailedTransaction,
 }
-
 
 #[derive(Debug)]
 pub struct ErrorOrNotice {
@@ -154,7 +186,7 @@ pub struct ErrorOrNotice {
 }
 
 #[derive(Debug)]
-pub enum BackendMessage {
+enum BackendMessage {
 
     /// Specifies that the authentication was successful.
     AuthenticationOk,
@@ -241,7 +273,7 @@ pub enum BackendMessage {
     },
 
     /// Byte1('D') Identifies the message as a data row.
-    DataRow(Vec<Option<String>>),
+    DataRow(Row),
 
     /// Identifies the message as a response to an empty query string.
     /// (This substitutes for CommandComplete.)
@@ -298,7 +330,7 @@ pub enum BackendMessage {
     RowDescription(Vec<FieldDescription>),
 }
 
-pub trait MessageReader {
+trait MessageReader {
     fn read_message(&mut self) -> io::Result<BackendMessage>;
 }
 
@@ -409,6 +441,8 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
             -1 => None,
             len => {
                 let mut buf = Vec::with_capacity(len as usize);
+                buf.extend((0..len).map(|_| 0));
+                println!("cell len = {}", len);
                 try!(read_full(reader, &mut buf));
                 let strval = try!(String::from_utf8(buf).map_err(|_| io::Error::new(
                     io::ErrorKind::Other,
@@ -514,6 +548,61 @@ fn read_row_description<T: BufRead>(reader: &mut T) -> io::Result<Vec<FieldDescr
 }
 
 
+trait MessageWriter {
+    fn write_startup_message(&mut self, user: &str, database: &str) -> io::Result<()>;
+    fn write_password_message(&mut self, password: &str) -> io::Result<()>;
+    fn write_query_message(&mut self, query: &str) -> io::Result<()>;
+    fn write_terminate_message(&mut self) -> io::Result<()>;
+}
+
+impl<T> MessageWriter for T where T: Write {
+
+    fn write_startup_message(&mut self, user: &str, database: &str) -> io::Result<()> {
+        let msg_len = mem::size_of::<i32>() + // self
+                      mem::size_of::<i32>() + // protocol version
+                      cstr_len("user") + cstr_len(user) +
+                      cstr_len("database") + cstr_len(database) +
+                      1; // terminating zero
+
+        try!(self.write_i32::<BigEndian>(msg_len as i32));
+        try!(self.write_i32::<BigEndian>(0x0003_0000)); // protocol version
+        try!(self.write_cstr("user"));
+        try!(self.write_cstr(user));
+        try!(self.write_cstr("database"));
+        try!(self.write_cstr(database));
+        try!(self.write_u8(0));
+
+        self.flush()
+    }
+
+    fn write_password_message(&mut self, password: &str) -> io::Result<()> {
+        let msg_len = mem::size_of::<i32>() + cstr_len(password);
+
+        try!(self.write_u8(b'p'));
+        try!(self.write_i32::<BigEndian>(msg_len as i32));
+        try!(self.write_cstr(password));
+
+        self.flush()
+    }
+
+    fn write_query_message(&mut self, query: &str) -> io::Result<()> {
+        let msg_len = mem::size_of::<i32>() + cstr_len(query);
+
+        try!(self.write_u8(b'Q'));
+        try!(self.write_i32::<BigEndian>(msg_len as i32));
+        try!(self.write_cstr(query));
+
+        self.flush()
+    }
+
+    fn write_terminate_message(&mut self) -> io::Result<()> {
+        try!(self.write_u8(b'X'));
+        try!(self.write_i32::<BigEndian>(mem::size_of::<i32>() as i32));
+
+        self.flush()
+    }
+}
+
 
 
 
@@ -565,19 +654,29 @@ fn read_row_description<T: BufRead>(reader: &mut T) -> io::Result<Vec<FieldDescr
 
 // pub type PgResult<T> = Result<T, PgError>;
 
+pub type ConnectionResult = Result<Connection, ConnectionError>;
+
 #[derive(Debug)]
-pub enum ConnectError {
+pub enum ConnectionError {
+    AuthFailed,
+    DatabaseNotExists,
+    UnsupportedAuthMethod,
+
+    /// Occurs when password was not requested by
+    /// postgres server during authentication phase.
+    NoPasswordRequested,
+
     ErrorResponse(ErrorOrNotice),
     IoError(io::Error),
 }
 
-impl ::std::error::FromError<io::Error> for ConnectError {
-    fn from_error(err: io::Error) -> ConnectError {
-        ConnectError::IoError(err)
+impl ::std::error::FromError<io::Error> for ConnectionError {
+    fn from_error(err: io::Error) -> ConnectionError {
+        ConnectionError::IoError(err)
     }
 }
 
-// enum ConnectError {
+// enum ConnectionError {
 //     AuthenticationFailed,
 //     TransportError,
 //     BadResponse,
@@ -592,8 +691,8 @@ impl ::std::error::FromError<io::Error> for ConnectError {
 // }
 
 
-pub struct Connection<TStream: Write> {
-    stream: BufStream<TStream>,
+pub struct Connection {
+    stream: BufStream<InternalStream>,
 }
 
 // pub enum StatementResult {
@@ -601,60 +700,91 @@ pub struct Connection<TStream: Write> {
 //     Rowset(Vec<FieldDescription>),
 // }
 
-pub fn connect_tcp<T: ToSocketAddrs>(addr: T,
-                                    database: &str,
-                                    user: &str,
-                                    password: &str)
-                                    -> ConnectResult<TcpStream> {
-
-    let stream = try!(TcpStream::connect(addr));
-    Connection::connect_database(
-        stream,
-        database,
-        user,
-        password,
-    )
+pub fn connect<T>(addr: T,
+                  database: &str,
+                  user: &str,
+                  password: &str)
+                  -> ConnectionResult
+                  where T: ToSocketAddrs
+{
+    let stream = try!(InternalStream::connect(addr));
+    Connection::connect_database(stream,
+                                 database,
+                                 user,
+                                 password)
 }
 
 
-pub type ConnectResult<TStream> = Result<Connection<TStream>, ConnectError>;
 
 
-impl<TStream: Read+Write> Connection<TStream> {
+impl Connection {
 
-    pub fn connect_database(stream: TStream,
-                            database: &str,
-                            user: &str,
-                            password: &str)
-                            -> ConnectResult<TStream>
+    fn connect_database(stream: InternalStream,
+                        database: &str,
+                        user: &str,
+                        password: &str)
+                        -> ConnectionResult
     {
 
         let mut stream = BufStream::new(stream);
 
         try!(stream.write_startup_message(user, database));
 
+        let mut password_was_requested = false;
         loop {
             match try!(stream.read_message()) {
+
                 BackendMessage::AuthenticationMD5Password { salt } => {
-                    // let mut hasher = Md5::new();
-                    // hasher.input_str(password);
-                    // hasher.input_str(user);
-                    // let output = hasher.result_str();
-                    // hasher.reset();
-                    // hasher.input_str(&output);
-                    // hasher.input(&salt);
-                    // let output = format!("md5{}", hasher.result_str());
-                    // try!(stream.write_password_message(&output));
-                },
+                    let mut hasher = Md5::new();
+                    hasher.input_str(password);
+                    hasher.input_str(user);
+                    let pwduser_hash = hasher.result_str();
+                    hasher.reset();
+                    hasher.input_str(&pwduser_hash);
+                    hasher.input(&salt);
+                    let output = format!("md5{}", hasher.result_str());
+                    try!(stream.write_password_message(&output));
+                    password_was_requested = true;
+                }
+
                 BackendMessage::AuthenticationCleartextPassword => {
                     try!(stream.write_password_message(password));
-                },
-                BackendMessage::AuthenticationOk => { /* pass */ },
-                BackendMessage::ErrorResponse(e) => return Err(ConnectError::ErrorResponse(e)),
-                BackendMessage::BackendKeyData { .. } => {},
-                BackendMessage::ParameterStatus { .. } => {},
-                BackendMessage::ReadyForQuery { transaction_status: TransactionStatus::Idle } => break,
-                unexpected => return Err(ConnectError::IoError(io::Error::new(io::ErrorKind::Other,
+                    password_was_requested = true;
+                }
+
+                BackendMessage::AuthenticationSSPI
+                | BackendMessage::AuthenticationSCMCredential
+                | BackendMessage::AuthenticationGSS => {
+                    return Err(ConnectionError::UnsupportedAuthMethod);
+                }
+
+                BackendMessage::AuthenticationOk => {
+                    if !password_was_requested {
+                        return Err(ConnectionError::NoPasswordRequested);
+                    }
+                }
+
+                BackendMessage::ErrorResponse(e) => {
+                    return Err(match e.code {
+                        SqlState::InvalidAuthorizationSpecification(..) => {
+                            ConnectionError::AuthFailed
+                        }
+
+                        SqlState::InvalidCatalogName(..) => {
+                            ConnectionError::DatabaseNotExists
+                        }
+
+                        _ => ConnectionError::ErrorResponse(e),
+                    });
+                }
+
+                BackendMessage::BackendKeyData { .. } => {}
+
+                BackendMessage::ParameterStatus { .. } => {}
+
+                BackendMessage::ReadyForQuery { .. } => break,
+
+                unexpected => return Err(ConnectionError::IoError(io::Error::new(io::ErrorKind::Other,
                                                                "Unexpected message while startup.",
                                                                Some(format!("{:?}", unexpected))))),
             }
@@ -663,48 +793,48 @@ impl<TStream: Read+Write> Connection<TStream> {
         Ok(Connection { stream: stream })
     }
 
-    pub fn execute_script(&mut self, script: &str) -> io::Result<ExecuteEventIterator<BufStream<TStream>>> {
+    pub fn execute_script(&mut self, script: &str) -> io::Result<ExecutionEventIterator> {
         try!(self.stream.write_query_message(script));
-        Ok(ExecuteEventIterator::new(&mut self.stream))
+        Ok(ExecutionEventIterator::new(&mut self.stream))
     }
 
-    pub fn execute_query(&mut self, query: &str) -> io::Result<Vec<Row>> {
-        self.execute_script(query)
-            .map(|msg_iter| msg_iter
-                .filter_map(|msg| match msg {
-                    ExecuteEvent::RowFetched(row) => Some(row),
-                    _ => None,
-                })
-                .collect::<Vec<Row>>()
-            )
-    }
-
-    // pub fn query<TRel: ::serialize::Decodable>(&mut self, query: &str) -> io::Result<Vec<TRel>> {
-    //     use self::ExecuteEvent::{
-    //         RowFetched,
-    //         SqlErrorOccured,
-    //     };
-
-    //     let mut res = vec![];
-    //     for msg_res in try!(self.execute_script(query)) {
-    //         match msg_res {
-    //             RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| io::Error {
-    //                 kind: io::ErrorKind::Other,
-    //                 desc: "Row decode error",
-    //                 detail: Some(format!("{:?}", decode_err)),
-    //             }))),
-    //             SqlErrorOccured(err) => return Err(io::Error {
-    //                 kind: io::ErrorKind::Other,
-    //                 desc: "Error response while queriyng",
-    //                 detail: Some(format!("{:?}", err)),
-    //             }),
-    //             _ => {},
-    //         }
-    //     }
-
-    //     Ok(res)
-
+    // pub fn execute_query(&mut self, query: &str) -> io::Result<Vec<Row>> {
+    //     self.execute_script(query)
+    //         .map(|msg_iter| msg_iter
+    //             .filter_map(|msg| match msg {
+    //                 ExecutionEvent::RowFetched(row) => Some(row),
+    //                 _ => None,
+    //             })
+    //             .collect::<Vec<Row>>()
+    //         )
     // }
+
+    pub fn query<TRel: Decodable>(&mut self, query: &str) -> io::Result<Vec<TRel>> {
+        use self::ExecutionEvent::{
+            RowFetched,
+            SqlErrorOccured,
+        };
+
+        let mut res = vec![];
+        for msg_res in try!(self.execute_script(query)) {
+            match msg_res {
+                RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| io::Error::new(
+                    io::ErrorKind::Other,
+                    "Row decode error",
+                    Some(format!("{:?}", decode_err)),
+                )))),
+                SqlErrorOccured(err) => return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Error response while querying",
+                    Some(format!("{:?}", err)),
+                )),
+                _ => {},
+            }
+        }
+
+        Ok(res)
+
+    }
 
     pub fn finish(mut self) -> io::Result<()> {
         self.stream.write_terminate_message()
@@ -712,92 +842,15 @@ impl<TStream: Read+Write> Connection<TStream> {
 }
 
 
-
-trait MessageWriter {
-    fn write_startup_message(&mut self, user: &str, database: &str) -> io::Result<()>;
-    fn write_password_message(&mut self, password: &str) -> io::Result<()>;
-    fn write_query_message(&mut self, query: &str) -> io::Result<()>;
-    fn write_terminate_message(&mut self) -> io::Result<()>;
-}
-
-impl<T> MessageWriter for T where T: Write {
-
-    fn write_startup_message(&mut self, user: &str, database: &str) -> io::Result<()> {
-        let msg_len = mem::size_of::<i32>() + // self
-                      mem::size_of::<i32>() + // protocol
-                      cstr_len("user") + cstr_len(user) +
-                      cstr_len("database") + cstr_len(database) +
-                      1; // terminating zero
-
-        try!(self.write_i32::<BigEndian>(msg_len as i32));
-        try!(self.write_i32::<BigEndian>(0x0003_0000)); // protocol version
-        try!(self.write_cstr("user"));
-        try!(self.write_cstr(user));
-        try!(self.write_cstr("database"));
-        try!(self.write_cstr(database));
-        try!(self.write_u8(0));
-
-        self.flush()
-    }
-
-    fn write_password_message(&mut self, password: &str) -> io::Result<()> {
-        let msg_len = mem::size_of::<i32>() + cstr_len(password);
-
-        try!(self.write_u8(b'p'));
-        try!(self.write_i32::<BigEndian>(msg_len as i32));
-        try!(self.write_cstr(password));
-
-        self.flush()
-    }
-
-    fn write_query_message(&mut self, query: &str) -> io::Result<()> {
-        let msg_len = mem::size_of::<i32>() + cstr_len(query);
-
-        try!(self.write_u8(b'Q'));
-        try!(self.write_i32::<BigEndian>(msg_len as i32));
-        try!(self.write_cstr(query));
-
-        self.flush()
-    }
-
-    fn write_terminate_message(&mut self) -> io::Result<()> {
-        try!(self.write_u8(b'X'));
-        try!(self.write_i32::<BigEndian>(mem::size_of::<i32>() as i32));
-
-        self.flush()
-    }
-}
-
-
-
-
-pub type Row = Vec<Option<String>>;
-
-
-
-
-#[derive(Debug)]
-pub enum ExecuteEvent {
-    NonQueryExecuted(String),
-    RowsetBegin(Vec<FieldDescription>),
-    RowFetched(Vec<Option<String>>),
-    RowsetEnd,
-    SqlErrorOccured(ErrorOrNotice),
-    IoErrorOccured(io::Error),
-    Notice(ErrorOrNotice),
-}
-
-
-
-pub struct ExecuteEventIterator<'a, TMessageReader: MessageReader +'a> {
-    msg_reader: &'a mut TMessageReader,
+pub struct ExecutionEventIterator<'a> {
+    msg_reader: &'a mut BufStream<InternalStream>,
     is_exhausted: bool,
     is_in_rowset: bool,
 }
 
-impl<'a, TMessageReader: MessageReader> ExecuteEventIterator<'a, TMessageReader> {
-    fn new(msg_reader: &'a mut TMessageReader) -> ExecuteEventIterator<'a, TMessageReader> {
-        ExecuteEventIterator {
+impl<'a> ExecutionEventIterator<'a> {
+    fn new(msg_reader: &'a mut BufStream<InternalStream>) -> ExecutionEventIterator<'a> {
+        ExecutionEventIterator {
             msg_reader: msg_reader,
             is_exhausted: false,
             is_in_rowset: false,
@@ -805,12 +858,11 @@ impl<'a, TMessageReader: MessageReader> ExecuteEventIterator<'a, TMessageReader>
     }
 }
 
-impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TMessageReader> {
+impl<'a> Iterator for ExecutionEventIterator<'a> {
 
-    type Item = ExecuteEvent;
+    type Item = ExecutionEvent;
 
-    fn next(&mut self) -> Option<ExecuteEvent> {
-        use self::ExecuteEvent::*;
+    fn next(&mut self) -> Option<ExecutionEvent> {
 
         if self.is_exhausted {
             return None;
@@ -818,43 +870,49 @@ impl<'a, TMessageReader: MessageReader> Iterator for ExecuteEventIterator<'a, TM
 
         let message = match self.msg_reader.read_message() {
             Ok(message) => message,
-            Err(err) => return Some(IoErrorOccured(err)),
+            Err(err) => return Some(ExecutionEvent::IoErrorOccured(err)),
         };
 
-        match message {
+        Some(match message {
 
             BackendMessage::ReadyForQuery { .. } => {
                 self.is_exhausted = true;
-                None
+                return None;
             },
 
             BackendMessage::RowDescription(descr) => {
                 self.is_in_rowset = true;
-                Some(RowsetBegin(descr))
+                ExecutionEvent::RowsetBegin(descr)
             },
 
-            BackendMessage::ErrorResponse(e) => Some(SqlErrorOccured(e)),
+            BackendMessage::ErrorResponse(e) => {
+                ExecutionEvent::SqlErrorOccured(e)
+            }
 
-            BackendMessage::NoticeResponse(n) => Some(Notice(n)),
+            BackendMessage::NoticeResponse(n) => {
+                ExecutionEvent::Notice(n)
+            }
 
-            BackendMessage::DataRow(row) => Some(RowFetched(row)),
+            BackendMessage::DataRow(row) => {
+                ExecutionEvent::RowFetched(row)
+            }
 
             BackendMessage::CommandComplete { command_tag } => {
-                Some(if self.is_in_rowset {
+                if self.is_in_rowset {
                     self.is_in_rowset = false;
-                    RowsetEnd
+                    ExecutionEvent::RowsetEnd
                 } else {
-                    NonQueryExecuted(command_tag)
-                })
+                    ExecutionEvent::NonQueryExecuted(command_tag)
+                }
             },
 
-            unexpected => Some(IoErrorOccured(io::Error::new(
+            unexpected => ExecutionEvent::IoErrorOccured(io::Error::new(
                 io::ErrorKind::Other,
-                "Unexpected message recived.",
+                "Unexpected message received.",
                  Some(format!("Got {:?}", unexpected)),
-            ))),
+            )),
 
-        }
+        })
     }
 }
 
@@ -872,4 +930,28 @@ fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::{connect};
+
+    #[test]
+    fn test_query() {
+        let mut conn = connect("localhost:5432",
+                               "postgres",
+                               "postgres",
+                               "postgres").unwrap();
+
+        #[derive(RustcDecodable, PartialEq, Debug)]
+        struct Foo {
+            id: i32,
+            name: String,
+        }
+
+        let items = conn.query::<Foo>("select 1, 'one'").unwrap();
+        assert_eq!(items, vec![
+            Foo { id: 1, name: "one".to_string() }
+        ]);
+    }
 }

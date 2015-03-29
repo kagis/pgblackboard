@@ -1,8 +1,26 @@
-use serialize::Decodable;
+use rustc_serialize::{Decoder, Decodable};
 
-type DecodeResult<T> = Result<T, DecodeError>;
+
+pub fn decode_form<T>(form: Vec<(String, String)>) -> DecodeResult<T>
+    where T: Decodable
+{
+    let mut decoder = FormDecoder::new(form);
+    Decodable::decode(&mut decoder)
+}
+
+pub type DecodeResult<T> = Result<T, DecodeError>;
+
+#[derive(Debug)]
+pub enum DecodeError {
+    MissingField,
+    MissingValue,
+    ParseError,
+}
+
+
 
 type FormEntry = (String, String);
+
 
 struct FormDecoder {
     form: Vec<FormEntry>,
@@ -18,23 +36,17 @@ impl FormDecoder {
     }
 }
 
-#[derive(Show)]
-enum DecodeError {
-    MissingField,
-    MissingValue,
-    ParseError,
-}
 
-impl ::serialize::Decoder for FormDecoder {
+impl Decoder for FormDecoder {
     type Error = DecodeError;
 
     fn read_nil(&mut self) -> DecodeResult<()> { unimplemented!() }
-    fn read_uint(&mut self) -> DecodeResult<usize> { unimplemented!() }
+    fn read_usize(&mut self) -> DecodeResult<usize> { unimplemented!() }
     fn read_u64(&mut self) -> DecodeResult<u64> { unimplemented!() }
     fn read_u32(&mut self) -> DecodeResult<u32> { unimplemented!() }
     fn read_u16(&mut self) -> DecodeResult<u16> { unimplemented!() }
     fn read_u8(&mut self) -> DecodeResult<u8> { unimplemented!() }
-    fn read_int(&mut self) -> DecodeResult<isize> { unimplemented!() }
+    fn read_isize(&mut self) -> DecodeResult<isize> { unimplemented!() }
     fn read_i64(&mut self) -> DecodeResult<i64> { unimplemented!() }
     fn read_i32(&mut self) -> DecodeResult<i32> { unimplemented!() }
     fn read_i16(&mut self) -> DecodeResult<i16> { unimplemented!() }
@@ -45,7 +57,8 @@ impl ::serialize::Decoder for FormDecoder {
     fn read_char(&mut self) -> DecodeResult<char> { unimplemented!() }
 
     fn read_str(&mut self) -> DecodeResult<String> {
-        self.reading_values.pop()
+        self.reading_values
+            .pop()
             .ok_or(DecodeError::MissingValue)
     }
 
@@ -92,10 +105,7 @@ impl ::serialize::Decoder for FormDecoder {
 }
 
 
-pub fn decode_form<T: Decodable>(form: Vec<(String, String)>) -> DecodeResult<T> {
-    let mut decoder = FormDecoder::new(form);
-    Decodable::decode(&mut decoder)
-}
+
 
 mod test {
     use super::{
@@ -106,7 +116,7 @@ mod test {
     #[test]
     fn decode_two_strings() {
 
-        #[derive(Decodable, Show, PartialEq)]
+        #[derive(RustcDecodable, Debug, PartialEq)]
         struct FooBar {
             database: String,
             sql_script: String,
@@ -127,7 +137,7 @@ mod test {
     // #[test]
     // fn decode_optional_strings() {
 
-    //      #[derive(Decodable, Show, PartialEq)]
+    //      #[derive(RustcDecodable, Debug, PartialEq)]
     //     struct FooBar {
     //         foo: String,
     //         bar: Option<String>,
