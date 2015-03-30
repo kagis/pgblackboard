@@ -37,6 +37,7 @@ impl FormDecoder {
 }
 
 
+#[allow(unused_variables)]
 impl Decoder for FormDecoder {
     type Error = DecodeError;
 
@@ -76,7 +77,7 @@ impl Decoder for FormDecoder {
 
     fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
         let mut i = self.form.len();
-        while (i > 0) {
+        while i > 0 {
             i -= 1;
             if self.form[i].0 == f_name {
                 let (_, val) = self.form.swap_remove(i);

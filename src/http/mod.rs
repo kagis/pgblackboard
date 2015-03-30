@@ -1,5 +1,12 @@
+#![feature(io)]
+#![feature(collections)]
+
 extern crate threadpool;
 extern crate rustc_serialize;
+
+mod readall;
+
+use readall::{ReadAll};
 
 pub use self::response::{
     ResponseStarter,
@@ -9,8 +16,8 @@ pub use self::response::{
 use rustc_serialize::base64::FromBase64;
 use threadpool::ThreadPool;
 
-use std::io::{self, BufRead, BufReader, Read, Write};
-use std::net::{TcpListener, ToSocketAddrs};
+use std::io::{self, BufRead, BufStream, Read, Write};
+use std::net::{TcpListener};
 use std::ascii::AsciiExt;
 use std::sync::{Arc};
 
@@ -143,7 +150,7 @@ impl Request {
             let (header_name, header_value) = try!(parse_header(&line));
             match &header_name.to_ascii_lowercase()[..] {
                 "content-length" => {
-                    content_length = try!(header_value.parse().ok_or(io::Error::new(
+                    content_length = try!(header_value.parse().map_err(|_| io::Error::new(
                         io::ErrorKind::InvalidInput,
                         "Malformed Content-length value.",
                         Some(format!("got {}", header_value))
@@ -167,7 +174,12 @@ impl Request {
         }
 
         let content = if content_length > 0 {
-            let content = try!(reader.read_exact(content_length));
+
+
+            let mut content = Vec::with_capacity(content_length);
+            content.extend((0..content_length).map(|_| 0));
+            try!(reader.read_all(&mut content));
+
             Some(if is_urlenc_content {
                 RequestContent::UrlEncoded(parse_qs(&content))
             } else {
@@ -240,9 +252,9 @@ impl<T: Read> CRLFLineReader for T {
     fn read_crlf_line(&mut self) -> io::Result<String> {
         let mut line = vec![];
         loop {
-            match try!(self.read_byte()) {
+            match try!(self.read_u8()) {
                 b'\r' => {
-                    let mustbe_lf = try!(self.read_byte());
+                    let mustbe_lf = try!(self.read_u8());
                     if mustbe_lf != b'\n' {
                         return Err(invalid_line_ending());
                     }
@@ -427,7 +439,8 @@ fn parse_header(line: &str) -> io::Result<(&str, &str)> {
 
 pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
     where THandler: Fn(Request, ResponseStarter) -> io::Result<()>,
-          THandler: Sync + Send
+          THandler: Sync + Send,
+          THandler: 'static
 {
     let listener = try!(TcpListener::bind(addr));
 
@@ -438,11 +451,12 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
         let handler = handler.clone();
         match stream_result {
             Err(e) => { println!("{}", e); }
-            Ok(mut stream) => pool.execute(move || {
-                let req = {
-                    let mut reader = BufReader::with_capacity(1024, stream.by_ref());
-                    Request::read_from(&mut reader).unwrap()
-                };
+            Ok(stream) => pool.execute(move || {
+                let mut buf_stream = BufStream::with_capacities(/*read*/1024,
+                                                                /*write*/64 * 1024,
+                                                                stream);
+
+                let req = Request::read_from(&mut buf_stream).unwrap();
 
                 println!("{user} {method} {path:?}",
                          method=req.method,
@@ -451,8 +465,8 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
                                  .as_ref()
                                  .map_or("", |x| &x.0));
 
-                let res = ResponseStarter(stream);
-                let handle_res = handler.handle(req, res);
+                let res = ResponseStarter(buf_stream);
+                let handle_res = handler(req, res);
 
                 if let Err(e) = handle_res {
                     println!("error while sending response {}", e);
@@ -460,6 +474,8 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
             })
         }
     }
+
+    Ok(())
 }
 
 
@@ -551,6 +567,9 @@ pub fn from_hex(byte: u8) -> Option<u8> {
         _ => None
     }
 }
+
+
+
 
 #[test]
 fn test_parse_qs() {

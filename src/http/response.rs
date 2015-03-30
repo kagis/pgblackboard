@@ -78,7 +78,7 @@ impl ResponseStarter {
 
 
 
-struct ResponseWriter(BufStream<TcpStream>);
+pub struct ResponseWriter(BufStream<TcpStream>);
 
 impl ResponseWriter {
     pub fn write_header<TVal: ::std::fmt::Display>(&mut self, name: &str, value: TVal) -> io::Result<&mut Self> {
@@ -125,13 +125,21 @@ impl ChunkedWriter {
         self.0.write_all(b"0\r\n\r\n")
     }
 
-    pub fn write_chunk(&mut self, buf: &[u8]) -> io::Result<()> {
+}
+
+impl Write for ChunkedWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.is_empty() {
-            return Ok(());
+            return Ok(0);
         }
         let inner = &mut self.0;
         try!(write!(inner, "{:x}\r\n", buf.len()));
         try!(inner.write_all(buf));
-        inner.write_all(b"\r\n")
+        try!(inner.write_all(b"\r\n"));
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
     }
 }
