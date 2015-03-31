@@ -5,7 +5,11 @@ extern crate threadpool;
 extern crate rustc_serialize;
 
 mod readall;
+mod reqmethod;
+mod reqerror;
+mod respstatus;
 
+use reqmethod::RequestMethod;
 use readall::{ReadAll};
 
 pub use self::response::{
@@ -26,11 +30,6 @@ use std::sync::{Arc};
 mod response;
 pub mod form;
 
-
-
-pub enum AuthenticationScheme {
-    Basic,
-}
 
 fn malformed_request_line_err() -> io::Error {
     io::Error::new(
@@ -68,30 +67,27 @@ pub enum RequestContent {
     Binary(Vec<u8>),
 }
 
-#[derive(Debug, Copy)]
-pub enum Method {
-    Get,
-    Post,
-    Patch,
-}
 
-impl ::std::fmt::Display for Method {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", match *self {
-            Method::Get => "GET",
-            Method::Post => "POST",
-            Method::Patch => "PATCH",
-        })
-    }
-}
+
+
 
 #[derive(Debug)]
 pub struct Request {
-    pub method: Method,
+    pub method: RequestMethod,
     pub path: Vec<String>,
     pub query_string: Vec<(String, String)>,
     pub content: Option<RequestContent>,
-    pub basic_auth: Option<(String, String)>,
+    pub credentials: Option<RequestCredentials>,
+}
+
+
+
+#[derive(Debug)]
+pub enum RequestCredentials {
+    Basic {
+        username: String,
+        password: String,
+    }
 }
 
 impl Request {
@@ -105,21 +101,13 @@ impl Request {
                                 .ok_or(malformed_request_line_err()));
 
 
-        let method = match &req_line[0..left_space_pos] {
-            "GET" => Method::Get,
-            "POST" => Method::Post,
-            unsupported => return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Unsupported method",
-                Some(format!("{}", unsupported))
-            )),
-        };
+        let method = req_line[0..left_space_pos].parse::<RequestMethod>().unwrap();
 
         let http_version = &req_line[(right_space_pos + 1)..];
         if http_version != "HTTP/1.1" && http_version != "HTTP/1.0" {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Unsupported HTTP protocol version.",
+                "Unsupported HTTP version.",
                 Some(http_version.to_string())
             ));
         }
@@ -194,7 +182,8 @@ impl Request {
             path: path.split(|&x| x == b'/').skip(1).map(|x| url_decode(x)).collect(),
             query_string: query_string,
             content: content,
-            basic_auth: authorization,
+            credentials: None,
+            //basic_auth: authorization,
         })
     }
 }
@@ -461,9 +450,9 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
                 println!("{user} {method} {path:?}",
                          method=req.method,
                          path=req.path,
-                         user=req.basic_auth
+                         user="user" /*req.credentials
                                  .as_ref()
-                                 .map_or("", |x| &x.0));
+                                 .map_or("", |x| &x.0)*/);
 
                 let res = ResponseStarter(buf_stream);
                 let handle_res = handler(req, res);
@@ -477,37 +466,6 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
 
     Ok(())
 }
-
-
-
-
-
-/// A handler that can handle incoming requests for a server.
-pub trait Handler: Sync + Send {
-    /// Receives a `Request`/`Response` pair, and should perform some action on them.
-    ///
-    /// This could reading from the request, and writing to the response.
-    fn handle(&self, Request, ResponseStarter) -> io::Result<()>;
-}
-
-impl<TFunc> Handler for TFunc
-    where TFunc: Fn(Request, ResponseStarter) -> io::Result<()>,
-          TFunc: Sync + Send
-{
-
-    fn handle(&self, req: Request, res: ResponseStarter) -> io::Result<()> {
-        (*self)(req, res)
-    }
-}
-
-
-
-
-
-
-
-
-
 
 
 
@@ -559,7 +517,7 @@ fn url_decode(input: &[u8]) -> String {
     String::from_utf8(buf).unwrap()
 }
 
-pub fn from_hex(byte: u8) -> Option<u8> {
+fn from_hex(byte: u8) -> Option<u8> {
     match byte {
         b'0' ... b'9' => Some(byte - b'0'),
         b'A' ... b'F' => Some(byte + 10 - b'A'),
