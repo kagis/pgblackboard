@@ -1,4 +1,4 @@
-#![feature(io, core)]
+#![feature(io)]
 
 //! ```rust
 //! extern crate rustc_serialize;
@@ -52,6 +52,7 @@ pub type Oid = u32;
 pub type Row = Vec<Option<String>>;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum ExecutionEvent {
     NonQueryExecuted(String),
     RowsetBegin(Vec<FieldDescription>),
@@ -63,6 +64,7 @@ pub enum ExecutionEvent {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct FieldDescription {
 
     /// The field name.
@@ -95,12 +97,14 @@ pub struct FieldDescription {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum FieldTypeSize {
     Fixed(usize),
     Variable,
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum FieldFormat {
     Text,
     Binary,
@@ -114,6 +118,7 @@ enum TransactionStatus {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct ErrorOrNotice {
 
     // S
@@ -878,12 +883,12 @@ impl<'a> Iterator for ExecutionEventIterator<'a> {
             BackendMessage::ReadyForQuery { .. } => {
                 self.is_exhausted = true;
                 return None;
-            },
+            }
 
             BackendMessage::RowDescription(descr) => {
                 self.is_in_rowset = true;
                 ExecutionEvent::RowsetBegin(descr)
-            },
+            }
 
             BackendMessage::ErrorResponse(e) => {
                 ExecutionEvent::SqlErrorOccured(e)
@@ -904,7 +909,7 @@ impl<'a> Iterator for ExecutionEventIterator<'a> {
                 } else {
                     ExecutionEvent::NonQueryExecuted(command_tag)
                 }
-            },
+            }
 
             unexpected => ExecutionEvent::IoErrorOccured(io::Error::new(
                 io::ErrorKind::Other,
@@ -934,7 +939,7 @@ fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use super::{connect};
+    use super::*;
 
     #[test]
     fn test_query() {
@@ -952,6 +957,49 @@ mod test {
         let items = conn.query::<Foo>("select 1, 'one'").unwrap();
         assert_eq!(items, vec![
             Foo { id: 1, name: "one".to_string() }
+        ]);
+    }
+
+    #[test]
+    fn test_script() {
+        let mut conn = connect("localhost:5432",
+                               "postgres",
+                               "postgres",
+                               "postgres").unwrap();
+
+        #[derive(RustcDecodable, PartialEq, Debug)]
+        struct Foo {
+            id: i32,
+            name: String,
+        }
+
+        let events = conn.execute_script("select 1 as id, 'one' as name")
+                        .unwrap()
+                        .collect::<Vec<_>>();
+
+        assert_eq!(events, vec![
+            ExecutionEvent::RowsetBegin(vec![
+                FieldDescription {
+                    name: "id".to_string(),
+                    table_oid: None,
+                    column_id: None,
+                    type_oid: 23,
+                    type_size: FieldTypeSize::Fixed(4),
+                    type_modifier: -1,
+                    format: FieldFormat::Text
+                },
+                FieldDescription {
+                    name: "name".to_string(),
+                    table_oid: None,
+                    column_id: None,
+                    type_oid: 705,
+                    type_size: FieldTypeSize::Variable,
+                    type_modifier: -1,
+                    format: FieldFormat::Text
+                },
+            ]),
+            ExecutionEvent::RowFetched(vec![Some("1".to_string()), Some("one".to_string())]),
+            ExecutionEvent::RowsetEnd,
         ]);
     }
 }

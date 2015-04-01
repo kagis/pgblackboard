@@ -685,23 +685,23 @@ fn dispatch_exec_events<TEventsIter, TView>(mut events_iter: TEventsIter, mut vi
     Ok(())
 }
 
-
 trait View {
     //fn new<TWriter: Writer>(writer: TWriter) -> Self;
 
-    fn render_rowset_begin(&mut self, &[postgres::FieldDescription]) -> IoResult<()>;
-    fn render_rowset_end(&mut self) -> IoResult<()>;
-    fn render_row(&mut self, &[Option<String>]) -> IoResult<()>;
-    fn render_notice(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
-    fn render_sql_error(&mut self, postgres::ErrorOrNotice) -> IoResult<()>;
-    fn render_io_error(&mut self, IoError) -> IoResult<()>;
-    fn render_nonquery(&mut self, &str) -> IoResult<()>;
+    fn render_rowset_begin(&mut self, rowset_id: i32, &[(String, String, bool)]) -> io::Result<()>;
+    fn render_rowset_end(&mut self) -> io::Result<()>;
+    fn render_row(&mut self, &[Option<String>]) -> io::Result<()>;
+    fn make_rowset_editable(&mut self, rowset_id: i32, &[(, )]) -> io::Result<()>;
+    fn render_notice(&mut self, postgres::ErrorOrNotice) -> io::Result<()>;
+    fn render_sql_error(&mut self, message: &str, script_line: Option<usize>) -> io::Result<()>;
+    fn render_io_error(&mut self, IoError) -> io::Result<()>;
+    fn render_nonquery(&mut self, &str) -> io::Result<()>;
 }
 
 struct TableView<T: Writer>(T);
 
 impl<T: Writer> View for TableView<T> {
-    fn render_rowset_begin(&mut self, cols_descr: &[postgres::FieldDescription]) -> IoResult<()> {
+    fn render_rowset_begin(&mut self, rowset_id: i32, cols_descr: &[postgres::FieldDescription]) -> IoResult<()> {
         let writer = &mut self.0;
         try!(writer.write(b"<table>"));
         try!(writer.write(b"<tr>"));

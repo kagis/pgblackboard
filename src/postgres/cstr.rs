@@ -12,7 +12,13 @@ impl<T: BufRead> CStringReader for T {
     fn read_cstr(&mut self) -> io::Result<String> {
         let mut buf = vec![];
         try!(self.read_until(0, &mut buf));
-        buf.pop();
+        if buf.pop() != Some(0) {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Unexpected EOF.",
+                None
+            ));
+        }
         String::from_utf8(buf).map_err(|_| io::Error::new(
             io::ErrorKind::Other,
             "Received a non-utf8 string from server",
@@ -41,13 +47,25 @@ pub fn cstr_len(s: &str) -> usize {
 #[cfg(test)]
 mod test {
      use super::*;
-     use std::io::Cursor;
+     use std::io::{self, Cursor};
 
     #[test]
     fn read_cstr() {
         let buf: &[u8] = b"some awesome\0";
         let mut reader = Cursor::new(buf);
         assert_eq!(reader.read_cstr(), Ok("some awesome".to_string()));
+    }
+
+        #[test]
+    fn read_without_terminating_zero() {
+        let buf: &[u8] = b"some awesome";
+        let mut reader = Cursor::new(buf);
+
+        let err = io::Error::new(io::ErrorKind::Other,
+                                 "Unexpected EOF.",
+                                 None);
+
+        assert_eq!(reader.read_cstr(), Err(err));
     }
 
     #[test]

@@ -7,6 +7,7 @@ macro_rules! sql_state {
 
         $(
             #[derive(Debug, Copy)]
+            #[derive(PartialEq)]
             pub enum $class_name {
                 $( $name, )*
                 Unknown
@@ -15,6 +16,7 @@ macro_rules! sql_state {
 
 
         #[derive(Debug, Copy)]
+        #[derive(PartialEq)]
         pub enum SqlState {
             $( $class_name(Option<$class_name>), )*
             Unknown
