@@ -10,7 +10,8 @@ pub trait View {
 
     fn render_rowset_end(&mut self) -> io::Result<()>;
 
-    fn render_row<T: Iterator<Item=&str>>(&mut self, T) -> io::Result<()>;
+    fn render_row<'a, T>(&mut self, row: T) -> io::Result<()>
+        where T: Iterator<Item=Option<&'a str>>;
 
     fn make_rowset_editable(&mut self,
                             rowset_id: i32,
@@ -42,7 +43,7 @@ pub struct FieldDescription<'a, 'b> {
 
 struct TableView<T: Write>(T);
 
-impl<T: Write> View for TableView<T> {
+impl<W: Write> View for TableView<W> {
 
     fn render_rowset_begin(&mut self,
                            rowset_id: i32,
@@ -93,10 +94,12 @@ impl<T: Write> View for TableView<T> {
                             pk_mask: &[bool])
                             -> io::Result<()>
     {
-
+        Ok(())
     }
 
-    fn render_row<T: Iterator<Item=&str>>(&mut self, row: &[String]) -> io::Result<()> {
+    fn render_row<'a, T>(&mut self, row: T) -> io::Result<()>
+        where T: Iterator<Item=Option<&'a str>> {
+
         let writer = &mut self.0;
         try!(writer.write_all(b"<tr>"));
         try!(writer.write_all(b"<th></th>"));
@@ -145,3 +148,15 @@ impl<T: Write> View for TableView<T> {
 }
 
 
+fn main() {
+    let mut view = TableView(io::stdout());
+
+    view.render_rowset_begin(1, &[
+        FieldDescription { name: "one", typ: "text", is_numeric: false },
+        FieldDescription { name: "two", typ: "int", is_numeric: true },
+    ]);
+    view.render_row(vec![
+        Some("foo"),
+        Some("bar"),
+    ].into_iter()).unwrap();
+}
