@@ -30,6 +30,268 @@ mod http;
 mod tree;
 
 
+fn main() {
+    httpd::serve_forever_tcp("0.0.0.0:7890", handle_req);
+}
+
+fn handle_req(req: httpd::Request, resp: httpd::Response) -> httpd::Result<()> {
+    use httpd::RequestMethod::{Get, Post};
+
+    println!("{:?}", req);
+
+    //let path = &req.path.clone()[];
+    let method = req.method;
+
+    let path_vec = req.path.clone();
+    let path_slices_vec = path_vec
+        .iter()
+        .map(|x| x.as_slice())
+        .collect::<Vec<&str>>();
+
+    let path = &path_slices_vec[];
+
+    let ctrl = Controller { req: req, res: res };
+
+
+    // /db/postgres/execute
+    // /db/postgres/map
+    // /db/postgres/nodes/<schema>/<100>/definition
+    // /db/postgres/edit
+
+
+    match req.path_segments() {
+        ["" /* root */ ] => match req.method() {
+            Get => handle_index_req(&req, resp),
+            Post => handle_sqlexec_req(&req, resp),
+            _ => respond_method_not_allowed(resp),
+        }
+
+        ["db", database, subpath..] => {
+            handle_db_req(database, subpath, &req, resp)
+        }
+
+        ["favicon.ico"] => match req.method() {
+            Get => handle_asset_req("favicon.ico", resp),
+            _ => respond_method_not_allowed(resp),
+        }
+
+        ["assets", filename..] => match req.method {
+            Get => handle_asset_req(filename, resp),
+            _ => respond_method_not_allowed(resp),
+        }
+
+        _ => respond_not_found(resp),
+
+        (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
+        => ctrl.handle_db_req(NodeChidrenResource {
+            database: database.to_string(),
+            nodetype: nodetype.to_string(),
+            nodeid: nodeid.to_string(),
+        }),
+
+        (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
+        => ctrl.handle_db_req(NodeDefinitionResource {
+            database: database,
+            nodetype: nodetype,
+            nodeid: nodeid,
+        }),
+
+        (Post, [""])
+        => {
+
+            #[derive(Decodable)]
+            struct Params {
+                sql_script: String,
+            }
+
+            let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
+                Ok(res) => res,
+                Err(err) => return err,
+            };
+
+            let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
+                Ok(x) => x,
+                Err(err) => return err,
+            };
+
+            let ctrl = Controller { req: ctrl.req, res: res };
+
+
+            ctrl.handle_db_req(exec_res)
+        },
+
+        // ["db", database, "execute"]
+        // => DbResource::new(database, ),
+
+        (Get, ["static", filename..])
+        => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
+
+        (Get, ["favicon.ico"])
+        => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
+
+        _
+        => ctrl.use_resource(NotFoundResource),
+    }
+
+
+    // match path {
+    //     []
+    //         => ctrl.handle_db_req("postgres", &[]),
+
+    //     ["db", database, subpath..]
+    //         => ctrl.handle_db_req(database, subpath),
+
+    //     ["favicon.ico"]
+    //         => ctrl.handle_static_req("favicon.ico"),
+
+    //     ["static", filename..]
+    //         => ctrl.handle_static_req(&filename.connect("/")[]),
+
+    //     _
+    //         => ctrl.handle_not_found(),
+    // }
+
+    // let (database, db_consumer) = match (method, path) {
+    //     (Get, []) => ("postgres", Controller::handle_index_req),
+    //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
+    //     //(Post, ["map", database]) => Controller::handle_
+    //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+    //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+
+    //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
+    //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
+    //     _ => return ctrl.handle_not_found(),
+    // };
+
+    // ctrl.handle_db_req(database, db_consumer)
+}
+
+fn handle_db_route_req(dbname: &str,
+                       path: &[&str],
+                       req: &httpd::Request,
+                       resp: httpd::Response)
+                       -> httpd::Result
+{
+    use httpd::RequestMethod::{Get, Patch};
+    use httpd::ResponseStatus::{Unauthorized, NotFound};
+    use postgres::ConnectionError::*;
+
+    let dbconn = match connectdb(dbname, req) {
+        Ok(dbconn) => dbconn,
+        Err(connerr) => return match connerr {
+            AuthenticationError => {
+                let resp = try!(resp.start(Unauthorized));
+                try!(resp.write_content_type("application/json"));
+                try!(resp.write_content(stringify!({
+                    "error": "Invalid username or password."
+                })));
+            }
+
+            DatabaseNotExists => {
+                let resp = try!(resp.start(NotFound));
+                try!(resp.write_content_type("application/json"));
+                try!(resp.write_content(stringify!({
+                    "error": "Database not found."
+                })));
+            }
+        },
+    };
+
+    match path {
+        ["nodes", nodetype, nodeid, slug] => match req.method() {
+            Get => match slug {
+                "definition" => handle_node_definition_req(),
+                "children" => handle_node_children_req(),
+            }
+
+            _ => respond_method_not_allowed(resp)
+        }
+
+        ["tables", tableid] => match req.method() {
+            Patch => handle_table_patch_req(tableid, req, resp),
+            _ => respond_method_not_allowed(resp)
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fn guess_content_type(extension: &[u8]) -> &str {
     match extension {
         b"html" => "text/html",
@@ -67,118 +329,7 @@ struct Controller<THttpWriter: Writer> {
 
 impl<THttpWriter: Writer> Controller<THttpWriter> {
 
-    fn handle_req(req: http::Request, res: http::ResponseStarter<THttpWriter>) -> IoResult<()> {
-        use http::Method::{ Get, Post };
 
-        println!("{:?}", req);
-
-        //let path = &req.path.clone()[];
-        let method = req.method;
-
-        let path_vec = req.path.clone();
-        let path_slices_vec = path_vec
-            .iter()
-            .map(|x| x.as_slice())
-            .collect::<Vec<&str>>();
-
-        let path = &path_slices_vec[];
-
-        let ctrl = Controller { req: req, res: res };
-
-
-        // /db/postgres/execute
-        // /db/postgres/map
-        // /db/postgres/nodes/<schema>/<100>/definition
-        // /db/postgres/edit
-
-
-        match (method, path) {
-            (Get, ["" /* root */ ])
-            => ctrl.handle_db_req(IndexResource),
-
-            (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
-            => ctrl.handle_db_req(NodeChidrenResource {
-                database: database.to_string(),
-                nodetype: nodetype.to_string(),
-                nodeid: nodeid.to_string(),
-            }),
-
-            (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
-            => ctrl.handle_db_req(NodeDefinitionResource {
-                database: database,
-                nodetype: nodetype,
-                nodeid: nodeid,
-            }),
-
-            (Post, [""])
-            => {
-
-                #[derive(Decodable)]
-                struct Params {
-                    sql_script: String,
-                }
-
-                let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
-                    Ok(res) => res,
-                    Err(err) => return err,
-                };
-
-                let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
-                    Ok(x) => x,
-                    Err(err) => return err,
-                };
-
-                let ctrl = Controller { req: ctrl.req, res: res };
-
-
-                ctrl.handle_db_req(exec_res)
-            },
-
-            // ["db", database, "execute"]
-            // => DbResource::new(database, ),
-
-            (Get, ["static", filename..])
-            => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
-
-            (Get, ["favicon.ico"])
-            => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
-
-            _
-            => ctrl.use_resource(NotFoundResource),
-        }
-
-
-        // match path {
-        //     []
-        //         => ctrl.handle_db_req("postgres", &[]),
-
-        //     ["db", database, subpath..]
-        //         => ctrl.handle_db_req(database, subpath),
-
-        //     ["favicon.ico"]
-        //         => ctrl.handle_static_req("favicon.ico"),
-
-        //     ["static", filename..]
-        //         => ctrl.handle_static_req(&filename.connect("/")[]),
-
-        //     _
-        //         => ctrl.handle_not_found(),
-        // }
-
-        // let (database, db_consumer) = match (method, path) {
-        //     (Get, []) => ("postgres", Controller::handle_index_req),
-        //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
-        //     //(Post, ["map", database]) => Controller::handle_
-        //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-        //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-
-        //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
-        //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
-        //     _ => return ctrl.handle_not_found(),
-        // };
-
-        // ctrl.handle_db_req(database, db_consumer)
-    }
 
     fn decode_urlencoded_form<TForm: ::serialize::Decodable>(self) -> Result<(Self, TForm), IoResult<()>> {
         let content = self.req.content.clone();
@@ -748,12 +899,6 @@ impl<T: Writer> View for TableView<T> {
         write!(&mut self.0, "<pre>{}</pre>", cmd)
     }
 }
-
-
-fn main() {
-    http::serve_forever_tcp("0.0.0.0:7890", Controller::handle_req);
-}
-
 
 
 

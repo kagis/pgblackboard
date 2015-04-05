@@ -36,9 +36,9 @@ pub trait View {
 }
 
 pub struct FieldDescription<'a, 'b> {
-    name: &'a str,
-    typ: &'b str,
-    is_numeric: bool,
+    pub name: &'a str,
+    pub typ: &'b str,
+    pub is_numeric: bool,
 }
 
 
