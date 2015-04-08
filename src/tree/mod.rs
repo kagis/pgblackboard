@@ -20,6 +20,50 @@ pub struct Node {
     has_children: bool,
 }
 
+pub enum NodeType {
+    Database,
+    Schema,
+    Extension,
+    Table,
+    View,
+    MaterializedView,
+    ForeignTable,
+    AggregateFunction,
+    Function,
+    Column,
+    PrimaryKeyColumn,
+    ForeignKeyColumn,
+    Index,
+    Trigger,
+    ForeignKeyConstraint,
+    CheckConstraint,
+    UniqueConstraint,
+}
+
+impl NodeType {
+    pub fn from_str(inp: &str) -> Option<NodeType> {
+        Ok(match inp {
+            "database" => NodeType::Database,
+            "schema" => NodeType::Schema,
+            "extension" => NodeType::Extension,
+            "table" => NodeType::Table,
+            "view" => NodeType::View,
+            "matview" => NodeType::MaterializedView,
+            "foreigntable" => NodeType::ForeignTable,
+            "agg" => NodeType::AggregateFunction,
+            "func" => NodeType::Function,
+            "column" => NodeType::Column,
+            "pkcolumn" => NodeType::PrimaryKeyColumn,
+            "fkcolumn" => NodeType::ForeignKeyColumn,
+            "index" => NodeType::Index,
+            "trigger" => NodeType::Trigger,
+            "foreignkey" => NodeType::ForeignKeyConstraint,
+            "check" => NodeType::CheckConstraint,
+            "unique" => NodeType::UniqueConstraint,
+            _ => return None
+        })
+    }
+}
 
 
 impl<T: Stream> NodeService<T> {

@@ -67,7 +67,7 @@ fn handle_req(req: httpd::Request, resp: httpd::Response) -> httpd::Result<()> {
         }
 
         ["db", database, subpath..] => {
-            handle_db_req(database, subpath, &req, resp)
+            handle_db_route_req(database, subpath, &req, resp)
         }
 
         ["favicon.ico"] => match req.method() {
@@ -198,24 +198,57 @@ fn handle_db_route_req(dbname: &str,
     };
 
     match path {
-        ["nodes", nodetype, nodeid, slug] => match req.method() {
-            Get => match slug {
-                "definition" => handle_node_definition_req(),
-                "children" => handle_node_children_req(),
-            }
+        ["nodes", nodetype, nodeid, tail] => {
+            let nodetype = match NodeType::from_str(nodetype) {
+                Some(nodetype) => nodetype,
+                None => {
+                    let resp = try!(resp.start(NotFound));
+                    try!(resp.write_content_type("application/json"));
+                    try!(resp.write_content(stringify!({
+                        "error": "Unknown node type."
+                    })));
+                }
+            };
 
-            _ => respond_method_not_allowed(resp)
+            let node_service = NodeService::new(nodetype, nodeid, dbconn);
+
+            match tail {
+                "definition" => match req.method() {
+                    Get => handle_node_definition_req(node_service, resp),
+                    _ => respond_method_not_allowed(resp)
+                }
+
+                "children" => match req.method() {
+                    Get => handle_node_children_req(node_service, resp),
+                    _ => respond_method_not_allowed(resp)
+                }
+
+                _ => respond_not_found(resp)
+            }
         }
 
         ["tables", tableid] => match req.method() {
             Patch => handle_table_patch_req(tableid, req, resp),
             _ => respond_method_not_allowed(resp)
         }
+
+        _ => respond_not_found(resp)
     }
 }
 
+fn handle_sqlexec_req(req: &httpd::Request,
+                      resp: httpd::Response)
+                      -> httpd::Result
+{
 
+}
 
+fn handle_index_req(req: &httpd::Request,
+                    resp: httpd::Response)
+                    -> httpd::Result
+{
+
+}
 
 
 
