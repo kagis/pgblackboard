@@ -2,12 +2,14 @@ var ko = require('knockout');
 
 module.exports = Tree;
 
-/**
- * @constructor
- */
+/** @constructor */
 function Tree(params) {
-    this['selectNode'] = params['selectNodeCallback'];
-    this['nodes'] = params['nodes'].map(this.createNode, this);
+
+    /** @expose */
+    this.selectNode = params['selectNodeCallback'];
+
+    /** @expose */
+    this.nodes = params['nodes'].map(this.createNode, this);
 }
 
 Tree.TreeNode = TreeNode;
@@ -17,36 +19,49 @@ Tree.prototype.createNode = function (dto) {
     return new TreeNode(dto, this.selectedNode);
 };
 
-/**
- * @constructor
- */
+/** @constructor */
 function TreeNode(nodeDTO) {
     this._nodeDTO = nodeDTO;
 
-    this['nodes'] =
+    /** @expose */
     this.nodes = ko.observable();
 
-    this['isExpanding'] =
+    /** @expose */
     this.isExpanding = ko.observable(false);
 
-    this['isExpanded'] = ko.pureComputed(this._checkIsExpanded, this);
-    this['isCollapsed'] = ko.pureComputed(this._checkIsCollapsed, this);
-    this.expansionState = ko.pureComputed(this._getExpansionState, this);
+    /** @expose */
+    this.isExpanded = ko.pureComputed(this.checkIsExpanded, this);
 
-    this['isSelected'] = ko.observable(false);
+    /** @expose */
+    this.isCollapsed = ko.pureComputed(this.checkIsCollapsed, this);
 
-    this['name'] = nodeDTO['name'];
-    this['type'] = nodeDTO['typ'];
-    this['comment'] = nodeDTO['comment'];
+    this.expansionState = ko.pureComputed(this.getExpansionState, this);
 
-    // toggler is visible when['hasChildren'] is true
-    this['hasChildren'] = nodeDTO['has_children'];
+    /** @expose */
+    this.isSelected = ko.observable(false);
 
-    // horizontal line is drawn above groupStart node
-    this['isGroupStart'] = nodeDTO['isGroupStart'];
+    /** @expose */
+    this.name = nodeDTO['name'];
+
+    /** @expose */
+    this.type = nodeDTO['typ'];
+
+    /** @expose */
+    this.comment = nodeDTO['comment'];
+
+    /** @expose
+     * toggler is visible when `hasChildren` is true
+     */
+    this.hasChildren = nodeDTO['has_children'];
+
+    /** @expose
+     * horizontal line is drawn above groupStart node
+     */
+    this.isGroupStart = nodeDTO['isGroupStart'];
 }
 
-TreeNode.prototype['toggle'] = function () {
+/** @expose */
+TreeNode.prototype.toggle = function () {
     if (this.isExpanded()) {
         this.collapse();
     } else {
@@ -86,16 +101,19 @@ TreeNode.prototype.onChildrenLoadError = function () {
     alert('ERROR while loading child tree nodes.');
 };
 
-TreeNode.prototype._getExpansionState = function (argument) {
+/** @private */
+TreeNode.prototype.getExpansionState = function (argument) {
     return this.isExpanding() ? 'expanding' :
            this.isExpanded() ? 'expanded' : 'collapsed';
 };
 
-TreeNode.prototype._checkIsExpanded = function () {
+/** @private */
+TreeNode.prototype.checkIsExpanded = function () {
     return this.nodes() && !this.isExpanding();
 };
 
-TreeNode.prototype._checkIsCollapsed = function () {
+/** @private */
+TreeNode.prototype.checkIsCollapsed = function () {
     return !this.nodes() && !this.isExpanding();
 };
 

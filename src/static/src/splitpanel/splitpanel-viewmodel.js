@@ -19,25 +19,29 @@ function splitPanelViewModel(isHorizontal) {
 }
 
 function SplitPanel(aPanelContent, bPanelContent, isHorizontal) {
-    this['aPanelContent'] = aPanelContent;
-    this['bPanelContent'] = bPanelContent;
+    /** @expose */
+    this.aPanelContent = aPanelContent;
 
-    this['aPanelPos'] =
+    /** @expose */
+    this.bPanelContent = bPanelContent;
+
+    /** @expose */
     this.aPanelPos = ko.observable();
 
-    this['bPanelPos'] =
+    /** @expose */
     this.bPanelPos = ko.observable();
 
-    this['splitterPos'] =
+    /** @expose */
     this.splitterPos = ko.observable();
 
-    this['isSplitting'] =
+    /** @expose */
     this.isSplitting = ko.observable(false);
 
     this.resize = (isHorizontal ? this.resizeV : this.resizeH);
 }
 
-SplitPanel.prototype['beginSplit'] = function (_, e) {
+/** @expose */
+SplitPanel.prototype.beginSplit = function (_, e) {
     var splitterElem = e.target;
     var container = splitterElem.parentNode;
     var containerBounds = container.getBoundingClientRect();

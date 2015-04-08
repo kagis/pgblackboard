@@ -8,9 +8,15 @@ module.exports = MyQueries;
  */
 function MyQueries(params) {
     this.storage = params['storage'];
-    this['selectItem'] = params['selectItemCallback'];
-    this['items'] = this.items = ko.observableArray(this.load());
-    this['removeItem'] = this.removeItem.bind(this);
+
+    /** @expose */
+    this.selectItem = params['selectItemCallback'];
+
+    /** @expose */
+    this.items = this.items = ko.observableArray(this.load());
+
+    /** @expose */
+    this.removeItem = this.removeItem.bind(this);
 
     this.addEventSubscription = params['addEvent'].subscribe(this.newItem, this);
 }
@@ -36,7 +42,7 @@ MyQueries.prototype.newItem = function (doc) {
     this.storage.setItem(newStorageKey, doc());
     var item = this.createItem(doc, newStorageKey);
     this.items.push(item);
-    this['selectItem'](item);
+    this.selectItem(item);
     return item;
 };
 
@@ -50,9 +56,13 @@ MyQueries.prototype.restoreItem = function (storageKey) {
 /** @private */
 MyQueries.prototype.createItem = function (doc, storageKey) {
     return {
-        'name': ko.pureComputed(this.getQueryName.bind(this, doc))
+        /** @expose */
+        name: ko.pureComputed(this.getQueryName.bind(this, doc))
                     .extend({ 'rateLimit': 500 }),
-        'isSelected': ko.observable(false),
+
+        /** @expose */
+        isSelected: ko.observable(false),
+
         getDoc: function () { return doc; },
         storageKey: storageKey,
         docSubscription: doc.subscribe(
@@ -66,8 +76,8 @@ MyQueries.prototype.removeItem = function (removingItem) {
     this.items.remove(removingItem);
     this.storage.removeItem(removingItem.storageKey);
 
-    if (removingItem['isSelected']()) {
-        this['selectItem'](null);
+    if (removingItem.isSelected()) {
+        this.selectItem(null);
     }
 };
 
@@ -86,6 +96,7 @@ MyQueries.prototype.getQueryName = function (doc) {
     return queryText.substr(0, 100) || '(empty)';
 };
 
-MyQueries.prototype['dispose'] = function () {
+/** @expose */
+MyQueries.prototype.dispose = function () {
     this.addEventSubscription.dispose();
 };

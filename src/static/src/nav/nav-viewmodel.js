@@ -7,10 +7,15 @@ module.exports = Nav;
  * @param {{selectedDoc}} params
  */
 function Nav(params) {
-    this['myQueriesStorage'] = params['myQueriesStorage'];
-    this['databases'] = params['databases'];
-    this['selectTreeNode'] = this.selectTreeNode.bind(this);
-    this['selectMyQuery'] = this.selectMyQuery.bind(this);
+    /** @expose */
+    this.myQueriesStorage = params['myQueriesStorage'];
+    /** @expose */
+    this.databases = params['databases'];
+    /** @expose */
+    this.selectTreeNode = this.selectTreeNode.bind(this);
+
+    /** @expose */
+    this.selectMyQuery = this.selectMyQuery.bind(this);
 
     this.selectedDoc = params['selectedDoc'];
 
@@ -25,7 +30,7 @@ function Nav(params) {
         this,
         'beforeChange');
 
-    this['addMyQueryEvent'] =
+    /** @expose */
     this.addMyQueryEvent = new ko.subscribable();
 
     this.createMyQueryWhenDocChange(this.selectedDoc());
@@ -66,14 +71,14 @@ Nav.prototype.navigateToGreetingDoc = function () {
 /** @private */
 Nav.prototype.onUnselectingItem = function (unselectingItem) {
     if (unselectingItem) {
-        unselectingItem['isSelected'](false);
+        unselectingItem.isSelected(false);
     }
 };
 
 /** @private */
 Nav.prototype.onSelectingItem = function (selectingItem) {
     if (selectingItem) {
-        selectingItem['isSelected'](true);
+        selectingItem.isSelected(true);
     }
 };
 

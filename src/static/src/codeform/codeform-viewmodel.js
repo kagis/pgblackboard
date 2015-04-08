@@ -8,8 +8,12 @@ module.exports = CodeForm;
  */
 function CodeForm(params) {
     this.doc = params['doc'];
-    this['isLoading'] = ko.pureComputed(this.checkIsLoading, this);
-    this['readyDoc'] = ko.computed(this.getReadyDoc, this);
+
+    /** @expose */
+    this.isLoading = ko.pureComputed(this.checkIsLoading, this);
+
+    /** @expose */
+    this.readyDoc = ko.computed(this.getReadyDoc, this);
 }
 
 /** @private */
@@ -19,7 +23,7 @@ CodeForm.prototype.checkIsLoading = function () {
 
 /** @private */
 CodeForm.prototype.getReadyDoc = function () {
-    if (!this['isLoading']()) {
+    if (!this.isLoading()) {
         this.readyDocVal = this.doc();
     }
     return this.readyDocVal;
