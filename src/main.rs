@@ -246,7 +246,7 @@ impl Controller {
             }
 
             ["tables", tableid] => match req.method() {
-                Patch => self.handle_table_patch_req(tableid, req, resp),
+                Patch => self.handle_table_patch_req(dbconn, tableid, req, resp),
                 _ => respond_method_not_allowed(resp)
             }
 
@@ -271,11 +271,25 @@ impl Controller {
     }
 
     fn handle_table_patch_req(&self,
+                              dbconn: postgres::Connection,
+                              tableid: postgres::Oid,
                               req: &httpd::Request,
                               resp: httpd::Response)
                               -> httpd::Result
     {
 
+    }
+
+    fn connectdb(&self, dbname: &str, req: &httpd::Request) -> postgres::ConnectionResult {
+        use httpd::RequestCredentials::Basic;
+        let (username, password) = match req.credentials() {
+            Some(Basic { username, password }) => (username, password),
+            Some(..) => "unsupported authentication scheme",
+            None => "username and password requried.",
+        };
+
+        let dbconn = try!(postgres::connect(self.pgaddr, dbname, username, password));
+        dbconn
     }
 }
 
