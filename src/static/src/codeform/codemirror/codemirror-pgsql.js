@@ -1,8 +1,3 @@
-(function () {
-'use strict';
-
-var CodeMirror = require('codemirror');
-
 // turn a space-separated list into an array
 function set(words) {
     var obj = {};
@@ -12,7 +7,7 @@ function set(words) {
     return obj;
 }
 
-CodeMirror.defineMIME('text/x-pgsql', {
+module.exports = {
     'name': 'sql',
     'keywords': set(require('./pg-keywords')),
     'builtin': set(require('./pg-builtins')),
@@ -20,6 +15,4 @@ CodeMirror.defineMIME('text/x-pgsql', {
     'operatorChars': /^[*+\-%<>!=]/,
     'dateSQL': set(['date', 'time', 'timestamp', 'timestamptz', 'interval']),
     'support': set(['doubleQuote', 'binaryNumber', 'hexNumber'])
-});
-
-})();
+};

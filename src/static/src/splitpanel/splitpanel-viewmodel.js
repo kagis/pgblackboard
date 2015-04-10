@@ -18,6 +18,7 @@ function splitPanelViewModel(isHorizontal) {
     return { 'createViewModel': createViewModel };
 }
 
+/** @constructor */
 function SplitPanel(aPanelContent, bPanelContent, isHorizontal) {
     /** @expose */
     this.aPanelContent = aPanelContent;

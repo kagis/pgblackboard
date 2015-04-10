@@ -16,7 +16,7 @@ Tree.TreeNode = TreeNode;
 
 /** @private */
 Tree.prototype.createNode = function (dto) {
-    return new TreeNode(dto, this.selectedNode);
+    return new TreeNode(dto);
 };
 
 /** @constructor */

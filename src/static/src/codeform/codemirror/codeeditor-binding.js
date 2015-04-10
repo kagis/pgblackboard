@@ -6,7 +6,8 @@ require('codemirror/keymap/sublime');
 require('codemirror/addon/edit/matchbrackets');
 require('codemirror/addon/edit/closebrackets');
 require('codemirror/mode/sql/sql');
-require('./codemirror-pgsql');
+
+CodeMirror.defineMIME('text/x-pgsql', require('./codemirror-pgsql'));
 
 module.exports = {
     'init': initCodemirror

@@ -6,8 +6,8 @@ module.exports = {
         var outputFrameContext = {
             'isDark': bindingOptions['isDark'],
             'setError': function (messageAndLine) {
-                if (this.selectedDoc['errors']) {
-                    this.selectedDoc['errors'].push(messageAndLine);
+                if (outputFrameContext.selectedDoc['errors']) {
+                    outputFrameContext.selectedDoc['errors'].push(messageAndLine);
                 }
             }
         };

@@ -4,7 +4,7 @@ module.exports = MyQueries;
 
 /**
  * @constructor
- * @params {{selectItemCallback, addEvent}} params
+ * @param {{selectItemCallback, addEvent}} params
  */
 function MyQueries(params) {
     this.storage = params['storage'];

@@ -22,7 +22,7 @@
     "test": "jasmine",
     "build": "jake",
     "jshint": "jshint src --exclude src/bundle-index.js",
-    "jscs": "jscs src --exclude src/bundle-index.js --esnext --verbose"
+    "jscs": "jscs src --exclude src/bundle-index.js --verbose"
   },
   "author": "",
   "license": "BSD-2-Clause",
@@ -31,6 +31,7 @@
   },
   "jscsConfig": {
     "preset": "yandex",
+    "esnext": true,
     "requireDotNotation": null,
     "disallowSpacesInsideObjectBrackets": null,
     "disallowQuotedKeysInObjects": null,

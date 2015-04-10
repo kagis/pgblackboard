@@ -49,12 +49,12 @@ module.exports = function (target) {
             var marker = document.createElement('div');
             marker.className = 'CodeMirror__error-gutter-marker';
             marker.dataset.title = change.value.message;
-            codemirrorInst.setGutterMarker(change.value.line,
+            codemirrorInst.setGutterMarker(change.value['line'],
                                            'CodeMirror__annotations-gutter',
                                            marker);
             break;
         case 'deleted':
-            codemirrorInst.setGutterMarker(change.value.line,
+            codemirrorInst.setGutterMarker(change.value['line'],
                                            'CodeMirror__annotations-gutter',
                                            null);
             break;
