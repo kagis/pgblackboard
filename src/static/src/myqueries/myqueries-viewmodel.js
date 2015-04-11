@@ -13,7 +13,7 @@ function MyQueries(params) {
     this.selectItem = params['selectItemCallback'];
 
     /** @expose */
-    this.items = this.items = ko.observableArray(this.load());
+    this.items = ko.observableArray(this.load());
 
     /** @expose */
     this.removeItem = this.removeItem.bind(this);
