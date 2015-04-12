@@ -32,6 +32,18 @@ mod response;
 pub mod form;
 
 
+
+
+
+trait Handler {
+    fn handle_http_req(&self, Request, Response) -> Result;
+}
+
+
+
+
+
+
 fn malformed_request_line_err() -> io::Error {
     io::Error::new(
         io::ErrorKind::InvalidInput,

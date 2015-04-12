@@ -2,12 +2,18 @@
 name = "pgblackboard"
 version = "0.2.0"
 dependencies = [
+ "argparse 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex_macros 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "argparse"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "byteorder"

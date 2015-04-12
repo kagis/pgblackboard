@@ -31,18 +31,18 @@ mod tree;
 
 
 fn main() {
-    let controller = Controller {
+    let webapp = WebApplication {
         pgaddr: "localhost:5432"
     };
 
-    httpd::serve_forever("0.0.0.0:7890", controller);
+    httpd::serve_forever("0.0.0.0:7890", webapp);
 }
 
-struct Controller {
-    pgaddr: &str
+struct WebApplication<'a> {
+    pgaddr: &'a str
 }
 
-impl httpd::Handler for Controller {
+impl<'a> httpd::Handler for WebApplication<'a> {
 
     fn handle_http_request(&self,
                            req: httpd::Request,
@@ -64,7 +64,11 @@ impl httpd::Handler for Controller {
 
         let path = &path_slices_vec[];
 
-        let ctrl = Controller { req: req, res: res };
+        let ctrl = Controller {
+            req: &req,
+            resp: resp,
+            pgaddr: self.pgaddr,
+        };
 
 
         // /db/postgres/execute
@@ -74,27 +78,28 @@ impl httpd::Handler for Controller {
 
 
         match req.path_segments() {
+
             ["" /* root */ ] => match req.method() {
-                Get => self.handle_index_req(&req, resp),
-                Post => self.handle_sqlexec_req(&req, resp),
-                _ => respond_method_not_allowed(resp),
+                Get  => ctrl.get_index(),
+                Post => ctrl.sqlexec(),
+                _    => ctrl.method_not_allowed()
             }
 
-            ["db", database, subpath..] => {
-                self.handle_db_route_req(database, subpath, &req, resp)
+            ["db", dbname, subpath..] => {
+                ctrl.dispatch_db_req(dbname, subpath)
             }
 
             ["favicon.ico"] => match req.method() {
-                Get => handle_asset_req("favicon.ico", resp),
-                _ => respond_method_not_allowed(resp),
+                Get  => ctrl.get_static_file("favicon.ico"),
+                _    => ctrl.method_not_allowed()
             }
 
-            ["assets", filename..] => match req.method() {
-                Get => handle_asset_req(filename, resp),
-                _ => respond_method_not_allowed(resp),
+            ["assets", filename] => match req.method() {
+                Get  => ctrl.get_static_file(filename),
+                _    => ctrl.method_not_allowed()
             }
 
-            _ => respond_not_found(resp),
+            _ => ctrl.not_found(resp)
 
             // (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
             // => ctrl.handle_db_req(NodeChidrenResource {
@@ -181,15 +186,15 @@ impl httpd::Handler for Controller {
     }
 }
 
-impl Controller {
+struct Controller<'a, 'b> {
+    req: &'a httpd::Request,
+    resp: httpd::Response,
+    pgaddr: &'b str
+}
 
-    fn handle_db_route_req(&self,
-                           dbname: &str,
-                           path: &[&str],
-                           req: &httpd::Request,
-                           resp: httpd::Response)
-                           -> httpd::Result
-    {
+impl<'a, 'b> Controller<'a, 'b> {
+
+    fn dispatch_db_req(self, dbname: &str, path: &[&str]) -> httpd::Result {
         use httpd::RequestMethod::{Get, Patch};
         use httpd::ResponseStatus::{Unauthorized, NotFound};
         use postgres::ConnectionError::*;
@@ -219,64 +224,50 @@ impl Controller {
             ["nodes", nodetype, nodeid, tail] => {
                 let nodetype = match NodeType::from_str(nodetype) {
                     Some(nodetype) => nodetype,
-                    None => {
-                        let resp = try!(resp.start(NotFound));
-                        try!(resp.write_content_type("application/json"));
-                        try!(resp.write_content(stringify!({
-                            "error": "Unknown node type."
-                        })));
-                    }
+                    None => return ctrl.unknown_nodetype()
                 };
-
-                let node_service = NodeService::new(nodetype, nodeid, dbconn);
 
                 match tail {
                     "definition" => match req.method() {
-                        Get => handle_node_definition_req(node_service, resp),
-                        _ => respond_method_not_allowed(resp)
+                        Get => ctrl.get_node_definition(nodetype, nodeid),
+                        _ => ctrl.method_not_allowed()
                     }
 
                     "children" => match req.method() {
-                        Get => handle_node_children_req(node_service, resp),
-                        _ => respond_method_not_allowed(resp)
+                        Get => ctrl.get_node_children(nodetype, nodeid),
+                        _ => ctrl.method_not_allowed()
                     }
 
-                    _ => respond_not_found(resp)
+                    _ => ctrl.not_found()
                 }
             }
 
             ["tables", tableid] => match req.method() {
-                Patch => self.handle_table_patch_req(dbconn, tableid, req, resp),
-                _ => respond_method_not_allowed(resp)
+                Patch => ctrl.patch_table(tableid),
+                _ => ctrl.method_not_allowed()
             }
 
-            _ => respond_not_found(resp)
+            _ => ctrl.not_found("Resource not found")
         }
     }
 
-    fn handle_sqlexec_req(&self,
-                          req: &httpd::Request,
-                          resp: httpd::Response)
-                          -> httpd::Result
-    {
+    fn sqlexec(self) -> httpd::Result {
 
     }
 
-    fn handle_index_req(&self,
-                        req: &httpd::Request,
-                        resp: httpd::Response)
-                        -> httpd::Result
-    {
+    fn get_index(self) -> httpd::Result {
 
     }
 
-    fn handle_table_patch_req(&self,
-                              dbconn: postgres::Connection,
-                              tableid: postgres::Oid,
-                              req: &httpd::Request,
-                              resp: httpd::Response)
-                              -> httpd::Result
-    {
+    fn get_node_definition(self) -> httpd::Result {
+
+    }
+
+    fn get_node_children(self) -> httpd::Result {
+
+    }
+
+    fn patch_table(self, tableid: postgres::Oid) -> httpd::Result {
 
     }
 
@@ -290,6 +281,24 @@ impl Controller {
 
         let dbconn = try!(postgres::connect(self.pgaddr, dbname, username, password));
         dbconn
+    }
+
+    fn method_not_allowed(self) -> httpd::Result {
+        use httpd::ResponseStatus::MethodNotAllowed;
+        let resp = try!(self.resp.start(MethodNotAllowed));
+        try!(resp.write_content_type("application/json"));
+        try!(resp.write_content(stringify!({
+            "error": "Method not allowed."
+        })));
+    }
+
+    fn not_found(self) -> httpd::Result {
+        use httpd::ResponseStatus::NotFound;
+        let resp = try!(self.resp.start(NotFound));
+        try!(resp.write_content_type("application/json"));
+        try!(resp.write_content(stringify!({
+            "error": "Not found."
+        })));
     }
 }
 
