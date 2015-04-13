@@ -1,54 +1,106 @@
 #![feature(io)]
 #![feature(collections)]
+#![feature(custom_attribute)]
 
 extern crate threadpool;
 extern crate rustc_serialize;
 
 mod readall;
-mod reqmethod;
+mod method;
 mod reqerror;
-mod respstatus;
+mod status;
 mod grammar;
+mod response;
+pub mod form;
 
-use reqmethod::RequestMethod;
-use readall::{ReadAll};
-
-pub use self::response::{
-    ResponseStarter,
-    Status,
-};
+pub use method::Method;
+pub use status::Status;
+pub use response::ResponseStarter;
 
 use rustc_serialize::base64::FromBase64;
+use rustc_serialize::json;
 use threadpool::ThreadPool;
 
 use std::io::{self, BufRead, BufStream, Read, Write};
 use std::net::{TcpListener};
 use std::ascii::AsciiExt;
 use std::sync::{Arc};
-
-
-
-mod response;
-pub mod form;
+use readall::{ReadAll};
 
 
 
 
 
-trait Handler {
-    fn handle_http_req(&self, Request, Response) -> Result;
+pub trait Response {
+    fn write_to(self: Box<Self>, ResponseStarter) -> io::Result<()>;
 }
 
+impl Response for Status {
+    fn write_to(self: Box<Self>, w: ResponseStarter) -> io::Result<()> {
 
+        #[RustcEncodable]
+        struct Content { error: String }
+
+        let status = *self;
+        let mut w = try!(w.start(status));
+        try!(w.write_content_type("application/json"));
+        let content = Content { error: format!("{}", status) };
+        w.write_content(json::encode(&content).unwrap().as_bytes());
+    }
+}
+
+pub trait Handler {
+    fn handle_http_req(&self, &Request) -> Box<Response>;
+}
+
+pub trait Resource {
+    fn get(&self, req: &Request) -> Box<Response> {
+        self.method_not_allowed(req)
+    }
+
+    fn post(&self, req: &Request) -> Box<Response> {
+        self.method_not_allowed(req)
+    }
+
+    fn patch(&self, req: &Request) -> Box<Response> {
+        self.method_not_allowed(req)
+    }
+
+    fn method_not_allowed(&self, req: &Request) -> Box<Response> {
+        struct MethodNotAllowed;
+
+        impl Response for MethodNotAllowed {
+            fn write_to(self: Box<Self>, w: ResponseStarter) -> io::Result<()> {
+                let mut w = try!(w.start(Status::MethodNotAllowed));
+                try!(w.write_content_type("application/json"));
+                w.write_content(stringify!({
+                    "error": "Method not allowed."
+                }).as_bytes())
+            }
+        }
+
+        Box::new(MethodNotAllowed)
+    }
+}
+
+impl<R: Resource> Handler for R {
+    fn handle_http_req(&self, req: &Request) -> Box<Response> {
+        match req.method {
+            Method::Get => self.get(req),
+            Method::Post => self.post(req),
+            Method::Patch => self.patch(req),
+            _ => self.method_not_allowed(req),
+        }
+    }
+}
 
 
 
 
 fn malformed_request_line_err() -> io::Error {
     io::Error::new(
-        io::ErrorKind::InvalidInput,
-        "Malformed request line.",
-        None,
+        io::ErrorKind::Other,
+        "Malformed request line."
     )
 }
 
@@ -86,7 +138,7 @@ pub enum RequestContent {
 
 #[derive(Debug)]
 pub struct Request {
-    pub method: RequestMethod,
+    pub method: Method,
     pub path: Vec<String>,
     pub query_string: Vec<(String, String)>,
     pub content: Option<RequestContent>,
@@ -114,14 +166,14 @@ impl Request {
                                 .ok_or(malformed_request_line_err()));
 
 
-        let method = req_line[0..left_space_pos].parse::<RequestMethod>().unwrap();
+        let method = req_line[0..left_space_pos].parse::<Method>().unwrap();
 
         let http_version = &req_line[(right_space_pos + 1)..];
         if http_version != "HTTP/1.1" && http_version != "HTTP/1.0" {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Unsupported HTTP version.",
-                Some(http_version.to_string())
+                // Some(http_version.to_string())
             ));
         }
 
@@ -152,9 +204,9 @@ impl Request {
             match &header_name.to_ascii_lowercase()[..] {
                 "content-length" => {
                     content_length = try!(header_value.parse().map_err(|_| io::Error::new(
-                        io::ErrorKind::InvalidInput,
+                        io::ErrorKind::Other,
                         "Malformed Content-length value.",
-                        Some(format!("got {}", header_value))
+                        // Some(format!("got {}", header_value))
                     )));
                 }
                 "content-type" => {
@@ -206,9 +258,8 @@ fn parse_authorization(header_value: &str) -> io::Result<(String, String)> {
 
 
     let colon_pos = try!(header_value.find(' ').ok_or(io::Error::new(
-        io::ErrorKind::InvalidInput,
-        "Malformed Authorization header.",
-        Some("Missing colon between auth scheme and credentials.".to_string()),
+        io::ErrorKind::Other,
+        "Missing colon between auth scheme and credentials."
     )));
 
     let auth_scheme = &header_value[0..colon_pos];
@@ -216,27 +267,24 @@ fn parse_authorization(header_value: &str) -> io::Result<(String, String)> {
         return Err(io::Error::new(
             io::ErrorKind::Other,
             "Unsupported authorization scheme",
-            Some(format!("{}", auth_scheme)),
+            // Some(format!("{}", auth_scheme)),
         ));
     }
 
     let cred_b64 = &header_value[(colon_pos + 1)..];
     let cred_bytes = try!(cred_b64.from_base64().map_err(|_| io::Error::new(
-        io::ErrorKind::InvalidInput,
-        "Malformed Authorization header.",
-        Some("Invalid base64.".to_string()),
+        io::ErrorKind::Other,
+        "Malformed Authorization header: Invalid base64."
     )));
     let cred = try!(String::from_utf8(cred_bytes).map_err(|_| io::Error::new(
-        io::ErrorKind::InvalidInput,
-        "Malformed Authorization header.",
-        Some("Invalid utf-8 credentials.".to_string()),
+        io::ErrorKind::Other,
+        "Malformed Authorization header: Invalid utf-8 credentials."
     )));
 
     Ok({
         let colon_pos = try!(cred.find(':').ok_or(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Malformed Authorization credentials header.",
-            Some("Missing colon between username and password.".to_string()),
+            io::ErrorKind::Other,
+            "Missing colon between username and password."
         )));
 
         let user = cred[..colon_pos].to_string();
@@ -262,8 +310,7 @@ impl<T: Read> CRLFLineReader for T {
                     }
                     return String::from_utf8(line).map_err(|_| io::Error::new(
                         io::ErrorKind::Other,
-                        "Non ascii string",
-                        None
+                        "Non ascii string"
                     ));
                 },
                 b'\n' => return Err(invalid_line_ending()),
@@ -275,9 +322,8 @@ impl<T: Read> CRLFLineReader for T {
 
 fn invalid_line_ending() -> io::Error {
     io::Error::new(
-        io::ErrorKind::InvalidInput,
-        "Invalid line ending.",
-        None,
+        io::ErrorKind::Other,
+        "Invalid line ending."
     )
 }
 
@@ -426,8 +472,8 @@ fn parse_header(line: &str) -> io::Result<(&str, &str)> {
         Some(pos) => pos,
         None => return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "Malformed HTTP header.",
-            Some(format!("{}", line)),
+            "Malformed HTTP header."/*,
+            Some(format!("{}", line)),*/
         )),
     };
 
@@ -439,10 +485,8 @@ fn parse_header(line: &str) -> io::Result<(&str, &str)> {
 
 
 
-pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
-    where THandler: Fn(Request, ResponseStarter) -> io::Result<()>,
-          THandler: Sync + Send,
-          THandler: 'static
+pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
+    where H: Handler + Send + Sync + 'static
 {
     let listener = try!(TcpListener::bind(addr));
 
@@ -467,10 +511,9 @@ pub fn serve_forever<THandler>(addr: &str, handler: THandler) -> io::Result<()>
                                  .as_ref()
                                  .map_or("", |x| &x.0)*/);
 
-                let res = ResponseStarter(buf_stream);
-                let handle_res = handler(req, res);
-
-                if let Err(e) = handle_res {
+                let resp = handler.handle_http_req(&req);
+                let resp_result = resp.write_to(ResponseStarter(buf_stream));
+                if let Err(e) = resp_result {
                     println!("error while sending response {}", e);
                 }
             })
@@ -558,3 +601,21 @@ fn test_url_decode() {
         "{test} test".to_string()
     );
 }
+
+// #[test]
+// fn test_olo() {
+
+
+
+//     struct WebApp {
+//         message: String
+//     }
+
+//     impl Resource for WebApp {
+
+//     }
+
+//     let webapp = WebApp { message: "hello world".to_string() };
+
+//     serve_forever("0.0.0.0:7890", webapp);
+// }

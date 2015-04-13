@@ -1,7 +1,7 @@
 /// http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html#sec6.1
-#[derive(Debug, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-pub enum ResponseStatus {
+pub enum Status {
     Continue                     = 100,
     SwitchingProtocols           = 101,
 

@@ -1,11 +1,11 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-use respstatus::ResponseStatus;
+use status::Status;
 
 #[derive(Debug)]
 pub struct RequestError {
-    pub status: ResponseStatus,
+    pub status: Status,
     pub desc: &'static str,
 }
 

@@ -4,10 +4,12 @@ name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
+[dependencies.http]
+path = "./src/http"
+
 [dependencies]
-regex_macros = "*"
-regex = "*"
-rustc-serialize = "*"
-byteorder = "*"
-rust-crypto = "*"
-argparse = "*"
+#regex_macros = "*"
+#regex = "*"
+#rustc-serialize = "*"
+#byteorder = "*"
+#rust-crypto = "*"
