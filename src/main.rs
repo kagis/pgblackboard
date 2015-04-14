@@ -10,6 +10,9 @@ extern crate postgres as pg;
 // extern crate http;
 mod http;
 
+mod tree;
+use tree::DbObjType;
+
 // extern crate regex;
 
 // #[plugin] #[no_link] extern crate regex_macros;
@@ -209,56 +212,13 @@ impl<T: Encodable> http::Response for JsonResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("application/json"));
+        if self.status == http::Status::Unauthorized {
+            try!(w.write_www_authenticate_basic("postgres"));
+        }
         w.write_content(json::encode(&self.content).unwrap().as_bytes())
     }
 }
 
-#[derive(Clone)]
-#[derive(Debug)]
-pub enum DbObjType {
-    Database,
-    Schema,
-    Extension,
-    Table,
-    View,
-    MaterializedView,
-    ForeignTable,
-    AggregateFunction,
-    Function,
-    Column,
-    PrimaryKeyColumn,
-    ForeignKeyColumn,
-    Index,
-    Trigger,
-    ForeignKeyConstraint,
-    CheckConstraint,
-    UniqueConstraint,
-}
-
-impl DbObjType {
-    pub fn from_str(inp: &str) -> Option<DbObjType> {
-        Some(match inp {
-            "database" => DbObjType::Database,
-            "schema" => DbObjType::Schema,
-            "extension" => DbObjType::Extension,
-            "table" => DbObjType::Table,
-            "view" => DbObjType::View,
-            "matview" => DbObjType::MaterializedView,
-            "foreigntable" => DbObjType::ForeignTable,
-            "agg" => DbObjType::AggregateFunction,
-            "func" => DbObjType::Function,
-            "column" => DbObjType::Column,
-            "pkcolumn" => DbObjType::PrimaryKeyColumn,
-            "fkcolumn" => DbObjType::ForeignKeyColumn,
-            "index" => DbObjType::Index,
-            "trigger" => DbObjType::Trigger,
-            "foreignkey" => DbObjType::ForeignKeyConstraint,
-            "check" => DbObjType::CheckConstraint,
-            "unique" => DbObjType::UniqueConstraint,
-            _ => return None
-        })
-    }
-}
 
 // trait PgConnector {
 //     fn connect(&self, dbname: &str, user: &str, passwd: &str) -> pg::ConnectionResult;
@@ -277,9 +237,44 @@ struct DbObjChildren {
 
 impl http::Resource for DbObjChildren {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
+        let mut dbconn = match connectdb_for_dbdir(&self.pgaddr, &self.dbname, req) {
+            Ok(dbconn) => dbconn,
+            Err(resp) => return resp
+        };
+
+        fn quote_literal(s: &str) -> String {
+            ["'", &s.replace("'", "''")[..], "'"].concat()
+        }
+
+        let query = self.objtype.children_query();
+
+        let query = query.replace("%(nodeid)s", &quote_literal(&self.objid))
+                         .replace("%(nodetype)s", &quote_literal(self.objtype.to_str()));
+
+        #[derive(RustcDecodable, RustcEncodable)]
+        struct ChildDbObj {
+            database: String,
+            id: String,
+            typ: String,
+            name: String,
+            comment: Option<String>,
+            has_children: bool,
+        }
+
+        let result = match dbconn.query::<ChildDbObj>(&query) {
+            Ok(result) => result,
+            Err(err) => {
+                println!("error while fetching dbobj definition: {:?}", err);
+                return Box::new(JsonResponse {
+                    status: http::Status::InternalServerError,
+                    content: "Error occured, see log for details."
+                });
+            }
+        };
+
         Box::new(JsonResponse {
             status: http::Status::Ok,
-            content: format!("children of {:?}-{}", self.objtype, self.objid)
+            content: result
         })
     }
 }
@@ -293,9 +288,47 @@ struct DbObjDefinition {
 
 impl http::Resource for DbObjDefinition {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
+        let mut dbconn = match connectdb_for_dbdir(&self.pgaddr, &self.dbname, req) {
+            Ok(dbconn) => dbconn,
+            Err(resp) => return resp
+        };
+
+        fn quote_literal(s: &str) -> String {
+            ["'", &s.replace("'", "''")[..], "'"].concat()
+        }
+
+        let query = self.objtype.definition_query();
+
+        let query = query.replace("%(nodeid)s", &quote_literal(&self.objid))
+                         .replace("%(nodetype)s", &quote_literal(self.objtype.to_str()));
+
+        #[derive(RustcDecodable)]
+        struct Definition {
+            def: String,
+        }
+
+        let mut result = match dbconn.query::<Definition>(&query) {
+            Ok(result) => result,
+            Err(err) => {
+                println!("error while fetching dbobj definition: {:?}", err);
+                return Box::new(JsonResponse {
+                    status: http::Status::InternalServerError,
+                    content: "Error occured, see log for details."
+                });
+            }
+        };
+
+        let result = match result.pop() {
+            Some(tuple) => tuple.def,
+            None => return Box::new(JsonResponse {
+                status: http::Status::NotFound,
+                content: "Object id was not found."
+            })
+        };
+
         Box::new(JsonResponse {
             status: http::Status::Ok,
-            content: format!("definition of {:?}-{}", self.objtype, self.objid)
+            content: result
         })
     }
 }
@@ -340,60 +373,12 @@ struct DbDir {
 
 impl http::Handler for DbDir {
     fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
-
-        use http::RequestCredentials::Basic;
-        use http::Status::{
-            NotFound,
-            Unauthorized,
-            InternalServerError,
-        };
-        use pg::ConnectionError::{
-            AuthFailed,
-            DatabaseNotExists,
-        };
-
-        let (user, passwd) = match req.credentials.as_ref() {
-            Some(&Basic { user, passwd }) => (user, passwd),
-            Some(..) => return Box::new(JsonResponse {
-                status: Unauthorized,
-                content: "Unsupported authentication scheme"
-            }),
-            None => return Box::new(JsonResponse {
-                status: Unauthorized,
-                content: "Username and password requried."
-            })
-        };
-
-        let maybe_dbconn = pg::connect(&self.pgaddr[..],
-                                       &self.dbname,
-                                       &user,
-                                       &passwd);
-
-        let dbconn = match maybe_dbconn {
-            Ok(dbconn) => dbconn,
-            Err(AuthFailed) => return Box::new(JsonResponse {
-                status: Unauthorized,
-                content: "Invalid username or password."
-            }),
-            Err(DatabaseNotExists) => return Box::new(JsonResponse {
-                status: NotFound,
-                content: "Database not exists."
-            }),
-            Err(err) => {
-                println!("error while connecting to db: {:?}", err);
-                return Box::new(JsonResponse {
-                    status: InternalServerError,
-                    content: "Failed to connect database, see logs for details."
-                });
-            }
-        };
-
         match path {
             ["objects", objtype, objid, tail..] => {
                 let objtype = match DbObjType::from_str(objtype) {
                     Some(objtype) => objtype,
                     None => return Box::new(JsonResponse {
-                        status: NotFound,
+                        status: http::Status::NotFound,
                         content: "Unknown type of database object."
                     })
                 };
@@ -411,11 +396,64 @@ impl http::Handler for DbDir {
             // }
 
             _ => Box::new(JsonResponse {
-                status: NotFound,
+                status: http::Status::NotFound,
                 content: "not found"
             })
         }
     }
+}
+
+fn connectdb_for_dbdir(
+    pgaddr: &str,
+    dbname: &str,
+    req: &http::Request)
+    -> Result<pg::Connection, Box<http::Response>>
+{
+    use http::RequestCredentials::Basic;
+    use http::Status::{
+        NotFound,
+        Unauthorized,
+        InternalServerError,
+    };
+    use pg::ConnectionError::{
+        AuthFailed,
+        DatabaseNotExists,
+    };
+
+    let (user, passwd) = match req.credentials.as_ref() {
+        Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
+        // Some(..) => return Box::new(JsonResponse {
+        //     status: Unauthorized,
+        //     content: "Unsupported authentication scheme"
+        // }),
+        None => return Err(Box::new(JsonResponse {
+            status: Unauthorized,
+            content: "Username and password requried."
+        }))
+    };
+
+    let maybe_dbconn = pg::connect(pgaddr, dbname, user, passwd);
+
+    maybe_dbconn.map_err(|err| match err {
+
+        AuthFailed => Box::new(JsonResponse {
+            status: Unauthorized,
+            content: "Invalid username or password."
+        }),
+
+        DatabaseNotExists => Box::new(JsonResponse {
+            status: NotFound,
+            content: "Database not exists."
+        }),
+
+        err => {
+            println!("error while connecting to db: {:?}", err);
+            Box::new(JsonResponse {
+                status: InternalServerError,
+                content: "Failed to connect database, see logs for details."
+            })
+        }
+    } as Box<http::Response>)
 }
 
 

@@ -1,5 +1,6 @@
 /// http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html#sec6.1
 #[derive(Debug, Clone, Copy)]
+#[derive(PartialEq)]
 #[allow(dead_code)]
 pub enum Status {
     Continue                     = 100,

@@ -409,7 +409,7 @@ impl<T: BufRead> MessageReader for T  {
             },
         };
 
-        println!("-> {:?}", ret);
+        // println!("-> {:?}", ret);
         Ok(ret)
     }
 }
@@ -447,7 +447,6 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
             len => {
                 let mut buf = Vec::with_capacity(len as usize);
                 buf.extend((0..len).map(|_| 0));
-                println!("cell len = {}", len);
                 try!(read_full(reader, &mut buf));
                 let strval = try!(String::from_utf8(buf).map_err(|err| io::Error::new(
                     io::ErrorKind::Other,
