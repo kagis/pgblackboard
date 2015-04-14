@@ -20,7 +20,7 @@ pub struct Node {
     has_children: bool,
 }
 
-pub enum NodeType {
+pub enum DbObjType {
     Database,
     Schema,
     Extension,
@@ -40,26 +40,26 @@ pub enum NodeType {
     UniqueConstraint,
 }
 
-impl NodeType {
-    pub fn from_str(inp: &str) -> Option<NodeType> {
+impl DbObjType {
+    pub fn from_str(inp: &str) -> Option<DbObjType> {
         Ok(match inp {
-            "database" => NodeType::Database,
-            "schema" => NodeType::Schema,
-            "extension" => NodeType::Extension,
-            "table" => NodeType::Table,
-            "view" => NodeType::View,
-            "matview" => NodeType::MaterializedView,
-            "foreigntable" => NodeType::ForeignTable,
-            "agg" => NodeType::AggregateFunction,
-            "func" => NodeType::Function,
-            "column" => NodeType::Column,
-            "pkcolumn" => NodeType::PrimaryKeyColumn,
-            "fkcolumn" => NodeType::ForeignKeyColumn,
-            "index" => NodeType::Index,
-            "trigger" => NodeType::Trigger,
-            "foreignkey" => NodeType::ForeignKeyConstraint,
-            "check" => NodeType::CheckConstraint,
-            "unique" => NodeType::UniqueConstraint,
+            "database" => DbObjType::Database,
+            "schema" => DbObjType::Schema,
+            "extension" => DbObjType::Extension,
+            "table" => DbObjType::Table,
+            "view" => DbObjType::View,
+            "matview" => DbObjType::MaterializedView,
+            "foreigntable" => DbObjType::ForeignTable,
+            "agg" => DbObjType::AggregateFunction,
+            "func" => DbObjType::Function,
+            "column" => DbObjType::Column,
+            "pkcolumn" => DbObjType::PrimaryKeyColumn,
+            "fkcolumn" => DbObjType::ForeignKeyColumn,
+            "index" => DbObjType::Index,
+            "trigger" => DbObjType::Trigger,
+            "foreignkey" => DbObjType::ForeignKeyConstraint,
+            "check" => DbObjType::CheckConstraint,
+            "unique" => DbObjType::UniqueConstraint,
             _ => return None
         })
     }
@@ -69,7 +69,7 @@ impl NodeType {
 impl<T: Stream> NodeService<T> {
 
     pub fn get_children(&mut self) -> IoResult<Vec<Node>> {
-        let query = match &self.nodetype[] {
+        let query = match &self.nodetype {
             "database"     => include_str!("children/database.sql"),
             "schema"       => include_str!("children/schema_ext.sql"),
             "extension"    => include_str!("children/schema_ext.sql"),
@@ -80,15 +80,15 @@ impl<T: Stream> NodeService<T> {
             _ => return Ok(vec![]),
         };
 
-        let query = &query.replace("%(nodeid)s", &quote_literal(&self.nodeid[])[])
-                         .replace("%(nodetype)s", &quote_literal(&self.nodetype[])[])[];
+        let query = query.replace("%(nodeid)s", &quote_literal(&self.nodeid))
+                         .replace("%(nodetype)s", &quote_literal(&self.nodetype));
         //let query = query.replace()
-        self.dbconn.query(query)
+        self.dbconn.query(&query)
         //let
     }
 
     pub fn get_definition(&mut self) -> IoResult<String> {
-        let query = match &self.nodetype[] {
+        let query = match &self.nodetype {
             "database"     => include_str!("def/database.sql"),
             "schema"       => include_str!("def/schema.sql"),
             "extension"    => include_str!("def/ext.sql"),
@@ -109,15 +109,15 @@ impl<T: Stream> NodeService<T> {
             _ => return Ok("No".to_string())
         };
 
-        let query = &query.replace("%(nodeid)s", &quote_literal(&self.nodeid[])[])
-                         .replace("%(nodetype)s", &quote_literal(&self.nodetype[])[])[];
+        let query = query.replace("%(nodeid)s", &quote_literal(&self.nodeid))
+                         .replace("%(nodetype)s", &quote_literal(&self.nodetype));
 
         #[derive(Decodable)]
         struct Definition {
             def: String,
         }
 
-        let mut result = self.dbconn.query::<Definition>(query).unwrap();
+        let mut result = self.dbconn.query::<Definition>(&query).unwrap();
 
         Ok(result.pop().unwrap().def)
 
@@ -125,7 +125,7 @@ impl<T: Stream> NodeService<T> {
 }
 
 fn quote_literal(s: &str) -> String {
-    ["'", &s.replace("'", "''")[], "'"].concat()
+    ["'", &s.replace("'", "''"), "'"].concat()
 }
 
 /*

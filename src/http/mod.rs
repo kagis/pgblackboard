@@ -35,19 +35,19 @@ pub trait Response {
     fn write_to(self: Box<Self>, ResponseStarter) -> io::Result<()>;
 }
 
-impl Response for Status {
-    fn write_to(self: Box<Self>, w: ResponseStarter) -> io::Result<()> {
+// impl Response for Status {
+//     fn write_to(self: Box<Self>, w: ResponseStarter) -> io::Result<()> {
 
-        #[RustcEncodable]
-        struct Content { error: String }
+//         #[RustcEncodable]
+//         struct Content { error: String }
 
-        let status = *self;
-        let mut w = try!(w.start(status));
-        try!(w.write_content_type("application/json"));
-        let content = Content { error: format!("{}", status) };
-        w.write_content(json::encode(&content).unwrap().as_bytes());
-    }
-}
+//         let status = *self;
+//         let mut w = try!(w.start(status));
+//         try!(w.write_content_type("application/json"));
+//         let content = Content { error: format!("{}", status) };
+//         w.write_content(json::encode(&content).unwrap().as_bytes());
+//     }
+// }
 
 pub trait Handler {
     fn handle_http_req(&self, &Request) -> Box<Response>;

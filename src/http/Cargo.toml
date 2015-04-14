@@ -8,5 +8,5 @@ path = "mod.rs"
 name = "http"
 
 [dependencies]
-rustc-serialize = "0.3"
+rustc-serialize = "0.3.12"
 threadpool = "0.1.3"

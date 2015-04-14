@@ -10,6 +10,6 @@ path = "./src/http"
 [dependencies]
 #regex_macros = "*"
 #regex = "*"
-#rustc-serialize = "*"
+rustc-serialize = "0.3"
 #byteorder = "*"
 #rust-crypto = "*"

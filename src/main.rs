@@ -2,7 +2,7 @@
 #![feature(plugin)]
 #![feature(slice_patterns)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate http;
 
 
@@ -15,296 +15,389 @@ extern crate http;
 //use postgres::{Connection, SslMode};
 
 use std::io;
+use rustc_serialize::{json, Encodable};
 
 // mod postgres;
 // mod http;
 
-// mod tree;
+//mod tree;
+
+//use tree::DbObjType;
 
 
 fn main() {
-    let webapp = WebApplication {
-        pgaddr: "localhost:5432"
+    let webapp = DbObjChildren {
+        pgaddr: "localhost:5432",
+        objtype: DbObjType::Database,
+        objid: "_",
+        dbname: "postgres"
     };
 
     http::serve_forever("0.0.0.0:7890", webapp);
 }
 
-struct WebApplication<'a> {
-    pgaddr: &'a str
+// struct WebApplication<'a> {
+//     pgaddr: &'a str
+// }
+
+// impl WebApplication {
+//     fn delegate_to<H: http::Handler>(&self, h: H) {
+//         h.handle_http_req()
+//     }
+// }
+
+// impl<'a> http::Handler for WebApplication<'a> {
+
+//     fn handle_http_req(&self, req: &http::Request) -> Box<http::Response> {
+//         use http::Method::{Get, Post};
+
+//         println!("{:?}", req);
+
+//         let path = &req.path.clone()[..];
+
+//         let path_vec = req.path.clone();
+//         let path_slices_vec = path_vec
+//             .iter()
+//             .map(|x| x.as_slice())
+//             .collect::<Vec<&str>>();
+
+//         let path_segments = &path_slices_vec[..];
+
+//         macro_rules! routes {
+//             ($($route:pat => $resource:expr),*) => {
+//                 match path_segments {
+//                     $( $route => $resource.handle_http_req(req), )*
+//                     _ => NotFoundResource.handle_http_req(req)
+//                 }
+//             }
+//         }
+
+
+//         routes! {
+
+//             ["" /* root */ ] => RootResource {
+//                 pgaddr: self.pgaddr
+//             },
+
+//             ["db", dbname, subpath..] => DbDirectory {
+//                 pgaddr: self.pgaddr,
+//                 dbname: dbname,
+//                 subpath: subpath
+//             },
+
+//             ["favicon.ico"] => FileResource {
+//                 filename: "favicon.ico"
+//             },
+
+//             ["assets", filename] => FileResource {
+//                 filename: filename
+//             }
+
+//             // (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
+//             // => ctrl.handle_db_req(NodeChidrenResource {
+//             //     database: database.to_string(),
+//             //     nodetype: nodetype.to_string(),
+//             //     nodeid: nodeid.to_string(),
+//             // }),
+
+//             // (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
+//             // => ctrl.handle_db_req(NodeDefinitionResource {
+//             //     database: database,
+//             //     nodetype: nodetype,
+//             //     nodeid: nodeid,
+//             // }),
+
+//             // (Post, [""])
+//             // => {
+
+//             //     #[derive(Decodable)]
+//             //     struct Params {
+//             //         sql_script: String,
+//             //     }
+
+//             //     let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
+//             //         Ok(res) => res,
+//             //         Err(err) => return err,
+//             //     };
+
+//             //     let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
+//             //         Ok(x) => x,
+//             //         Err(err) => return err,
+//             //     };
+
+//             //     let ctrl = Controller { req: ctrl.req, res: res };
+
+
+//             //     ctrl.handle_db_req(exec_res)
+//             // },
+
+//             // // ["db", database, "execute"]
+//             // // => DbResource::new(database, ),
+
+//             // (Get, ["static", filename..])
+//             // => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
+
+//             // (Get, ["favicon.ico"])
+//             // => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
+
+//             // _
+//             // => ctrl.use_resource(NotFoundResource),
+//         }
+
+
+//         // match path {
+//         //     []
+//         //         => ctrl.handle_db_req("postgres", &[]),
+
+//         //     ["db", database, subpath..]
+//         //         => ctrl.handle_db_req(database, subpath),
+
+//         //     ["favicon.ico"]
+//         //         => ctrl.handle_static_req("favicon.ico"),
+
+//         //     ["static", filename..]
+//         //         => ctrl.handle_static_req(&filename.connect("/")[]),
+
+//         //     _
+//         //         => ctrl.handle_not_found(),
+//         // }
+
+//         // let (database, db_consumer) = match (method, path) {
+//         //     (Get, []) => ("postgres", Controller::handle_index_req),
+//         //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
+//         //     //(Post, ["map", database]) => Controller::handle_
+//         //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+//         //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
+
+//         //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
+//         //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
+//         //     _ => return ctrl.handle_not_found(),
+//         // };
+
+//         // ctrl.handle_db_req(database, db_consumer)
+//     }
+// }
+
+
+
+// struct RootResource {
+//     pgaddr: &str
+// }
+
+// impl http::Resource for RootResource {
+//     fn get(&self, req: &http::Request) -> Box<http::Response> {
+
+//     }
+
+//     fn post(&self, req: &http::Request) -> Box<http::Response> {
+
+//     }
+// }
+
+
+
+struct JsonResponse<T: Encodable> {
+    status: http::Status,
+    content: T
 }
 
-impl WebApplication {
-    fn delegate_to<H: http::Handler>(&self, h: H) {
-        h.handle_http_req()
+impl<T: Encodable> http::Response for JsonResponse<T> {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type("application/json"));
+        w.write_content(json::encode(&self.content).unwrap().as_bytes())
     }
 }
 
-impl<'a> http::Handler for WebApplication<'a> {
+pub enum DbObjType {
+    Database,
+    Schema,
+    Extension,
+    Table,
+    View,
+    MaterializedView,
+    ForeignTable,
+    AggregateFunction,
+    Function,
+    Column,
+    PrimaryKeyColumn,
+    ForeignKeyColumn,
+    Index,
+    Trigger,
+    ForeignKeyConstraint,
+    CheckConstraint,
+    UniqueConstraint,
+}
 
-    fn handle_http_req(&self, req: &http::Request) -> Box<http::Response> {
-        use http::Method::{Get, Post};
-
-        println!("{:?}", req);
-
-        let path = &req.path.clone()[..];
-
-        let path_vec = req.path.clone();
-        let path_slices_vec = path_vec
-            .iter()
-            .map(|x| x.as_slice())
-            .collect::<Vec<&str>>();
-
-        let path_segments = &path_slices_vec[..];
-
-        macro_rules! routes {
-            ($($route:pat => $resource:expr),*) => {
-                match path_segments {
-                    $( $route => expr.handle_http_req(req), )*
-                    _ => NotFoundResource.handle_http_req(req)
-                }
-            }
-        }
-
-
-        routes! {
-
-            ["" /* root */ ] => RootResource {
-                pgaddr: pgaddr
-            },
-
-            ["db", dbname, subpath..] => DbDirectory {
-                pgaddr: pgaddr,
-                dbname: dbname,
-                subpath: subpath
-            },
-
-            ["favicon.ico"] => FileResource {
-                filename: "favicon.ico"
-            },
-
-            ["assets", filename] => FileResource {
-                filename: filename
-            }
-
-            // (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
-            // => ctrl.handle_db_req(NodeChidrenResource {
-            //     database: database.to_string(),
-            //     nodetype: nodetype.to_string(),
-            //     nodeid: nodeid.to_string(),
-            // }),
-
-            // (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
-            // => ctrl.handle_db_req(NodeDefinitionResource {
-            //     database: database,
-            //     nodetype: nodetype,
-            //     nodeid: nodeid,
-            // }),
-
-            // (Post, [""])
-            // => {
-
-            //     #[derive(Decodable)]
-            //     struct Params {
-            //         sql_script: String,
-            //     }
-
-            //     let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
-            //         Ok(res) => res,
-            //         Err(err) => return err,
-            //     };
-
-            //     let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
-            //         Ok(x) => x,
-            //         Err(err) => return err,
-            //     };
-
-            //     let ctrl = Controller { req: ctrl.req, res: res };
-
-
-            //     ctrl.handle_db_req(exec_res)
-            // },
-
-            // // ["db", database, "execute"]
-            // // => DbResource::new(database, ),
-
-            // (Get, ["static", filename..])
-            // => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
-
-            // (Get, ["favicon.ico"])
-            // => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
-
-            // _
-            // => ctrl.use_resource(NotFoundResource),
-        }
-
-
-        // match path {
-        //     []
-        //         => ctrl.handle_db_req("postgres", &[]),
-
-        //     ["db", database, subpath..]
-        //         => ctrl.handle_db_req(database, subpath),
-
-        //     ["favicon.ico"]
-        //         => ctrl.handle_static_req("favicon.ico"),
-
-        //     ["static", filename..]
-        //         => ctrl.handle_static_req(&filename.connect("/")[]),
-
-        //     _
-        //         => ctrl.handle_not_found(),
-        // }
-
-        // let (database, db_consumer) = match (method, path) {
-        //     (Get, []) => ("postgres", Controller::handle_index_req),
-        //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
-        //     //(Post, ["map", database]) => Controller::handle_
-        //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-        //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-
-        //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
-        //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
-        //     _ => return ctrl.handle_not_found(),
-        // };
-
-        // ctrl.handle_db_req(database, db_consumer)
+impl DbObjType {
+    pub fn from_str(inp: &str) -> Option<DbObjType> {
+        Some(match inp {
+            "database" => DbObjType::Database,
+            "schema" => DbObjType::Schema,
+            "extension" => DbObjType::Extension,
+            "table" => DbObjType::Table,
+            "view" => DbObjType::View,
+            "matview" => DbObjType::MaterializedView,
+            "foreigntable" => DbObjType::ForeignTable,
+            "agg" => DbObjType::AggregateFunction,
+            "func" => DbObjType::Function,
+            "column" => DbObjType::Column,
+            "pkcolumn" => DbObjType::PrimaryKeyColumn,
+            "fkcolumn" => DbObjType::ForeignKeyColumn,
+            "index" => DbObjType::Index,
+            "trigger" => DbObjType::Trigger,
+            "foreignkey" => DbObjType::ForeignKeyConstraint,
+            "check" => DbObjType::CheckConstraint,
+            "unique" => DbObjType::UniqueConstraint,
+            _ => return None
+        })
     }
 }
 
-
-
-struct RootResource {
-    pgaddr: &str
+struct DbObjChildren<'a, 'b, 'c> {
+    pgaddr: &'a str,
+    dbname: &'b str,
+    objtype: DbObjType,
+    objid: &'c str,
 }
 
-impl http::Resource for RootResource {
+impl<'a, 'b, 'c> http::Resource for DbObjChildren<'a, 'b, 'c> {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
-
-    }
-
-    fn post(&self, req: &http::Request) -> Box<http::Response> {
-
-    }
-}
-
-
-
-struct Controller<'a, 'b> {
-    req: &'a http::Request,
-    resp: http::Response,
-    pgaddr: &'b str
-}
-
-impl<'a, 'b> Controller<'a, 'b> {
-
-    fn dispatch_db_req(self, dbname: &str, path: &[&str]) -> http::Result {
-        use http::Method::{Get, Patch};
-        use http::Status::{Unauthorized, NotFound};
-        // use postgres::ConnectionError::*;
-
-        // let dbconn = match connectdb(dbname, req) {
-        //     Ok(dbconn) => dbconn,
-        //     Err(connerr) => return match connerr {
-        //         AuthenticationError => {
-        //             let resp = try!(resp.start(Unauthorized));
-        //             try!(resp.write_content_type("application/json"));
-        //             try!(resp.write_content(stringify!({
-        //                 "error": "Invalid username or password."
-        //             })));
-        //         }
-
-        //         DatabaseNotExists => {
-        //             let resp = try!(resp.start(NotFound));
-        //             try!(resp.write_content_type("application/json"));
-        //             try!(resp.write_content(stringify!({
-        //                 "error": "Database not found."
-        //             })));
-        //         }
-        //     },
-        // };
-
-        match path {
-            ["nodes", nodetype, nodeid, tail] => {
-                let nodetype = match NodeType::from_str(nodetype) {
-                    Some(nodetype) => nodetype,
-                    None => return ctrl.unknown_nodetype()
-                };
-
-                match tail {
-                    "definition" => match req.method() {
-                        Get => ctrl.get_node_definition(nodetype, nodeid),
-                        _ => ctrl.method_not_allowed()
-                    },
-
-                    "children" => match req.method() {
-                        Get => ctrl.get_node_children(nodetype, nodeid),
-                        _ => ctrl.method_not_allowed()
-                    },
-
-                    _ => ctrl.not_found()
-                }
-            },
-
-            ["tables", tableid] => match req.method() {
-                Patch => ctrl.patch_table(tableid),
-                _ => ctrl.method_not_allowed()
-            },
-
-            _ => ctrl.not_found("Resource not found")
-        }
-    }
-
-    fn sqlexec(self) -> http::Result {
-
-    }
-
-    fn get_index(self) -> http::Result {
-
-    }
-
-    fn get_node_definition(self) -> http::Result {
-
-    }
-
-    fn get_node_children(self) -> http::Result {
-
-    }
-
-    fn patch_table(self, tableid: postgres::Oid) -> http::Result {
-
-    }
-
-    fn connectdb(&self, dbname: &str, req: &http::Request) -> postgres::ConnectionResult {
-        use http::RequestCredentials::Basic;
-        let (username, password) = match req.credentials() {
-            Some(Basic { username, password }) => (username, password),
-            Some(..) => "unsupported authentication scheme",
-            None => "username and password requried.",
-        };
-
-        let dbconn = try!(postgres::connect(self.pgaddr, dbname, username, password));
-        dbconn
-    }
-
-    fn method_not_allowed(self) -> http::Result {
-        use http::Status::MethodNotAllowed;
-        let resp = try!(self.resp.start(MethodNotAllowed));
-        try!(resp.write_content_type("application/json"));
-        try!(resp.write_content(stringify!({
-            "error": "Method not allowed."
-        })));
-    }
-
-    fn not_found(self) -> http::Result {
-        use http::Status::NotFound;
-        let resp = try!(self.resp.start(NotFound));
-        try!(resp.write_content_type("application/json"));
-        try!(resp.write_content(stringify!({
-            "error": "Not found."
-        })));
+        Box::new(JsonResponse {
+            status: http::Status::Ok,
+            content: format!("dbname={}, pgaddr={}", self.dbname, self.pgaddr)
+        })
     }
 }
+
+
+
+
+// struct Controller<'a, 'b> {
+//     req: &'a http::Request,
+//     resp: http::Response,
+//     pgaddr: &'b str
+// }
+
+// impl<'a, 'b> Controller<'a, 'b> {
+
+//     fn dispatch_db_req(self, dbname: &str, path: &[&str]) -> http::Result {
+//         use http::Method::{Get, Patch};
+//         use http::Status::{Unauthorized, NotFound};
+//         // use postgres::ConnectionError::*;
+
+//         // let dbconn = match connectdb(dbname, req) {
+//         //     Ok(dbconn) => dbconn,
+//         //     Err(connerr) => return match connerr {
+//         //         AuthenticationError => {
+//         //             let resp = try!(resp.start(Unauthorized));
+//         //             try!(resp.write_content_type("application/json"));
+//         //             try!(resp.write_content(stringify!({
+//         //                 "error": "Invalid username or password."
+//         //             })));
+//         //         }
+
+//         //         DatabaseNotExists => {
+//         //             let resp = try!(resp.start(NotFound));
+//         //             try!(resp.write_content_type("application/json"));
+//         //             try!(resp.write_content(stringify!({
+//         //                 "error": "Database not found."
+//         //             })));
+//         //         }
+//         //     },
+//         // };
+
+//         match path {
+//             ["nodes", nodetype, nodeid, tail] => {
+//                 let nodetype = match NodeType::from_str(nodetype) {
+//                     Some(nodetype) => nodetype,
+//                     None => return ctrl.unknown_nodetype()
+//                 };
+
+//                 match tail {
+//                     "definition" => match req.method() {
+//                         Get => ctrl.get_node_definition(nodetype, nodeid),
+//                         _ => ctrl.method_not_allowed()
+//                     },
+
+//                     "children" => match req.method() {
+//                         Get => ctrl.get_node_children(nodetype, nodeid),
+//                         _ => ctrl.method_not_allowed()
+//                     },
+
+//                     _ => ctrl.not_found()
+//                 }
+//             },
+
+//             ["tables", tableid] => match req.method() {
+//                 Patch => ctrl.patch_table(tableid),
+//                 _ => ctrl.method_not_allowed()
+//             },
+
+//             _ => ctrl.not_found("Resource not found")
+//         }
+//     }
+
+//     fn sqlexec(self) -> Box<http::Response> {
+
+//     }
+
+//     fn get_index(self) -> Box<http::Response> {
+
+//     }
+
+//     fn get_dbobj_definition(&self,
+//                             dbname: &str,
+//                             objtype: DbObjType,
+//                             objid: &str)
+//                             -> Box<http::Response>
+//     {
+
+//     }
+
+//     fn get_dbobj_children(&self,
+//                           dbname: &str,
+//                           objtype: DbObjType,
+//                           objid: &str)
+//                           -> Box<http::Response>
+//     {
+
+//     }
+
+//     fn patch_table(self, tableid: postgres::Oid) -> Box<http::Response> {
+
+//     }
+
+//     fn connectdb(&self, dbname: &str, req: &http::Request) -> postgres::ConnectionResult {
+//         use http::RequestCredentials::Basic;
+//         let (username, password) = match req.credentials() {
+//             Some(Basic { username, password }) => (username, password),
+//             Some(..) => "unsupported authentication scheme",
+//             None => "username and password requried.",
+//         };
+
+//         let dbconn = try!(postgres::connect(self.pgaddr, dbname, username, password));
+//         dbconn
+//     }
+
+//     fn method_not_allowed(self) -> http::Result {
+//         use http::Status::MethodNotAllowed;
+//         let resp = try!(self.resp.start(MethodNotAllowed));
+//         try!(resp.write_content_type("application/json"));
+//         try!(resp.write_content(stringify!({
+//             "error": "Method not allowed."
+//         })));
+//     }
+
+//     fn not_found(self) -> http::Result {
+//         use http::Status::NotFound;
+//         let resp = try!(self.resp.start(NotFound));
+//         try!(resp.write_content_type("application/json"));
+//         try!(resp.write_content(stringify!({
+//             "error": "Not found."
+//         })));
+//     }
+// }
 
 
 

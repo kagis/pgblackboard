@@ -3,6 +3,7 @@ name = "pgblackboard"
 version = "0.2.0"
 dependencies = [
  "http 0.1.0",
+ "rustc-serialize 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
