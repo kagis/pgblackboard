@@ -1,9 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::io::Read;
-use reqerror::RequestError;
-use status::Status;
-use grammar::is_token;
+use super::reqerror::RequestError;
+use super::status::Status;
+use super::grammar::is_token;
 
 macro_rules! define_request_methods {
     ( $(($s:expr, $i:ident)),*) => {

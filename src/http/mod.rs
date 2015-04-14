@@ -1,6 +1,4 @@
-#![feature(io)]
-#![feature(collections)]
-#![feature(custom_attribute)]
+
 
 extern crate threadpool;
 extern crate rustc_serialize;
@@ -13,19 +11,19 @@ mod grammar;
 mod response;
 pub mod form;
 
-pub use method::Method;
-pub use status::Status;
-pub use response::ResponseStarter;
+pub use self::method::Method;
+pub use self::status::Status;
+pub use self::response::ResponseStarter;
 
-use rustc_serialize::base64::FromBase64;
-use rustc_serialize::json;
-use threadpool::ThreadPool;
+use self::rustc_serialize::base64::FromBase64;
+use self::rustc_serialize::json;
+use self::threadpool::ThreadPool;
+use self::readall::{ReadAll};
 
 use std::io::{self, BufRead, BufStream, Read, Write};
 use std::net::{TcpListener};
 use std::ascii::AsciiExt;
 use std::sync::{Arc};
-use readall::{ReadAll};
 
 
 
@@ -50,7 +48,7 @@ pub trait Response {
 // }
 
 pub trait Handler {
-    fn handle_http_req(&self, &Request) -> Box<Response>;
+    fn handle_http_req(&self, path: &[&str], req: &Request) -> Box<Response>;
 }
 
 pub trait Resource {
@@ -84,7 +82,7 @@ pub trait Resource {
 }
 
 impl<R: Resource> Handler for R {
-    fn handle_http_req(&self, req: &Request) -> Box<Response> {
+    fn handle_http_req(&self, path: &[&str], req: &Request) -> Box<Response> {
         match req.method {
             Method::Get => self.get(req),
             Method::Post => self.post(req),
@@ -150,8 +148,8 @@ pub struct Request {
 #[derive(Debug)]
 pub enum RequestCredentials {
     Basic {
-        username: String,
-        password: String,
+        user: String,
+        passwd: String,
     }
 }
 
@@ -188,7 +186,7 @@ impl Request {
 
 
         let mut content_length = 0usize;
-        let mut authorization = None;
+        let mut credentials = None;
         let mut is_urlenc_content = false;
 
         fn err_or_line_is_not_empty(line_res: &io::Result<String>) -> bool {
@@ -214,7 +212,7 @@ impl Request {
                     //content_type = Some(header_value.to_string());
                 }
                 "authorization" => {
-                    authorization = Some(try!(parse_authorization(header_value)));
+                    credentials = Some(try!(parse_authorization(header_value)));
                 }
                 _ => continue,
             };
@@ -247,19 +245,19 @@ impl Request {
             path: path.split(|&x| x == b'/').skip(1).map(|x| url_decode(x)).collect(),
             query_string: query_string,
             content: content,
-            credentials: None,
+            credentials: credentials,
             //basic_auth: authorization,
         })
     }
 }
 
 
-fn parse_authorization(header_value: &str) -> io::Result<(String, String)> {
+fn parse_authorization(header_value: &str) -> io::Result<RequestCredentials> {
 
 
     let colon_pos = try!(header_value.find(' ').ok_or(io::Error::new(
         io::ErrorKind::Other,
-        "Missing colon between auth scheme and credentials."
+        "Missing space between auth scheme and credentials."
     )));
 
     let auth_scheme = &header_value[0..colon_pos];
@@ -289,7 +287,10 @@ fn parse_authorization(header_value: &str) -> io::Result<(String, String)> {
 
         let user = cred[..colon_pos].to_string();
         let password = cred[(colon_pos + 1)..].to_string();
-        (user, password)
+        RequestCredentials::Basic {
+            user: user,
+            passwd: password
+        }
     })
 }
 
@@ -511,7 +512,13 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
                                  .as_ref()
                                  .map_or("", |x| &x.0)*/);
 
-                let resp = handler.handle_http_req(&req);
+                let path_vec = req.path.clone();
+                let path_slices_vec = path_vec
+                    .iter()
+                    .map(|x| &x[..])
+                    .collect::<Vec<&str>>();
+
+                let resp = handler.handle_http_req(&path_slices_vec[..], &req);
                 let resp_result = resp.write_to(ResponseStarter(buf_stream));
                 if let Err(e) = resp_result {
                     println!("error while sending response {}", e);

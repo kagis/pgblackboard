@@ -23,6 +23,23 @@ pub enum DecodeError {
     ParseError,
 }
 
+impl ::std::error::Error for DecodeError {
+    fn description(&self) -> &str {
+        match *self {
+            DecodeError::MissingField => "MissingField",
+            DecodeError::MissingValue => "MissingValue",
+            DecodeError::ParseError => "ParseError"
+        }
+    }
+}
+
+impl ::std::fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
+
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
 impl Decoder for RowDecoder {

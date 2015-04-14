@@ -15,15 +15,12 @@ impl<T: BufRead> CStringReader for T {
         if buf.pop() != Some(0) {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Unexpected EOF.",
-                None
+                "Unexpected EOF."
             ));
         }
-        String::from_utf8(buf).map_err(|_| io::Error::new(
-            io::ErrorKind::Other,
-            "Received a non-utf8 string from server",
-            None
-        ))
+        String::from_utf8(buf).map_err(|err| {
+            io::Error::new(io::ErrorKind::Other, err)
+        })
     }
 }
 

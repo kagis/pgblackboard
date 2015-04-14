@@ -4,12 +4,16 @@ name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
-[dependencies.http]
-path = "./src/http"
+#[dependencies.http]
+#path = "./src/http"
+
+[dependencies.postgres]
+path = "./src/postgres"
 
 [dependencies]
 #regex_macros = "*"
 #regex = "*"
 rustc-serialize = "0.3"
+threadpool = "0.1.3"
 #byteorder = "*"
 #rust-crypto = "*"

@@ -1,7 +1,7 @@
 use std::net::TcpStream;
 use std::io::{self, BufStream, Write};
 
-use status::Status;
+use super::status::Status;
 
 
 

@@ -59,7 +59,7 @@ pub enum ExecutionEvent {
     RowFetched(Row),
     RowsetEnd,
     SqlErrorOccured(ErrorOrNotice),
-    IoErrorOccured(io::Error),
+    IoErrorOccured(String),
     Notice(ErrorOrNotice),
 }
 
@@ -377,7 +377,7 @@ impl<T: BufRead> MessageReader for T  {
                     unknown => return Err(io::Error::new(
                         io::ErrorKind::Other,
                         "Unexpected transaction status indicator",
-                        Some(format!("got {}", unknown)),
+                        //Some(format!("got {}", unknown)),
                     ))
                 }
             },
@@ -404,7 +404,7 @@ impl<T: BufRead> MessageReader for T  {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Unknown message",
-                    Some(format!("Got message type {}", char::from_u32(unknown as u32).unwrap())),
+                    //Some(format!("Got message type {}", char::from_u32(unknown as u32).unwrap())),
                 ))
             },
         };
@@ -432,7 +432,7 @@ fn read_auth_message<T: Read>(reader: &mut T) -> io::Result<BackendMessage> {
         unknown => return Err(io::Error::new(
             io::ErrorKind::Other,
             "Unexpected authentication tag",
-            Some(format!("got {}", unknown)),
+            //Some(format!("got {}", unknown)),
         )),
     })
 }
@@ -449,10 +449,9 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
                 buf.extend((0..len).map(|_| 0));
                 println!("cell len = {}", len);
                 try!(read_full(reader, &mut buf));
-                let strval = try!(String::from_utf8(buf).map_err(|_| io::Error::new(
+                let strval = try!(String::from_utf8(buf).map_err(|err| io::Error::new(
                     io::ErrorKind::Other,
-                    "Received a non-utf8 string from server",
-                    None
+                    err
                 )));
                 Some(strval)
             }
@@ -543,7 +542,7 @@ fn read_row_description<T: BufRead>(reader: &mut T) -> io::Result<Vec<FieldDescr
                 unknown => return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Unknown column format code",
-                    Some(format!("Got {}", unknown)),
+                    // Some(format!("Got {}", unknown)),
                 ))
             }
         });
@@ -675,8 +674,8 @@ pub enum ConnectionError {
     IoError(io::Error),
 }
 
-impl ::std::error::FromError<io::Error> for ConnectionError {
-    fn from_error(err: io::Error) -> ConnectionError {
+impl ::std::convert::From<io::Error> for ConnectionError {
+    fn from(err: io::Error) -> ConnectionError {
         ConnectionError::IoError(err)
     }
 }
@@ -791,7 +790,8 @@ impl Connection {
 
                 unexpected => return Err(ConnectionError::IoError(io::Error::new(io::ErrorKind::Other,
                                                                "Unexpected message while startup.",
-                                                               Some(format!("{:?}", unexpected))))),
+                                                               //Some(format!("{:?}", unexpected))
+                                                               ))),
             }
         }
 
@@ -825,13 +825,12 @@ impl Connection {
             match msg_res {
                 RowFetched(row) => res.push(try!(decoder::decode_row(row).map_err(|decode_err| io::Error::new(
                     io::ErrorKind::Other,
-                    "Row decode error",
-                    Some(format!("{:?}", decode_err)),
-                )))),
+                    decode_err),
+                ))),
                 SqlErrorOccured(err) => return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Error response while querying",
-                    Some(format!("{:?}", err)),
+                    //Some(format!("{:?}", err)),
                 )),
                 _ => {},
             }
@@ -875,7 +874,7 @@ impl<'a> Iterator for ExecutionEventIterator<'a> {
 
         let message = match self.msg_reader.read_message() {
             Ok(message) => message,
-            Err(err) => return Some(ExecutionEvent::IoErrorOccured(err)),
+            Err(err) => return Some(ExecutionEvent::IoErrorOccured(format!("{:?}", err))),
         };
 
         Some(match message {
@@ -911,11 +910,11 @@ impl<'a> Iterator for ExecutionEventIterator<'a> {
                 }
             }
 
-            unexpected => ExecutionEvent::IoErrorOccured(io::Error::new(
-                io::ErrorKind::Other,
-                "Unexpected message received.",
-                 Some(format!("Got {:?}", unexpected)),
-            )),
+            unexpected => ExecutionEvent::IoErrorOccured(//io::Error::new(
+                //io::ErrorKind::Other,
+                "Unexpected message received.".to_string(),
+                // Some(format!("Got {:?}", unexpected)),
+            ),
 
         })
     }
@@ -928,7 +927,7 @@ fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
     while nread < buf.len() {
         match rdr.read(&mut buf[nread..]) {
             Ok(0) => return Err(io::Error::new(io::ErrorKind::Other,
-                                               "unexpected EOF", None)),
+                                               "unexpected EOF")),
             Ok(n) => nread += n,
             Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
             Err(e) => return Err(e),

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-use status::Status;
+use super::status::Status;
 
 #[derive(Debug)]
 pub struct RequestError {

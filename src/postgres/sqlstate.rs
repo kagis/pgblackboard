@@ -6,7 +6,7 @@ macro_rules! sql_state {
     }),* ) => {
 
         $(
-            #[derive(Debug, Copy)]
+            #[derive(Debug)]
             #[derive(PartialEq)]
             pub enum $class_name {
                 $( $name, )*
@@ -15,7 +15,7 @@ macro_rules! sql_state {
         )*
 
 
-        #[derive(Debug, Copy)]
+        #[derive(Debug)]
         #[derive(PartialEq)]
         pub enum SqlState {
             $( $class_name(Option<$class_name>), )*
