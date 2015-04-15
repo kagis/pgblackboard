@@ -15,6 +15,7 @@ pub enum DecodeError {
     MissingField,
     MissingValue,
     ParseError,
+    UnknownVariant(String)
 }
 
 
@@ -63,8 +64,24 @@ impl Decoder for FormDecoder {
             .ok_or(DecodeError::MissingValue)
     }
 
-    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
+    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
+        f(self)
+    }
+
+    fn read_enum_variant<T, F>(&mut self, available_names: &[&str],
+                               mut resolve_idx: F) -> DecodeResult<T>
+        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
+    {
+        let name_to_decode = try!(self.read_str());
+        let idx = match available_names.iter().position(|n| *n == name_to_decode) {
+            Some(idx) => idx,
+            None => return Err(DecodeError::UnknownVariant(name_to_decode))
+        };
+        resolve_idx(self, idx)
+    }
+
     fn read_enum_variant_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where F: FnMut(&mut Self, usize) -> DecodeResult<T> { unimplemented!() }
     fn read_enum_struct_variant_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
@@ -75,7 +92,9 @@ impl Decoder for FormDecoder {
         f(self)
     }
 
-    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> {
+    fn read_struct_field<T, F>(&mut self, f_name: &str, f_idx: usize, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
         let mut i = self.form.len();
         while i > 0 {
             i -= 1;
@@ -92,7 +111,10 @@ impl Decoder for FormDecoder {
     fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
     fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
     fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T> where F: FnOnce(&mut Self) -> DecodeResult<T> { unimplemented!() }
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where F: FnMut(&mut Self, bool) -> DecodeResult<T> {
+
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Self, bool) -> DecodeResult<T>
+    {
         let has_values = !self.reading_values.is_empty();
         f(self, has_values)
     }

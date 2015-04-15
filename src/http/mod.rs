@@ -16,7 +16,7 @@ pub use self::status::Status;
 pub use self::response::ResponseStarter;
 
 use self::rustc_serialize::base64::FromBase64;
-use self::rustc_serialize::json;
+use self::rustc_serialize::{json, Decodable};
 use self::threadpool::ThreadPool;
 use self::readall::{ReadAll};
 
@@ -144,7 +144,6 @@ pub struct Request {
 }
 
 
-
 #[derive(Debug)]
 pub enum RequestCredentials {
     Basic {
@@ -154,6 +153,15 @@ pub enum RequestCredentials {
 }
 
 impl Request {
+
+    pub fn decode_urlencoded_form<T: Decodable>(&self) -> form::DecodeResult<T> {
+        let content = self.content.clone();
+        if let Some(RequestContent::UrlEncoded(keyvals)) = content {
+            return form::decode_form(keyvals)
+        }
+        panic!("Url encoded form expected");
+    }
+
     fn read_from<T: BufRead>(reader: &mut T) -> io::Result<Request> {
         let req_line = try!(reader.read_crlf_line());
 

@@ -33,9 +33,9 @@ use rustc_serialize::{json, Encodable};
 
 
 fn main() {
-    let webapp = DbDir {
+    let webapp = WebApplication {
         pgaddr: "localhost:5432".to_string(),
-        dbname: "postgres".to_string(),
+        // dbname: "postgres".to_string(),
         //objtype: DbObjType::Database,
         //objid: "_".to_string(),
     };
@@ -457,6 +457,96 @@ fn connectdb_for_dbdir(
 }
 
 
+
+struct WebApplication {
+    pgaddr: String,
+}
+
+impl http::Handler for WebApplication {
+    fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
+        match path {
+            [""] => RootResource {
+                pgaddr: self.pgaddr.clone(),
+            }.handle_http_req(&[], req),
+
+            ["databases", dbname, tail..] => DbDir {
+                pgaddr: self.pgaddr.clone(),
+                dbname: dbname.to_string()
+            }.handle_http_req(tail, req),
+
+            _ => Box::new(JsonResponse {
+                status: http::Status::NotFound,
+                content: "not found."
+            })
+        }
+    }
+}
+
+struct RootResource {
+    pgaddr: String
+}
+
+impl http::Resource for RootResource {
+    fn get(&self, req: &http::Request) -> Box<http::Response> {
+        Box::new(JsonResponse {
+            status: http::Status::NotImplemented,
+            content: "not implemented."
+        })
+    }
+
+    fn post(&self, req: &http::Request) -> Box<http::Response> {
+        #[derive(RustcDecodable)]
+        #[derive(Debug)]
+        struct Form {
+            view: Option<MapOrTable>,
+            sqlscript: String,
+            sel_start_line: Option<u32>,
+            sel_start_col: Option<u32>,
+            sel_start_col
+        }
+
+        let form = match req.decode_urlencoded_form::<Form>() {
+            Ok(form) => form,
+            Err(err) => return Box::new(JsonResponse {
+                status: http::Status::BadRequest,
+                content: format!("{:?}", err)
+            })
+        };
+
+        Box::new(JsonResponse {
+            status: http::Status::Ok,
+            content: format!("Got form\r\n{:?}", form)
+        })
+    }
+}
+
+#[derive(RustcDecodable)]
+#[derive(Debug)]
+enum MapOrTable {
+    Map,
+    Table
+}
+
+struct LineCol {
+    line: u32,
+    col: u32,
+}
+
+struct SelectionRange {
+    start: LineCol,
+    end: LineCol,
+}
+
+struct SqlExecResponse {
+    pgaddr: String,
+    view: MapOrTable,
+    sqlscript: String,
+    selrange: Option<SelectionRange>,
+}
+
+impl http::Response for SqlExecResponse {
+
+}
 
 
 

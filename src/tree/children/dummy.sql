@@ -1,0 +1,2 @@
+SELECT null
+WHERE false
