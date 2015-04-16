@@ -502,7 +502,8 @@ impl http::Resource for RootResource {
             sqlscript: String,
             sel_start_line: Option<u32>,
             sel_start_col: Option<u32>,
-            sel_start_col
+            sel_end_line: Option<u32>,
+            sel_end_col: Option<u32>,
         }
 
         let form = match req.decode_urlencoded_form::<Form>() {
@@ -512,6 +513,25 @@ impl http::Resource for RootResource {
                 content: format!("{:?}", err)
             })
         };
+
+        let selrange = if let Form {
+            sel_start_col: Some(sel_start_col),
+            sel_start_col: Some(sel_start_col),
+            sel_end_line: Some(sel_end_line),
+            sel_end_col: Some(sel_end_col),
+        } {
+            Some(SelectionRange {
+                start: LineCol { line: sel_start_line, col: sel_start_col },
+                end: LineCol { line: sel_end_line, col: sel_end_col },
+            })
+        } else {
+            None
+        };
+
+        Box::new(SqlExecResponse {
+            selrange: selrange,
+            sqlscript: form.sqlscript
+        })
 
         Box::new(JsonResponse {
             status: http::Status::Ok,
@@ -538,14 +558,16 @@ struct SelectionRange {
 }
 
 struct SqlExecResponse {
-    pgaddr: String,
+    dbconn: pg::Connection,
     view: MapOrTable,
     sqlscript: String,
     selrange: Option<SelectionRange>,
 }
 
 impl http::Response for SqlExecResponse {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
 
+    }
 }
 
 
