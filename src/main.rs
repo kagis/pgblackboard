@@ -309,13 +309,10 @@ impl http::Resource for DbObjDefinition {
 
         let mut result = match dbconn.query::<Definition>(&query) {
             Ok(result) => result,
-            Err(err) => {
-                println!("error while fetching dbobj definition: {:?}", err);
-                return Box::new(JsonResponse {
-                    status: http::Status::InternalServerError,
-                    content: "Error occured, see log for details."
-                });
-            }
+            Err(err) => return Box::new(JsonResponse {
+                status: http::Status::InternalServerError,
+                content: format!("Error while fetching dbobj definition: {:?}", err)
+            })
         };
 
         let result = match result.pop() {
@@ -502,7 +499,8 @@ impl http::Resource for RootResource {
             sqlscript: String,
             sel_start_line: Option<u32>,
             sel_start_col: Option<u32>,
-            sel_start_col
+            sel_end_line: Option<u32>,
+            sel_end_col: Option<u32>
         }
 
         let form = match req.decode_urlencoded_form::<Form>() {
@@ -538,7 +536,7 @@ struct SelectionRange {
 }
 
 struct SqlExecResponse {
-    pgaddr: String,
+    dbconn: pg::Connection,
     view: MapOrTable,
     sqlscript: String,
     selrange: Option<SelectionRange>,
