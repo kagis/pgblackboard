@@ -13,6 +13,8 @@ mod http;
 mod tree;
 use tree::DbObjType;
 
+
+
 // extern crate regex;
 
 // #[plugin] #[no_link] extern crate regex_macros;
@@ -22,6 +24,7 @@ use tree::DbObjType;
 //use postgres::{Connection, SslMode};
 
 use std::io;
+use std::ops::Range;
 use rustc_serialize::{json, Encodable};
 
 // mod postgres;
@@ -512,12 +515,13 @@ impl http::Resource for RootResource {
         };
 
         let selrange = if let Form {
-            sel_start_col: Some(sel_start_col),
+            sel_start_line: Some(sel_start_line),
             sel_start_col: Some(sel_start_col),
             sel_end_line: Some(sel_end_line),
             sel_end_col: Some(sel_end_col),
-        } {
-            Some(SelectionRange {
+            ..
+        } = form {
+            Some(Range {
                 start: LineCol { line: sel_start_line, col: sel_start_col },
                 end: LineCol { line: sel_end_line, col: sel_end_col },
             })
@@ -525,15 +529,69 @@ impl http::Resource for RootResource {
             None
         };
 
+        let dbname = "postgres";
+        let dbconn = {
+            use http::RequestCredentials::Basic;
+            use http::Status::{
+                NotFound,
+                Unauthorized,
+                InternalServerError,
+            };
+            use pg::ConnectionError::{
+                AuthFailed,
+                DatabaseNotExists,
+            };
+
+            let (user, passwd) = match req.credentials.as_ref() {
+                Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
+                // Some(..) => return Box::new(JsonResponse {
+                //     status: Unauthorized,
+                //     content: "Unsupported authentication scheme"
+                // }),
+                None => return Box::new(JsonResponse {
+                    status: Unauthorized,
+                    content: "Username and password requried."
+                })
+            };
+
+            let maybe_dbconn = pg::connect(&self.pgaddr[..], dbname, user, passwd);
+
+            match maybe_dbconn {
+
+                Ok(dbconn) => dbconn,
+
+                Err(AuthFailed) => return Box::new(JsonResponse {
+                    status: Unauthorized,
+                    content: "Invalid username or password."
+                }),
+
+                Err(DatabaseNotExists) => return Box::new(JsonResponse {
+                    status: NotFound,
+                    content: "Database not exists."
+                }),
+
+                Err(err) => {
+                    println!("error while connecting to db: {:?}", err);
+                    return Box::new(JsonResponse {
+                        status: InternalServerError,
+                        content: "Failed to connect database, see logs for details."
+                    });
+                }
+            }
+        };
+
+
         Box::new(SqlExecResponse {
+            dbconn: dbconn,
+            view: form.view.unwrap_or(MapOrTable::Table),
             selrange: selrange,
             sqlscript: form.sqlscript
         })
 
-        Box::new(JsonResponse {
-            status: http::Status::Ok,
-            content: format!("Got form\r\n{:?}", form)
-        })
+        // Box::new(JsonResponse {
+        //     status: http::Status::Ok,
+        //     content: format!("Got form\r\n{:?}", form)
+        // })
     }
 }
 
@@ -549,21 +607,16 @@ struct LineCol {
     col: u32,
 }
 
-struct SelectionRange {
-    start: LineCol,
-    end: LineCol,
-}
-
 struct SqlExecResponse {
     dbconn: pg::Connection,
     view: MapOrTable,
     sqlscript: String,
-    selrange: Option<SelectionRange>,
+    selrange: Option<Range<LineCol>>,
 }
 
 impl http::Response for SqlExecResponse {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-
+        dbconn.execute(&self.sqlscript)
     }
 }
 
