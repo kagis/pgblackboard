@@ -13,6 +13,7 @@ mod http;
 mod tree;
 use tree::DbObjType;
 
+mod view;
 
 
 // extern crate regex;
@@ -583,7 +584,7 @@ impl http::Resource for RootResource {
 
         Box::new(SqlExecResponse {
             dbconn: dbconn,
-            view: form.view.unwrap_or(MapOrTable::Table),
+            map_or_table: form.view.unwrap_or(MapOrTable::Table),
             selrange: selrange,
             sqlscript: form.sqlscript
         })
@@ -609,14 +610,40 @@ struct LineCol {
 
 struct SqlExecResponse {
     dbconn: pg::Connection,
-    view: MapOrTable,
+    map_or_table: MapOrTable,
     sqlscript: String,
     selrange: Option<Range<LineCol>>,
 }
 
 impl http::Response for SqlExecResponse {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-        dbconn.execute(&self.sqlscript)
+        let self_ = *self;
+        let SqlExecResponse {
+            mut dbconn,
+            map_or_table,
+            sqlscript,
+            selrange,
+        } = self_;
+
+        let execution_events = dbconn.execute_script(&sqlscript).unwrap();
+
+        let mut w = try!(w.start(http::Status::Ok));
+        try!(w.write_content_type("text/html; charset=utf-8"));
+        let mut w = try!(w.start_chunked());
+
+        try!(match map_or_table {
+            MapOrTable::Table => dispatch_exec_events(
+                execution_events,
+                view::TableView::new(&mut w)
+            ),
+
+            MapOrTable::Map => dispatch_exec_events(
+                execution_events,
+                view::TableView::new(&mut w)
+            )
+        });
+
+        w.end()
     }
 }
 
@@ -1346,25 +1373,59 @@ fn guess_content_type(extension: &[u8]) -> &str {
 // }
 
 
-// fn dispatch_exec_events<TEventsIter, TView>(mut events_iter: TEventsIter, mut view: TView) -> IoResult<()>
-//     where TEventsIter: Iterator<Item=postgres::ExecuteEvent>,
-//           TView: View
-// {
-//     for event in events_iter {
-//         use postgres::ExecuteEvent::*;
-//         try!(match event {
-//             RowsetBegin(cols_descr) => view.render_rowset_begin(&cols_descr[]),
-//             RowsetEnd => view.render_rowset_end(),
-//             RowFetched(row) => view.render_row(&row[]),
-//             NonQueryExecuted(cmd) => view.render_nonquery(&cmd[]),
-//             SqlErrorOccured(err) => view.render_sql_error(err),
-//             IoErrorOccured(err) => view.render_io_error(err),
-//             Notice(notice) => view.render_notice(notice),
-//         });
-//     }
+fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
+                                            mut view: TView)
+                                            -> io::Result<()>
+    where TEventsIter: Iterator<Item=pg::ExecutionEvent>,
+          TView: view::View
+{
 
-//     Ok(())
-// }
+    try!(view.render_intro());
+
+    for event in execution_events {
+        try!(match event {
+            pg::ExecutionEvent::RowsetBegin(cols_descr) => {
+
+                view.render_rowset_begin(1, &cols_descr.iter().map(|x| view::FieldDescription {
+                    name: &x.name,
+                    typ: "typ",
+                    is_numeric: false
+                }).collect::<Vec<_>>())
+            }
+
+            pg::ExecutionEvent::RowsetEnd => {
+                view.render_rowset_end()
+            }
+
+            pg::ExecutionEvent::RowFetched(row) => {
+                let row_iter = row.iter().map(|maybe_val| {
+                    maybe_val.as_ref().map(|val| &val[..])
+                });
+                view.render_row(row_iter)
+            }
+
+            pg::ExecutionEvent::NonQueryExecuted(cmd) => {
+                view.render_nonquery(&cmd)
+            }
+
+            pg::ExecutionEvent::SqlErrorOccured(err) => {
+                view.render_sql_error(&err.message, err.position)
+            }
+
+            pg::ExecutionEvent::IoErrorOccured(err) => {
+                view.render_io_error(&err)
+            }
+
+            pg::ExecutionEvent::Notice(notice) => {
+                view.render_notice(&notice.message)
+            }
+        });
+    }
+
+    try!(view.render_outro());
+
+    Ok(())
+}
 
 // trait View {
 //     //fn new<TWriter: Writer>(writer: TWriter) -> Self;

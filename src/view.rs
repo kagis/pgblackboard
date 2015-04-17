@@ -23,7 +23,7 @@ pub trait View {
                         script_line: Option<usize>)
                         -> io::Result<()>;
 
-    fn render_io_error(&mut self, io::Error) -> io::Result<()>;
+    fn render_io_error(&mut self, &str) -> io::Result<()>;
 
     fn render_nonquery(&mut self, command_tag: &str) -> io::Result<()>;
 
@@ -81,7 +81,7 @@ impl<W: Write> View for TableView<W> {
     }
 
     fn render_outro(&mut self) -> io::Result<()> {
-        self.writer.write_all(b"</div></body></html>")
+        self.writer.write_all(b"</div></body></html>\r\n")
     }
 
     fn render_rowset_begin(&mut self,
@@ -158,7 +158,7 @@ impl<W: Write> View for TableView<W> {
         Ok(())
     }
 
-    fn render_io_error(&mut self, err: io::Error) -> io::Result<()> {
+    fn render_io_error(&mut self, err: &str) -> io::Result<()> {
         write!(&mut self.writer, "<pre>{:?}</pre>", err)
     }
 
