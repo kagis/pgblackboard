@@ -110,7 +110,7 @@ impl http::Resource for DbObjChildren {
         let result = match dbconn.query::<ChildDbObj>(&query) {
             Ok(result) => result,
             Err(err) => {
-                println!("error while fetching dbobj definition: {:?}", err);
+                println!("error while fetching dbobj children: {:?}", err);
                 return Box::new(JsonResponse {
                     status: http::Status::InternalServerError,
                     content: "Error occured, see log for details."
@@ -171,7 +171,12 @@ impl http::Resource for DbObjDefinition {
 
         Box::new(JsonResponse {
             status: http::Status::Ok,
-            content: result
+            content: [
+                "\\connect ",
+                &self.dbname[..],
+                "\r\n\r\n",
+                &result[..]
+            ].concat()
         })
     }
 }

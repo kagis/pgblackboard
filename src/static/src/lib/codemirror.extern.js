@@ -6,6 +6,12 @@ var CodeMirror = {
     /** @return {{left: number, top: number}} */
     getScrollInfo: function () {},
 
+    setGutterMarker: function (line, gutterName, markerElem) {},
+
+    display: {
+        gutters: {}
+    },
+
 	Doc: {
 		getValue: function () {},
 		setValue: function () {},

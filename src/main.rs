@@ -19,6 +19,9 @@ use sqlexec::SqlExecHandler;
 mod webapi;
 use webapi::DbDir;
 
+mod index;
+use index::IndexPage;
+
 
 
 //use std::io::net::ip::Ipv4Addr;
@@ -191,6 +194,7 @@ fn main() {
 
 
 
+
 // struct RootResource {
 //     pgaddr: &str
 // }
@@ -227,6 +231,10 @@ impl http::Handler for WebApplication {
                 dbname: dbname.to_string()
             }.handle_http_req(tail, req),
 
+            ["bundle-index.js"] => Box::new(JsResponse {
+                content: include_bytes!("static/dist/bundle-index.js")
+            }),
+
             _ => Box::new(ErrorResponse {
                 status: http::Status::NotFound,
                 message: "not found."
@@ -241,10 +249,9 @@ struct RootResource {
 
 impl http::Resource for RootResource {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
-        Box::new(ErrorResponse {
-            status: http::Status::NotImplemented,
-            message: "not implemented."
-        })
+        use http::Handler;
+        let handler = IndexPage { pgaddr: &self.pgaddr };
+        handler.handle_http_req(&[], req)
     }
 
     fn post(&self, req: &http::Request) -> Box<http::Response> {
@@ -267,6 +274,18 @@ impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
             try!(w.write_www_authenticate_basic("postgres"));
         }
         w.write_content(format!("{}", self.message).as_bytes())
+    }
+}
+
+struct JsResponse {
+    content: &'static [u8]
+}
+
+impl http::Response for JsResponse {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start_ok());
+        try!(w.write_content_type("application/javascript"));
+        w.write_content(self.content)
     }
 }
 

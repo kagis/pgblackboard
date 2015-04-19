@@ -4,8 +4,12 @@ module.exports = {
     'init': function (outputFrameEl, valueAccessor) {
         var bindingOptions = valueAccessor();
         var outputFrameContext = {
-            'isDark': bindingOptions['isDark'],
-            'setError': function (messageAndLine) {
+
+            /** @expose */
+            isDark: bindingOptions['isDark'],
+
+            /** @expose */
+            setError: function (messageAndLine) {
                 if (outputFrameContext.selectedDoc['errors']) {
                     outputFrameContext.selectedDoc['errors'].push(messageAndLine);
                 }

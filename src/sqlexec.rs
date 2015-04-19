@@ -568,7 +568,10 @@ fn invoke_js_set_error<W>(writer: &mut W,
                           where W: Write
 {
     write!(writer,
-       "<script>pgBlackboard.setError('{message}', {line});</script>",
-       message = message.replace("'", "\\'"),
+        "<script>pgBlackboard.setError({{\
+            \"message\":\"{message}\",\
+            \"line\":{line}\
+        }});</script>",
+       message = message.replace("\"", "\\\""),
        line = script_line)
 }

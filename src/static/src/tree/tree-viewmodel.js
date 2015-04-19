@@ -149,9 +149,9 @@ TreeNode.prototype._sqlexec = function (action, options) {
     req.onload = onLoad;
     req.onerror = onLoadEnd;
     req.open('GET', [
-        'db',
+        'databases',
         this._nodeDTO['database'],
-        'nodes',
+        'objects',
         this._nodeDTO['typ'],
         this._nodeDTO['id'] || '_',
         action
