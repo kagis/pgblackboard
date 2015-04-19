@@ -1,32 +1,32 @@
-#![allow(unstable)]
 #![feature(plugin)]
 #![feature(slice_patterns)]
-#![feature(io)]
 #![feature(collections)]
 #![feature(custom_attribute)]
+#![plugin(regex_macros)]
 
+extern crate regex;
 extern crate rustc_serialize;
 extern crate postgres as pg;
 // extern crate http;
 mod http;
 
 mod tree;
-use tree::DbObjType;
-
-mod view;
 
 
-// extern crate regex;
+mod sqlexec;
+use sqlexec::SqlExecHandler;
 
-// #[plugin] #[no_link] extern crate regex_macros;
+mod webapi;
+use webapi::DbDir;
+
+
 
 //use std::io::net::ip::Ipv4Addr;
 //use hyper::server::{Request, Response};
 //use postgres::{Connection, SslMode};
 
 use std::io;
-use std::ops::Range;
-use rustc_serialize::{json, Encodable};
+
 
 // mod postgres;
 // mod http;
@@ -44,7 +44,7 @@ fn main() {
         //objid: "_".to_string(),
     };
 
-    http::serve_forever("0.0.0.0:7890", webapp);
+    http::serve_forever("0.0.0.0:7890", webapp).unwrap();
 }
 
 // struct WebApplication<'a> {
@@ -207,255 +207,7 @@ fn main() {
 
 
 
-struct JsonResponse<T: Encodable> {
-    status: http::Status,
-    content: T
-}
 
-impl<T: Encodable> http::Response for JsonResponse<T> {
-    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-        let mut w = try!(w.start(self.status));
-        try!(w.write_content_type("application/json"));
-        if self.status == http::Status::Unauthorized {
-            try!(w.write_www_authenticate_basic("postgres"));
-        }
-        w.write_content(json::encode(&self.content).unwrap().as_bytes())
-    }
-}
-
-
-// trait PgConnector {
-//     fn connect(&self, dbname: &str, user: &str, passwd: &str) -> pg::ConnectionResult;
-// }
-
-// struct PgConnectorImpl {
-//     pgaddr: String
-// }
-
-struct DbObjChildren {
-    pgaddr: String,
-    dbname: String,
-    objtype: DbObjType,
-    objid: String,
-}
-
-impl http::Resource for DbObjChildren {
-    fn get(&self, req: &http::Request) -> Box<http::Response> {
-        let mut dbconn = match connectdb_for_dbdir(&self.pgaddr, &self.dbname, req) {
-            Ok(dbconn) => dbconn,
-            Err(resp) => return resp
-        };
-
-        fn quote_literal(s: &str) -> String {
-            ["'", &s.replace("'", "''")[..], "'"].concat()
-        }
-
-        let query = self.objtype.children_query();
-
-        let query = query.replace("%(nodeid)s", &quote_literal(&self.objid))
-                         .replace("%(nodetype)s", &quote_literal(self.objtype.to_str()));
-
-        #[derive(RustcDecodable, RustcEncodable)]
-        struct ChildDbObj {
-            database: String,
-            id: String,
-            typ: String,
-            name: String,
-            comment: Option<String>,
-            has_children: bool,
-        }
-
-        let result = match dbconn.query::<ChildDbObj>(&query) {
-            Ok(result) => result,
-            Err(err) => {
-                println!("error while fetching dbobj definition: {:?}", err);
-                return Box::new(JsonResponse {
-                    status: http::Status::InternalServerError,
-                    content: "Error occured, see log for details."
-                });
-            }
-        };
-
-        Box::new(JsonResponse {
-            status: http::Status::Ok,
-            content: result
-        })
-    }
-}
-
-struct DbObjDefinition {
-    pgaddr: String,
-    dbname: String,
-    objtype: DbObjType,
-    objid: String,
-}
-
-impl http::Resource for DbObjDefinition {
-    fn get(&self, req: &http::Request) -> Box<http::Response> {
-        let mut dbconn = match connectdb_for_dbdir(&self.pgaddr, &self.dbname, req) {
-            Ok(dbconn) => dbconn,
-            Err(resp) => return resp
-        };
-
-        fn quote_literal(s: &str) -> String {
-            ["'", &s.replace("'", "''")[..], "'"].concat()
-        }
-
-        let query = self.objtype.definition_query();
-
-        let query = query.replace("%(nodeid)s", &quote_literal(&self.objid))
-                         .replace("%(nodetype)s", &quote_literal(self.objtype.to_str()));
-
-        #[derive(RustcDecodable)]
-        struct Definition {
-            def: String,
-        }
-
-        let mut result = match dbconn.query::<Definition>(&query) {
-            Ok(result) => result,
-            Err(err) => return Box::new(JsonResponse {
-                status: http::Status::InternalServerError,
-                content: format!("Error while fetching dbobj definition: {:?}", err)
-            })
-        };
-
-        let result = match result.pop() {
-            Some(tuple) => tuple.def,
-            None => return Box::new(JsonResponse {
-                status: http::Status::NotFound,
-                content: "Object id was not found."
-            })
-        };
-
-        Box::new(JsonResponse {
-            status: http::Status::Ok,
-            content: result
-        })
-    }
-}
-
-
-struct DbObj {
-    pgaddr: String,
-    dbname: String,
-    objtype: DbObjType,
-    objid: String,
-}
-
-impl http::Handler for DbObj {
-    fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
-        match path {
-            ["children"] => DbObjChildren {
-                pgaddr: self.pgaddr.clone(),
-                dbname: self.dbname.clone(),
-                objtype: self.objtype.clone(),
-                objid: self.objid.clone(),
-            }.handle_http_req(path, req),
-
-            ["definition"] => DbObjDefinition {
-                pgaddr: self.pgaddr.clone(),
-                dbname: self.dbname.clone(),
-                objtype: self.objtype.clone(),
-                objid: self.objid.clone(),
-            }.handle_http_req(path, req),
-
-            _ => Box::new(JsonResponse {
-                status: http::Status::NotFound,
-                content: "not found"
-            })
-        }
-    }
-}
-
-struct DbDir {
-    pgaddr: String,
-    dbname: String
-}
-
-impl http::Handler for DbDir {
-    fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
-        match path {
-            ["objects", objtype, objid, tail..] => {
-                let objtype = match DbObjType::from_str(objtype) {
-                    Some(objtype) => objtype,
-                    None => return Box::new(JsonResponse {
-                        status: http::Status::NotFound,
-                        content: "Unknown type of database object."
-                    })
-                };
-
-                DbObj {
-                    pgaddr: self.pgaddr.clone(),
-                    dbname: self.dbname.clone(),
-                    objtype: objtype,
-                    objid: objid.to_string(),
-                }.handle_http_req(tail, req)
-            }
-
-            // ["tables", tableid] => {
-
-            // }
-
-            _ => Box::new(JsonResponse {
-                status: http::Status::NotFound,
-                content: "not found"
-            })
-        }
-    }
-}
-
-fn connectdb_for_dbdir(
-    pgaddr: &str,
-    dbname: &str,
-    req: &http::Request)
-    -> Result<pg::Connection, Box<http::Response>>
-{
-    use http::RequestCredentials::Basic;
-    use http::Status::{
-        NotFound,
-        Unauthorized,
-        InternalServerError,
-    };
-    use pg::ConnectionError::{
-        AuthFailed,
-        DatabaseNotExists,
-    };
-
-    let (user, passwd) = match req.credentials.as_ref() {
-        Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
-        // Some(..) => return Box::new(JsonResponse {
-        //     status: Unauthorized,
-        //     content: "Unsupported authentication scheme"
-        // }),
-        None => return Err(Box::new(JsonResponse {
-            status: Unauthorized,
-            content: "Username and password requried."
-        }))
-    };
-
-    let maybe_dbconn = pg::connect(pgaddr, dbname, user, passwd);
-
-    maybe_dbconn.map_err(|err| match err {
-
-        AuthFailed => Box::new(JsonResponse {
-            status: Unauthorized,
-            content: "Invalid username or password."
-        }),
-
-        DatabaseNotExists => Box::new(JsonResponse {
-            status: NotFound,
-            content: "Database not exists."
-        }),
-
-        err => {
-            println!("error while connecting to db: {:?}", err);
-            Box::new(JsonResponse {
-                status: InternalServerError,
-                content: "Failed to connect database, see logs for details."
-            })
-        }
-    } as Box<http::Response>)
-}
 
 
 
@@ -475,9 +227,9 @@ impl http::Handler for WebApplication {
                 dbname: dbname.to_string()
             }.handle_http_req(tail, req),
 
-            _ => Box::new(JsonResponse {
+            _ => Box::new(ErrorResponse {
                 status: http::Status::NotFound,
-                content: "not found."
+                message: "not found."
             })
         }
     }
@@ -489,165 +241,34 @@ struct RootResource {
 
 impl http::Resource for RootResource {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
-        Box::new(JsonResponse {
+        Box::new(ErrorResponse {
             status: http::Status::NotImplemented,
-            content: "not implemented."
+            message: "not implemented."
         })
     }
 
     fn post(&self, req: &http::Request) -> Box<http::Response> {
-        #[derive(RustcDecodable)]
-        #[derive(Debug)]
-        struct Form {
-            view: Option<MapOrTable>,
-            sqlscript: String,
-            sel_start_line: Option<u32>,
-            sel_start_col: Option<u32>,
-            sel_end_line: Option<u32>,
-            sel_end_col: Option<u32>,
-        }
-
-        let form = match req.decode_urlencoded_form::<Form>() {
-            Ok(form) => form,
-            Err(err) => return Box::new(JsonResponse {
-                status: http::Status::BadRequest,
-                content: format!("{:?}", err)
-            })
-        };
-
-        let selrange = if let Form {
-            sel_start_line: Some(sel_start_line),
-            sel_start_col: Some(sel_start_col),
-            sel_end_line: Some(sel_end_line),
-            sel_end_col: Some(sel_end_col),
-            ..
-        } = form {
-            Some(Range {
-                start: LineCol { line: sel_start_line, col: sel_start_col },
-                end: LineCol { line: sel_end_line, col: sel_end_col },
-            })
-        } else {
-            None
-        };
-
-        let dbname = "postgres";
-        let dbconn = {
-            use http::RequestCredentials::Basic;
-            use http::Status::{
-                NotFound,
-                Unauthorized,
-                InternalServerError,
-            };
-            use pg::ConnectionError::{
-                AuthFailed,
-                DatabaseNotExists,
-            };
-
-            let (user, passwd) = match req.credentials.as_ref() {
-                Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
-                // Some(..) => return Box::new(JsonResponse {
-                //     status: Unauthorized,
-                //     content: "Unsupported authentication scheme"
-                // }),
-                None => return Box::new(JsonResponse {
-                    status: Unauthorized,
-                    content: "Username and password requried."
-                })
-            };
-
-            let maybe_dbconn = pg::connect(&self.pgaddr[..], dbname, user, passwd);
-
-            match maybe_dbconn {
-
-                Ok(dbconn) => dbconn,
-
-                Err(AuthFailed) => return Box::new(JsonResponse {
-                    status: Unauthorized,
-                    content: "Invalid username or password."
-                }),
-
-                Err(DatabaseNotExists) => return Box::new(JsonResponse {
-                    status: NotFound,
-                    content: "Database not exists."
-                }),
-
-                Err(err) => {
-                    println!("error while connecting to db: {:?}", err);
-                    return Box::new(JsonResponse {
-                        status: InternalServerError,
-                        content: "Failed to connect database, see logs for details."
-                    });
-                }
-            }
-        };
-
-
-        Box::new(SqlExecResponse {
-            dbconn: dbconn,
-            map_or_table: form.view.unwrap_or(MapOrTable::Table),
-            selrange: selrange,
-            sqlscript: form.sqlscript
-        })
-
-        // Box::new(JsonResponse {
-        //     status: http::Status::Ok,
-        //     content: format!("Got form\r\n{:?}", form)
-        // })
+        use http::Handler;
+        let handler = SqlExecHandler { pgaddr: &self.pgaddr };
+        handler.handle_http_req(&[], req)
     }
 }
 
-#[derive(RustcDecodable)]
-#[derive(Debug)]
-enum MapOrTable {
-    Map,
-    Table
+struct ErrorResponse<T> {
+    status: http::Status,
+    message: T
 }
 
-struct LineCol {
-    line: u32,
-    col: u32,
-}
-
-struct SqlExecResponse {
-    dbconn: pg::Connection,
-    map_or_table: MapOrTable,
-    sqlscript: String,
-    selrange: Option<Range<LineCol>>,
-}
-
-impl http::Response for SqlExecResponse {
+impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-        let self_ = *self;
-        let SqlExecResponse {
-            mut dbconn,
-            map_or_table,
-            sqlscript,
-            selrange,
-        } = self_;
-
-        let execution_events = dbconn.execute_script(&sqlscript).unwrap();
-
-        let mut w = try!(w.start(http::Status::Ok));
-        try!(w.write_content_type("text/html; charset=utf-8"));
-        let mut w = try!(w.start_chunked());
-
-        try!(match map_or_table {
-            MapOrTable::Table => dispatch_exec_events(
-                execution_events,
-                view::TableView::new(&mut w)
-            ),
-
-            MapOrTable::Map => dispatch_exec_events(
-                execution_events,
-                view::TableView::new(&mut w)
-            )
-        });
-
-        w.end()
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type("text/html"));
+        if self.status == http::Status::Unauthorized {
+            try!(w.write_www_authenticate_basic("postgres"));
+        }
+        w.write_content(format!("{}", self.message).as_bytes())
     }
 }
-
-
 
 // struct Controller<'a, 'b> {
 //     req: &'a http::Request,
@@ -858,24 +479,6 @@ fn guess_content_type(extension: &[u8]) -> &str {
         _ => "application/octet-stream",
     }
 }
-
-// fn extract_connect_metacmd(sql_script: &str) -> Option<((&str, usize), (&str, usize))> {
-//     let pat = regex!(r"(?ms)^\s*\\c(?:onnect)?[ \t]+(\w+)[ \t]*[\r\n]+(.*)");
-//     pat.captures(sql_script)
-//         .map(|captures| (
-//             (captures.at(1).unwrap(), captures.pos(1).unwrap().0),
-//             (captures.at(2).unwrap(), captures.pos(2).unwrap().0),
-//         ))
-// }
-
-// #[test]
-// fn test_extract_connect_metacmd() {
-//     let result = extract_connect_metacmd(
-//         "\\connect postgres\nselect 'awesome'"
-//     );
-
-//     assert_eq!(result, Some((("postgres", 9), ("select 'awesome'", 18))));
-// }
 
 
 
@@ -1373,59 +976,6 @@ fn guess_content_type(extension: &[u8]) -> &str {
 // }
 
 
-fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
-                                            mut view: TView)
-                                            -> io::Result<()>
-    where TEventsIter: Iterator<Item=pg::ExecutionEvent>,
-          TView: view::View
-{
-
-    try!(view.render_intro());
-
-    for event in execution_events {
-        try!(match event {
-            pg::ExecutionEvent::RowsetBegin(cols_descr) => {
-
-                view.render_rowset_begin(1, &cols_descr.iter().map(|x| view::FieldDescription {
-                    name: &x.name,
-                    typ: "typ",
-                    is_numeric: false
-                }).collect::<Vec<_>>())
-            }
-
-            pg::ExecutionEvent::RowsetEnd => {
-                view.render_rowset_end()
-            }
-
-            pg::ExecutionEvent::RowFetched(row) => {
-                let row_iter = row.iter().map(|maybe_val| {
-                    maybe_val.as_ref().map(|val| &val[..])
-                });
-                view.render_row(row_iter)
-            }
-
-            pg::ExecutionEvent::NonQueryExecuted(cmd) => {
-                view.render_nonquery(&cmd)
-            }
-
-            pg::ExecutionEvent::SqlErrorOccured(err) => {
-                view.render_sql_error(&err.message, err.position)
-            }
-
-            pg::ExecutionEvent::IoErrorOccured(err) => {
-                view.render_io_error(&err)
-            }
-
-            pg::ExecutionEvent::Notice(notice) => {
-                view.render_notice(&notice.message)
-            }
-        });
-    }
-
-    try!(view.render_outro());
-
-    Ok(())
-}
 
 // trait View {
 //     //fn new<TWriter: Writer>(writer: TWriter) -> Self;

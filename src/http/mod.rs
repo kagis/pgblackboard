@@ -524,7 +524,7 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
                 let path_slices_vec = path_vec
                     .iter()
                     .map(|x| &x[..])
-                    .collect::<Vec<&str>>();
+                    .collect::<Vec<_>>();
 
                 let resp = handler.handle_http_req(&path_slices_vec[..], &req);
                 let resp_result = resp.write_to(ResponseStarter(buf_stream));
