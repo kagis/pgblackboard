@@ -1,5 +1,5 @@
 describe('tree node', function () {
-    var TreeNode = require('../src/tree/tree-viewmodel').TreeNode,
+    var TreeNode = require('./tree-viewmodel').TreeNode,
         ko = require('knockout');
 
     var treeNode;

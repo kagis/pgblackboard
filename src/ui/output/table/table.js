@@ -1,5 +1,4 @@
-(function () {
-'use strict';
+module.exports = function (window) {
 
 var CONTENT_EDITABLE = 'true';
 if (navigator.userAgent.indexOf('AppleWebKit') !== -1) {
@@ -262,4 +261,4 @@ if ('classList' in document.createElement('_')) {
     };
 }
 
-})();
+};

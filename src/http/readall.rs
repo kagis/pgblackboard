@@ -6,7 +6,7 @@ pub trait ReadAll: Read {
         while nread < buf.len() {
             match self.read(&mut buf[nread..]) {
                 Ok(0) => return Err(io::Error::new(io::ErrorKind::Other,
-                                                   "unexpected EOF")),
+                    format!("unexpected EOF: {:?}", buf))),
                 Ok(n) => nread += n,
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
                 Err(e) => return Err(e),

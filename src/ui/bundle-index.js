@@ -15,6 +15,7 @@ document.write(`
     System.config({
         "paths": {
             "*.html": "*.html",
+            "*.css": "*.css",
             "knockout": "https://cdnjs.cloudflare.com/ajax/libs/knockout/3.3.0/knockout-debug.js",
             "codemirror": "http://cdnjs.cloudflare.com/ajax/libs/codemirror/5.0.0/codemirror.js",
             "codemirror/*": "http://cdnjs.cloudflare.com/ajax/libs/codemirror/5.0.0/*.js",
@@ -24,6 +25,18 @@ document.write(`
             "codemirror/lib/codemirror": "codemirror"
         },
     });
-    System.load("app");
+
+    var xhr = new XMLHttpRequest();
+    xhr.onload = onCssLoad;
+    xhr.open('GET', 'output/table/table.css');
+    xhr.send();
+
+    function onCssLoad(e) {
+        window.pgBlackboard = {};
+
+        var css = e.target.responseText;
+        window.pgBlackboard.tableCss = css;
+        System.load("app");
+    }
     </script>
 `);

@@ -9,6 +9,7 @@ extern crate rustc_serialize;
 extern crate postgres as pg;
 // extern crate http;
 mod http;
+pub use http::serve_forever;
 
 mod tree;
 
@@ -38,185 +39,30 @@ use std::io;
 
 //use tree::DbObjType;
 
-
-fn main() {
-    let webapp = WebApplication {
-        pgaddr: "localhost:5432".to_string(),
-        // dbname: "postgres".to_string(),
-        //objtype: DbObjType::Database,
-        //objid: "_".to_string(),
-    };
-
-    http::serve_forever("0.0.0.0:7890", webapp).unwrap();
-}
-
-// struct WebApplication<'a> {
-//     pgaddr: &'a str
+// pub struct Server {
+//     pgaddr: String,
+//     index_tmpl: &'static str,
+//     favicon_ico: &'static [u8],
+//     index_bundle_js: &'static [u8],
 // }
 
-// impl WebApplication {
-//     fn delegate_to<H: http::Handler>(&self, h: H) {
-//         h.handle_http_req()
-//     }
-// }
+// impl Server {
+//     fn run() {
+//         let webapp = WebApplication {
+//             pgaddr: "localhost:5432".to_string()
+//         };
 
-// impl<'a> http::Handler for WebApplication<'a> {
-
-//     fn handle_http_req(&self, req: &http::Request) -> Box<http::Response> {
-//         use http::Method::{Get, Post};
-
-//         println!("{:?}", req);
-
-//         let path = &req.path.clone()[..];
-
-//         let path_vec = req.path.clone();
-//         let path_slices_vec = path_vec
-//             .iter()
-//             .map(|x| x.as_slice())
-//             .collect::<Vec<&str>>();
-
-//         let path_segments = &path_slices_vec[..];
-
-//         macro_rules! routes {
-//             ($($route:pat => $resource:expr),*) => {
-//                 match path_segments {
-//                     $( $route => $resource.handle_http_req(req), )*
-//                     _ => NotFoundResource.handle_http_req(req)
-//                 }
-//             }
-//         }
-
-
-//         routes! {
-
-//             ["" /* root */ ] => RootResource {
-//                 pgaddr: self.pgaddr
-//             },
-
-//             ["db", dbname, subpath..] => DbDirectory {
-//                 pgaddr: self.pgaddr,
-//                 dbname: dbname,
-//                 subpath: subpath
-//             },
-
-//             ["favicon.ico"] => FileResource {
-//                 filename: "favicon.ico"
-//             },
-
-//             ["assets", filename] => FileResource {
-//                 filename: filename
-//             }
-
-//             // (Get, ["db", database, "nodes", nodetype, nodeid, "children"])
-//             // => ctrl.handle_db_req(NodeChidrenResource {
-//             //     database: database.to_string(),
-//             //     nodetype: nodetype.to_string(),
-//             //     nodeid: nodeid.to_string(),
-//             // }),
-
-//             // (Get, ["db", database, "nodes", nodetype, nodeid, "definition"])
-//             // => ctrl.handle_db_req(NodeDefinitionResource {
-//             //     database: database,
-//             //     nodetype: nodetype,
-//             //     nodeid: nodeid,
-//             // }),
-
-//             // (Post, [""])
-//             // => {
-
-//             //     #[derive(Decodable)]
-//             //     struct Params {
-//             //         sql_script: String,
-//             //     }
-
-//             //     let (ctrl, params) = match ctrl.decode_urlencoded_form::<Params>() {
-//             //         Ok(res) => res,
-//             //         Err(err) => return err,
-//             //     };
-
-//             //     let (exec_res, res) = match ExecuteResource::new(&params.sql_script[], ctrl.res) {
-//             //         Ok(x) => x,
-//             //         Err(err) => return err,
-//             //     };
-
-//             //     let ctrl = Controller { req: ctrl.req, res: res };
-
-
-//             //     ctrl.handle_db_req(exec_res)
-//             // },
-
-//             // // ["db", database, "execute"]
-//             // // => DbResource::new(database, ),
-
-//             // (Get, ["static", filename..])
-//             // => ctrl.use_resource(StaticResource::new(filename.connect("/"))),
-
-//             // (Get, ["favicon.ico"])
-//             // => ctrl.use_resource(StaticResource::new("favicon.ico".to_string())),
-
-//             // _
-//             // => ctrl.use_resource(NotFoundResource),
-//         }
-
-
-//         // match path {
-//         //     []
-//         //         => ctrl.handle_db_req("postgres", &[]),
-
-//         //     ["db", database, subpath..]
-//         //         => ctrl.handle_db_req(database, subpath),
-
-//         //     ["favicon.ico"]
-//         //         => ctrl.handle_static_req("favicon.ico"),
-
-//         //     ["static", filename..]
-//         //         => ctrl.handle_static_req(&filename.connect("/")[]),
-
-//         //     _
-//         //         => ctrl.handle_not_found(),
-//         // }
-
-//         // let (database, db_consumer) = match (method, path) {
-//         //     (Get, []) => ("postgres", Controller::handle_index_req),
-//         //     (Post, ["execute", database]) => (database, Controller::handle_script_req),
-//         //     //(Post, ["map", database]) => Controller::handle_
-//         //     (Get, ["tree", database, nodetype, nodeid, "children"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-//         //     (Get, ["tree", database, nodetype, nodeid, "definition"]) => (database, |ctrl, dbconn| ctrl.handle_tree_req(dbconn, nodetype, nodeid)),
-
-//         //     (Get, ["favicon.ico"]) => return ctrl.handle_static_req("favicon.ico"),
-//         //     (Get, ["static", ..filename]) => return ctrl.handle_static_req(filename.connect("/")),
-//         //     _ => return ctrl.handle_not_found(),
-//         // };
-
-//         // ctrl.handle_db_req(database, db_consumer)
+//         http::serve_forever("0.0.0.0:7890", webapp).unwrap();
 //     }
 // }
 
 
 
-
-// struct RootResource {
-//     pgaddr: &str
-// }
-
-// impl http::Resource for RootResource {
-//     fn get(&self, req: &http::Request) -> Box<http::Response> {
-
-//     }
-
-//     fn post(&self, req: &http::Request) -> Box<http::Response> {
-
-//     }
-// }
-
-
-
-
-
-
-
-struct WebApplication {
-    pgaddr: String,
+pub struct WebApplication {
+    pub pgaddr: String,
+    pub index_template: &'static str,
+    pub favicon_ico: &'static [u8],
+    pub index_bundle_js_gz: &'static [u8],
 }
 
 impl http::Handler for WebApplication {
@@ -224,6 +70,7 @@ impl http::Handler for WebApplication {
         match path {
             [""] => RootResource {
                 pgaddr: self.pgaddr.clone(),
+                index_template: self.index_template
             }.handle_http_req(&[], req),
 
             ["databases", dbname, tail..] => DbDir {
@@ -231,8 +78,16 @@ impl http::Handler for WebApplication {
                 dbname: dbname.to_string()
             }.handle_http_req(tail, req),
 
-            ["bundle-index.js"] => Box::new(JsResponse {
-                content: include_bytes!("static/dist/bundle-index.js")
+            ["favicon.ico"] => Box::new(BytesResponse {
+                content: self.favicon_ico,
+                content_type: "image/vnd.microsoft.icon",
+                gzipped: false
+            }),
+
+            ["bundle-index.js"] => Box::new(BytesResponse {
+                content: self.index_bundle_js_gz,
+                content_type: "application/javascript; charset=utf-8",
+                gzipped: true
             }),
 
             _ => Box::new(ErrorResponse {
@@ -243,14 +98,36 @@ impl http::Handler for WebApplication {
     }
 }
 
+struct BytesResponse {
+    content: &'static [u8],
+    content_type: &'static str,
+    gzipped: bool
+}
+
+impl http::Response for BytesResponse {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start_ok());
+        try!(w.write_content_type(self.content_type));
+        if self.gzipped {
+            try!(w.write_header("Content-Encoding", "gzip"));
+        }
+        w.write_content(self.content)
+    }
+}
+
+
 struct RootResource {
-    pgaddr: String
+    pgaddr: String,
+    index_template: &'static str
 }
 
 impl http::Resource for RootResource {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
         use http::Handler;
-        let handler = IndexPage { pgaddr: &self.pgaddr };
+        let handler = IndexPage {
+            pgaddr: &self.pgaddr,
+            index_template: self.index_template
+        };
         handler.handle_http_req(&[], req)
     }
 

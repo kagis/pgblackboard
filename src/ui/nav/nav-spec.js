@@ -1,5 +1,5 @@
 describe('nav', function () {
-    var Nav = require('../src/nav/nav-viewmodel'),
+    var Nav = require('./nav-viewmodel'),
         ko = require('knockout');
 
     var nav;

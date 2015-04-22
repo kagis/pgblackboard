@@ -1,5 +1,5 @@
 describe('my queries', function () {
-    var MyQueries = require('../src/myqueries/myqueries-viewmodel'),
+    var MyQueries = require('./myqueries-viewmodel'),
         ko = require('knockout');
 
     var myQueries;

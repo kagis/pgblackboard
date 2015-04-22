@@ -2,7 +2,7 @@
 .dark .rowset { border-color: #555; }
 .dark .rowset th { background-color: #444; }
 .dark .rowset-invalid-row td { background-color: #551414; }
-.dark .error { color: #ff4c4c; }
+.dark .message--error { color: #ff4c4c; }
 .dark .message { border-bottom-color: #333; }
 .dark .rowset tr:nth-child(even) {
     color: #aaa;
@@ -36,7 +36,7 @@
 /*.light*/ .rowset { border-color: #aaa; }
 /*.light*/ .rowset th { background-color: #ddd; }
 /*.light*/ .rowset-invalid-row td { background-color: #ffd7d7; }
-/*.light*/ .error { color: #ff4c4c; }
+/*.light*/ .message--error { color: #ff4c4c; }
 /*.light*/ .message { border-bottom-color: #eee; }
 /*.light*/ .rowset tr:nth-child(even) { background-color: #eee; }
 
@@ -92,7 +92,6 @@ body,
     overflow: auto;
     }
 
-
 .message {
     padding: .3rem .5rem .3rem .5rem;
     font-size: .8rem;
@@ -101,10 +100,9 @@ body,
     border-bottom-style: solid;
     }
 
-.error {
+.message--error {
     white-space: pre;
     }
-
 
 .rowset {
     border-collapse: collapse;
@@ -113,7 +111,6 @@ body,
     margin: 0;
     margin-bottom: 1em;
     }
-
 
 /* make firefox inherit border-color for cells */
 .rowset * {
@@ -145,20 +142,18 @@ body,
     width: 6em;
     }
 
-/*  --------------
-    | COLNAME |
-    | coltype |
-    --------------
-    |         |      */
+/*  ┬─────────┬─
+ *  │ COLNAME │
+ *  │ coltype │
+ *  ┼─────────┼─
+ *  │         │
+ */
 .rowset-coltype {
     display: block;
     opacity: .5; /* mute color */
     font-size: .5em;
     text-transform: uppercase;
     }
-
-
-
 
 /* row number */
 .rowset-corner::before {
@@ -196,67 +191,13 @@ body,
     opacity: .5;
     }
 
-
-
-
-
 .rowset-submitting-row {
     -webkit-animation: 'move-stripes' .2s linear infinite;
        -moz-animation: 'move-stripes' .2s linear infinite;
         -ms-animation: 'move-stripes' .2s linear infinite;
-         -o-animation: 'move-stripes' .2s linear infinite;
             animation: 'move-stripes' .2s linear infinite;
 
     background-size: 1em 100%;
-
-    background-image: -webkit-linear-gradient(45deg
-                        ,rgba(0,0,0, 0)   0
-                        ,rgba(0,0,0, 0)  20%
-                        ,rgba(0,0,0,.1)  20%
-                        ,rgba(0,0,0,.1)  40%
-                        ,rgba(0,0,0, 0)  40%
-                        ,rgba(0,0,0, 0)  60%
-                        ,rgba(0,0,0,.1)  60%
-                        ,rgba(0,0,0,.1)  80%
-                        ,rgba(0,0,0, 0)  80%
-                        ,rgba(0,0,0, 0) 100%);
-
-    background-image: -moz-linear-gradient(45deg
-                        ,rgba(0,0,0, 0)   0
-                        ,rgba(0,0,0, 0)  20%
-                        ,rgba(0,0,0,.1)  20%
-                        ,rgba(0,0,0,.1)  40%
-                        ,rgba(0,0,0, 0)  40%
-                        ,rgba(0,0,0, 0)  60%
-                        ,rgba(0,0,0,.1)  60%
-                        ,rgba(0,0,0,.1)  80%
-                        ,rgba(0,0,0, 0)  80%
-                        ,rgba(0,0,0, 0) 100%);
-
-    background-image: -ms-linear-gradient(45deg
-                        ,rgba(0,0,0, 0)   0
-                        ,rgba(0,0,0, 0)  20%
-                        ,rgba(0,0,0,.1)  20%
-                        ,rgba(0,0,0,.1)  40%
-                        ,rgba(0,0,0, 0)  40%
-                        ,rgba(0,0,0, 0)  60%
-                        ,rgba(0,0,0,.1)  60%
-                        ,rgba(0,0,0,.1)  80%
-                        ,rgba(0,0,0, 0)  80%
-                        ,rgba(0,0,0, 0) 100%);
-
-    background-image: -o-linear-gradient(45deg
-                        ,rgba(0,0,0, 0)   0
-                        ,rgba(0,0,0, 0)  20%
-                        ,rgba(0,0,0,.1)  20%
-                        ,rgba(0,0,0,.1)  40%
-                        ,rgba(0,0,0, 0)  40%
-                        ,rgba(0,0,0, 0)  60%
-                        ,rgba(0,0,0,.1)  60%
-                        ,rgba(0,0,0,.1)  80%
-                        ,rgba(0,0,0, 0)  80%
-                        ,rgba(0,0,0, 0) 100%);
-
     background-image: linear-gradient(45deg
                         ,rgba(0,0,0, 0)   0
                         ,rgba(0,0,0, 0)  20%
@@ -274,35 +215,19 @@ body,
 @-webkit-keyframes move-stripes {
       0% { background-position: 0 0; }
     100% { background-position: 1em 0; }
-    }
+}
 
 @-moz-keyframes move-stripes {
       0% { background-position: 0 0; }
     100% { background-position: 1em 0; }
-    }
+}
 
 @-ms-keyframes move-stripes {
       0% { background-position: 0 0; }
     100% { background-position: 1em 0; }
-    }
-
-@-o-keyframes move-stripes {
-      0% { background-position: 0 0; }
-    100% { background-position: 1em 0; }
-    }
+}
 
 @keyframes move-stripes {
       0% { background-position: 0 0; }
     100% { background-position: 1em 0; }
-    }
-
-
-
-
-
-
-
-
-
-
-
+}

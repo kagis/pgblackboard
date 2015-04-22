@@ -18,16 +18,15 @@
   <script src="https://rawgit.com/systemjs/systemjs/master/dist/system.src.js"></script>
   <script>
   System.config({
-    baseURL: '../',
     paths: {
       'knockout': 'https://cdnjs.cloudflare.com/ajax/libs/knockout/3.3.0/knockout-debug.js'
     }
   });
   Promise.all([
-    System.load('spec/myqueries-spec'),
-    System.load('spec/nav-spec'),
-    System.load('spec/tree-spec'),
-    System.load('spec/codeform-spec')
+    System.load('src/ui/myqueries/myqueries-spec'),
+    System.load('src/ui/nav/nav-spec'),
+    System.load('src/ui/tree/tree-spec'),
+    System.load('src/ui/codeform/codeform-spec')
   ]).then(function () {
     runSpecs();
   });

@@ -1,6 +1,6 @@
 describe('code form', function () {
     var ko = require('knockout'),
-        CodeForm = require('../src/codeform/codeform-viewmodel');
+        CodeForm = require('./codeform-viewmodel');
 
     var codeForm,
         initialDoc;

@@ -5,7 +5,8 @@ use http;
 use pg;
 
 pub struct IndexPage<'a> {
-    pub pgaddr: &'a str
+    pub pgaddr: &'a str,
+    pub index_template: &'static str
 }
 
 impl<'a> http::Handler for IndexPage<'a> {
@@ -79,6 +80,7 @@ impl<'a> http::Handler for IndexPage<'a> {
         };
 
         Box::new(IndexPageResponse {
+            index_template: self.index_template,
             databases: dbnodes
         })
     }
@@ -97,6 +99,7 @@ struct DbNode {
 }
 
 struct IndexPageResponse {
+    index_template: &'static str,
     databases: Vec<DbNode>
 }
 
@@ -104,11 +107,11 @@ impl http::Response for IndexPageResponse {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
 
         let mut initial_data = BTreeMap::new();
-        initial_data.insert("databases", self.databases);
+        initial_data.insert("databases", &self.databases);
 
-        let index_html = include_str!("static/dist/index.html");
-        let index_html = index_html.replace("/*INITIAL_DATA_PLACEHOLDER*/",
-                                            &json::encode(&initial_data).unwrap());
+        let index_html = self.index_template
+            .replace("/*INITIAL_DATA_PLACEHOLDER*/",
+                     &json::encode(&initial_data).unwrap());
 
         let mut w = try!(w.start(http::Status::Ok));
         try!(w.write_content_type("text/html; charset=utf-8"));

@@ -1,5 +1,5 @@
 {
-  "spec_dir": "spec",
+  "spec_dir": "src/ui",
   "spec_files": [
     "**/*-spec.js"
   ],

@@ -1,4 +1,9 @@
-use std::io::{self, Write};
+extern crate flate2;
+
+use self::flate2::write::GzEncoder;
+use self::flate2::Compression;
+
+use std::io::{self, Write, BufWriter};
 use std::ops::Range;
 use http;
 use pg;
@@ -135,7 +140,6 @@ impl http::Response for SqlExecErrorResponse {
 
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("text/html; charset=utf-8"));
-
         if self.status == http::Status::Unauthorized {
             try!(w.write_www_authenticate_basic("postgres"));
         }
@@ -226,7 +230,11 @@ impl http::Response for SqlExecResponse {
 
         let mut w = try!(w.start(http::Status::Ok));
         try!(w.write_content_type("text/html; charset=utf-8"));
+        // try!(w.write_header("Content-Encoding", "gzip"));
+
         let mut w = try!(w.start_chunked());
+        //let mut w = GzEncoder::new(w, Compression::Fast);
+        //let mut w = BufWriter::new(w);
 
         try!(match map_or_table {
 
@@ -244,6 +252,9 @@ impl http::Response for SqlExecResponse {
                 sqlscript_offset
             )
         });
+
+        //let mut w = try!(w.into_inner());
+        //let mut w = try!(w.finish());
 
         w.end()
     }
@@ -391,6 +402,8 @@ trait View {
                             col_names: &[&str],
                             pk_mask: &[bool])
                             -> io::Result<()>;
+
+    // fn flush(&self) -> io::Result<()>;
 }
 
 
@@ -403,18 +416,15 @@ struct FieldDescription<'a, 'b> {
 }
 
 
-static INTRO_START: &'static [u8] = b"\
+static INTRO: &'static [u8] = b"\
     <!DOCTYPE html>\
     <html>\
     <head>\
         <meta charset='utf-8' />\
         <title></title>\
-";
-
-static INTRO_END: &'static [u8] = b"\
     </head>\
     <body>\
-        <script>frameElement.setupPgBlackboardOutputFrame();</script>\
+        <script>frameElement.setupPgBlackboardOutputFrame('table');</script>\
         <div class='main'>\
 ";
 
@@ -433,11 +443,7 @@ impl<W: Write> View for TableView<W> {
 
     fn render_intro(&mut self) -> io::Result<()> {
         let ref mut writer = self.writer;
-        try!(writer.write_all(INTRO_START));
-        try!(writer.write_all(b"\
-            <link href='table.css' rel='stylesheet' />\
-            <script src='table.js' async='async'></script>"));
-        try!(writer.write_all(INTRO_END));
+        try!(writer.write_all(INTRO));
         Ok(())
     }
 
@@ -465,6 +471,7 @@ impl<W: Write> View for TableView<W> {
         try!(out.write_all(b"</style>"));
 
         try!(write!(out, "<table class='rowset' id='rowset{}'>", rowset_id));
+        try!(out.write_all(b"<thead>"));
         try!(out.write_all(b"<tr>"));
         try!(out.write_all(b"<th class='rowset-corner'></th>"));
         for col in cols_descr {
@@ -474,16 +481,20 @@ impl<W: Write> View for TableView<W> {
                     <small class='rowset-coltype'>\
                         {coltype}\
                     </small>\
-                <th>",
+                </th>",
                 colname = col.name,
                 coltype = col.typ));
         }
         try!(out.write_all(b"</tr>"));
+        try!(out.write_all(b"</thead>"));
+        try!(out.write_all(b"<tbody>"));
+        try!(out.flush());
         Ok(())
     }
 
     fn render_rowset_end(&mut self) -> io::Result<()> {
         let writer = &mut self.writer;
+        try!(writer.write_all(b"</tbody>"));
         try!(writer.write_all(b"</table>"));
         Ok(())
     }
@@ -527,7 +538,7 @@ impl<W: Write> View for TableView<W> {
     {
         let writer = &mut self.writer;
         try!(invoke_js_set_error(writer, message, script_line));
-        try!(writer.write_all(b"<pre>"));
+        try!(writer.write_all(b"<pre class=\"message message--error\">"));
         try!(writer.write_all(message.as_bytes()));
         try!(writer.write_all(b"</pre>"));
         Ok(())
@@ -548,6 +559,10 @@ impl<W: Write> View for TableView<W> {
         try!(writer.write_all(b"</pre>"));
         Ok(())
     }
+
+    // fn flush(&self) -> io::Result<()> {
+    //     self.writer.flush()
+    // }
 }
 
 

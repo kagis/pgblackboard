@@ -1,20 +1,23 @@
-[package]
-
+[project]
 name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
+build = "build.rs"
 
-#[dependencies.http]
-#path = "./src/http"
+[lib]
+name = "pgblackboard"
+
+[[bin]]
+name = "pgblackboard"
 
 [dependencies.postgres]
 path = "./src/postgres"
 
 [dependencies]
-#regex_macros = "*"
 regex = "0.1.8"
 regex_macros = "0.1.8"
 rustc-serialize = "0.3"
 threadpool = "0.1.3"
+flate2 = "0.2.6"
 #byteorder = "*"
 #rust-crypto = "*"
