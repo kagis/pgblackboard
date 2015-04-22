@@ -1,3 +1,4 @@
 language: rust
+script: "npm install && cargo test"
 jdk:
     - openjdk7
