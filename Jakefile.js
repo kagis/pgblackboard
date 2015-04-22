@@ -120,10 +120,11 @@ file(path.join(outdir, 'app.js'), appjsPrereqs, { async: true }, function () {
     });
 });
 
-rule('.gz', '', function () {
+rule('.gz', '', { async: true }, function () {
     fs.createReadStream(this.source)
         .pipe(zlib.createGzip())
-        .pipe(fs.createWriteStream(this.name));
+        .pipe(fs.createWriteStream(this.name))
+        .on('end', function () { complete(); });
 });
 
 file(path.join(outdir, 'bundle-index.js'),
