@@ -27,7 +27,7 @@
     "jshint": "jshint src --exclude src/bundle-index.js",
     "jscs": "jscs src --exclude src/bundle-index.js --verbose",
 
-    "build-ui": "jake"
+    "build-ui": "npm install --production && jake"
   },
   "author": "",
   "license": "BSD-2-Clause",
