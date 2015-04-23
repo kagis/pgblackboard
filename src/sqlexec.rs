@@ -4,6 +4,7 @@ use self::flate2::write::GzEncoder;
 use self::flate2::Compression;
 
 use std::io::{self, Write, BufWriter};
+use std::cmp;
 use std::ops::Range;
 use http;
 use pg;
@@ -24,30 +25,39 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
         struct Form {
             view: Option<MapOrTable>,
             sqlscript: String,
-            sel_start_line: Option<usize>,
-            sel_start_col: Option<usize>,
-            sel_end_line: Option<usize>,
-            sel_end_col: Option<usize>
+            sel_anchor_line: Option<usize>,
+            sel_anchor_col: Option<usize>,
+            sel_head_line: Option<usize>,
+            sel_head_col: Option<usize>
         }
 
         let form = match req.decode_urlencoded_form::<Form>() {
             Ok(form) => form,
-            Err(err) => return Box::new(SqlExecErrorResponse {
-                status: http::Status::BadRequest,
-                message: "Failed to decode form." // format!("{:?}", err)
-            })
+            Err(err) => {
+                println!("Failed to decode form: {:?}", err);
+                return Box::new(SqlExecErrorResponse {
+                    status: http::Status::BadRequest,
+                    message: "Failed to decode form."
+                })
+            }
         };
 
         let selrange = if let Form {
-            sel_start_line: Some(sel_start_line),
-            sel_start_col: Some(sel_start_col),
-            sel_end_line: Some(sel_end_line),
-            sel_end_col: Some(sel_end_col),
+            sel_anchor_line: Some(sel_anchor_line),
+            sel_anchor_col: Some(sel_anchor_col),
+            sel_head_line: Some(sel_head_line),
+            sel_head_col: Some(sel_head_col),
             ..
         } = form {
             Some(Range {
-                start: LineCol { line: sel_start_line, col: sel_start_col },
-                end: LineCol { line: sel_end_line, col: sel_end_col },
+                start: LineCol {
+                    line: cmp::min(sel_anchor_line, sel_head_line),
+                    col: cmp::min(sel_anchor_col, sel_head_col),
+                },
+                end: LineCol {
+                    line: cmp::max(sel_anchor_line, sel_head_line),
+                    col: cmp::max(sel_anchor_col, sel_head_col)
+                },
             })
         } else {
             None
@@ -99,7 +109,7 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
                 }),
 
                 Err(DatabaseNotExists) => return Box::new(SqlExecErrorResponse {
-                    status: NotFound,
+                    status: http::Status::Ok,
                     message: "Database not exists."
                 }),
 

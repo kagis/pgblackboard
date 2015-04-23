@@ -43,9 +43,21 @@ impl Decoder for FormDecoder {
     type Error = DecodeError;
 
     fn read_nil(&mut self) -> DecodeResult<()> { unimplemented!() }
-    fn read_usize(&mut self) -> DecodeResult<usize> { unimplemented!() }
+
+    fn read_usize(&mut self) -> DecodeResult<usize> {
+        self.read_str().and_then(|strnum| {
+            strnum.parse().map_err(|_| DecodeError::ParseError)
+        })
+    }
+
     fn read_u64(&mut self) -> DecodeResult<u64> { unimplemented!() }
-    fn read_u32(&mut self) -> DecodeResult<u32> { unimplemented!() }
+
+    fn read_u32(&mut self) -> DecodeResult<u32> {
+        self.read_str().and_then(|strnum| {
+            strnum.parse().map_err(|_| DecodeError::ParseError)
+        })
+    }
+
     fn read_u16(&mut self) -> DecodeResult<u16> { unimplemented!() }
     fn read_u8(&mut self) -> DecodeResult<u8> { unimplemented!() }
     fn read_isize(&mut self) -> DecodeResult<isize> { unimplemented!() }

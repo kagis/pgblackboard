@@ -29,10 +29,12 @@ module.exports = function (target) {
 
     codemirrorDoc.on('beforeSelectionChange', function (_, params) {
         var range = params['ranges'][0];
-        target['selectionRange']([
-            [range['anchor']['line'], range['anchor']['ch']],
-            [range['head']['line'], range['head']['ch']]
-        ]);
+        target['selectionRange']({
+            anchorLine: range['anchor']['line'],
+            anchorCol: range['anchor']['ch'],
+            headLine: range['head']['line'],
+            headCol: range['head']['ch']
+        });
     });
 
     target.subscribe(function (value) {

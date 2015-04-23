@@ -6,9 +6,25 @@ module.exports = `
               data-bind="codeEditor, value: readyDoc()"
               class="codeform__textarea"></textarea>
 
-    <input name="selection"
-           data-bind="value: ko.toJSON(readyDoc().selectionRange)"
-           type="hidden" />
+    <input name="sel_achor_line"
+           type="hidden"
+           data-bind="value: selectionAnchorLine,
+                      disable: selectionAnchorLine() === undefined" />
+
+    <input name="sel_achor_col"
+           type="hidden"
+           data-bind="value: selectionAnchorCol,
+                      disable: selectionAnchorCol() === undefined" />
+
+    <input name="sel_head_line"
+           type="hidden"
+           data-bind="value: selectionHeadLine,
+                      disable: selectionHeadLine() === undefined" />
+
+    <input name="sel_head_col"
+           type="hidden"
+           data-bind="value: selectionHeadCol,
+                      disable: selectionHeadCol() === undefined" />
 
     <div class="codeform__execbar">
       <button name="view"
