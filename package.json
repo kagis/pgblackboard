@@ -19,15 +19,14 @@
   },
   "version": "0.2.0",
   "scripts": {
-    "it": "jake && cargo run",
     "test": "npm run test-ui && npm run test-server",
     "test-ui": "JASMINE_CONFIG_PATH=jasmine.json jasmine",
-    "test-server": "jake && cargo test",
     "build": "jake && cargo build",
     "jshint": "jshint src --exclude src/bundle-index.js",
     "jscs": "jscs src --exclude src/bundle-index.js --verbose",
 
-    "build-ui": "npm install --production && jake"
+    "build-ui": "npm install --production && jake",
+    "start": "cd src/ui && python3 -m http.server"
   },
   "author": "",
   "license": "BSD-2-Clause",

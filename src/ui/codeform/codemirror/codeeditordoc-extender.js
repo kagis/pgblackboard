@@ -12,13 +12,20 @@ module.exports = function (target) {
         'selectionRange': ko.observable()
     });
 
-    var readySubscription = target.subscribe(function () {
-        readySubscription.dispose();
+    function trackDocChange() {
         codemirrorDoc.on('change', function () {
             target(codemirrorDoc.getValue());
         });
-    }, null, 'ready');
+    }
 
+    if (target() == undefined /* not ready */) {
+        var readySubscription = target.subscribe(function () {
+            readySubscription.dispose();
+            trackDocChange();
+        }, null, 'ready');
+    } else {
+        trackDocChange();
+    }
 
     codemirrorDoc.on('beforeSelectionChange', function (_, params) {
         var range = params['ranges'][0];

@@ -5,8 +5,7 @@ use http;
 use pg;
 
 pub struct IndexPage<'a> {
-    pub pgaddr: &'a str,
-    pub index_template: &'static str
+    pub pgaddr: &'a str
 }
 
 impl<'a> http::Handler for IndexPage<'a> {
@@ -61,7 +60,7 @@ impl<'a> http::Handler for IndexPage<'a> {
                     println!("error while connecting to db: {:?}", err);
                     return Box::new(ErrorResponse {
                         status: InternalServerError,
-                        message: "Failed to connect database, see logs for details."
+                        message: "Failed to connect database, see log for details."
                     });
                 }
             }
@@ -80,7 +79,6 @@ impl<'a> http::Handler for IndexPage<'a> {
         };
 
         Box::new(IndexPageResponse {
-            index_template: self.index_template,
             databases: dbnodes
         })
     }
@@ -99,7 +97,6 @@ struct DbNode {
 }
 
 struct IndexPageResponse {
-    index_template: &'static str,
     databases: Vec<DbNode>
 }
 
@@ -109,7 +106,8 @@ impl http::Response for IndexPageResponse {
         let mut initial_data = BTreeMap::new();
         initial_data.insert("databases", &self.databases);
 
-        let index_html = self.index_template
+        let index_html = include_str!(concat!(env!("OUT_DIR"), "/index.html"));
+        let index_html = index_html
             .replace("/*INITIAL_DATA_PLACEHOLDER*/",
                      &json::encode(&initial_data).unwrap());
 
@@ -119,9 +117,9 @@ impl http::Response for IndexPageResponse {
     }
 }
 
-struct ErrorResponse<T> {
-    status: http::Status,
-    message: T
+pub struct ErrorResponse<T> {
+    pub status: http::Status,
+    pub message: T
 }
 
 impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
@@ -131,6 +129,13 @@ impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
         if self.status == http::Status::Unauthorized {
             try!(w.write_www_authenticate_basic("postgres"));
         }
-        w.write_content(format!("{}", self.message).as_bytes())
+
+        let html = format!(
+            include_str!(concat!(env!("OUT_DIR"), "/err.html")),
+            code = self.status as u16,
+            phrase = self.status.phrase(),
+            message = self.message);
+
+        w.write_content(html.as_bytes())
     }
 }

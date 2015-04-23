@@ -499,6 +499,8 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
 {
     let listener = try!(TcpListener::bind(addr));
 
+    println!("Listening for HTTP requests on {}", try!(listener.local_addr()));
+
     let pool = ThreadPool::new(10);
     let handler = Arc::new(handler);
 

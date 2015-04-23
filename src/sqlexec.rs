@@ -129,7 +129,6 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
     }
 }
 
-
 struct SqlExecErrorResponse {
     status: http::Status,
     message: &'static str
@@ -155,7 +154,6 @@ impl http::Response for SqlExecErrorResponse {
     }
 }
 
-
 #[derive(RustcDecodable)]
 #[derive(Debug)]
 enum MapOrTable {
@@ -173,16 +171,13 @@ struct LineCol {
 
 impl LineCol {
     fn end_of_str(s: &str) -> LineCol {
-        let mut lines = s.lines();
+        let mut lines = s.split('\n');
         LineCol {
             col: lines.next_back().map(|ln| ln.len()).unwrap_or(0),
             line: lines.count(),
         }
     }
-
-
 }
-
 
 #[test]
 fn test_linecol() {
@@ -260,7 +255,6 @@ impl http::Response for SqlExecResponse {
     }
 }
 
-
 fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                                             mut view: TView,
                                             sqlscript: &str,
@@ -328,8 +322,6 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
 }
 
 
-
-
 #[derive(Debug, PartialEq)]
 struct SqlScriptAndDbName<'a> {
     dbname: &'a str,
@@ -340,16 +332,21 @@ struct SqlScriptAndDbName<'a> {
 
 fn extract_connect_metacmd(sqlscript: &str) -> Option<SqlScriptAndDbName> {
     let pat = regex!(r"(?ms)^\s*\\c(?:onnect)?[ \t]+(\w+)[ \t]*[\r\n]+(.*)");
-    pat.captures(sqlscript).map(|captures| SqlScriptAndDbName {
-        dbname: captures.at(1).unwrap(),
-        dbname_linecol: LineCol::end_of_str(&sqlscript[..captures.pos(1).unwrap().0]),
-        sqlscript: captures.at(2).unwrap(),
-        sqlscript_linecol: LineCol::end_of_str(&sqlscript[..captures.pos(2).unwrap().0])
+    pat.captures(sqlscript).map(|captures| {
+        let dbname_pos = captures.pos(1).unwrap().0;
+        let sqlscript_pos = captures.pos(2).unwrap().0;
+        SqlScriptAndDbName {
+            dbname: captures.at(1).unwrap(),
+            dbname_linecol: LineCol::end_of_str(&sqlscript[..dbname_pos]),
+            sqlscript: captures.at(2).unwrap(),
+            sqlscript_linecol: LineCol::end_of_str(&sqlscript[..sqlscript_pos])
+        }
     })
 }
 
 #[test]
 fn test_extract_connect_metacmd() {
+
     let result = extract_connect_metacmd(
         "\\connect postgres\nselect 'awesome'"
     );
@@ -358,12 +355,11 @@ fn test_extract_connect_metacmd() {
         dbname: "postgres",
         dbname_linecol: LineCol { line: 0, col: 9 },
         sqlscript: "select 'awesome'",
-        sqlscript_linecol: LineCol { line: 0, col: 17 }
+        sqlscript_linecol: LineCol { line: 1, col: 0 }
     }));
+
+
 }
-
-
-
 
 
 trait View {
@@ -405,8 +401,6 @@ trait View {
 
     // fn flush(&self) -> io::Result<()>;
 }
-
-
 
 
 struct FieldDescription<'a, 'b> {

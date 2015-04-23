@@ -64,34 +64,60 @@ var cssFiles = [
 ];
 
 var outdir = process.env.OUT_DIR || 'dist';
+var cachedir = path.join(outdir, 'cache');
+
+jake.mkdirP(cachedir);
 
 task('default', [
     path.join(outdir, 'index.html'),
-    path.join(outdir, 'bundle-index.js.gz')
+    path.join(outdir, 'bundle-index.js.gz'),
+    path.join(outdir, 'err.html')
 ]);
 
-file(path.join(outdir, 'index.html'),
-    ['src/ui/index.html',
-     path.join(outdir, 'loading-indicator.min.css')],
-    function () {
+var indexPrereqs = [
+    'src/ui/index.html',
+     path.join(cachedir, 'loading-indicator.css')
+];
 
+file(path.join(outdir, 'index.html'), indexPrereqs, function () {
     var indexHtml = fs.readFileSync('src/ui/index.html').toString();
 
     // embedding loading indicator styles
     indexHtml = indexHtml.replace(
         '<link href="loading-indicator/loading-indicator.css" rel="stylesheet" />',
-        embeddedStyle(fs.readFileSync(path.join(outdir, 'loading-indicator.min.css')))
+        embeddedStyle(fs.readFileSync(path.join(cachedir, 'loading-indicator.css')))
     );
 
     fs.writeFileSync(this.name, indexHtml);
 });
 
-file(path.join(outdir, 'app.css'),
+file(path.join(cachedir, 'app.css'),
     cssFiles,
     processCssTarget);
 
+file(path.join(outdir, 'err.html'),
+    ['src/ui/err/err.html',
+     path.join(cachedir, 'err.css')],
+    function () {
+
+    var errHtml = readTextFromFile('src/ui/err/err.html');
+    errHtml = errHtml.replace(
+        '<link rel="stylesheet" href="err.css" />',
+        embeddedStyle(
+            readTextFromFile(path.join(cachedir, 'err.css'))
+                .replace(/\{/g, '{{')
+                .replace(/\}/g, '}}')
+        )
+    );
+    fs.writeFileSync(this.name, errHtml);
+});
+
+file(path.join(cachedir, 'err.css'),
+    ['src/ui/err/err.css'],
+    processCssTarget);
+
 var appjsPrereqs = jsSources.concat(jsExterns);
-file(path.join(outdir, 'app.js'), appjsPrereqs, { async: true }, function () {
+file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
     jake.logger.log("Compiling JavaScript ...");
     var targetFileName = this.name;
     closureCompiler.compile(jsSources, {
@@ -124,36 +150,36 @@ rule('.gz', '', { async: true }, function () {
     fs.createReadStream(this.source)
         .pipe(zlib.createGzip())
         .pipe(fs.createWriteStream(this.name))
-        .on('end', function () { complete(); });
+        .on('finish', function () { complete(); });
 });
 
-file(path.join(outdir, 'bundle-index.js'),
-    [path.join(outdir, 'app.js'),
-     path.join(outdir, 'app.css'),
-     path.join(outdir, 'table.css')]
-    .concat(libs),
-    function () {
+var indexBundlePrereqs = [
+    path.join(cachedir, 'app.js'),
+    path.join(cachedir, 'app.css'),
+    path.join(cachedir, 'table.css')]
+    .concat(libs);
 
+file(path.join(outdir, 'bundle-index.js'), indexBundlePrereqs, function () {
     var bundleOutput = '';
     bundleOutput += documentWrite(embeddedStyle(
-        fs.readFileSync(path.join(outdir, 'app.css'))
+        fs.readFileSync(path.join(cachedir, 'app.css'))
           .toString()));
     bundleOutput += libs.map(readTextFromFile).join('\n');
     bundleOutput += '\n';
 
     bundleOutput += 'window.pgBlackboard=' + JSON.stringify({
-        tableCss: readTextFromFile(path.join(outdir, 'table.css'))
+        tableCss: readTextFromFile(path.join(cachedir, 'table.css'))
     }) + ';';
 
-    bundleOutput += readTextFromFile(path.join(outdir, 'app.js'));
+    bundleOutput += readTextFromFile(path.join(cachedir, 'app.js'));
     fs.writeFileSync(this.name, bundleOutput);
 });
 
-file(path.join(outdir, 'table.css'),
+file(path.join(cachedir, 'table.css'),
     ['src/ui/output/table/table.css'],
     processCssTarget);
 
-file(path.join(outdir, 'loading-indicator.min.css'),
+file(path.join(cachedir, 'loading-indicator.css'),
     ['src/ui/loading-indicator/loading-indicator.css'],
     processCssTarget);
 
@@ -200,5 +226,3 @@ function documentWrite(html) {
         JSON.stringify(html) +
         ');\n';
 }
-
-

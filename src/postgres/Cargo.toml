@@ -7,6 +7,6 @@ name = "postgres"
 path = "lib.rs"
 
 [dependencies]
-rustc-serialize = "*"
-rust-crypto = "*"
-byteorder = "*"
+rustc-serialize = "0.3"
+rust-crypto = "0.2.31"
+byteorder = "0.3.8"

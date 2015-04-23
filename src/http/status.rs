@@ -48,3 +48,54 @@ pub enum Status {
     GatewayTimeout               = 504,
     HttpVersionNotSupported      = 505,
 }
+
+impl Status {
+    pub fn phrase(self) -> &'static str {
+        match self {
+            Status::Continue                     => "Continue",
+            Status::SwitchingProtocols           => "Switching Protocols",
+
+            Status::Ok                           => "OK",
+            Status::Created                      => "Created",
+            Status::Accepted                     => "Accepted",
+            Status::NonAuthoritativeInformation  => "Non Authoritative Information",
+            Status::NoContent                    => "No Content",
+            Status::ResetContent                 => "Reset Content",
+            Status::PartialContent               => "Partial Content",
+
+            Status::MultipleChoices              => "Multiple Choices",
+            Status::MovedPermanently             => "Moved Permanently",
+            Status::Found                        => "Found",
+            Status::SeeOther                     => "See Other",
+            Status::NotModified                  => "Not Modified",
+            Status::UseProxy                     => "Use Proxy",
+            Status::TemporaryRedirect            => "Temporary Redirect",
+
+            Status::BadRequest                   => "Bad Request",
+            Status::Unauthorized                 => "Unauthorized",
+            Status::PaymentRequired              => "Payment Required",
+            Status::Forbidden                    => "Forbidden",
+            Status::NotFound                     => "Not Found",
+            Status::MethodNotAllowed             => "Method Not Allowed",
+            Status::NotAcceptable                => "Not Acceptable",
+            Status::ProxyAuthenticationRequired  => "Proxy Authentication Required",
+            Status::RequestTimeout               => "Request Timeout",
+            Status::Conflict                     => "Conflict",
+            Status::Gone                         => "Gone",
+            Status::LengthRequired               => "Length Required",
+            Status::PreconditionFailed           => "Precondition Failed",
+            Status::RequestEntityTooLarge        => "Request Entity To Large",
+            Status::RequestUriTooLarge           => "Request Uri Too Large",
+            Status::UnsupportedMediaType         => "Unsupported Media Type",
+            Status::RequestedRangeNotSatisfiable => "Requested Range Not Satisfiable",
+            Status::ExpectationFailed            => "Expectation Failed",
+
+            Status::InternalServerError          => "Internal Server Error",
+            Status::NotImplemented               => "Not Implemented",
+            Status::BadGateway                   => "Bad Gateway",
+            Status::ServiceUnavailable           => "Service Unavailable",
+            Status::GatewayTimeout               => "Gateway Timeout",
+            Status::HttpVersionNotSupported      => "Http Version Not Supported",
+        }
+    }
+}
