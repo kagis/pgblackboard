@@ -6,12 +6,12 @@ module.exports = `
               data-bind="codeEditor, value: readyDoc()"
               class="codeform__textarea"></textarea>
 
-    <input name="sel_achor_line"
+    <input name="sel_anchor_line"
            type="hidden"
            data-bind="value: selectionAnchorLine,
                       disable: selectionAnchorLine() === undefined" />
 
-    <input name="sel_achor_col"
+    <input name="sel_anchor_col"
            type="hidden"
            data-bind="value: selectionAnchorCol,
                       disable: selectionAnchorCol() === undefined" />

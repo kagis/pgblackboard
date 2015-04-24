@@ -42,7 +42,7 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
             }
         };
 
-        let selrange = if let Form {
+        let maybe_selrange = if let Form {
             sel_anchor_line: Some(sel_anchor_line),
             sel_anchor_col: Some(sel_anchor_col),
             sel_head_line: Some(sel_head_line),
@@ -127,9 +127,17 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
         Box::new(SqlExecResponse {
             dbconn: dbconn,
             map_or_table: form.view.unwrap_or(MapOrTable::Table),
-            selrange: selrange,
-            sqlscript: sqlscript_and_dbname.sqlscript.to_string(),
-            sqlscript_offset: sqlscript_and_dbname.sqlscript_linecol,
+            // selrange: selrange,
+
+            sqlscript: maybe_selrange.as_ref().map_or(
+                sqlscript_and_dbname.sqlscript,
+                |selrange| &form.sqlscript[selrange.start.to_pos(&form.sqlscript)..selrange.end.to_pos(&form.sqlscript)]
+            ).to_string(),
+
+            sqlscript_offset: maybe_selrange.map_or(
+                sqlscript_and_dbname.sqlscript_linecol,
+                |it| it.start
+            )
         })
 
         // Box::new(JsonResponse {
@@ -166,6 +174,7 @@ impl http::Response for SqlExecErrorResponse {
 
 #[derive(RustcDecodable)]
 #[derive(Debug)]
+#[derive(Clone, Copy)]
 enum MapOrTable {
     Map,
     Table
@@ -186,6 +195,34 @@ impl LineCol {
             col: lines.next_back().map(|ln| ln.len()).unwrap_or(0),
             line: lines.count(),
         }
+    }
+
+    fn to_bytepos(self, s: &str) -> usize {
+        let mut current_line = 0usize;
+        for (pos, ch) in s.char_indices() {
+            if ch == '\n' {
+                current_line += 1;
+                current_col = 0;
+                continue;
+            }
+
+
+        }
+
+        let zero_col_at_line_pos = s.split('\n')
+            .take(self.line)
+            .map(|line| line.len() + 1)
+            .sum::<usize>();
+
+        let mut col_pos = 0usize;
+        for (i, ch) in s[zero_col_at_line_pos..].char_indices() {
+            if i == self.col {
+                return col_pos + zero_col_at_line_pos;
+            }
+            col_pos += ch.len_utf8();
+        }
+
+        panic!("{}", col_pos);
     }
 }
 
@@ -212,12 +249,19 @@ fn test_linecol() {
     });
 }
 
+#[test]
+fn test_linecol_to_pos() {
+    let text = "abc\r\nбв\nгд";
+    assert_eq!(&text[LineCol { line: 1, col: 1 }.to_pos(text)..], "в\nгд");
+    //assert_eq!(&text[LineCol { line: 2, col: 1 }.to_pos(text)..], "д");
+}
+
 struct SqlExecResponse {
     dbconn: pg::Connection,
     map_or_table: MapOrTable,
     sqlscript: String,
     sqlscript_offset: LineCol,
-    selrange: Option<Range<LineCol>>,
+    // selrange: Option<Range<LineCol>>,
 }
 
 impl http::Response for SqlExecResponse {
@@ -228,7 +272,7 @@ impl http::Response for SqlExecResponse {
             map_or_table,
             sqlscript,
             sqlscript_offset,
-            selrange,
+            // selrange,
         } = self_;
 
         let execution_events = dbconn.execute_script(&sqlscript).unwrap();

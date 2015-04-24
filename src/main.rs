@@ -3,6 +3,7 @@
 #![feature(collections)]
 #![feature(custom_attribute)]
 #![plugin(regex_macros)]
+#![feature(core)]
 
 extern crate regex;
 extern crate rustc_serialize;
