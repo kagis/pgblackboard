@@ -9,22 +9,22 @@ module.exports = `
     <input name="sel_anchor_line"
            type="hidden"
            data-bind="value: selectionAnchorLine,
-                      disable: selectionAnchorLine() === undefined" />
+                      enable: typeof selectionAnchorLine() === 'number'" />
 
     <input name="sel_anchor_col"
            type="hidden"
            data-bind="value: selectionAnchorCol,
-                      disable: selectionAnchorCol() === undefined" />
+                      enable: typeof selectionAnchorCol() === 'number'" />
 
     <input name="sel_head_line"
            type="hidden"
            data-bind="value: selectionHeadLine,
-                      disable: selectionHeadLine() === undefined" />
+                      enable: typeof selectionHeadLine() === 'number'" />
 
     <input name="sel_head_col"
            type="hidden"
            data-bind="value: selectionHeadCol,
-                      disable: selectionHeadCol() === undefined" />
+                      enable: typeof selectionHeadCol() === 'number'" />
 
     <div class="codeform__execbar">
       <button name="view"

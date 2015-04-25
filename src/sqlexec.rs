@@ -49,19 +49,25 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
             sel_head_col: Some(sel_head_col),
             ..
         } = form {
+            let anchor = LineCol {
+                line: sel_anchor_line,
+                col: sel_anchor_col
+            };
+
+            let head = LineCol {
+                line: sel_head_line,
+                col: sel_head_col
+            };
+
             Some(Range {
-                start: LineCol {
-                    line: cmp::min(sel_anchor_line, sel_head_line),
-                    col: cmp::min(sel_anchor_col, sel_head_col),
-                },
-                end: LineCol {
-                    line: cmp::max(sel_anchor_line, sel_head_line),
-                    col: cmp::max(sel_anchor_col, sel_head_col)
-                },
+                start: cmp::min(anchor, head),
+                end: cmp::max(anchor, head)
             })
         } else {
             None
         };
+
+        println!("selrange: {:?}", maybe_selrange);
 
         let sqlscript_and_dbname = match extract_connect_metacmd(&form.sqlscript) {
             Some(res) => res,
@@ -131,7 +137,7 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
 
             sqlscript: maybe_selrange.as_ref().map_or(
                 sqlscript_and_dbname.sqlscript,
-                |selrange| &form.sqlscript[selrange.start.to_pos(&form.sqlscript)..selrange.end.to_pos(&form.sqlscript)]
+                |selrange| &form.sqlscript[selrange.start.to_bytepos(&form.sqlscript)..selrange.end.to_bytepos(&form.sqlscript)]
             ).to_string(),
 
             sqlscript_offset: maybe_selrange.map_or(
@@ -182,6 +188,9 @@ enum MapOrTable {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Eq)]
+#[derive(PartialOrd)]
+#[derive(Ord)]
 #[derive(Clone, Copy)]
 struct LineCol {
     line: usize,
@@ -198,31 +207,44 @@ impl LineCol {
     }
 
     fn to_bytepos(self, s: &str) -> usize {
-        let mut current_line = 0usize;
-        for (pos, ch) in s.char_indices() {
-            if ch == '\n' {
-                current_line += 1;
-                current_col = 0;
-                continue;
-            }
+        // let mut current_line = 0usize;
+        // for (pos, ch) in s.char_indices() {
+        //     if ch == '\n' {
+        //         current_line += 1;
+        //         current_col = 0;
+        //         continue;
+        //     }
 
 
-        }
+        // }
 
-        let zero_col_at_line_pos = s.split('\n')
+        let (lines_taken, zero_col_at_line_bpos) = s
+            .split('\n')
             .take(self.line)
             .map(|line| line.len() + 1)
-            .sum::<usize>();
+            .fold((0, 0), |(count, len), line_len| (count + 1, len + line_len));
 
-        let mut col_pos = 0usize;
-        for (i, ch) in s[zero_col_at_line_pos..].char_indices() {
-            if i == self.col {
-                return col_pos + zero_col_at_line_pos;
-            }
-            col_pos += ch.len_utf8();
+        if lines_taken < self.line {
+            panic!("Line is out of bounds.");
         }
 
-        panic!("{}", col_pos);
+        let col_bpos = s[zero_col_at_line_bpos..]
+            .char_indices()
+            .take(self.col)
+            .last()
+            .map(|(bpos, ch)| bpos + ch.len_utf8())
+            .unwrap_or(0);
+
+        zero_col_at_line_bpos + col_bpos
+
+        // for (col, (bytepos, ch)) in s[zero_col_at_line_bpos..].char_indices().enumerate() {
+        //     if i == self.col {
+        //         return col_pos + zero_col_at_line_bpos;
+        //     }
+        //     col_pos += ch.len_utf8();
+        // }
+
+        // panic!("{}", col_pos);
     }
 }
 
@@ -252,8 +274,8 @@ fn test_linecol() {
 #[test]
 fn test_linecol_to_pos() {
     let text = "abc\r\nбв\nгд";
-    assert_eq!(&text[LineCol { line: 1, col: 1 }.to_pos(text)..], "в\nгд");
-    //assert_eq!(&text[LineCol { line: 2, col: 1 }.to_pos(text)..], "д");
+    assert_eq!(&text[LineCol { line: 1, col: 1 }.to_bytepos(text)..], "в\nгд");
+    //assert_eq!(&text[LineCol { line: 2, col: 1 }.to_bytepos(text)..], "д");
 }
 
 struct SqlExecResponse {
@@ -275,6 +297,7 @@ impl http::Response for SqlExecResponse {
             // selrange,
         } = self_;
 
+        println!("executing: {:?}", &sqlscript);
         let execution_events = dbconn.execute_script(&sqlscript).unwrap();
 
         let mut w = try!(w.start(http::Status::Ok));
@@ -632,9 +655,9 @@ fn invoke_js_set_error<W>(writer: &mut W,
 {
     write!(writer,
         "<script>pgBlackboard.setError({{\
-            \"message\":\"{message}\",\
+            \"message\":{message:?},\
             \"line\":{line}\
         }});</script>",
-       message = message.replace("\"", "\\\""),
+       message = message,
        line = script_line)
 }
