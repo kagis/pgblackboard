@@ -1,5 +1,10 @@
 extern crate flate2;
 
+mod linecol;
+use self::linecol::LineCol;
+
+mod view;
+
 use self::flate2::write::GzEncoder;
 use self::flate2::Compression;
 
@@ -67,8 +72,6 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
             None
         };
 
-        println!("selrange: {:?}", maybe_selrange);
-
         let sqlscript_and_dbname = match extract_connect_metacmd(&form.sqlscript) {
             Some(res) => res,
             None => return Box::new(SqlExecErrorResponse {
@@ -101,7 +104,7 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
                 })
             };
 
-            let maybe_dbconn = pg::connect(&self.pgaddr[..],
+            let maybe_dbconn = pg::connect(self.pgaddr,
                                            sqlscript_and_dbname.dbname,
                                            user, passwd);
 
@@ -135,10 +138,28 @@ impl<'a> http::Handler for SqlExecHandler<'a> {
             map_or_table: form.view.unwrap_or(MapOrTable::Table),
             // selrange: selrange,
 
-            sqlscript: maybe_selrange.as_ref().map_or(
-                sqlscript_and_dbname.sqlscript,
-                |selrange| &form.sqlscript[selrange.start.to_bytepos(&form.sqlscript)..selrange.end.to_bytepos(&form.sqlscript)]
-            ).to_string(),
+            sqlscript: match maybe_selrange.as_ref() {
+                None => sqlscript_and_dbname.sqlscript,
+                Some(selrange) => {
+                    let start_bpos = match selrange.start.to_bytepos(&form.sqlscript) {
+                        Some(bpos) => bpos,
+                        None => return Box::new(SqlExecErrorResponse {
+                            status: http::Status::BadRequest,
+                            message: "Selection is out of range."
+                        })
+                    };
+
+                    let end_bpos = match selrange.end.to_bytepos(&form.sqlscript) {
+                        Some(bpos) => bpos,
+                        None => return Box::new(SqlExecErrorResponse {
+                            status: http::Status::BadRequest,
+                            message: "Selection is out of range."
+                        })
+                    };
+
+                    &form.sqlscript[start_bpos..end_bpos]
+                }
+            }.to_string(),
 
             sqlscript_offset: maybe_selrange.map_or(
                 sqlscript_and_dbname.sqlscript_linecol,
@@ -169,7 +190,8 @@ impl http::Response for SqlExecErrorResponse {
 
         let mut w = try!(w.start_chunked());
         {
-            let mut view = TableView::new(&mut w);
+            use self::view::View;
+            let mut view = view::TableView::new(&mut w);
             try!(view.render_intro());
             try!(view.render_error(&self.message, 0, 0));
             try!(view.render_outro());
@@ -186,97 +208,6 @@ enum MapOrTable {
     Table
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Eq)]
-#[derive(PartialOrd)]
-#[derive(Ord)]
-#[derive(Clone, Copy)]
-struct LineCol {
-    line: usize,
-    col: usize,
-}
-
-impl LineCol {
-    fn end_of_str(s: &str) -> LineCol {
-        let mut lines = s.split('\n');
-        LineCol {
-            col: lines.next_back().map(|ln| ln.len()).unwrap_or(0),
-            line: lines.count(),
-        }
-    }
-
-    fn to_bytepos(self, s: &str) -> usize {
-        // let mut current_line = 0usize;
-        // for (pos, ch) in s.char_indices() {
-        //     if ch == '\n' {
-        //         current_line += 1;
-        //         current_col = 0;
-        //         continue;
-        //     }
-
-
-        // }
-
-        let (lines_taken, zero_col_at_line_bpos) = s
-            .split('\n')
-            .take(self.line)
-            .map(|line| line.len() + 1)
-            .fold((0, 0), |(count, len), line_len| (count + 1, len + line_len));
-
-        if lines_taken < self.line {
-            panic!("Line is out of bounds.");
-        }
-
-        let col_bpos = s[zero_col_at_line_bpos..]
-            .char_indices()
-            .take(self.col)
-            .last()
-            .map(|(bpos, ch)| bpos + ch.len_utf8())
-            .unwrap_or(0);
-
-        zero_col_at_line_bpos + col_bpos
-
-        // for (col, (bytepos, ch)) in s[zero_col_at_line_bpos..].char_indices().enumerate() {
-        //     if i == self.col {
-        //         return col_pos + zero_col_at_line_bpos;
-        //     }
-        //     col_pos += ch.len_utf8();
-        // }
-
-        // panic!("{}", col_pos);
-    }
-}
-
-#[test]
-fn test_linecol() {
-    assert_eq!(LineCol::end_of_str("a\nb"), LineCol {
-        line: 1,
-        col: 1
-    });
-
-    assert_eq!(LineCol::end_of_str("one\ntwo\nthree"), LineCol {
-        line: 2,
-        col: 5
-    });
-
-    assert_eq!(LineCol::end_of_str("one\r\ntwo\r\nthree"), LineCol {
-        line: 2,
-        col: 5
-    });
-
-    assert_eq!(LineCol::end_of_str(""), LineCol {
-        line: 0,
-        col: 0
-    });
-}
-
-#[test]
-fn test_linecol_to_pos() {
-    let text = "abc\r\nбв\nгд";
-    assert_eq!(&text[LineCol { line: 1, col: 1 }.to_bytepos(text)..], "в\nгд");
-    //assert_eq!(&text[LineCol { line: 2, col: 1 }.to_bytepos(text)..], "д");
-}
 
 struct SqlExecResponse {
     dbconn: pg::Connection,
@@ -312,14 +243,14 @@ impl http::Response for SqlExecResponse {
 
             MapOrTable::Table => dispatch_exec_events(
                 execution_events,
-                TableView::new(&mut w),
+                view::TableView::new(&mut w),
                 &sqlscript,
                 sqlscript_offset
             ),
 
             MapOrTable::Map => dispatch_exec_events(
                 execution_events,
-                TableView::new(&mut w),
+                view::MapView::new(&mut w),
                 &sqlscript,
                 sqlscript_offset
             )
@@ -338,21 +269,62 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                                             sqlscript_offset: LineCol)
                                             -> io::Result<()>
     where TEventsIter: Iterator<Item=pg::ExecutionEvent>,
-          TView: View
+          TView: view::View
 {
+    use self::view::View;
 
     try!(view.render_intro());
 
     let mut latest_rowset_id = 0;
+
+    // loop {
+    //     match execution_events.next() {
+    //         pg::ExecutionEvent::RowsetBegin(cols_descr) => {
+    //             latest_rowset_id += 1;
+
+    //             try!(view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| view::FieldDescription {
+    //                 name: &x.name,
+    //                 typ: match pg::type_name(x.type_oid) {
+    //                     Some(typ) => typ,
+    //                     None => "---"
+    //                 },
+    //                 is_numeric: pg::type_isnum(x.type_oid)
+    //             }).collect::<Vec<_>>())
+
+    //             loop {
+    //                 match execution_events.next() {
+    //                     pg::ExecutionEvent::RowsetEnd => {
+    //                         view.render_rowset_end()
+    //                     }
+
+    //                     pg::ExecutionEvent::RowFetched(row) => {
+    //                         let row_iter = row.iter().map(|maybe_val| {
+    //                             maybe_val.as_ref().map(|val| &val[..])
+    //                         });
+    //                         view.render_row(row_iter, )
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    let mut lastest_cols_descr = None;
+
     for event in execution_events {
         try!(match event {
             pg::ExecutionEvent::RowsetBegin(cols_descr) => {
                 latest_rowset_id += 1;
-                view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| FieldDescription {
+                let retval = view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| view::FieldDescription {
                     name: &x.name,
-                    typ: "typ",
-                    is_numeric: false
-                }).collect::<Vec<_>>())
+                    typ: match pg::type_name(x.type_oid) {
+                        Some(typ) => typ,
+                        None => "---"
+                    },
+                    is_numeric: pg::type_isnum(x.type_oid)
+                }).collect::<Vec<_>>());
+                lastest_cols_descr = Some(cols_descr);
+                retval
             }
 
             pg::ExecutionEvent::RowsetEnd => {
@@ -363,7 +335,11 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                 let row_iter = row.iter().map(|maybe_val| {
                     maybe_val.as_ref().map(|val| &val[..])
                 });
-                view.render_row(row_iter)
+                let cols_descr = lastest_cols_descr
+                    .as_ref()
+                    .expect("Row fetched before rowset started.");
+
+                view.render_row(row_iter, cols_descr)
             }
 
             pg::ExecutionEvent::NonQueryExecuted(cmd) => {
@@ -434,230 +410,4 @@ fn test_extract_connect_metacmd() {
         sqlscript: "select 'awesome'",
         sqlscript_linecol: LineCol { line: 1, col: 0 }
     }));
-
-
-}
-
-
-trait View {
-
-    fn render_intro(&mut self) -> io::Result<()>;
-
-    fn render_outro(&mut self) -> io::Result<()>;
-
-    fn render_rowset_begin(&mut self,
-                           rowset_id: i32,
-                           &[FieldDescription])
-                           -> io::Result<()>;
-
-    fn render_rowset_end(&mut self) -> io::Result<()>;
-
-    fn render_row<'a, T>(&mut self, row: T) -> io::Result<()>
-        where T: Iterator<Item=Option<&'a str>>;
-
-    fn render_notice(&mut self,
-                     message: &str)
-                     -> io::Result<()>;
-
-    fn render_error(&mut self,
-                    message: &str,
-                    script_line: usize,
-                    script_col: usize)
-                    -> io::Result<()>;
-
-    fn render_nonquery(&mut self,
-                       command_tag: &str)
-                       -> io::Result<()>;
-
-    fn make_rowset_editable(&mut self,
-                            rowset_id: i32,
-                            table_name: &str,
-                            col_names: &[&str],
-                            pk_mask: &[bool])
-                            -> io::Result<()>;
-
-    // fn flush(&self) -> io::Result<()>;
-}
-
-
-struct FieldDescription<'a, 'b> {
-    pub name: &'a str,
-    pub typ: &'b str,
-    pub is_numeric: bool,
-}
-
-
-static INTRO: &'static [u8] = b"\
-    <!DOCTYPE html>\
-    <html>\
-    <head>\
-        <meta charset='utf-8' />\
-        <title></title>\
-    </head>\
-    <body>\
-        <script>frameElement.setupPgBlackboardOutputFrame('table');</script>\
-        <div class='main'>\
-";
-
-
-struct TableView<W: Write> {
-    writer: W
-}
-
-impl<W: Write> TableView<W> {
-    fn new(writer: W) -> TableView<W> {
-        TableView { writer: writer }
-    }
-}
-
-impl<W: Write> View for TableView<W> {
-
-    fn render_intro(&mut self) -> io::Result<()> {
-        let ref mut writer = self.writer;
-        try!(writer.write_all(INTRO));
-        Ok(())
-    }
-
-    fn render_outro(&mut self) -> io::Result<()> {
-        self.writer.write_all(b"</div></body></html>\r\n")
-    }
-
-    fn render_rowset_begin(&mut self,
-                           rowset_id: i32,
-                           cols_descr: &[FieldDescription])
-                           -> io::Result<()>
-    {
-        let out = &mut self.writer;
-
-        let numeric_cols = cols_descr.iter()
-                                     .enumerate()
-                                     .filter(|&(_, col)| col.is_numeric)
-                                     .map(|(i, _)| i + 1);
-
-        try!(out.write_all(b"<style>"));
-        for i in numeric_cols {
-            try!(write!(out, "#rowset{} td:nth-child({}),", rowset_id, i));
-        }
-        try!(out.write_all(b"{ text-align: right; }"));
-        try!(out.write_all(b"</style>"));
-
-        try!(write!(out, "<table class='rowset' id='rowset{}'>", rowset_id));
-        try!(out.write_all(b"<thead>"));
-        try!(out.write_all(b"<tr>"));
-        try!(out.write_all(b"<th class='rowset-corner'></th>"));
-        for col in cols_descr {
-            try!(write!(out,
-                "<th class='rowset-colheader'>\
-                    {colname}\
-                    <small class='rowset-coltype'>\
-                        {coltype}\
-                    </small>\
-                </th>",
-                colname = col.name,
-                coltype = col.typ));
-        }
-        try!(out.write_all(b"</tr>"));
-        try!(out.write_all(b"</thead>"));
-        try!(out.write_all(b"<tbody>"));
-        try!(out.flush());
-        Ok(())
-    }
-
-    fn render_rowset_end(&mut self) -> io::Result<()> {
-        let writer = &mut self.writer;
-        try!(writer.write_all(b"</tbody>"));
-        try!(writer.write_all(b"</table>"));
-        Ok(())
-    }
-
-    fn make_rowset_editable(&mut self,
-                            rowset_id: i32,
-                            table_name: &str,
-                            col_names: &[&str],
-                            pk_mask: &[bool])
-                            -> io::Result<()>
-    {
-        try!(write!(&mut self.writer, "<script>pgBlackboard\
-                                .makeRowsetEditable();\
-                                </script>"));
-
-        Ok(())
-    }
-
-    fn render_row<'a, T>(&mut self, row: T) -> io::Result<()>
-        where T: Iterator<Item=Option<&'a str>> {
-
-        let writer = &mut self.writer;
-        try!(writer.write_all(b"<tr>"));
-        try!(writer.write_all(b"<th></th>"));
-        for maybe_val in row {
-            try!(match maybe_val {
-                Some("") => writer.write_all(b"<td class='emptystr'></td>"),
-                Some(val) => write!(writer, "<td>{}</td>", val),
-                None => writer.write_all(b"<td></td>"),
-            });
-        }
-        try!(writer.write_all(b"</tr>"));
-        Ok(())
-    }
-
-    fn render_error(&mut self,
-                    message: &str,
-                    script_line: usize,
-                    script_col: usize)
-                    -> io::Result<()>
-    {
-        let writer = &mut self.writer;
-        try!(invoke_js_set_error(writer, message, script_line));
-        try!(writer.write_all(b"<pre class=\"message message--error\">"));
-        try!(writer.write_all(message.as_bytes()));
-        try!(writer.write_all(b"</pre>"));
-        Ok(())
-    }
-
-    fn render_notice(&mut self, message: &str) -> io::Result<()> {
-        let writer = &mut self.writer;
-        try!(writer.write_all(b"<pre>"));
-        try!(writer.write_all(message.as_bytes()));
-        try!(writer.write_all(b"</pre>"));
-        Ok(())
-    }
-
-    fn render_nonquery(&mut self, command_tag: &str) -> io::Result<()> {
-        let writer = &mut self.writer;
-        try!(writer.write_all(b"<pre>"));
-        try!(writer.write_all(command_tag.as_bytes()));
-        try!(writer.write_all(b"</pre>"));
-        Ok(())
-    }
-
-    // fn flush(&self) -> io::Result<()> {
-    //     self.writer.flush()
-    // }
-}
-
-
-// pub struct MapView<W: Write> {
-//     inner: W
-// }
-
-// impl<W: Write> View for MapView<W> {
-
-// }
-
-
-
-fn invoke_js_set_error<W>(writer: &mut W,
-                          message: &str,
-                          script_line: usize)
-                          -> io::Result<()>
-                          where W: Write
-{
-    write!(writer,
-        "<script>pgBlackboard.setError({{\
-            \"message\":{message:?},\
-            \"line\":{line}\
-        }});</script>",
-       message = message,
-       line = script_line)
 }

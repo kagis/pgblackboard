@@ -67,7 +67,7 @@ impl<'a> http::Handler for IndexPage<'a> {
         };
 
         let maybe_dbnodes = dbconn.query::<DbNode>(
-            include_str!("tree/children/databases.sql")
+            include_str!("webapi/tree/children/databases.sql")
         );
 
         let dbnodes = match maybe_dbnodes {

@@ -27,6 +27,9 @@ extern crate rustc_serialize;
 mod sqlstate;
 mod decoder;
 mod cstr;
+mod types;
+
+pub use types::{type_name, type_isnum};
 
 use crypto::md5::Md5;
 use crypto::digest::Digest;
@@ -409,7 +412,7 @@ impl<T: BufRead> MessageReader for T  {
             },
         };
 
-        // println!("-> {:?}", ret);
+        println!("-> {:?}", ret);
         Ok(ret)
     }
 }

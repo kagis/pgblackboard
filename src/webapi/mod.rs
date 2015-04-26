@@ -3,8 +3,9 @@ use rustc_serialize::{json, Encodable};
 use http;
 use pg;
 
+mod tree;
 
-use tree::DbObjType;
+use self::tree::DbObjType;
 
 pub struct DbDir {
     pub pgaddr: String,

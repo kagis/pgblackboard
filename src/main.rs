@@ -5,13 +5,13 @@
 #![plugin(regex_macros)]
 #![feature(core)]
 
+extern crate argparse;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate postgres as pg;
 // extern crate http;
 mod http;
 
-mod tree;
 
 
 mod sqlexec;
@@ -27,12 +27,36 @@ use index::IndexPage;
 use std::io;
 
 
+
 fn main() {
+    let mut pgaddr = "127.0.0.1:5432".to_string();
+    let mut httpaddr = "0.0.0.0:7890".to_string();
+
+    {
+        let mut ap = argparse::ArgumentParser::new();
+
+        ap.set_description("pgBlackboard server.");
+
+        ap.refer(&mut httpaddr).add_option(
+            &["--http"],
+            argparse::Store,
+            "HOST:PORT to listen for HTTP requests. \
+             Default is 0.0.0.0:7890");
+
+        ap.refer(&mut pgaddr).add_option(
+            &["--postgres"],
+            argparse::Store,
+            "HOST:PORT of PostgreSQL server. \
+             Default is 127.0.0.1:5432");
+
+        ap.parse_args_or_exit();
+    }
+
     let webapp = WebApplication {
-        pgaddr: "localhost:5432".to_string()
+        pgaddr: pgaddr
     };
 
-    http::serve_forever("0.0.0.0:7890", webapp).unwrap();
+    http::serve_forever(&httpaddr, webapp).unwrap();
 }
 
 struct WebApplication {
