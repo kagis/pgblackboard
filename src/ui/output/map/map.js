@@ -2,14 +2,20 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
 
     if (!leafletLoaded) {
         var script = document.createElement('script');
-        script.src = "map-bundle.js";
+        script.src = 'bundle-map.js';
         script.addEventListener('load', function () {
             leafletLoaded = true;
-            setupOutputFrameForMap(frameWindow);
+            setupOutputFrameForMap(frameWindow, outputFrameContext);
         });
         document.body.appendChild(script);
         return;
     }
+
+    frameWindow.document.write(
+        '<style>' +
+        window['pgBlackboard']['mapCss'] +
+        '</style>'
+    );
 
     var map = L.map(frameWindow.document.body, {
         'center': [
@@ -85,7 +91,7 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
 
     /** @expose */
     frameWindow.addFeatures = function (featureCollection) {
-        featureCollection.features.forEach(function (f) {
+        featureCollection['features'].forEach(function (f) {
             f.overlay = latestFeatureCollection;
         });
         latestFeatureCollection.addData(featureCollection);

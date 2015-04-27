@@ -91,6 +91,12 @@ impl http::Handler for WebApplication {
                 gzipped: true
             }),
 
+            ["bundle-map.js"] => Box::new(BytesResponse {
+                content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
+                content_type: "application/javascript; charset=utf-8",
+                gzipped: true
+            }),
+
             _ => Box::new(index::ErrorResponse {
                 status: http::Status::NotFound,
                 message: "The requested URL was not found."

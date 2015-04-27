@@ -47,19 +47,19 @@ function setupOutputFrame(outputFrameEl, outputFrameContext, tableOrMap) {
 
     switch (tableOrMap) {
     case 'table':
-        setupOutputFrameForTable(outputFrameEl, outputFrameContext);
+        setupOutputFrameForTable(outputFrameEl.contentWindow, outputFrameContext);
         break;
     case 'map':
-        setupOutputFrameForMap(outputFrameEl, outputFrameContext);
+        setupOutputFrameForMap(outputFrameEl.contentWindow, outputFrameContext);
         break;
     }
 
 }
 
-function setupOutputFrameForTable(outputFrameEl, outputFrameContext) {
-    outputFrameEl.contentWindow.document.write(
+function setupOutputFrameForTable(frameWindow, outputFrameContext) {
+    frameWindow.document.write(
         '<style>' + window['pgBlackboard']['tableCss'] + '</style>'
     );
-    initTableOutput(outputFrameEl.contentWindow);
+    initTableOutput(frameWindow);
 }
 

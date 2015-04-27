@@ -1,56 +1,101 @@
 var L = {};
 
-/** @return {L.Map} */
-L.map = function () {};
+/**
+ * @param {HTMLElement} containerElem
+ * @param {Object} options
+ * @return {L.Map}
+ */
+L.map = function (containerElem, options) {};
 
 /** @constructor */
 L.Map = function () {};
-L.Map.prototype.addControl = function () {};
-L.Map.prototype.addLayer = function () {};
+
+/** @param {L.Control} control */
+L.Map.prototype.addControl = function (control) {};
+
+/** @param {Layer} layer */
+L.Map.prototype.addLayer = function (layer) {};
 
 L.control = {};
 L.control.scale = function () {};
 
-/** @return {L.control.Layer} */
-L.control.layers = function () {};
+/**
+ * @param {Object} basemaps
+ * @param {Object} overlays
+ * @param {Object} options
+ * @return {L.Control.Layer}
+ */
+L.control.layers = function (basemaps, overlays, options) {};
 
 /** @constructor */
-L.control.Layer = function () {};
-L.control.Layer.prototype.addOverlay = function () {};
+L.Control = function () {};
 
-/** @return {L.CircleMarker} */
-L.circleMarker = function () {};
+/** @param {L.Map} map */
+L.Control.prototype.addTo = function (map) {};
 
 /**
  * @constructor
- * @implements {Layer}
+ * @extends {L.Control}
+ */
+L.Control.Layer = function () {};
+
+/** @param {Layer} overlay */
+L.control.Layer.prototype.addOverlay = function (overlay) {};
+
+/**
+ * @param {Object} latlng
+ * @return {L.CircleMarker}
+ */
+L.circleMarker = function (latlng) {};
+
+/**
+ * @constructor
+ * @extends {Layer}
  */
 L.CircleMarker = function () {};
-L.CircleMarker.prototype.setRadius = function () {};
 
-/** @return {L.TileLayer} */
-L.tileLayer = function () {};
+/** @param {number} radius */
+L.CircleMarker.prototype.setRadius = function (radius) {};
+
+/**
+ * @param {string=} url
+ * @param {Object=} options
+ * @return {L.TileLayer}
+ */
+L.tileLayer = function (url, options) {};
 
 /**
  * @constructor
- * @implements {Layer}
+ * @extends {Layer}
  */
 L.TileLayer = function () {};
 
 /** @param {string} url */
 L.TileLayer.prototype.setUrl = function (url) {};
 
-/** @return {L.GeoJSON} */
-L.geoJson = function () {};
+/**
+ * @param {Object} data
+ * @param {Object} options
+ * @return {L.GeoJSON}
+ */
+L.geoJson = function (data, options) {};
 
 /**
  * @constructor
- * @implements {Layer}
+ * @extends {Layer}
  */
 L.GeoJSON = function () {};
 L.GeoJSON.prototype.addData = function () {};
 L.GeoJSON.prototype.geoJson = function () {};
 
-/** @interface */
+/** @constructor */
 function Layer() {}
-Layer.prototype.bindPopup = function () {};
+
+/** @param {*} content */
+Layer.prototype.bindPopup = function (content) {};
+
+/** @param {L.Map} map */
+Layer.prototype.addTo = function (map) {};
+
+Layer.prototype.options = {};
+

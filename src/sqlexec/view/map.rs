@@ -45,7 +45,7 @@ impl<W: Write> View for MapView<W> {
         });
 
         write!(self.writer, "<script>pgBlackboard\
-                            .beginCollection();\
+                            .beginFeatureCollection();\
                             </script>")
     }
 

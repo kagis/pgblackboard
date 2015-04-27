@@ -72,6 +72,7 @@ jake.mkdirP(cachedir);
 task('default', [
     path.join(outdir, 'index.html'),
     path.join(outdir, 'bundle-index.js.gz'),
+    path.join(outdir, 'bundle-map.js.gz'),
     path.join(outdir, 'err.html')
 ]);
 
@@ -183,6 +184,22 @@ file(path.join(cachedir, 'table.css'),
 file(path.join(cachedir, 'loading-indicator.css'),
     ['src/ui/loading-indicator/loading-indicator.css'],
     processCssTarget);
+
+file(path.join(outdir, 'bundle-map.js'),
+    ['node_modules/leaflet/dist/leaflet.js',
+     'node_modules/leaflet/dist/leaflet.min.css'],
+    function () {
+
+    var bundle = '';
+
+    bundle += 'window.pgBlackboard.mapCss=' + JSON.stringify(
+        readTextFromFile('node_modules/leaflet/dist/leaflet.min.css')
+    ) + ';';
+
+    bundle += readTextFromFile('node_modules/leaflet/dist/leaflet.js');
+
+    fs.writeFileSync(this.name, bundle);
+})
 
 rule('.min.css', '.css', function () {
     var css = fs.readFileSync(this.source).toString();
