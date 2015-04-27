@@ -4,7 +4,7 @@ use pg;
 
 pub struct MapView<W: Write> {
     writer: W,
-    rows_count: usize,
+    rendered_rows_count: usize,
     geom_col_idx: Option<usize>
 }
 
@@ -12,7 +12,7 @@ impl<W: Write> MapView<W> {
     pub fn new(writer: W) -> MapView<W> {
         MapView {
             writer: writer,
-            rows_count: 0,
+            rendered_rows_count: 0,
             geom_col_idx: None
         }
     }
@@ -38,7 +38,7 @@ impl<W: Write> View for MapView<W> {
                            cols_descr: &[FieldDescription])
                            -> io::Result<()>
     {
-        self.rows_count = 0;
+        self.rendered_rows_count = 0;
         self.geom_col_idx = cols_descr.iter().position(|col| {
             use std::ascii::AsciiExt;
             col.name.eq_ignore_ascii_case("st_asgeojson")
@@ -50,7 +50,7 @@ impl<W: Write> View for MapView<W> {
     }
 
     fn render_rowset_end(&mut self) -> io::Result<()> {
-        if self.rows_count > 0 {
+        if self.rendered_rows_count > 0 {
             try!(self.writer.write_all(b"]});</script>"));
         }
 
@@ -63,12 +63,12 @@ impl<W: Write> View for MapView<W> {
                          -> io::Result<()>
         where T: Iterator<Item=Option<&'a str>>
     {
-        if self.rows_count > 50 {
+        if self.rendered_rows_count > 50 {
             try!(self.writer.write_all(b"]});</script>"));
-            self.rows_count = 0;
+            self.rendered_rows_count = 0;
         }
 
-        if self.rows_count == 0 {
+        if self.rendered_rows_count == 0 {
             try!(self.writer.write_all(b"<script>\
                 pgBlackboard.addFeatures({\
                 type:'FeatureCollection',\
@@ -100,7 +100,7 @@ impl<W: Write> View for MapView<W> {
 
         try!(self.writer.write_all(b"},"));
 
-        self.rows_count += 1;
+        self.rendered_rows_count += 1;
 
         Ok(())
     }

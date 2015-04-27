@@ -1,5 +1,6 @@
 var ko = require('knockout');
 var initTableOutput = require('./table/table');
+var setupOutputFrameForMap = require('./map/map');
 
 module.exports = {
     'init': function (outputFrameEl, valueAccessor) {
@@ -62,6 +63,3 @@ function setupOutputFrameForTable(outputFrameEl, outputFrameContext) {
     initTableOutput(outputFrameEl.contentWindow);
 }
 
-function setupOutputFrameForMap(outputFrameEl, outputFrameContext) {
-
-}

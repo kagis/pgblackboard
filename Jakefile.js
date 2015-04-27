@@ -49,7 +49,8 @@ libs = Object.keys(libs);
 
 var jsExterns = [
     'src/ui/lib/knockout.extern.js',
-    'src/ui/lib/codemirror.extern.js'
+    'src/ui/lib/codemirror.extern.js',
+    'src/ui/lib/leaflet.extern.js'
 ];
 
 var cssFiles = [
