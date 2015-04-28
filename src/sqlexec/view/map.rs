@@ -44,9 +44,13 @@ impl<W: Write> View for MapView<W> {
             col.name.eq_ignore_ascii_case("st_asgeojson")
         });
 
-        write!(self.writer, "<script>pgBlackboard\
-                            .beginFeatureCollection();\
-                            </script>")
+        if self.geom_col_idx.is_some() {
+            try!(write!(self.writer, "<script>pgBlackboardMap\
+                                .beginFeatureCollection();\
+                                </script>"));
+        }
+
+        Ok(())
     }
 
     fn render_rowset_end(&mut self) -> io::Result<()> {
@@ -63,6 +67,11 @@ impl<W: Write> View for MapView<W> {
                          -> io::Result<()>
         where T: Iterator<Item=Option<&'a str>>
     {
+        let geom_col_idx = match self.geom_col_idx {
+            Some(it) => it,
+            None => return Ok(())
+        };
+
         if self.rendered_rows_count > 50 {
             try!(self.writer.write_all(b"]});</script>"));
             self.rendered_rows_count = 0;
@@ -70,7 +79,7 @@ impl<W: Write> View for MapView<W> {
 
         if self.rendered_rows_count == 0 {
             try!(self.writer.write_all(b"<script>\
-                pgBlackboard.addFeatures({\
+                pgBlackboardMap.addFeatures({\
                 type:'FeatureCollection',\
                 features:["));
         }
@@ -81,7 +90,7 @@ impl<W: Write> View for MapView<W> {
 
         let mut geom = None;
         for (idx, (val, descr)) in row.zip(descrs).enumerate() {
-            if Some(idx) == self.geom_col_idx {
+            if idx ==  geom_col_idx {
                 geom = val;
             } else {
                 try!(write!(
@@ -94,7 +103,7 @@ impl<W: Write> View for MapView<W> {
 
         try!(self.writer.write_all(b"},geometry:"));
         try!(match geom {
-            Some(geom) => write!(self.writer, "{:?}", geom),
+            Some(geom) => self.writer.write_all(geom.as_bytes()),
             None => self.writer.write_all(b"null")
         });
 

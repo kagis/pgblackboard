@@ -141,6 +141,7 @@ pub struct Request {
     pub query_string: Vec<(String, String)>,
     pub content: Option<RequestContent>,
     pub credentials: Option<RequestCredentials>,
+    pub if_non_match: Option<String>,
 }
 
 
@@ -196,6 +197,7 @@ impl Request {
         let mut content_length = 0usize;
         let mut credentials = None;
         let mut is_urlenc_content = false;
+        let mut if_non_match = None;
 
         fn err_or_line_is_not_empty(line_res: &io::Result<String>) -> bool {
             match line_res {
@@ -221,6 +223,9 @@ impl Request {
                 }
                 "authorization" => {
                     credentials = Some(try!(parse_authorization(header_value)));
+                },
+                "if-none-match" => {
+                    if_non_match = Some(header_value.to_string());
                 }
                 _ => continue,
             };
@@ -254,6 +259,7 @@ impl Request {
             query_string: query_string,
             content: content,
             credentials: credentials,
+            if_non_match: if_non_match
             //basic_auth: authorization,
         })
     }

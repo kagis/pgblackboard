@@ -148,6 +148,39 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
     });
 });
 
+var mapjsPrereqs = [
+    'src/ui/output/map/map.js',
+    'src/ui/lib/leaflet.extern.js'
+];
+
+file(path.join(cachedir, 'map.js'), mapjsPrereqs, { async: true }, function () {
+    var targetFileName = this.name;
+    closureCompiler.compile(['src/ui/output/map/map.js'], {
+        compilation_level: 'ADVANCED_OPTIMIZATIONS',
+        warning_level: 'VERBOSE',
+        formatting: 'PRETTY_PRINT',
+        language_in: 'ECMASCRIPT6_STRICT',
+        language_out: 'ECMASCRIPT5_STRICT',
+        // process_common_js_modules: true,
+        // common_js_entry_module: 'app.js',
+        // common_js_module_path_prefix: 'src/ui/lib/',
+        output_wrapper: '(function(){%output%})();',
+
+        // If you specify a directory here, all files inside are used
+        externs: ['src/ui/lib/leaflet.extern.js'],
+    },
+    function (errorsAndWarnings, result) {
+        if (result) {
+            fs.writeFileSync(targetFileName, result);
+            jake.logger.log(errorsAndWarnings);
+            complete();
+        } else {
+            jake.logger.error(errorsAndWarnings);
+            fail('Failed to compile map.js');
+        }
+    });
+});
+
 rule('.gz', '', { async: true }, function () {
     fs.createReadStream(this.source)
         .pipe(zlib.createGzip())
@@ -187,19 +220,26 @@ file(path.join(cachedir, 'loading-indicator.css'),
 
 file(path.join(outdir, 'bundle-map.js'),
     ['node_modules/leaflet/dist/leaflet.js',
-     'node_modules/leaflet/dist/leaflet.min.css'],
+     path.join(cachedir, 'map.js'),
+     path.join(cachedir, 'map.css')],
     function () {
 
     var bundle = '';
 
-    bundle += 'window.pgBlackboard.mapCss=' + JSON.stringify(
-        readTextFromFile('node_modules/leaflet/dist/leaflet.min.css')
-    ) + ';';
+    bundle += documentWrite(embeddedStyle(
+        readTextFromFile(path.join(cachedir, 'map.css'))
+    ));
 
     bundle += readTextFromFile('node_modules/leaflet/dist/leaflet.js');
+    bundle += readTextFromFile(path.join(cachedir, 'map.js'));
 
     fs.writeFileSync(this.name, bundle);
 })
+
+file(path.join(cachedir, 'map.css'),
+    ['node_modules/leaflet/dist/leaflet.css',
+     'src/ui/output/map/map.css'],
+     processCssTarget);
 
 rule('.min.css', '.css', function () {
     var css = fs.readFileSync(this.source).toString();
@@ -212,6 +252,8 @@ rule('.min.js', '.js', function () {
     var minifiedjs = uglifyjs.minify(this.source).code;
     fs.writeFileSync(this.name, minifiedjs);
 });
+
+
 
 function processCssTarget() {
     var css = this.prereqs.map(readCssFileAndProcessInlinings).join('');

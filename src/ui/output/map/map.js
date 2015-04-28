@@ -1,27 +1,49 @@
-module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext) {
+var pgBlackboard = window['pgBlackboard'];
 
-    if (!leafletLoaded) {
-        var script = document.createElement('script');
-        script.src = 'bundle-map.js';
-        script.addEventListener('load', function () {
-            leafletLoaded = true;
-            setupOutputFrameForMap(frameWindow, outputFrameContext);
-        });
-        document.body.appendChild(script);
-        return;
+/** @expose */
+window.pgBlackboardMap = {};
+
+/** @expose */
+window.pgBlackboardMap.beginFeatureCollection = function () {
+    latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
+};
+
+    /** @expose */
+window.pgBlackboardMap.addFeatures = function (featureCollection) {
+    featureCollection['features'].forEach(function (f) {
+        f.overlay = latestFeatureCollection;
+    });
+    latestFeatureCollection.addData(featureCollection);
+};
+
+var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png';
+var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
+var imageryUrl = 'http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z';
+
+var bingOptions = {
+    'subdomains': '01234567',
+    'quadkey': function (data) {
+        var quadKey = '';
+        for (var i = data.z; i > 0; i--) {
+            var digit = 0;
+            var mask = 1 << (i - 1);
+            if ((data.x & mask) !== 0) {
+                digit++;
+            }
+            if ((data.y & mask) !== 0) {
+                digit++;
+                digit++;
+            }
+            quadKey += digit;
+        }
+        return quadKey;
     }
+};
 
-    var style = frameWindow.document.createElement('style');
-    style.innerText = window['pgBlackboard']['mapCss'];
-    frameWindow.document.head.appendChild(style);
+var latestFeatureCollection;
 
-    // frameWindow.document.write(
-    //     '<style>' +
-    //     window['pgBlackboard']['mapCss'] +
-    //     '</style>'
-    // );
 
-    var map = L.map(frameWindow.document.body, {
+    var map = L.map(document.body, {
         'center': [
             20, // push antarctida down
             0
@@ -37,11 +59,11 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
     var basemap = L.tileLayer();
 
     function setDarkOrLightBasemap() {
-        var isDark = outputFrameContext.isDark();
+        var isDark = pgBlackboard['isDark']();
         basemap.setUrl(isDark ? darkBasemapUrl : lightBasemapUrl);
     }
-    var isDarkSubscription = outputFrameContext.isDark.subscribe(setDarkOrLightBasemap);
-    frameWindow.addEventListener('beforeunload', isDarkSubscription.dispose.bind(isDarkSubscription));
+    var isDarkSubscription = pgBlackboard['isDark']['subscribe'](setDarkOrLightBasemap);
+    window.addEventListener('beforeunload', isDarkSubscription['dispose'].bind(isDarkSubscription));
     setDarkOrLightBasemap();
 
     var imagery = L.tileLayer(imageryUrl, bingOptions);
@@ -86,20 +108,7 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
         }
     };
 
-    var latestFeatureCollection;
 
-    /** @expose */
-    frameWindow.beginFeatureCollection = function () {
-        latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
-    };
-
-    /** @expose */
-    frameWindow.addFeatures = function (featureCollection) {
-        featureCollection['features'].forEach(function (f) {
-            f.overlay = latestFeatureCollection;
-        });
-        latestFeatureCollection.addData(featureCollection);
-    };
 
     function addOverlay(overlayKey) {
         var overlay = L.geoJson(null, overlayOptions);
@@ -110,29 +119,8 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
         return overlay;
     }
 
-};
 
-var leafletLoaded = false;
 
-var bingOptions = {
-    subdomains: '01234567',
-    quadkey: function (data) {
-        var quadKey = '';
-        for (var i = data.z; i > 0; i--) {
-            var digit = 0;
-            var mask = 1 << (i - 1);
-            if ((data.x & mask) !== 0) {
-                digit++;
-            }
-            if ((data.y & mask) !== 0) {
-                digit++;
-                digit++;
-            }
-            quadKey += digit;
-        }
-        return quadKey;
-    }
-};
 
 function popupHtml(feature) {
     var props = feature['properties'];
@@ -171,6 +159,3 @@ var featureColors = [
     '#b15928',
 ];
 
-var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png';
-var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
-var imageryUrl = 'http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z';

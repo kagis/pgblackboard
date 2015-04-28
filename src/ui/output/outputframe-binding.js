@@ -1,6 +1,6 @@
 var ko = require('knockout');
 var initTableOutput = require('./table/table');
-var setupOutputFrameForMap = require('./map/map');
+// var setupOutputFrameForMap = require ('./map/map');
 
 module.exports = {
     'init': function (outputFrameEl, valueAccessor) {
@@ -15,7 +15,9 @@ module.exports = {
                 if (outputFrameContext.selectedDoc['errors']) {
                     outputFrameContext.selectedDoc['errors'].push(messageAndLine);
                 }
-            }
+            },
+
+            selectedDoc: null
         };
 
         outputFrameEl['setupPgBlackboardOutputFrame'] =
@@ -50,7 +52,8 @@ function setupOutputFrame(outputFrameEl, outputFrameContext, tableOrMap) {
         setupOutputFrameForTable(outputFrameEl.contentWindow, outputFrameContext);
         break;
     case 'map':
-        setupOutputFrameForMap(outputFrameEl.contentWindow, outputFrameContext);
+        outputFrameEl.contentWindow.document.write('<script src="bundle-map.js"></script>');
+        // setupOutputFrameForMap(outputFrameEl.contentWindow, outputFrameContext);
         break;
     }
 

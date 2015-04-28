@@ -23,6 +23,9 @@ use webapi::DbDir;
 mod index;
 use index::IndexPage;
 
+mod statres;
+use statres::StaticResource;
+
 
 use std::io;
 
@@ -79,23 +82,26 @@ impl http::Handler for WebApplication {
                 dbname: dbname.to_string()
             }.handle_http_req(tail, req),
 
-            ["favicon.ico"] => Box::new(BytesResponse {
+            ["favicon.ico"] => StaticResource {
                 content: include_bytes!("ui/favicon.ico"),
                 content_type: "image/vnd.microsoft.icon",
-                gzipped: false
-            }),
+                gzipped: false,
+                etag: "a",
+            }.handle_http_req(&[], req),
 
-            ["bundle-index.js"] => Box::new(BytesResponse {
+            ["bundle-index.js"] => StaticResource {
                 content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-index.js.gz")),
                 content_type: "application/javascript; charset=utf-8",
-                gzipped: true
-            }),
+                gzipped: true,
+                etag: "a",
+            }.handle_http_req(&[], req),
 
-            ["bundle-map.js"] => Box::new(BytesResponse {
+            ["bundle-map.js"] => StaticResource {
                 content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
                 content_type: "application/javascript; charset=utf-8",
-                gzipped: true
-            }),
+                gzipped: true,
+                etag: "a"
+            }.handle_http_req(&[], req),
 
             _ => Box::new(index::ErrorResponse {
                 status: http::Status::NotFound,
@@ -105,22 +111,7 @@ impl http::Handler for WebApplication {
     }
 }
 
-struct BytesResponse {
-    content: &'static [u8],
-    content_type: &'static str,
-    gzipped: bool
-}
 
-impl http::Response for BytesResponse {
-    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-        let mut w = try!(w.start_ok());
-        try!(w.write_content_type(self.content_type));
-        if self.gzipped {
-            try!(w.write_header("Content-Encoding", "gzip"));
-        }
-        w.write_content(self.content)
-    }
-}
 
 struct RootResource {
     pgaddr: String

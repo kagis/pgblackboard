@@ -11,9 +11,9 @@ pub struct ResponseStarter(pub BufStream<TcpStream>);
 impl ResponseStarter {
     pub fn start(mut self, status: Status) -> io::Result<ResponseWriter> {
         try!(write!(&mut self.0,
-                    "HTTP/1.1 {} {:?}\r\n",
+                    "HTTP/1.1 {} {}\r\n",
                     status as u16,
-                    status));
+                    status.phrase()));
 
         let mut resp_writer = ResponseWriter(self.0);
         try!(resp_writer.write_header("Connection", "close"));
@@ -45,6 +45,11 @@ impl ResponseWriter {
         try!(self.write_header("Transfer-Encoding", "chunked"));
         try!(self.0.write_all(b"\r\n"));
         Ok(ChunkedWriter(self.0))
+    }
+
+    pub fn finish_without_body(mut self) -> io::Result<()> {
+        try!(self.0.write_all(b"\r\n"));
+        Ok(())
     }
 
     pub fn write_www_authenticate_basic(&mut self, realm: &str) -> io::Result<&mut Self> {
