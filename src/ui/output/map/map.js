@@ -11,11 +11,15 @@ module.exports = function setupOutputFrameForMap(frameWindow, outputFrameContext
         return;
     }
 
-    frameWindow.document.write(
-        '<style>' +
-        window['pgBlackboard']['mapCss'] +
-        '</style>'
-    );
+    var style = frameWindow.document.createElement('style');
+    style.innerText = window['pgBlackboard']['mapCss'];
+    frameWindow.document.head.appendChild(style);
+
+    // frameWindow.document.write(
+    //     '<style>' +
+    //     window['pgBlackboard']['mapCss'] +
+    //     '</style>'
+    // );
 
     var map = L.map(frameWindow.document.body, {
         'center': [
