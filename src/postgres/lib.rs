@@ -412,7 +412,11 @@ impl<T: BufRead> MessageReader for T  {
             },
         };
 
-        println!("-> {:?}", ret);
+        match &ret {
+            &BackendMessage::DataRow(..) => {},
+            other => println!("-> {:?}", other)
+        };
+
         Ok(ret)
     }
 }

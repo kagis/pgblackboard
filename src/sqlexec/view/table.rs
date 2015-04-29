@@ -9,10 +9,10 @@ static INTRO: &'static [u8] = b"\
         <meta charset='utf-8' />\
         <title></title>\
     </head>\
-    <body>\
+    <body><div class='main'>\
 ";
 
-static OUTRO: &'static [u8] = b"</body></html>\r\n";
+static OUTRO: &'static [u8] = b"</div></body></html>\r\n";
 
 
 pub struct TableView<W: Write> {

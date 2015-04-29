@@ -7,29 +7,27 @@ body,
     margin: 0;
     }
 
-.light { color: #555; }
-.light .leaflet-container { background: #fcfcfc; }
-.light .leaflet-control-layers-expanded {  background-color: #fcfcfc; }
-.light .leaflet-control-layers-separator { border-color: #ccc; }
+/*.light*/ .leaflet-container { background: #fcfcfc; color: #555; }
+/*.light*/ .leaflet-control-layers-expanded {  background-color: #fcfcfc; }
+/*.light*/ .leaflet-control-layers-separator { border-color: #ccc; }
 
 /*.light .leaflet-control-scale-line {
     border-color: #aaa;
     background-color: rgba(220, 220, 220, .3);
     } */
 
-.light .leaflet-popup-content-wrapper,
-.light .leaflet-popup-tip {
+/*.light*/ .leaflet-popup-content-wrapper,
+/*.light*/ .leaflet-popup-tip {
     background-color: #fcfcfc;
     }
 
-.light .leaflet-popup-content-wrapper,
-.light .leaflet-popup-tip {
+/*.light*/ .leaflet-popup-content-wrapper,
+/*.light*/ .leaflet-popup-tip {
     box-shadow: 0 0 0 .4em rgba(0,0,0,.1);
     }
 
 
-.dark { color: #eee; }
-.dark .leaflet-container { background: #222; }
+.dark .leaflet-container { background: #222; color: #eee; }
 
 .dark .leaflet-control-layers-expanded {  background-color: #333; }
 .dark .leaflet-control-layers-separator { border-color: #555; }

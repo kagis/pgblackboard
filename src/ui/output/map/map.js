@@ -43,7 +43,7 @@ var bingOptions = {
 var latestFeatureCollection;
 
 
-    var map = L.map(document.body, {
+    var map = L.map(document.getElementsByClassName('main')[0], {
         'center': [
             20, // push antarctida down
             0
