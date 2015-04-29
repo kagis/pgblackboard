@@ -1,6 +1,7 @@
 use super::{View, FieldDescription};
 use std::io::{self, Write};
 use pg;
+use rustc_serialize::json;
 
 pub struct MapView<W: Write> {
     writer: W,
@@ -84,6 +85,12 @@ impl<W: Write> View for MapView<W> {
                 features:["));
         }
 
+
+
+        // try!(enc.emit_struct("", 3, || {
+        //     Ok(())
+        // }));
+
         try!(self.writer.write_all(b"{\
             type:'Feature',\
             properties:{"));
@@ -95,9 +102,9 @@ impl<W: Write> View for MapView<W> {
             } else {
                 try!(write!(
                     self.writer,
-                    "{:?}: {:?},",
-                    descr.name,
-                    val.unwrap_or("null")));
+                    "{}: {},",
+                    json::as_json(&descr.name),
+                    json::as_json(&val)));
             }
         }
 

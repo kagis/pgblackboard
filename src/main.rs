@@ -12,8 +12,6 @@ extern crate postgres as pg;
 // extern crate http;
 mod http;
 
-
-
 mod sqlexec;
 use sqlexec::SqlExecHandler;
 
@@ -82,26 +80,9 @@ impl http::Handler for WebApplication {
                 dbname: dbname.to_string()
             }.handle_http_req(tail, req),
 
-            ["favicon.ico"] => StaticResource {
-                content: include_bytes!("ui/favicon.ico"),
-                content_type: "image/vnd.microsoft.icon",
-                gzipped: false,
-                etag: "a",
-            }.handle_http_req(&[], req),
-
-            ["bundle-index.js"] => StaticResource {
-                content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-index.js.gz")),
-                etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-index.js.md5")),
-                content_type: "application/javascript; charset=utf-8",
-                gzipped: true
-            }.handle_http_req(&[], req),
-
-            ["bundle-map.js"] => StaticResource {
-                content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
-                etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-map.js.md5")),
-                content_type: "application/javascript; charset=utf-8",
-                gzipped: true
-            }.handle_http_req(&[], req),
+            ["favicon.ico"] => FAVICON_ICO.handle_http_req(&[], req),
+            ["bundle-index.js"] => BUNDLE_INDEX.handle_http_req(&[], req),
+            ["bundle-map.js"] => BUNDLE_MAP.handle_http_req(&[], req),
 
             _ => Box::new(index::ErrorResponse {
                 status: http::Status::NotFound,
@@ -110,6 +91,29 @@ impl http::Handler for WebApplication {
         }
     }
 }
+
+
+const FAVICON_ICO: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/favicon.ico")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.md5")),
+    content_type: "image/vnd.microsoft.icon",
+    gzipped: false
+};
+
+const BUNDLE_INDEX: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-index.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-index.js.md5")),
+    content_type: "application/javascript; charset=utf-8",
+    gzipped: true
+};
+
+const BUNDLE_MAP: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-map.js.md5")),
+    content_type: "application/javascript; charset=utf-8",
+    gzipped: true
+};
+
 
 
 

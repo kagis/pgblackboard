@@ -77,8 +77,14 @@ task('default', [
     path.join(outdir, 'bundle-index.js.md5'),
     path.join(outdir, 'bundle-map.js.gz'),
     path.join(outdir, 'bundle-map.js.md5'),
+    path.join(outdir, 'favicon.ico'),
+    path.join(outdir, 'favicon.ico.md5'),
     path.join(outdir, 'err.html')
 ]);
+
+file(path.join(outdir, 'favicon.ico'), ['src/ui/favicon.ico'], function () {
+    jake.cpR('src/ui/favicon.ico', this.name);
+});
 
 var indexPrereqs = [
     'src/ui/index.html',
