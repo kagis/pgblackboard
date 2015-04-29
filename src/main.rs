@@ -91,16 +91,16 @@ impl http::Handler for WebApplication {
 
             ["bundle-index.js"] => StaticResource {
                 content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-index.js.gz")),
+                etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-index.js.md5")),
                 content_type: "application/javascript; charset=utf-8",
-                gzipped: true,
-                etag: "a",
+                gzipped: true
             }.handle_http_req(&[], req),
 
             ["bundle-map.js"] => StaticResource {
                 content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
+                etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-map.js.md5")),
                 content_type: "application/javascript; charset=utf-8",
-                gzipped: true,
-                etag: "a"
+                gzipped: true
             }.handle_http_req(&[], req),
 
             _ => Box::new(index::ErrorResponse {

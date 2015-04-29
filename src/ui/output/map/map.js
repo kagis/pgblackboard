@@ -8,7 +8,7 @@ window.pgBlackboardMap.beginFeatureCollection = function () {
     latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
 };
 
-    /** @expose */
+/** @expose */
 window.pgBlackboardMap.addFeatures = function (featureCollection) {
     featureCollection['features'].forEach(function (f) {
         f.overlay = latestFeatureCollection;

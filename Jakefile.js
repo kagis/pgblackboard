@@ -5,6 +5,8 @@ var uglifyjs        = require('uglify-js'); // for codemirror
 var fs              = require('fs');
 var path            = require('path');
 var zlib            = require('zlib');
+var crypto          = require('crypto');
+
 
 
 function getJsSources(moduleName, jsSources) {
@@ -72,7 +74,9 @@ jake.mkdirP(cachedir);
 task('default', [
     path.join(outdir, 'index.html'),
     path.join(outdir, 'bundle-index.js.gz'),
+    path.join(outdir, 'bundle-index.js.md5'),
     path.join(outdir, 'bundle-map.js.gz'),
+    path.join(outdir, 'bundle-map.js.md5'),
     path.join(outdir, 'err.html')
 ]);
 
@@ -186,6 +190,12 @@ rule('.gz', '', { async: true }, function () {
         .pipe(zlib.createGzip())
         .pipe(fs.createWriteStream(this.name))
         .on('finish', function () { complete(); });
+});
+
+rule('.md5', '', function () {
+    var content = fs.readFileSync(this.source);
+    var hash = crypto.createHash('md5').update(content).digest('hex');
+    fs.writeFileSync(this.name, hash);
 });
 
 var indexBundlePrereqs = [
