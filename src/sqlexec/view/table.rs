@@ -1,5 +1,6 @@
-use super::{View, FieldDescription};
+use super::{View, FieldDescription, QueryPlan};
 use std::io::{self, Write};
+use rustc_serialize::json;
 use pg;
 
 static INTRO: &'static [u8] = b"\
@@ -150,6 +151,12 @@ impl<W: Write> View for TableView<W> {
         try!(writer.write_all(command_tag.as_bytes()));
         try!(writer.write_all(b"</pre>"));
         Ok(())
+    }
+
+    fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
+        write!(self.writer,
+               "<script>pgBlackboardOutput.queryPlan({});</script>",
+               json::as_json(plan))
     }
 
     // fn flush(&self) -> io::Result<()> {

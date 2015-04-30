@@ -5,6 +5,7 @@ pub use self::table::TableView;
 pub use self::map::MapView;
 
 use std::io;
+use std::collections::BTreeMap;
 use pg;
 
 pub trait View {
@@ -47,8 +48,19 @@ pub trait View {
                             pk_mask: &[bool])
                             -> io::Result<()>;
 
+    fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()>;
+
     // fn flush(&self) -> io::Result<()>;
 }
+
+#[derive(RustcEncodable)]
+struct QueryPlan {
+    cost: f32,
+    typ: String,
+    properties: BTreeMap<String, String>,
+    children: Vec<QueryPlan>
+}
+
 
 
 pub struct FieldDescription<'a, 'b> {

@@ -14,6 +14,8 @@ use std::ops::Range;
 use http;
 use pg;
 
+use rustc_serialize::json;
+
 pub struct SqlExecHandler<'a> {
     pub pgaddr: &'a str
 }
@@ -309,41 +311,58 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
     //     }
     // }
 
-    let mut lastest_cols_descr = None;
+    let mut maybe_latest_cols_descr = None;
+    let mut maybe_last_row = None;
 
     for event in execution_events {
-        try!(match event {
+        match event {
             pg::ExecutionEvent::RowsetBegin(cols_descr) => {
                 latest_rowset_id += 1;
-                let retval = view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| view::FieldDescription {
+
+                try!(view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| view::FieldDescription {
                     name: &x.name,
                     typ: match pg::type_name(x.type_oid) {
                         Some(typ) => typ,
                         None => "---"
                     },
                     is_numeric: pg::type_isnum(x.type_oid)
-                }).collect::<Vec<_>>());
-                lastest_cols_descr = Some(cols_descr);
-                retval
-            }
-
-            pg::ExecutionEvent::RowsetEnd => {
-                view.render_rowset_end()
+                }).collect::<Vec<_>>()));
+                maybe_latest_cols_descr = Some(cols_descr);
+                maybe_last_row = None;
             }
 
             pg::ExecutionEvent::RowFetched(row) => {
-                let row_iter = row.iter().map(|maybe_val| {
-                    maybe_val.as_ref().map(|val| &val[..])
-                });
-                let cols_descr = lastest_cols_descr
-                    .as_ref()
-                    .expect("Row fetched before rowset started.");
+                {
+                    let row_iter = row.iter().map(|maybe_val| {
+                        maybe_val.as_ref().map(|val| &val[..])
+                    });
+                    let cols_descr = maybe_latest_cols_descr
+                        .as_ref()
+                        .expect("Row fetched before rowset started.");
 
-                view.render_row(row_iter, cols_descr)
+                    try!(view.render_row(row_iter, cols_descr));
+                }
+                maybe_last_row = Some(row);
+            }
+
+            pg::ExecutionEvent::RowsetEnd => {
+                try!(view.render_rowset_end());
+
+                if let Some([ref col_descr]) = maybe_latest_cols_descr.as_ref().map(|it| &it[..]) {
+                    if &col_descr.name[..] == "QUERY PLAN" {
+                        if let Some(ref last_row) = maybe_last_row {
+                            if let Some(ref plan_str) = last_row[0] {
+                                if let Ok(plan) = json::Json::from_str(&plan_str) {
+
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             pg::ExecutionEvent::NonQueryExecuted(cmd) => {
-                view.render_nonquery(&cmd)
+                try!(view.render_nonquery(&cmd))
             }
 
             pg::ExecutionEvent::SqlErrorOccured(err) => {
@@ -354,19 +373,19 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                     linecol
                 });
 
-                view.render_error(&err.message,
+                try!(view.render_error(&err.message,
                                   linecol.map(|x| x.line).unwrap_or(0),
-                                  linecol.map(|x| x.col).unwrap_or(0))
+                                  linecol.map(|x| x.col).unwrap_or(0)));
             }
 
             pg::ExecutionEvent::IoErrorOccured(err) => {
-                view.render_error(&err, 0, 0)
+                try!(view.render_error(&err, 0, 0));
             }
 
             pg::ExecutionEvent::Notice(notice) => {
-                view.render_notice(&notice.message)
+                try!(view.render_notice(&notice.message));
             }
-        });
+        };
     }
 
     try!(view.render_outro());

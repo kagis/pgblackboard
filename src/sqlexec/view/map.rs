@@ -1,4 +1,4 @@
-use super::{View, FieldDescription};
+use super::{View, FieldDescription, QueryPlan};
 use std::io::{self, Write};
 use pg;
 use rustc_serialize::json;
@@ -152,6 +152,10 @@ impl<W: Write> View for MapView<W> {
                             -> io::Result<()>
     {
         self.writer.write_all(b"")
+    }
+
+    fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
+        Ok(())
     }
 }
 
