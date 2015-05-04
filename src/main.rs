@@ -83,6 +83,7 @@ impl http::Handler for WebApplication {
             ["favicon.ico"] => FAVICON_ICO.handle_http_req(&[], req),
             ["bundle-index.js"] => BUNDLE_INDEX.handle_http_req(&[], req),
             ["bundle-map.js"] => BUNDLE_MAP.handle_http_req(&[], req),
+            ["bundle-queryplan.js"] => BUNDLE_QUERYPLAN.handle_http_req(&[], req),
 
             _ => Box::new(index::ErrorResponse {
                 status: http::Status::NotFound,
@@ -114,6 +115,12 @@ const BUNDLE_MAP: StaticResource = StaticResource {
     gzipped: true
 };
 
+const BUNDLE_QUERYPLAN: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-queryplan.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-queryplan.js.md5")),
+    content_type: "application/javascript; charset=utf-8",
+    gzipped: true
+};
 
 
 

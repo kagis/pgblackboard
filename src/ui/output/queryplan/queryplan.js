@@ -1,33 +1,22 @@
-(function () {
-'use strict';
+var d3 = require('d3');
 
-window.queryPlan = function (plan) {
+/** @expose */
+window.pgBlackboardOutput = {};
 
-    var lowHue = 90; /* green */
-    var highHue = 20; /* red */
-    var hueDelta = highHue - lowHue;
+/** @expose */
+window.pgBlackboardOutput.queryPlan = function (planTree) {
 
-    var graph = new dagreD3.Digraph();
+    var graph = buildGraph(planTree);
 
-    plan.nodes.forEach(function (node, nodeId) {
-        graph.addNode(nodeId, {
-            label: node._type,
-            description: getNodeDescription(node),
-            fill: '_cost' in node && d3.hsl(hueDelta * node._cost + lowHue, 1, 0.5)
-        });
-        if ('_parentIndex' in node) {
-            graph.addEdge(null, nodeId, node._parentIndex);
-        }
-    });
 
     var renderer = new dagreD3.Renderer();
     var zoomBehavior = d3.behavior.zoom();
 
-    renderer.zoom(function (graph, svg) {
-        return zoomBehavior.on('zoom', function () {
-            svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
-        });
-    });
+    // renderer.zoom(function (graph, svg) {
+    //     return zoomBehavior.on('zoom', function () {
+    //         svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
+    //     });
+    // });
 
     // insert back rect for nodes
     // for color lightening
@@ -46,9 +35,7 @@ window.queryPlan = function (plan) {
         return svgNodes;
     });
 
-    var layout = dagreD3.layout()
-                        .nodeSep(20)
-                        .rankDir('LR');
+
 
     var overlay = d3.select(document.body)
                     .append('div')
@@ -60,8 +47,15 @@ window.queryPlan = function (plan) {
 
     var svg = overlay.append('svg').attr('class', 'queryplan');
 
-    var renderedLayout = renderer.layout(layout)
-                                 .run(graph, svg);
+  //   var svg = d3.select("svg"),
+  //     inner = svg.select("g"),
+  //     zoom = d3.behavior.zoom().on("zoom", function() {
+  //       inner.attr("transform", "translate(" + d3.event.translate + ")" +
+  //                                   "scale(" + d3.event.scale + ")");
+  //     });
+  // svg.call(zoom);
+
+    render(svg, graph);
 
     // center
     zoomBehavior.translate([
@@ -139,18 +133,45 @@ function QueryplanTip() {
     };
 }
 
-function getNodeDescription(node) {
+function buildGraph(node, nodeid, graph) {
+    var lowHue = 90; /* green */
+    var highHue = 20; /* red */
+    var hueDelta = highHue - lowHue;
+
+    nodeid = nodeid || 1;
+    graph = graph || createBlankGraph();
+
+    graph.setNode(nodeid, {
+        label: node['typ'],
+        description: getNodeDescription(node['properties']),
+        fill: node['heat'] && d3.hsl(hueDelta * node['heat'] + lowHue, 1, 0.5)
+    });
+
+    node['children'].forEach(function (child, childIndex) {
+        var parentid = nodeid;
+        var childid = parentid + childIndex + 1;
+        buildGraph(child, childid, graph);
+        graph.setEdge(childid, parentid);
+    });
+
+    return graph;
+}
+
+function createBlankGraph() {
+    return new dagreD3.graphlib.Graph().setGraph({
+        nodesep: 20,
+        rankdir:'LR'
+    });
+}
+
+function getNodeDescription(properties) {
     var description = '<table>';
-    for (var prop in node) {
-        if (prop[0] !== '_') {
-            description += '<tr>' +
-                '<td>' + prop + '</td>' +
-                '<td>' + node[prop] + '</td>' +
-                '</tr>';
-        }
+    for (var prop in properties) {
+        description += '<tr>' +
+            '<td>' + prop + '</td>' +
+            '<td>' + properties[prop] + '</td>' +
+            '</tr>';
     }
     description += '</table>';
     return description;
 }
-
-})();

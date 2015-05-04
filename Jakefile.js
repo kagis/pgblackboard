@@ -77,6 +77,8 @@ task('default', [
     path.join(outdir, 'bundle-index.js.md5'),
     path.join(outdir, 'bundle-map.js.gz'),
     path.join(outdir, 'bundle-map.js.md5'),
+    path.join(outdir, 'bundle-queryplan.js.gz'),
+    path.join(outdir, 'bundle-queryplan.js.md5'),
     path.join(outdir, 'favicon.ico'),
     path.join(outdir, 'favicon.ico.md5'),
     path.join(outdir, 'err.html')
@@ -250,12 +252,35 @@ file(path.join(outdir, 'bundle-map.js'),
     bundle += readTextFromFile(path.join(cachedir, 'map.js'));
 
     fs.writeFileSync(this.name, bundle);
-})
+});
 
 file(path.join(cachedir, 'map.css'),
     ['node_modules/leaflet/dist/leaflet.css',
      'src/ui/output/map/map.css'],
      processCssTarget);
+
+
+file(path.join(outdir, 'bundle-queryplan.js'),
+    ['src/ui/output/queryplan/queryplan.js',
+     'src/ui/output/queryplan/queryplan.css',
+     'node_modules/d3/d3.min.js',
+     'node_modules/dagre-d3/dist/dagre-d3.min.js'],
+    function () {
+
+    var bundle = '';
+
+    bundle += documentWrite(embeddedStyle(readTextFromFile(
+        'src/ui/output/queryplan/queryplan.css'
+    )));
+
+    bundle += ['node_modules/d3/d3.min.js',
+                'node_modules/dagre-d3/dist/dagre-d3.min.js',
+                'src/ui/output/queryplan/queryplan.js']
+                .map(readTextFromFile)
+                .join('\n');
+
+    fs.writeFileSync(this.name, bundle);
+})
 
 rule('.min.css', '.css', function () {
     var css = fs.readFileSync(this.source).toString();

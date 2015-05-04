@@ -17,12 +17,16 @@ static OUTRO: &'static [u8] = b"</div></body></html>\r\n";
 
 
 pub struct TableView<W: Write> {
-    writer: W
+    writer: W,
+    queryplan_bundle_was_written: bool
 }
 
 impl<W: Write> TableView<W> {
     pub fn new(writer: W) -> TableView<W> {
-        TableView { writer: writer }
+        TableView {
+            writer: writer,
+            queryplan_bundle_was_written: false
+        }
     }
 }
 
@@ -154,6 +158,11 @@ impl<W: Write> View for TableView<W> {
     }
 
     fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
+        if !self.queryplan_bundle_was_written {
+            self.queryplan_bundle_was_written = true;
+            try!(self.writer.write_all(b"<script src='bundle-queryplan.js'></script>"));
+        }
+
         write!(self.writer,
                "<script>pgBlackboardOutput.queryPlan({});</script>",
                json::as_json(plan))

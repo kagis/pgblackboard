@@ -5,7 +5,7 @@ pub use self::table::TableView;
 pub use self::map::MapView;
 
 use std::io;
-use std::collections::BTreeMap;
+use rustc_serialize::json;
 use pg;
 
 pub trait View {
@@ -53,12 +53,13 @@ pub trait View {
     // fn flush(&self) -> io::Result<()>;
 }
 
+#[derive(Debug)]
 #[derive(RustcEncodable)]
-struct QueryPlan {
-    cost: f32,
-    typ: String,
-    properties: BTreeMap<String, String>,
-    children: Vec<QueryPlan>
+pub struct QueryPlan {
+    pub heat: Option<f64>,
+    pub typ: String,
+    pub properties: json::Object,
+    pub children: Vec<QueryPlan>
 }
 
 

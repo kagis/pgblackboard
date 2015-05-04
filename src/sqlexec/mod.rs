@@ -311,8 +311,8 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
     //     }
     // }
 
-    let mut maybe_latest_cols_descr = None;
-    let mut maybe_last_row = None;
+    let mut latest_cols_descr = Vec::new();
+    let mut last_row = Vec::new();
 
     for event in execution_events {
         match event {
@@ -327,8 +327,8 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                     },
                     is_numeric: pg::type_isnum(x.type_oid)
                 }).collect::<Vec<_>>()));
-                maybe_latest_cols_descr = Some(cols_descr);
-                maybe_last_row = None;
+                latest_cols_descr = cols_descr;
+                last_row = Vec::new();
             }
 
             pg::ExecutionEvent::RowFetched(row) => {
@@ -336,24 +336,21 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                     let row_iter = row.iter().map(|maybe_val| {
                         maybe_val.as_ref().map(|val| &val[..])
                     });
-                    let cols_descr = maybe_latest_cols_descr
-                        .as_ref()
-                        .expect("Row fetched before rowset started.");
 
-                    try!(view.render_row(row_iter, cols_descr));
+                    try!(view.render_row(row_iter, &latest_cols_descr));
                 }
-                maybe_last_row = Some(row);
+                last_row = row;
             }
 
             pg::ExecutionEvent::RowsetEnd => {
                 try!(view.render_rowset_end());
 
-                if let Some([ref col_descr]) = maybe_latest_cols_descr.as_ref().map(|it| &it[..]) {
+                if let [ref col_descr] = &latest_cols_descr[..] {
                     if &col_descr.name[..] == "QUERY PLAN" {
-                        if let Some(ref last_row) = maybe_last_row {
-                            if let Some(ref plan_str) = last_row[0] {
-                                if let Ok(plan) = json::Json::from_str(&plan_str) {
-
+                        if let [Some(ref plan_str)] = &last_row[..] {
+                            if let Ok(plan) = json::Json::from_str(&plan_str) {
+                                if let Some(plan) = queryplan_from_json(plan) {
+                                    try!(view.render_queryplan(&plan));
                                 }
                             }
                         }
@@ -391,6 +388,152 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
     try!(view.render_outro());
 
     Ok(())
+}
+
+fn queryplan_from_json(inp: json::Json) -> Option<view::QueryPlan> {
+
+    let inp = inp.as_array()
+                .and_then(|it| it.first())
+                .and_then(|it| it.find("Plan"))
+                .and_then(|it| it.as_object());
+
+    let inp = match inp {
+        Some(x) => x,
+        None => return None
+    };
+
+    struct AbsCostQueryPlan {
+        self_cost: Option<f64>,
+        total_cost: Option<f64>,
+        typ: String,
+        children: Vec<AbsCostQueryPlan>,
+        properties: json::Object
+    }
+
+
+
+    // let mut stack = vec![inp];
+    // while let Some(node) = stack.pop() {
+    //     if let Some(children) = node.get("Plans").and_then(|it| it.as_array()) {
+    //         for child in children.iter().filter_map(|it| it.as_object()) {
+    //             stack.push(child);
+    //         }
+    //     }
+    //     println!("{:?}", node.get("Node Type"));
+    // }
+
+
+    let cost_prop = ["Actual Total Time", "Total Cost"]
+                    .iter()
+                    .map(|&it| it)
+                    .filter(|&it| inp.contains_key(it))
+                    .next();
+
+
+
+    // let (min_cost, max_cost) =
+
+    fn map_nodes<F, R>(obj: &json::Object, f: F) -> (R, Vec<R>)
+        where F: Fn(&json::Object) -> R
+    {
+        (
+            f(obj),
+            obj.get("Plans")
+                .and_then(|it| it.as_array())
+                .unwrap_or(&Vec::new())
+                .iter()
+                .filter_map(|it| it.as_object())
+                .map(f)
+                .collect::<Vec<_>>()
+        )
+    }
+
+
+
+    fn make_node(obj: &json::Object, cost_prop: Option<&str>) -> AbsCostQueryPlan {
+        let children = obj.get("Plans")
+                        .and_then(|it| it.as_array())
+                        .unwrap_or(&Vec::new())
+                        .iter()
+                        .filter_map(|it| it.as_object())
+                        .map(|it| make_node(it, cost_prop))
+                        .collect::<Vec<_>>();
+
+
+        let total_cost = cost_prop.and_then(|it| obj.get(it))
+                                  .and_then(|it| it.as_f64());
+
+        let children_cost = children.iter()
+                                .filter_map(|child| child.total_cost)
+                                .sum::<f64>();
+
+        let self_cost = total_cost.map(|it| it - children_cost);
+
+        AbsCostQueryPlan {
+            self_cost: self_cost,
+            total_cost: total_cost,
+            children: children,
+
+            typ: obj.get("Node Type")
+                    .and_then(|it| it.as_string())
+                    .unwrap_or("Unknown")
+                    .to_string(),
+
+            properties: {
+                let mut props = obj.clone();
+                props.remove("Plans");
+                props
+            }
+        }
+    }
+
+    let abs_cost_query_plan = make_node(&inp, cost_prop);
+
+    let min_cost_and_factor = {
+        let mut min_cost = ::std::f64::INFINITY;
+        let mut max_cost = ::std::f64::NEG_INFINITY;
+        let mut stack = vec![&abs_cost_query_plan];
+        while let Some(node) = stack.pop() {
+            stack.extend(&node.children);
+            if let Some(it) = node.self_cost {
+                min_cost = min_cost.min(it);
+                max_cost = max_cost.max(it);
+            }
+        }
+
+        if min_cost.is_finite() &&
+            max_cost.is_finite() &&
+            max_cost - min_cost > ::std::f64::EPSILON
+        {
+            Some((min_cost, (max_cost - min_cost).recip()))
+        } else {
+            None
+        }
+    };
+
+
+
+    fn make_node1(node: AbsCostQueryPlan,
+                  min_cost: Option<f64>,
+                  cost_factor: Option<f64>)
+                  -> view::QueryPlan
+    {
+        view::QueryPlan {
+            typ: node.typ,
+            children: node.children.into_iter().map(|child| make_node1(child, min_cost, cost_factor)).collect(),
+            properties: node.properties,
+            heat: match (node.self_cost, min_cost, cost_factor) {
+                (Some(self_cost), Some(min_cost), Some(cost_factor)) => {
+                    Some((self_cost - min_cost) * cost_factor)
+                }
+                _ => None
+            }
+        }
+    }
+
+    Some(make_node1(abs_cost_query_plan,
+                    min_cost_and_factor.map(|(min, _)| min),
+                    min_cost_and_factor.map(|(_, factor)| factor)))
 }
 
 
