@@ -1,10 +1,88 @@
-var d3 = require('d3');
+// var d3 = require('d3');
 
 /** @expose */
 window.pgBlackboardOutput = {};
 
 /** @expose */
-window.pgBlackboardOutput.queryPlan = function (planTree) {
+window.pgBlackboardOutput.queryPlan = function (plan) {
+    var width = 1300;
+    var height = 300;
+
+    var tree = d3.layout.tree()
+                .size([height, width]);
+
+
+
+    var svg = d3.select('body').append('svg')
+                 .attr('width', width)
+                 .attr('height', height);
+
+    svg.append('rect')
+        .attr('class', 'overlay')
+        .attr('width', width)
+        .attr('height', height);
+
+    svg.call(d3.behavior.zoom().on('zoom', function () {
+        graphContainer.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
+    }));
+
+    var graphContainer = svg.append('g')
+        .attr('transform', 'translate(100, 100)');
+
+
+    var root = plan;
+    var nodes = tree.nodes(root).reverse();
+    var links = tree.links(nodes);
+
+    nodes.forEach(function(d) { d.y = d.depth * 150; });
+
+    var i = 0;
+    var node = graphContainer.selectAll('g.queryplan__node')
+                .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+    var nodeEnter = node.enter()
+                    .append('g')
+                    .attr('class', 'queryplan__node')
+                    .attr('transform', function(d) { return 'translate(' + d.y + ',' + d.x + ')'; });
+
+
+    nodeEnter.append('rect')
+           .attr('rx', 5)
+           .attr('ry', 5)
+           .attr('width', 100)
+           .attr('height', 30)
+           .attr('x', -50)
+           .attr('y', -15)
+           // .style('stroke', '#555')
+           .attr('fill', function (d) {
+                var lowHue = 90; /* green */
+                var highHue = 20; /* red */
+                var hueDelta = highHue - lowHue;
+                return d3.hsl(hueDelta * d['heat'] + lowHue, 1, 0.5);
+            });
+
+    nodeEnter.append('text')
+               .attr('dy', '.3em')
+               .attr('text-anchor', 'middle')
+               .text(function (d) { return d['typ']; })
+               .style('fill-opacity', 1);
+
+    var link = graphContainer.selectAll('path.link')
+                .data(links, function(d) { return d.target.id; });
+
+
+    var diagonal = d3.svg.diagonal()
+                    .projection(function(d) { return [d.y, d.x]; });
+    link.enter()
+        .insert('path', 'g')
+        .attr('class', 'queryplan__edge')
+        .style('fill', 'none')
+        .style('stroke', '#555')
+        .attr('d', diagonal);
+};
+
+/** @expose */
+window.pgBlackboardOutput.queryPlan_ = function (planTree) {
 
     var graph = buildGraph(planTree);
 
@@ -47,11 +125,11 @@ window.pgBlackboardOutput.queryPlan = function (planTree) {
 
     var svg = overlay.append('svg').attr('class', 'queryplan');
 
-  //   var svg = d3.select("svg"),
-  //     inner = svg.select("g"),
-  //     zoom = d3.behavior.zoom().on("zoom", function() {
-  //       inner.attr("transform", "translate(" + d3.event.translate + ")" +
-  //                                   "scale(" + d3.event.scale + ")");
+  //   var svg = d3.select('svg'),
+  //     inner = svg.select('g'),
+  //     zoom = d3.behavior.zoom().on('zoom', function() {
+  //       inner.attr('transform', 'translate(' + d3.event.translate + ')' +
+  //                                   'scale(' + d3.event.scale + ')');
   //     });
   // svg.call(zoom);
 
