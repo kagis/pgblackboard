@@ -11,74 +11,70 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
     var tree = d3.layout.tree()
                 .size([height, width]);
 
+    var createSVGElem = document.createElementNS.bind(
+        document,
+        'http://www.w3.org/2000/svg'
+    );
+    var svg = createSVGElem('svg');
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
 
+    document.body.appendChild(svg);
 
-    var svg = d3.select('body').append('svg')
-                 .attr('width', width)
-                 .attr('height', height);
+    var graphContainer = createSVGElem('g');
+    graphContainer.setAttribute('transform', 'translate(100, 0)');
+    svg.appendChild(graphContainer);
 
-    svg.append('rect')
-        .attr('class', 'overlay')
-        .attr('width', width)
-        .attr('height', height);
+    var nodes = tree.nodes(plan).reverse();
+    nodes.forEach(function(d) {
+        d.y = d.depth * 150;
+    });
 
-    svg.call(d3.behavior.zoom().on('zoom', function () {
-        graphContainer.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
-    }));
-
-    var graphContainer = svg.append('g')
-        .attr('transform', 'translate(100, 100)');
-
-
-    var root = plan;
-    var nodes = tree.nodes(root).reverse();
     var links = tree.links(nodes);
 
-    nodes.forEach(function(d) { d.y = d.depth * 150; });
+    var diagonal = d3.svg.diagonal().projection(function(d) {
+        return [d.y, d.x];
+    });
 
-    var i = 0;
-    var node = graphContainer.selectAll('g.queryplan__node')
-                .data(nodes, function(d) { return d.id || (d.id = ++i); });
+    links.forEach(function (d) {
+        var path = createSVGElem('path');
+        path.setAttribute('d', diagonal(d));
+        path.setAttribute('class', 'queryplan__edge');
 
-    var nodeEnter = node.enter()
-                    .append('g')
-                    .attr('class', 'queryplan__node')
-                    .attr('transform', function(d) { return 'translate(' + d.y + ',' + d.x + ')'; });
+        graphContainer.appendChild(path);
+    });
 
+    nodes.forEach(function(d) {
 
-    nodeEnter.append('rect')
-           .attr('rx', 5)
-           .attr('ry', 5)
-           .attr('width', 100)
-           .attr('height', 30)
-           .attr('x', -50)
-           .attr('y', -15)
-           // .style('stroke', '#555')
-           .attr('fill', function (d) {
-                var lowHue = 90; /* green */
-                var highHue = 20; /* red */
-                var hueDelta = highHue - lowHue;
-                return d3.hsl(hueDelta * d['heat'] + lowHue, 1, 0.5);
-            });
+        var nodeLabel = createSVGElem('text');
+        nodeLabel.setAttribute('dy', '.3em');
+        nodeLabel.setAttribute('text-anchor', 'middle');
+        nodeLabel.textContent = d['typ'];
 
-    nodeEnter.append('text')
-               .attr('dy', '.3em')
-               .attr('text-anchor', 'middle')
-               .text(function (d) { return d['typ']; })
-               .style('fill-opacity', 1);
+        var nodeRect = createSVGElem('rect');
+        nodeRect.setAttribute('rx', 5);
+        nodeRect.setAttribute('ry', 5);
+        nodeRect.setAttribute('width', 100);
+        nodeRect.setAttribute('height', 30);
+        nodeRect.setAttribute('x', -50);
+        nodeRect.setAttribute('y', -15);
 
-    var link = graphContainer.selectAll('path.link')
-                .data(links, function(d) { return d.target.id; });
+        var lowHue = 90; /* green */
+        var highHue = 20; /* red */
+        var hueDelta = highHue - lowHue;
+        nodeRect.setAttribute(
+            'fill',
+            'hsl(' + (hueDelta * d['heat'] + lowHue) + ', 100%, 50%)'
+        );
 
+        var node = createSVGElem('g');
+        node.setAttribute('class', 'queryplan__node');
+        node.setAttribute('transform', 'translate(' + d.y + ',' + d.x + ')');
+        node.appendChild(nodeRect);
+        node.appendChild(nodeLabel);
 
-    var diagonal = d3.svg.diagonal()
-                    .projection(function(d) { return [d.y, d.x]; });
-    link.enter()
-        .insert('path', 'g')
-        .attr('class', 'queryplan__edge')
-        .style('fill', 'none')
-        .style('stroke', '#555')
-        .attr('d', diagonal);
+        graphContainer.appendChild(node);
+    });
 };
 
 /** @expose */
