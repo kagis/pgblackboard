@@ -25,6 +25,8 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
     graphContainer.setAttribute('transform', 'translate(100, 0)');
     svg.appendChild(graphContainer);
 
+    makeSVGElementPanZoomable(graphContainer);
+
     var nodes = tree.nodes(plan).reverse();
     nodes.forEach(function(d) {
         d.y = d.depth * 150;
@@ -248,4 +250,64 @@ function getNodeDescription(properties) {
     }
     description += '</table>';
     return description;
+}
+
+
+function makeSVGElementPanZoomable(elem) {
+    var elemX = 0;
+    var elemY = 0;
+    var elemZoom = 1;
+
+    function updateExtent() {
+        elem.setAttribute(
+            'transform',
+            'translate(' + elemX + ',' + elemY + ')' +
+            'scale(' + Math.exp(elemZoom * .1) + ')'
+        );
+    }
+
+    var svg = elem.ownerDocument;
+
+    svg.addEventListener('mousewheel', function (e) {
+        var maxZoom = 20;
+        var minZoom = -20;
+        elemZoom = Math.min(maxZoom, Math.max(minZoom,
+            elemZoom - Math.sign(e.deltaY)
+        ));
+        updateExtent();
+    });
+
+    svg.addEventListener('mousedown', function (e) {
+        var mouseStartX = e.x;
+        var mouseStartY = e.y;
+        var elemXBeforePan = elemX;
+        var elemYBeforePan = elemY;
+
+        elem.setAttribute('class', [
+            elem.getAttribute('class'),
+            'zoompanable--zoompanning'
+        ].join(' '));
+
+        function handleMouseMove(e) {
+            var deltaX = e.x - mouseStartX;
+            var deltaY = e.y - mouseStartY;
+            elemX = elemXBeforePan + deltaX;
+            elemY = elemYBeforePan + deltaY;
+            updateExtent();
+        }
+
+        svg.addEventListener('mousemove', handleMouseMove);
+        svg.addEventListener('mouseup', function handleMouseUp(e) {
+            svg.removeEventListener('mouseup', handleMouseUp);
+            svg.removeEventListener('mousemove', handleMouseMove);
+
+            elem.setAttribute(
+                'class',
+                (elem.getAttribute('class') || '')
+                    .replace(/\bzoompanable--zoompanning\b/, '')
+                    .trim()
+            );
+        });
+    });
+
 }
