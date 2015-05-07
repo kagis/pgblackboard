@@ -116,7 +116,11 @@ d3.layout.hierarchy = function() {
 
 // A method assignment helper for hierarchy subclasses.
 function d3_layout_hierarchyRebind(object, hierarchy) {
-  d3.rebind(object, hierarchy, "sort", "children", "value");
+  d3.rebind(object, hierarchy, Object.keys({
+    sort: true,
+    children: true,
+    value: true
+  }));
 
   // Add an alias for nodes and links, for convenience.
   object.nodes = object;

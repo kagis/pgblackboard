@@ -1,16 +1,5 @@
-.zoompanable--zoompanning {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
 
-.queryplan__edge {
-    fill: none;
-    stroke: #555;
-    }
+
 
 .light { color: #555; }
 .light .queryplan-overlay { background-color: rgba(255,255,255,.7); }
@@ -92,6 +81,11 @@
     font-family: Ubuntu, Verdana, sans-serif;
     }
 
+.queryplan__edge {
+    fill: none;
+    stroke: #555;
+    }
+
 
 .queryplan-overlay {
     position: fixed;
@@ -126,13 +120,14 @@
 .queryplan:active {
     cursor: -webkit-grabbing;
     cursor: grabbing;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
     }
 
-
-
-.node g {
-    pointer-events: none;
-    }
 
 .edgePath path {
     stroke-width: 2px;
