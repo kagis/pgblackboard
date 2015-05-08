@@ -78,7 +78,7 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
     });
 
 
-    initSVGPane(graphContainer);
+    setupAndCenterSVGPane(graphContainer);
 
 };
 
@@ -255,68 +255,98 @@ function getNodeDescription(properties) {
     return description;
 }
 
-
-function initSVGPane(pane) {
-    var paneX = 0;
-    var paneY = 0;
-    var paneZoom = 0;
-
-    function applyExtent() {
-        pane.setAttribute(
-            'transform',
-            'translate(' + paneX + ',' + paneY + ')' +
-            'scale(' + getZoomScale(paneZoom) + ')'
-        );
-    }
-
-    function getZoomScale(zoom) {
-        return Math.exp(zoom * .1);
-    }
-
-    var viewport = pane.ownerSVGElement;
-
-    viewport.addEventListener('wheel', function (e) {
-        var offsetX = e.clientX - viewport.offsetLeft;
-        var offsetY = e.clientY - viewport.offsetTop;
-
-        var maxZoom = 20;
-        var minZoom = -20;
-
-        var newPaneZoom = Math.min(maxZoom, Math.max(minZoom,
-            paneZoom + (e.deltaY < 0 ? 1 : -1)
-        ));
-
-        paneX = paneX - offsetX*(getZoomScale(newPaneZoom) - getZoomScale(paneZoom))/2;
-        paneZoom = newPaneZoom;
-        applyExtent();
-    });
-
-    viewport.addEventListener('mousedown', function (e) {
-        var mouseStartX = e.clientX;
-        var mouseStartY = e.clientY;
-        var paneXBeforePan = paneX;
-        var paneYBeforePan = paneY;
-
-        function handleMouseMove(e) {
-            var deltaX = e.clientX - mouseStartX;
-            var deltaY = e.clientY - mouseStartY;
-            paneX = paneXBeforePan + deltaX;
-            paneY = paneYBeforePan + deltaY;
-            applyExtent();
-        }
-
-        viewport.ownerDocument.addEventListener('mousemove', handleMouseMove);
-        viewport.ownerDocument.addEventListener('mouseup', function handleMouseUp(e) {
-            viewport.ownerDocument.removeEventListener('mouseup', handleMouseUp);
-            viewport.ownerDocument.removeEventListener('mousemove', handleMouseMove);
-        });
-    });
-
-    // center
-    var paneRect = pane.getBBox();
-    var viewportSize = viewport.getBoundingClientRect();
-    paneX = (viewportSize.width - paneRect.width) / 2 - paneRect.x;
-    paneY = (viewportSize.height - paneRect.height) / 2 - paneRect.y;
-    applyExtent();
-
+function setupAndCenterSVGPane(paneElem) {
+    var pane = new SVGPane(paneElem);
+    pane.center();
+    return pane;
 }
+
+function SVGPane(paneElem) {
+    this.paneElem = paneElem;
+    this.viewportElem = paneElem.ownerSVGElement;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.zoom = 0;
+    this.isPanning = false;
+
+    this.viewportElem.addEventListener(
+        'mousedown',
+        this.handleViewportMouseDown.bind(this)
+    );
+
+    this.viewportElem.addEventListener(
+        'wheel',
+        this.handleViewportWheel.bind(this)
+    );
+}
+
+SVGPane.prototype.minZoom = -20;
+
+SVGPane.prototype.maxZoom = 20;
+
+SVGPane.prototype.center = function () {
+    var paneBBox = this.paneElem.getBBox();
+    var viewportSize = this.viewportElem.getBoundingClientRect();
+    this.translateX = (viewportSize.width - paneBBox.width) / 2 - paneBBox.x;
+    this.translateY = (viewportSize.height - paneBBox.height) / 2 - paneBBox.y;
+    this.applyTransform();
+};
+
+SVGPane.prototype.applyTransform = function () {
+    this.paneElem.setAttribute('transform',
+        'translate(' + this.translateX + ',' + this.translateY + ')' +
+        'scale(' + this.getScale() + ')'
+    );
+};
+
+SVGPane.prototype.setZoomClipped = function (unclippedZoom) {
+    this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, unclippedZoom));
+};
+
+SVGPane.prototype.getScale = function () {
+    return Math.exp(this.zoom * .1);
+};
+
+SVGPane.prototype.handleViewportMouseDown = function (e) {
+    // proceed only for left mouse button
+    if (e.button != 0) { return; }
+
+    this.isPanning = true;
+
+    var dx = e.clientX - this.translateX;
+    var dy = e.clientY - this.translateY;
+
+    var self = this;
+    function handleMouseMove(e) {
+        self.translateX = e.clientX - dx;
+        self.translateY = e.clientY - dy;
+        self.applyTransform();
+    }
+
+
+    var doc = this.paneElem.ownerDocument;
+    doc.addEventListener('mousemove', handleMouseMove);
+    doc.addEventListener('mouseup', function handleMouseUp(e) {
+        doc.removeEventListener('mouseup', handleMouseUp);
+        doc.removeEventListener('mousemove', handleMouseMove);
+        self.isPanning = false;
+    });
+};
+
+SVGPane.prototype.handleViewportWheel = function (e) {
+    // disable zoom while panning
+    if (this.isPanning) { return; }
+
+    var oldScale = this.getScale();
+    var zoomInc = (e.deltaY < 0 ? 1 : -1);
+    this.setZoomClipped(this.zoom + zoomInc);
+    var newScale = this.getScale();
+    var scaleFactor = newScale / oldScale - 1;
+
+    var offsetX = e.clientX - this.viewportElem.offsetLeft;
+    var offsetY = e.clientY - this.viewportElem.offsetTop;
+    this.translateY = this.translateY - (offsetY - this.translateY) * scaleFactor;
+    this.translateX = this.translateX - (offsetX - this.translateX) * scaleFactor;
+
+    this.applyTransform();
+};

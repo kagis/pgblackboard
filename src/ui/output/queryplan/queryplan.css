@@ -115,7 +115,10 @@
             user-select: none;
     }
 
-
+.queryplan,
+.queryplan > g {
+    outline: 2px solid black;
+}
 
 .queryplan:active {
     cursor: -webkit-grabbing;
