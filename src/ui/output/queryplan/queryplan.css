@@ -6,8 +6,15 @@
 .light .node .node-back { fill: #fff; }
 .light .node text { fill: #333; }
 .light .edgePath path { stroke: #999; }
-.light .queryplan-tip        { background-color: rgba(50, 50, 50, .9); }
-.light .queryplan-tip::after { border-top-color: rgba(50, 50, 50, .9); }
+
+/*.light*/ .queryplan__popup {
+    background-color: rgba(50, 50, 50, .9);
+    }
+
+/*.light*/ .queryplan__popup::after {
+    border-top-color: rgba(50, 50, 50, .9);
+    }
+
 .light .queryplan-overlay {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.0)   0
@@ -77,7 +84,7 @@
 
 
 .queryplan,
-.queryplan-tip {
+.queryplan__popup {
     font-family: Ubuntu, Verdana, sans-serif;
     }
 
@@ -140,13 +147,14 @@
 
 
 
-.queryplan-tip {
+.queryplan__popup {
     -webkit-transform: translate(-50%, -100%);
        -moz-transform: translate(-50%, -100%);
         -ms-transform: translate(-50%, -100%);
             transform: translate(-50%, -100%);
 
     position: fixed;
+    z-index: 1;
     margin-top: -10px;
 
     line-height: 1;
@@ -162,19 +170,21 @@
     pointer-events: none;
     }
 
-.queryplan-tip table {
+.queryplan__popup table {
     color: inherit;
     font-family: inherit;
     font-size: inherit;
     }
 
 /* Creates a small triangle extender for the tooltip */
-.queryplan-tip:after {
+.queryplan__popup::after {
     content: '';
     display: block;
     border-width: .5em;
     border-style: solid;
-    border-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+    border-right-color: transparent;
     position: absolute;
     bottom: -1em;
     left: 50%;

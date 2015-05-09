@@ -6,6 +6,12 @@ window.pgBlackboardOutput = {};
 /** @expose */
 window.pgBlackboardOutput.queryPlan = function (plan) {
 
+    var popupElem = document.createElement('div');
+    popupElem.className = 'queryplan__popup';
+    document.body.appendChild(popupElem);
+
+    var popup = new SVGPopup(popupElem);
+
     var tree = d3.layout.tree()
                 .nodeSize([50, 1]);
 
@@ -73,13 +79,37 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
         node.setAttribute('transform', 'translate(' + d.y + ',' + d.x + ')');
         node.appendChild(nodeRect);
         node.appendChild(nodeLabel);
+        node.addEventListener('mouseenter', function () {
+            if (pane.isPanning) {
+                hidePopupOnPanEnd = false;
+            } else {
+                popup.setContent(getNodeDescription(d['properties']));
+                popup.showOn(node);
+            }
+        });
+        node.addEventListener('mouseleave', function () {
+            if (pane.isPanning) {
+                hidePopupOnPanEnd = true;
+            } else {
+                popup.hide();
+            }
+        });
 
         graphContainer.appendChild(node);
     });
 
 
-    setupAndCenterSVGPane(graphContainer);
+    var hidePopupOnPanEnd = false
 
+    var pane = new SVGPane(graphContainer, {
+        onExtentChange: popup.updatePosition.bind(popup),
+        onPanEnd: function () {
+            if (hidePopupOnPanEnd) {
+                popup.hide();
+            }
+        }
+    });
+    pane.center();
 };
 
 /** @expose */
@@ -212,6 +242,43 @@ function QueryplanTip() {
     };
 }
 
+function SVGPopup(popupElem) {
+    this.currentTarget = null;
+    this.svgPoint = null;
+    this.popupElem = popupElem;
+}
+
+SVGPopup.prototype.showOn = function (target) {
+    this.currentTarget = target;
+    this.svgPoint = target.ownerSVGElement.createSVGPoint();
+    this.popupElem.style.display = 'block';
+    this.updatePosition();
+};
+
+SVGPopup.prototype.updatePosition = function () {
+    if (!this.currentTarget) {
+        return;
+    }
+
+    var targetCTM = this.currentTarget.getScreenCTM();
+    var targetBBox = this.currentTarget.getBBox();
+    this.svgPoint.x = targetBBox.x + targetBBox.width / 2;
+    this.svgPoint.y = targetBBox.y;
+    var targetScreenPos = this.svgPoint.matrixTransform(targetCTM);
+    this.popupElem.style.top = targetScreenPos.y + 'px';
+    this.popupElem.style.left = targetScreenPos.x + 'px';
+};
+
+SVGPopup.prototype.hide = function () {
+    this.currentTarget = null;
+    this.popupElem.style.display = 'none';
+};
+
+SVGPopup.prototype.setContent = function (content) {
+    this.popupElem.innerHTML = content;
+};
+
+
 function buildGraph(node, nodeid, graph) {
     var lowHue = 90; /* green */
     var highHue = 20; /* red */
@@ -255,19 +322,19 @@ function getNodeDescription(properties) {
     return description;
 }
 
-function setupAndCenterSVGPane(paneElem) {
-    var pane = new SVGPane(paneElem);
-    pane.center();
-    return pane;
-}
 
-function SVGPane(paneElem) {
+function SVGPane(paneElem, options) {
     this.paneElem = paneElem;
     this.viewportElem = paneElem.ownerSVGElement;
     this.translateX = 0;
     this.translateY = 0;
     this.zoom = 0;
     this.isPanning = false;
+
+    var noop = function () {};
+    this.onPanStart = options.onPanStart || noop;
+    this.onPanEnd = options.onPanEnd || noop;
+    this.onExtentChange = options.onExtentChange || noop;
 
     this.viewportElem.addEventListener(
         'mousedown',
@@ -284,6 +351,8 @@ SVGPane.prototype.minZoom = -20;
 
 SVGPane.prototype.maxZoom = 20;
 
+SVGPane.prototype.zoomFactor = .1;
+
 SVGPane.prototype.center = function () {
     var paneBBox = this.paneElem.getBBox();
     var viewportSize = this.viewportElem.getBoundingClientRect();
@@ -297,6 +366,7 @@ SVGPane.prototype.applyTransform = function () {
         'translate(' + this.translateX + ',' + this.translateY + ')' +
         'scale(' + this.getScale() + ')'
     );
+    this.onExtentChange();
 };
 
 SVGPane.prototype.setZoomClipped = function (unclippedZoom) {
@@ -304,7 +374,7 @@ SVGPane.prototype.setZoomClipped = function (unclippedZoom) {
 };
 
 SVGPane.prototype.getScale = function () {
-    return Math.exp(this.zoom * .1);
+    return Math.exp(this.zoom * this.zoomFactor);
 };
 
 SVGPane.prototype.handleViewportMouseDown = function (e) {
@@ -312,6 +382,7 @@ SVGPane.prototype.handleViewportMouseDown = function (e) {
     if (e.button != 0) { return; }
 
     this.isPanning = true;
+    this.onPanStart();
 
     var dx = e.clientX - this.translateX;
     var dy = e.clientY - this.translateY;
@@ -323,13 +394,13 @@ SVGPane.prototype.handleViewportMouseDown = function (e) {
         self.applyTransform();
     }
 
-
     var doc = this.paneElem.ownerDocument;
     doc.addEventListener('mousemove', handleMouseMove);
     doc.addEventListener('mouseup', function handleMouseUp(e) {
         doc.removeEventListener('mouseup', handleMouseUp);
         doc.removeEventListener('mousemove', handleMouseMove);
         self.isPanning = false;
+        self.onPanEnd();
     });
 };
 
