@@ -16,17 +16,14 @@ use pg;
 
 use rustc_serialize::json;
 
-pub struct SqlExecHandler<'a> {
+pub struct SqlExecEndpoint<'a> {
     pub pgaddr: &'a str
 }
 
-impl<'a> http::Handler for SqlExecHandler<'a> {
+impl<'a> http::Resource for SqlExecEndpoint<'a> {
 
-    fn handle_http_req(&self,
-                       _: &[&str],
-                       req: &http::Request)
-                       -> Box<http::Response>
-    {
+    fn post(&self, req: &http::Request) -> Box<http::Response> {
+
         #[derive(RustcDecodable)]
         #[derive(Debug)]
         struct Form {

@@ -76,15 +76,15 @@ module.exports = {
     initialCode: 'demo'
 };
 
-window.addEventListener('click', function (e) {
-    if (e.target.classList.contains('codeform__exec-table')) {
-        e.target.form.action = 'output/table/table-demo.html';
-    }
+// window.addEventListener('click', function (e) {
+//     if (e.target.classList.contains('codeform__exec-table')) {
+//         e.target.form.action = 'output/table/table-demo.html';
+//     }
 
-    if (e.target.classList.contains('codeform__exec-map')) {
-        e.target.form.action = 'output/map/map-demo.html';
-    }
-}, true);
+//     if (e.target.classList.contains('codeform__exec-map')) {
+//         e.target.form.action = 'output/map/map-demo.html';
+//     }
+// }, true);
 
 function database(name, children) {
     return {

@@ -1,4 +1,4 @@
-/* @import url("../queryplan/queryplan.css"); */
+@import url("../queryplan/queryplan.css");
 
 .dark { color: #ddd; background-color: #272822; }
 .dark .rowset { border-color: #555; }

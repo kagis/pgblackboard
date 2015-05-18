@@ -1,6 +1,27 @@
 use http;
 use std::io;
 
+pub const FAVICON_ICO: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/favicon.ico")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.md5")),
+    content_type: "image/vnd.microsoft.icon",
+    gzipped: false
+};
+
+pub const BUNDLE_INDEX: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-index.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-index.js.md5")),
+    content_type: "application/javascript; charset=utf-8",
+    gzipped: true
+};
+
+pub const BUNDLE_MAP: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/bundle-map.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/bundle-map.js.md5")),
+    content_type: "application/javascript; charset=utf-8",
+    gzipped: true
+};
+
 pub struct StaticResource {
     pub content: &'static [u8],
     pub content_type: &'static str,
