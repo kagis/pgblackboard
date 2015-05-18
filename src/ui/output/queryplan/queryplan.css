@@ -45,7 +45,7 @@
 
 
 .dark { color: #ddd; }
-.dark .queryplan { background-color: rgba(39, 40, 34,.7); }
+/*.dark .queryplan { background-color: rgba(39, 40, 34,.7); }*/
 .dark .node .node-back { fill: #000; }
 .dark .node text { fill: #ddd; }
 .dark .edgePath path { stroke: #555; }
@@ -91,6 +91,7 @@
 .queryplan__edge {
     fill: none;
     stroke: #555;
+    stroke-width: 2px;
     }
 
 
@@ -105,6 +106,17 @@
     }
 
 .queryplan {
+    overflow: hidden;
+    font-size: 14px;
+    height: 200px;
+    cursor: pointer;
+    display: block;
+    }
+
+.queryplan--focused {
+    cursor: -webkit-grab;
+    cursor: grab;
+    z-index: 1;
     position: fixed;
     top: 0;
     left: 0;
@@ -112,20 +124,24 @@
     bottom: 0;
     height: 100%;
     width: 100%;
-    overflow: hidden;
-    cursor: -webkit-grab;
-    cursor: grab;
-    font-size: 14px;
-
     -webkit-user-select: none;
        -moz-user-select: none;
             user-select: none;
     }
 
+.dark .queryplan--focused {
+    background-color: rgba(39, 40, 34,.9);
+    background-image: linear-gradient(to left
+                    ,rgba(0,0,0,.1)   0
+                    ,rgba(0,0,0,.1)  1px
+                    ,rgba(0,0,0,.5)  1px
+                    ,rgba(0,0,0,.5)  2px);
+    }
+/*
 .queryplan,
 .queryplan > g {
     outline: 2px solid black;
-}
+}*/
 
 .queryplan:active {
     cursor: -webkit-grabbing;
@@ -136,6 +152,10 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    }
+
+.queryplan__svg {
+    max-height: 100%;
     }
 
 
@@ -168,6 +188,7 @@
 
     white-space: nowrap;
     pointer-events: none;
+    display: none;
     }
 
 .queryplan__popup table {

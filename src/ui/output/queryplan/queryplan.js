@@ -1,10 +1,7 @@
-// var d3 = require('d3');
+var d3 = require('./d3');
+var ko = require('knockout');
 
-/** @expose */
-window.pgBlackboardOutput = {};
-
-/** @expose */
-window.pgBlackboardOutput.queryPlan = function (plan) {
+module.exports = function (frameWindow, plan) {
 
     var popupElem = document.createElement('div');
     popupElem.className = 'queryplan__popup';
@@ -19,27 +16,18 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
         document,
         'http://www.w3.org/2000/svg'
     );
-    var svg = createSVGElem('svg');
-    svg.setAttribute('class', 'queryplan');
-    //svg.setAttribute('width', width);
-    //svg.setAttribute('height', height);
-
-    document.body.appendChild(svg);
 
     var graphContainer = createSVGElem('g');
     graphContainer.setAttribute('transform', 'translate(0, 0)');
-    svg.appendChild(graphContainer);
-
-
 
     var nodes = tree.nodes(plan).reverse();
-    nodes.forEach(function(d) {
+    nodes.forEach(function (d) {
         d.y = d.depth * 150;
     });
 
     var links = tree.links(nodes);
 
-    var diagonal = d3.svg.diagonal().projection(function(d) {
+    var diagonal = d3.svg.diagonal().projection(function (d) {
         return [d.y, d.x];
     });
 
@@ -51,7 +39,10 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
         graphContainer.appendChild(path);
     });
 
-    nodes.forEach(function(d) {
+    var nodeWidth = 100;
+    var nodeHeight = 30;
+
+    nodes.forEach(function (d) {
 
         var nodeLabel = createSVGElem('text');
         nodeLabel.setAttribute('dy', '.3em');
@@ -61,10 +52,10 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
         var nodeRect = createSVGElem('rect');
         nodeRect.setAttribute('rx', 5);
         nodeRect.setAttribute('ry', 5);
-        nodeRect.setAttribute('width', 100);
-        nodeRect.setAttribute('height', 30);
-        nodeRect.setAttribute('x', -50);
-        nodeRect.setAttribute('y', -15);
+        nodeRect.setAttribute('width', nodeWidth);
+        nodeRect.setAttribute('height', nodeHeight);
+        nodeRect.setAttribute('x', -nodeWidth / 2);
+        nodeRect.setAttribute('y', -nodeHeight / 2);
 
         var lowHue = 90; /* green */
         var highHue = 20; /* red */
@@ -79,169 +70,80 @@ window.pgBlackboardOutput.queryPlan = function (plan) {
         node.setAttribute('transform', 'translate(' + d.y + ',' + d.x + ')');
         node.appendChild(nodeRect);
         node.appendChild(nodeLabel);
-        node.addEventListener('mouseenter', function () {
-            if (pane.isPanning) {
-                hidePopupOnPanEnd = false;
-            } else {
-                popup.setContent(getNodeDescription(d['properties']));
-                popup.showOn(node);
-            }
-        });
-        node.addEventListener('mouseleave', function () {
-            if (pane.isPanning) {
-                hidePopupOnPanEnd = true;
-            } else {
-                popup.hide();
-            }
-        });
+
 
         graphContainer.appendChild(node);
     });
 
 
-    var hidePopupOnPanEnd = false
-
-    var pane = new SVGPane(graphContainer, {
-        onExtentChange: popup.updatePosition.bind(popup),
-        onPanEnd: function () {
-            if (hidePopupOnPanEnd) {
-                popup.hide();
-            }
-        }
-    });
-    pane.center();
-};
-
-/** @expose */
-window.pgBlackboardOutput.queryPlan_ = function (planTree) {
-
-    var graph = buildGraph(planTree);
+    var hidePopupOnPanEnd = false;
 
 
-    var renderer = new dagreD3.Renderer();
-    var zoomBehavior = d3.behavior.zoom();
+    var xmax = nodes.map(function (it) { return it.y; })
+                    .reduce(function (a, b) { return Math.max(a, b); });
 
-    // renderer.zoom(function (graph, svg) {
-    //     return zoomBehavior.on('zoom', function () {
-    //         svg.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
-    //     });
+    var xmin = nodes.map(function (it) { return it.y; })
+                    .reduce(function (a, b) { return Math.min(a, b); });
+
+    var ymax = nodes.map(function (it) { return it.x; })
+                    .reduce(function (a, b) { return Math.max(a, b); });
+
+    var ymin = nodes.map(function (it) { return it.x; })
+                    .reduce(function (a, b) { return Math.min(a, b); });
+
+    var svg = createSVGElem('svg');
+    svg.setAttribute('class', 'queryplan__svg');
+    svg.setAttribute('viewBox', [
+        xmin - nodeWidth / 2,
+        ymin - nodeHeight / 2,
+        xmax - xmin + nodeWidth,
+        ymax - ymin + nodeHeight
+    ].join(' '));
+    svg.appendChild(graphContainer);
+
+    // node.addEventListener('mouseenter', function () {
+    //     if (pane.isPanning) {
+    //         hidePopupOnPanEnd = false;
+    //     } else {
+    //         popup.setContent(getNodeDescription(d['properties']));
+    //         popup.showOn(node);
+    //     }
+    // });
+    // node.addEventListener('mouseleave', function () {
+    //     if (pane.isPanning) {
+    //         hidePopupOnPanEnd = true;
+    //     } else {
+    //         popup.hide();
+    //     }
     // });
 
-    // insert back rect for nodes
-    // for color lightening
-    var oldDrawNodes = renderer.drawNodes();
-    renderer.drawNodes(function (g, svg) {
-        var svgNodes = oldDrawNodes(g, svg);
-        svgNodes.selectAll('rect').each(function () {
-            var back = this.cloneNode();
-            this.setAttribute('class', 'node-overlay');
 
-            back.setAttribute('class', 'node-back');
-            back.removeAttribute('style');
-            back.removeAttribute('fill');
-            this.parentNode.insertBefore(back, this);
-        });
-        return svgNodes;
-    });
+    var queryplanEl = frameWindow.document.createElement('div');
+    queryplanEl.className = 'queryplan';
+    queryplanEl.appendChild(svg);
+    queryplanEl.appendChild(popupElem);
 
+    queryplanEl.addEventListener('click', function queryplanClick() {
+        queryplanEl.removeEventListener('click', queryplanClick);
+        ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
 
-
-    var overlay = d3.select(document.body)
-                    .append('div')
-                    .attr('class', 'queryplan-overlay');
-
-    overlay.append('button')
-           .attr('class', 'queryplan-close')
-           .on('click', function () { overlay.remove(); });
-
-    var svg = overlay.append('svg').attr('class', 'queryplan');
-
-  //   var svg = d3.select('svg'),
-  //     inner = svg.select('g'),
-  //     zoom = d3.behavior.zoom().on('zoom', function() {
-  //       inner.attr('transform', 'translate(' + d3.event.translate + ')' +
-  //                                   'scale(' + d3.event.scale + ')');
-  //     });
-  // svg.call(zoom);
-
-    render(svg, graph);
-
-    // center
-    zoomBehavior.translate([
-        (document.documentElement.clientWidth - renderedLayout.graph().width) / 2,
-        (document.documentElement.clientHeight - renderedLayout.graph().height) / 2
-    ]);
-    zoomBehavior.event(svg);
-
-    var tip = new QueryplanTip();
-    var zooming = false;
-    var hideTipOnZoomEnd = false;
-    zoomBehavior.on('zoom.tip', tip.updatePosition.bind(tip))
-        .on('zoomstart.tip', function () { zooming = true; })
-        .on('zoomend.tip', function () {
-            zooming = false;
-            if (hideTipOnZoomEnd) {
-                tip.hide();
+        var pane = new SVGPane({
+            paneElem: svg,
+            viewportElem: queryplanEl,
+            onExtentChange: popup.updatePosition.bind(popup),
+            onPanEnd: function () {
+                if (hidePopupOnPanEnd) {
+                    popup.hide();
+                }
             }
         });
+    });
 
-    svg
-        .selectAll('.node rect')
-            .on('mouseover', function (d) {
-                tip.setContent(graph.node(d).description);
-                tip.showOn(d3.event.target);
-                hideTipOnZoomEnd = false;
-            })
-            .on('mouseout', function () {
-                if (!zooming) {
-                    tip.hide();
-                }
-                hideTipOnZoomEnd = true;
-            });
+    frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
 };
 
-function QueryplanTip() {
 
-    var _svgPoint;
-    var _currentTarget;
-    var _tip = d3.select('body')
-                .append('div')
-                .attr('class', 'queryplan-tip')
-                .style({ display: 'none' });
-
-    this.showOn = function (target) {
-        _currentTarget = target;
-        _svgPoint = target.ownerSVGElement.createSVGPoint();
-        _tip.style({ display: 'block' });
-        this.updatePosition();
-    };
-
-    this.updatePosition = function () {
-        if (!_currentTarget) {
-            return;
-        }
-
-        var targetCTM = _currentTarget.getScreenCTM();
-        var targetBBox = _currentTarget.getBBox();
-        _svgPoint.x = targetBBox.x + targetBBox.width / 2;
-        _svgPoint.y = targetBBox.y;
-        var targetScreenPos = _svgPoint.matrixTransform(targetCTM);
-        _tip.style({
-            top: targetScreenPos.y + 'px',
-            left: targetScreenPos.x + 'px'
-        });
-    };
-
-    this.hide = function () {
-        _currentTarget = null;
-        _tip.style({ display: 'none' });
-    };
-
-    this.setContent = function (content) {
-        _tip.html(content);
-    };
-}
-
+/** @constructor */
 function SVGPopup(popupElem) {
     this.currentTarget = null;
     this.svgPoint = null;
@@ -250,7 +152,7 @@ function SVGPopup(popupElem) {
 
 SVGPopup.prototype.showOn = function (target) {
     this.currentTarget = target;
-    this.svgPoint = target.ownerSVGElement.createSVGPoint();
+    this.svgPoint = target['ownerSVGElement']['createSVGPoint']();
     this.popupElem.style.display = 'block';
     this.updatePosition();
 };
@@ -260,11 +162,11 @@ SVGPopup.prototype.updatePosition = function () {
         return;
     }
 
-    var targetCTM = this.currentTarget.getScreenCTM();
-    var targetBBox = this.currentTarget.getBBox();
+    var targetCTM = this.currentTarget['getScreenCTM']();
+    var targetBBox = this.currentTarget['getBBox']();
     this.svgPoint.x = targetBBox.x + targetBBox.width / 2;
     this.svgPoint.y = targetBBox.y;
-    var targetScreenPos = this.svgPoint.matrixTransform(targetCTM);
+    var targetScreenPos = this.svgPoint['matrixTransform'](targetCTM);
     this.popupElem.style.top = targetScreenPos.y + 'px';
     this.popupElem.style.left = targetScreenPos.x + 'px';
 };
@@ -279,36 +181,30 @@ SVGPopup.prototype.setContent = function (content) {
 };
 
 
-function buildGraph(node, nodeid, graph) {
-    var lowHue = 90; /* green */
-    var highHue = 20; /* red */
-    var hueDelta = highHue - lowHue;
+// function buildGraph(node, nodeid, graph) {
+//     var lowHue = 90; /* green */
+//     var highHue = 20; /* red */
+//     var hueDelta = highHue - lowHue;
 
-    nodeid = nodeid || 1;
-    graph = graph || createBlankGraph();
+//     nodeid = nodeid || 1;
+//     graph = graph || createBlankGraph();
 
-    graph.setNode(nodeid, {
-        label: node['typ'],
-        description: getNodeDescription(node['properties']),
-        fill: node['heat'] && d3.hsl(hueDelta * node['heat'] + lowHue, 1, 0.5)
-    });
+//     graph.setNode(nodeid, {
+//         label: node['typ'],
+//         description: getNodeDescription(node['properties']),
+//         fill: node['heat'] && d3.hsl(hueDelta * node['heat'] + lowHue, 1, 0.5)
+//     });
 
-    node['children'].forEach(function (child, childIndex) {
-        var parentid = nodeid;
-        var childid = parentid + childIndex + 1;
-        buildGraph(child, childid, graph);
-        graph.setEdge(childid, parentid);
-    });
+//     node['children'].forEach(function (child, childIndex) {
+//         var parentid = nodeid;
+//         var childid = parentid + childIndex + 1;
+//         buildGraph(child, childid, graph);
+//         graph.setEdge(childid, parentid);
+//     });
 
-    return graph;
-}
+//     return graph;
+// }
 
-function createBlankGraph() {
-    return new dagreD3.graphlib.Graph().setGraph({
-        nodesep: 20,
-        rankdir:'LR'
-    });
-}
 
 function getNodeDescription(properties) {
     var description = '<table>';
@@ -323,9 +219,10 @@ function getNodeDescription(properties) {
 }
 
 
-function SVGPane(paneElem, options) {
-    this.paneElem = paneElem;
-    this.viewportElem = paneElem.ownerSVGElement;
+/** @constructor */
+function SVGPane(options) {
+    this.paneElem = options.paneElem;
+    this.viewportElem = options.viewportElem;
     this.translateX = 0;
     this.translateY = 0;
     this.zoom = 0;
@@ -338,12 +235,14 @@ function SVGPane(paneElem, options) {
 
     this.viewportElem.addEventListener(
         'mousedown',
-        this.handleViewportMouseDown.bind(this)
+        this.handleViewportMouseDown.bind(this),
+        true
     );
 
     this.viewportElem.addEventListener(
         'wheel',
-        this.handleViewportWheel.bind(this)
+        this.handleViewportWheel.bind(this),
+        true
     );
 }
 
@@ -353,21 +252,38 @@ SVGPane.prototype.maxZoom = 20;
 
 SVGPane.prototype.zoomFactor = .1;
 
-SVGPane.prototype.center = function () {
-    var paneBBox = this.paneElem.getBBox();
-    var viewportSize = this.viewportElem.getBoundingClientRect();
-    this.translateX = (viewportSize.width - paneBBox.width) / 2 - paneBBox.x;
-    this.translateY = (viewportSize.height - paneBBox.height) / 2 - paneBBox.y;
-    this.applyTransform();
-};
+// SVGPane.prototype.center = function () {
+//     var paneBBox = this.paneElem.getBBox();
+//     var viewportSize = this.viewportElem.getBoundingClientRect();
+//     this.translateX = (viewportSize.width - paneBBox.width) / 2 - paneBBox.x;
+//     this.translateY = (viewportSize.height - paneBBox.height) / 2 - paneBBox.y;
+//     this.applyTransform();
+// };
+
 
 SVGPane.prototype.applyTransform = function () {
-    this.paneElem.setAttribute('transform',
-        'translate(' + this.translateX + ',' + this.translateY + ')' +
+    setTransform(this.paneElem,
+        'translate(' +
+            this.translateX + 'px,' +
+            this.translateY + 'px)' +
         'scale(' + this.getScale() + ')'
     );
+
     this.onExtentChange();
 };
+
+var transformProperty = [
+    'transform',
+    'webkitTransform',
+    'MozTransform',
+    'msTransform'
+].filter(function (prop) {
+    return prop in document.body.style;
+})[0];
+
+function setTransform(elem, value) {
+    elem.style[transformProperty] = value;
+}
 
 SVGPane.prototype.setZoomClipped = function (unclippedZoom) {
     this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, unclippedZoom));
@@ -416,8 +332,8 @@ SVGPane.prototype.handleViewportWheel = function (e) {
 
     var offsetX = e.clientX - this.viewportElem.offsetLeft;
     var offsetY = e.clientY - this.viewportElem.offsetTop;
-    this.translateY = this.translateY - (offsetY - this.translateY) * scaleFactor;
-    this.translateX = this.translateX - (offsetX - this.translateX) * scaleFactor;
+    //this.translateY = this.translateY - (offsetY - this.translateY) * scaleFactor;
+    //this.translateX = this.translateX - (offsetX - this.translateX) * scaleFactor;
 
     this.applyTransform();
 };

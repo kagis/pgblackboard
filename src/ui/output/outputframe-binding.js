@@ -1,5 +1,5 @@
 var ko = require('knockout');
-var initTableOutput = require('./table/table');
+var setupOutputFrameForTable = require('./table/table');
 // var setupOutputFrameForMap = require ('./map/map');
 
 module.exports = {
@@ -20,7 +20,8 @@ module.exports = {
             selectedDoc: null
         };
 
-        outputFrameEl['setupPgBlackboardOutputFrame'] =
+        /** @expose */
+        outputFrameEl.setupPgBlackboardOutputFrame =
             setupOutputFrame.bind(outputFrameEl,
                                   outputFrameEl,
                                   outputFrameContext);
@@ -32,8 +33,25 @@ module.exports = {
     }
 };
 
+// /** @constructor */
+// function OutputFrameContext(options) {
+//     /** @expose */
+//     this.isDark = options.isDark;
+//     this.selectedDoc = null;
+// }
+
+// /** @expose */
+// OutputFrameContext.prototype.setError = function (messageAndLine) {
+//     var docErrors = this.selectedDoc['errors'];
+//     if (docErrors) {
+//         docErrors.push(messageAndLine);
+//     }
+// };
+
 function setupOutputFrame(outputFrameEl, outputFrameContext, tableOrMap) {
-    outputFrameEl.contentWindow['pgBlackboard'] = outputFrameContext;
+
+    /** @expose */
+    outputFrameEl.contentWindow.pgBlackboardOutput = outputFrameContext;
 
     var themeComputed = ko.computed(function () {
         ko.utils.toggleDomNodeCssClass(
@@ -57,12 +75,5 @@ function setupOutputFrame(outputFrameEl, outputFrameContext, tableOrMap) {
         break;
     }
 
-}
-
-function setupOutputFrameForTable(frameWindow, outputFrameContext) {
-    frameWindow.document.write(
-        '<style>' + window['pgBlackboard']['tableCss'] + '</style>'
-    );
-    initTableOutput(frameWindow);
 }
 

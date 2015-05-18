@@ -72,7 +72,7 @@ impl ResponseWriter {
 }
 
 
-struct ChunkedWriter(BufStream<TcpStream>);
+pub struct ChunkedWriter(BufStream<TcpStream>);
 
 impl ChunkedWriter {
     pub fn end(&mut self) -> io::Result<()> {

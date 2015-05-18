@@ -1,4 +1,5 @@
 #![feature(io)]
+#![feature(buf_stream)]
 
 //! ```rust
 //! extern crate rustc_serialize;
@@ -60,7 +61,7 @@ pub enum ExecutionEvent {
     NonQueryExecuted(String),
     RowsetBegin(Vec<FieldDescription>),
     RowFetched(Row),
-    RowsetEnd,
+    RowsetEnd { is_explain: bool },
     SqlErrorOccured(ErrorOrNotice),
     IoErrorOccured(String),
     Notice(ErrorOrNotice),
@@ -910,7 +911,9 @@ impl<'a> Iterator for ExecutionEventIterator<'a> {
             BackendMessage::CommandComplete { command_tag } => {
                 if self.is_in_rowset {
                     self.is_in_rowset = false;
-                    ExecutionEvent::RowsetEnd
+                    ExecutionEvent::RowsetEnd {
+                        is_explain: command_tag == "EXPLAIN"
+                    }
                 } else {
                     ExecutionEvent::NonQueryExecuted(command_tag)
                 }
@@ -1004,7 +1007,7 @@ mod test {
                 },
             ]),
             ExecutionEvent::RowFetched(vec![Some("1".to_string()), Some("one".to_string())]),
-            ExecutionEvent::RowsetEnd,
+            ExecutionEvent::RowsetEnd { is_explain: false },
         ]);
     }
 }

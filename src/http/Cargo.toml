@@ -1,0 +1,12 @@
+[package]
+name = "http"
+version = "0.2.0"
+authors = ["exe-dealer <exe-dealer@yandex.ru>"]
+
+[lib]
+name = "http"
+path = "lib.rs"
+
+[dependencies]
+rustc-serialize = "0.3"
+threadpool = "0.1.3"

@@ -1,4 +1,6 @@
 var d3 = {};
+module.exports = d3;
+
 d3.layout = {};
 
 d3.merge = function(arrays) {

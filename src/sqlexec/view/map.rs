@@ -46,7 +46,7 @@ impl<W: Write> View for MapView<W> {
         });
 
         if self.geom_col_idx.is_some() {
-            try!(write!(self.writer, "<script>pgBlackboardMap\
+            try!(write!(self.writer, "<script>pgBlackboardOutput\
                                 .beginFeatureCollection();\
                                 </script>"));
         }
@@ -80,7 +80,7 @@ impl<W: Write> View for MapView<W> {
 
         if self.rendered_rows_count == 0 {
             try!(self.writer.write_all(b"<script>\
-                pgBlackboardMap.addFeatures({\
+                pgBlackboardOutput.addFeatures({\
                 type:'FeatureCollection',\
                 features:["));
         }

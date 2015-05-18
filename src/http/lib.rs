@@ -1,4 +1,5 @@
-
+#![feature(buf_stream)]
+ #![feature(collections)]
 
 extern crate threadpool;
 extern crate rustc_serialize;
@@ -13,7 +14,7 @@ pub mod form;
 
 pub use self::method::Method;
 pub use self::status::Status;
-pub use self::response::ResponseStarter;
+pub use self::response::{ ResponseStarter, ResponseWriter, ChunkedWriter } ;
 
 use self::rustc_serialize::base64::FromBase64;
 use self::rustc_serialize::{json, Decodable};

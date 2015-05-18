@@ -342,16 +342,14 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
                 last_row = row;
             }
 
-            pg::ExecutionEvent::RowsetEnd => {
+            pg::ExecutionEvent::RowsetEnd { is_explain } => {
                 try!(view.render_rowset_end());
 
-                if let [ref col_descr] = &latest_cols_descr[..] {
-                    if &col_descr.name[..] == "QUERY PLAN" {
-                        if let [Some(ref plan_str)] = &last_row[..] {
-                            if let Ok(plan) = json::Json::from_str(&plan_str) {
-                                if let Some(plan) = queryplan_from_json(plan) {
-                                    try!(view.render_queryplan(&plan));
-                                }
+                if is_explain {
+                    if let [Some(ref plan_str)] = &last_row[..] {
+                        if let Ok(plan) = json::Json::from_str(&plan_str) {
+                            if let Some(plan) = queryplan_from_json(plan) {
+                                try!(view.render_queryplan(&plan));
                             }
                         }
                     }
@@ -428,25 +426,6 @@ fn queryplan_from_json(inp: json::Json) -> Option<view::QueryPlan> {
                     .map(|&it| it)
                     .filter(|&it| inp.contains_key(it))
                     .next();
-
-
-
-    // let (min_cost, max_cost) =
-
-    fn map_nodes<F, R>(obj: &json::Object, f: F) -> (R, Vec<R>)
-        where F: Fn(&json::Object) -> R
-    {
-        (
-            f(obj),
-            obj.get("Plans")
-                .and_then(|it| it.as_array())
-                .unwrap_or(&Vec::new())
-                .iter()
-                .filter_map(|it| it.as_object())
-                .map(f)
-                .collect::<Vec<_>>()
-        )
-    }
 
 
 

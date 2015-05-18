@@ -1,15 +1,12 @@
-var pgBlackboard = window['pgBlackboard'];
+var pgBlackboardOutput = window['pgBlackboardOutput'];
 
 /** @expose */
-window.pgBlackboardMap = {};
-
-/** @expose */
-window.pgBlackboardMap.beginFeatureCollection = function () {
+pgBlackboardOutput.beginFeatureCollection = function () {
     latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
 };
 
 /** @expose */
-window.pgBlackboardMap.addFeatures = function (featureCollection) {
+pgBlackboardOutput.addFeatures = function (featureCollection) {
     featureCollection['features'].forEach(function (f) {
         f.overlay = latestFeatureCollection;
     });
@@ -59,10 +56,10 @@ var latestFeatureCollection;
     var basemap = L.tileLayer();
 
     function setDarkOrLightBasemap() {
-        var isDark = pgBlackboard['isDark']();
+        var isDark = pgBlackboardOutput['isDark']();
         basemap.setUrl(isDark ? darkBasemapUrl : lightBasemapUrl);
     }
-    var isDarkSubscription = pgBlackboard['isDark']['subscribe'](setDarkOrLightBasemap);
+    var isDarkSubscription = pgBlackboardOutput['isDark']['subscribe'](setDarkOrLightBasemap);
     window.addEventListener('beforeunload', isDarkSubscription['dispose'].bind(isDarkSubscription));
     setDarkOrLightBasemap();
 

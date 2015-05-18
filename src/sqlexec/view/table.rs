@@ -17,15 +17,13 @@ static OUTRO: &'static [u8] = b"</div></body></html>\r\n";
 
 
 pub struct TableView<W: Write> {
-    writer: W,
-    queryplan_bundle_was_written: bool
+    writer: W
 }
 
 impl<W: Write> TableView<W> {
     pub fn new(writer: W) -> TableView<W> {
         TableView {
-            writer: writer,
-            queryplan_bundle_was_written: false
+            writer: writer
         }
     }
 }
@@ -100,7 +98,7 @@ impl<W: Write> View for TableView<W> {
                             pk_mask: &[bool])
                             -> io::Result<()>
     {
-        try!(write!(&mut self.writer, "<script>pgBlackboard\
+        try!(write!(&mut self.writer, "<script>pgBlackboardOutput\
                                 .makeRowsetEditable();\
                                 </script>"));
 
@@ -158,11 +156,6 @@ impl<W: Write> View for TableView<W> {
     }
 
     fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
-        if !self.queryplan_bundle_was_written {
-            self.queryplan_bundle_was_written = true;
-            try!(self.writer.write_all(b"<script src='bundle-queryplan.js'></script>"));
-        }
-
         write!(self.writer,
                "<script>pgBlackboardOutput.queryPlan({});</script>",
                json::as_json(plan))
@@ -185,7 +178,7 @@ fn invoke_js_set_error<W>(writer: &mut W,
                           where W: Write
 {
     write!(writer,
-        "<script>pgBlackboard.setError({{\
+        "<script>pgBlackboardOutput.setError({{\
             \"message\":{message:?},\
             \"line\":{line}\
         }});</script>",
