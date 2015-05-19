@@ -9,8 +9,8 @@ document.write(`
     <link href="myqueries/myqueries.css" rel="stylesheet" />
     <link href="tree/tree.css" rel="stylesheet" />
 
-    <script src="https://rawgit.com/ModuleLoader/es6-module-loader/master/dist/es6-module-loader.src.js"></script>
-    <script src="https://rawgit.com/systemjs/systemjs/master/dist/system.src.js"></script>
+    <script src="https://cdn.rawgit.com/ModuleLoader/es6-module-loader/v0.16.6/dist/es6-module-loader.src.js"></script>
+    <script src="https://cdn.rawgit.com/systemjs/systemjs/0.16.11/dist/system.src.js"></script>
     <script>
     System.config({
         "paths": {
