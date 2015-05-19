@@ -3,3 +3,5 @@ rust: nightly
 script: "make test"
 jdk:
     - openjdk7
+before_script:
+  - psql -c "alter user postgres with login password 'postgres';" -U postgres
