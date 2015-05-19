@@ -1,4 +1,4 @@
 language: rust
-script: "npm install && npm run test-ui && cargo test"
+script: "make test"
 jdk:
     - openjdk7

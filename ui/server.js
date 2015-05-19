@@ -7,7 +7,7 @@ var redirect = require('connect-redirection');
 var bodyParser = require('body-parser');
 
 var app = connect()
-    .use(serveStatic(path.join(__dirname, 'src', 'ui')))
+    .use(serveStatic(path.join(__dirname, 'src')))
 
     .use(redirect())
     .use(bodyParser.urlencoded({ extended: false }))
@@ -22,4 +22,7 @@ var app = connect()
         }
     });
 
-http.createServer(app).listen(7890);
+
+http.createServer(app).listen(7890, function () {
+    console.log('Listening on http://0.0.0.0:7890');
+});

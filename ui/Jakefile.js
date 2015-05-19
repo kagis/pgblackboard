@@ -27,13 +27,13 @@ function getJsSources(moduleName, jsSources) {
             requiredModuleName = path.join(baseDir, requiredModuleName);
             getJsSources(requiredModuleName, jsSources)
         } else {
-            jsSources[path.join('src/ui/lib', requiredModuleName)] = true;
+            jsSources[path.join('src/lib', requiredModuleName)] = true;
         }
     }
     return Object.keys(jsSources);
 }
 
-var jsSources = getJsSources('src/ui/app.js');
+var jsSources = getJsSources('src/app.js');
 
 var libs = {};
 jsSources.forEach(function (jsFilename) {
@@ -50,20 +50,20 @@ libs = Object.keys(libs);
 
 
 var jsExterns = [
-    'src/ui/lib/knockout.extern.js',
-    'src/ui/lib/codemirror.extern.js',
-    'src/ui/lib/leaflet.extern.js'
+    'src/lib/knockout.extern.js',
+    'src/lib/codemirror.extern.js',
+    'src/lib/leaflet.extern.js'
 ];
 
 var cssFiles = [
     'node_modules/codemirror/lib/codemirror.css',
-    'src/ui/main/main.css',
-    'src/ui/nav/nav.css',
-    'src/ui/tree/tree.css',
-    'src/ui/myqueries/myqueries.css',
-    'src/ui/splitpanel/splitpanel.css',
-    'src/ui/codeform/codeform.css',
-    'src/ui/codeform/codemirror/codeeditor.css',
+    'src/main/main.css',
+    'src/nav/nav.css',
+    'src/tree/tree.css',
+    'src/myqueries/myqueries.css',
+    'src/splitpanel/splitpanel.css',
+    'src/codeform/codeform.css',
+    'src/codeform/codemirror/codeeditor.css',
 ];
 
 var outdir = process.env.OUT_DIR || 'dist';
@@ -82,17 +82,21 @@ task('default', [
     path.join(outdir, 'err.html')
 ]);
 
-file(path.join(outdir, 'favicon.ico'), ['src/ui/favicon.ico'], function () {
-    jake.cpR('src/ui/favicon.ico', this.name);
+task('clean', function () {
+    jake.rmRf(outdir);
+});
+
+file(path.join(outdir, 'favicon.ico'), ['src/favicon.ico'], function () {
+    jake.cpR('src/favicon.ico', this.name);
 });
 
 var indexPrereqs = [
-    'src/ui/index.html',
+    'src/index.html',
      path.join(cachedir, 'loading-indicator.css')
 ];
 
 file(path.join(outdir, 'index.html'), indexPrereqs, function () {
-    var indexHtml = fs.readFileSync('src/ui/index.html').toString();
+    var indexHtml = fs.readFileSync('src/index.html').toString();
 
     // embedding loading indicator styles
     indexHtml = indexHtml.replace(
@@ -108,11 +112,11 @@ file(path.join(cachedir, 'app.css'),
     processCssTarget);
 
 file(path.join(outdir, 'err.html'),
-    ['src/ui/err/err.html',
+    ['src/err/err.html',
      path.join(cachedir, 'err.css')],
     function () {
 
-    var errHtml = readTextFromFile('src/ui/err/err.html');
+    var errHtml = readTextFromFile('src/err/err.html');
     errHtml = errHtml.replace(
         '<link rel="stylesheet" href="err.css" />',
         embeddedStyle(
@@ -125,7 +129,7 @@ file(path.join(outdir, 'err.html'),
 });
 
 file(path.join(cachedir, 'err.css'),
-    ['src/ui/err/err.css'],
+    ['src/err/err.css'],
     processCssTarget);
 
 var appjsPrereqs = jsSources.concat(jsExterns);
@@ -140,7 +144,7 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
         language_out: 'ECMASCRIPT5_STRICT',
         process_common_js_modules: true,
         common_js_entry_module: 'app.js',
-        common_js_module_path_prefix: 'src/ui/lib/',
+        common_js_module_path_prefix: 'src/lib/',
         output_wrapper: '(function(){%output%})();',
 
         // If you specify a directory here, all files inside are used
@@ -159,13 +163,13 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
 });
 
 var mapjsPrereqs = [
-    'src/ui/output/map/map.js',
-    'src/ui/lib/leaflet.extern.js'
+    'src/output/map/map.js',
+    'src/lib/leaflet.extern.js'
 ];
 
 file(path.join(cachedir, 'map.js'), mapjsPrereqs, { async: true }, function () {
     var targetFileName = this.name;
-    closureCompiler.compile(['src/ui/output/map/map.js'], {
+    closureCompiler.compile(['src/output/map/map.js'], {
         compilation_level: 'ADVANCED_OPTIMIZATIONS',
         warning_level: 'VERBOSE',
         formatting: 'PRETTY_PRINT',
@@ -173,11 +177,11 @@ file(path.join(cachedir, 'map.js'), mapjsPrereqs, { async: true }, function () {
         language_out: 'ECMASCRIPT5_STRICT',
         // process_common_js_modules: true,
         // common_js_entry_module: 'app.js',
-        // common_js_module_path_prefix: 'src/ui/lib/',
+        // common_js_module_path_prefix: 'src/lib/',
         output_wrapper: '(function(){%output%})();',
 
         // If you specify a directory here, all files inside are used
-        externs: ['src/ui/lib/leaflet.extern.js'],
+        externs: ['src/lib/leaflet.extern.js'],
     },
     function (errorsAndWarnings, result) {
         if (result) {
@@ -227,12 +231,12 @@ file(path.join(outdir, 'bundle-index.js'), indexBundlePrereqs, function () {
 });
 
 file(path.join(cachedir, 'table.css'),
-    ['src/ui/output/queryplan/queryplan.css',
-     'src/ui/output/table/table.css'],
+    ['src/output/queryplan/queryplan.css',
+     'src/output/table/table.css'],
     processCssTarget);
 
 file(path.join(cachedir, 'loading-indicator.css'),
-    ['src/ui/loading-indicator/loading-indicator.css'],
+    ['src/loading-indicator/loading-indicator.css'],
     processCssTarget);
 
 file(path.join(outdir, 'bundle-map.js'),
@@ -255,7 +259,7 @@ file(path.join(outdir, 'bundle-map.js'),
 
 file(path.join(cachedir, 'map.css'),
     ['node_modules/leaflet/dist/leaflet.css',
-     'src/ui/output/map/map.css'],
+     'src/output/map/map.css'],
      processCssTarget);
 
 rule('.min.css', '.css', function () {

@@ -50,7 +50,7 @@ mod test {
     fn read_cstr() {
         let buf: &[u8] = b"some awesome\0";
         let mut reader = Cursor::new(buf);
-        assert_eq!(reader.read_cstr(), Ok("some awesome".to_string()));
+        assert_eq!(reader.read_cstr().unwrap(), "some awesome".to_string());
     }
 
         #[test]
@@ -58,11 +58,7 @@ mod test {
         let buf: &[u8] = b"some awesome";
         let mut reader = Cursor::new(buf);
 
-        let err = io::Error::new(io::ErrorKind::Other,
-                                 "Unexpected EOF.",
-                                 None);
-
-        assert_eq!(reader.read_cstr(), Err(err));
+        assert!(reader.read_cstr().is_err());
     }
 
     #[test]

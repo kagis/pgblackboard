@@ -14,8 +14,8 @@
   window.onload = null;
   </script>
 
-  <script src="https://rawgit.com/ModuleLoader/es6-module-loader/master/dist/es6-module-loader.src.js"></script>
-  <script src="https://rawgit.com/systemjs/systemjs/master/dist/system.src.js"></script>
+  <script src="https://cdn.rawgit.com/ModuleLoader/es6-module-loader/v0.16.6/dist/es6-module-loader.src.js"></script>
+  <script src="https://cdn.rawgit.com/systemjs/systemjs/0.16.11/dist/system.src.js"></script>
   <script>
   System.config({
     paths: {
@@ -23,10 +23,10 @@
     }
   });
   Promise.all([
-    System.load('src/ui/myqueries/myqueries-spec'),
-    System.load('src/ui/nav/nav-spec'),
-    System.load('src/ui/tree/tree-spec'),
-    System.load('src/ui/codeform/codeform-spec')
+    System.load('src/myqueries/myqueries-spec'),
+    System.load('src/nav/nav-spec'),
+    System.load('src/tree/tree-spec'),
+    System.load('src/codeform/codeform-spec')
   ]).then(function () {
     runSpecs();
   });

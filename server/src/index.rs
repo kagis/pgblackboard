@@ -106,7 +106,7 @@ impl http::Response for IndexPageResponse {
         let mut initial_data = BTreeMap::new();
         initial_data.insert("databases", &self.databases);
 
-        let index_html = include_str!(concat!(env!("OUT_DIR"), "/index.html"));
+        let index_html = include_str!(concat!(env!("PGBB_UI_DIR"), "/index.html"));
         let index_html = index_html
             .replace("/*INITIAL_DATA_PLACEHOLDER*/",
                      &json::encode(&initial_data).unwrap());
@@ -131,7 +131,7 @@ impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
         }
 
         let html = format!(
-            include_str!(concat!(env!("OUT_DIR"), "/err.html")),
+            include_str!(concat!(env!("PGBB_UI_DIR"), "/err.html")),
             code = self.status as u16,
             phrase = self.status.phrase(),
             message = self.message);
