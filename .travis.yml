@@ -4,4 +4,4 @@ script: "make test"
 jdk:
     - openjdk7
 before_script:
-  - psql -c "alter user postgres with login password 'postgres';" -U postgres
+  - psql -c "create user pgblackboard_test_user with superuser login password 'pgblackboard_test_pwd';" -U postgres

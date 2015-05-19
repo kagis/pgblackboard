@@ -972,8 +972,8 @@ mod test {
     fn test_script() {
         let mut conn = connect("localhost:5432",
                                "postgres",
-                               "postgres",
-                               "postgres").unwrap();
+                               "pgblackboard_test_user",
+                               "pgblackboard_test_pwd").unwrap();
 
         #[derive(RustcDecodable, PartialEq, Debug)]
         struct Foo {
