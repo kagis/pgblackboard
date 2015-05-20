@@ -1,4 +1,3 @@
-#![feature(io)]
 #![feature(buf_stream)]
 
 //! ```rust
@@ -40,7 +39,6 @@ use rustc_serialize::{Decodable};
 use std::io::{self, Read, Write, BufRead, BufStream};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::mem;
-use std::char;
 
 pub use sqlstate::SqlState;
 
@@ -949,12 +947,12 @@ fn read_full<R: Read>(rdr: &mut R, buf: &mut [u8]) -> io::Result<()> {
 mod test {
     use super::*;
 
-    #[test]
+    // #[test]
     fn test_query() {
         let mut conn = connect("localhost:5432",
                                "postgres",
-                               "postgres",
-                               "postgres").unwrap();
+                               "pgblackboard_test_user",
+                               "pgblackboard_test_pwd").unwrap();
 
         #[derive(RustcDecodable, PartialEq, Debug)]
         struct Foo {
@@ -968,7 +966,7 @@ mod test {
         ]);
     }
 
-    #[test]
+    // #[test]
     fn test_script() {
         let mut conn = connect("localhost:5432",
                                "postgres",

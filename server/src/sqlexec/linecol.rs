@@ -29,12 +29,10 @@ impl LineCol {
     pub fn to_bytepos(self, inp: &str) -> Option<usize> {
         let ref mut lines = inp.split('\n');
 
-        let (line_bpos, lines_taken) = lines
+        let line_bpos = lines
             .take(self.line)
             .map(|line| line.len() + 1)
-            .fold((0, 0), |(len, count), line_len| {
-                (len + line_len, count + 1)
-            });
+            .sum::<usize>();
 
         let line = match lines.next() {
             Some(line) => line,
