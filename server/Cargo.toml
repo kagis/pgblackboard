@@ -1,4 +1,4 @@
-[package]
+[project]
 name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]

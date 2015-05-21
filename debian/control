@@ -1,0 +1,8 @@
+Package: pgblackboard
+Version: 0.2.0
+Maintainer: exe-dealer <exe-dealer@yandex.ru>
+Architecture: amd64
+Section: admin
+Description: Minimalistic GIS enabled interface for PostgreSQL
+Recommends: postgresql
+Origin: https://github.com/exe-dealer/pgblackboard
