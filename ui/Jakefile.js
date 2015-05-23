@@ -1,12 +1,10 @@
 var closureCompiler = require('closurecompiler');
 var autoprefixer    = require('autoprefixer-core');
 var csso            = require('csso');
-var uglifyjs        = require('uglify-js'); // for codemirror
 var fs              = require('fs');
 var path            = require('path');
 var zlib            = require('zlib');
 var crypto          = require('crypto');
-
 
 
 function getJsSources(moduleName, jsSources) {
@@ -269,9 +267,22 @@ rule('.min.css', '.css', function () {
     fs.writeFileSync(this.name, css);
 });
 
-rule('.min.js', '.js', function () {
-    var minifiedjs = uglifyjs.minify(this.source).code;
-    fs.writeFileSync(this.name, minifiedjs);
+rule('.min.js', '.js', { async: true }, function () {
+    var targetFileName = this.name;
+    closureCompiler.compile([this.source], {
+        compilation_level: 'SIMPLE_OPTIMIZATIONS',
+        jscomp_off: 'checkVars'
+    },
+    function (errorsAndWarnings, result) {
+        if (result) {
+            fs.writeFileSync(targetFileName, result);
+            jake.logger.log(errorsAndWarnings);
+            complete();
+        } else {
+            jake.logger.error(errorsAndWarnings);
+            fail('Failed to minify js');
+        }
+    });
 });
 
 
