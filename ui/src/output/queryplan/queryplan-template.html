@@ -1,0 +1,26 @@
+<svg class="queryplan"
+     data-bind="attr: { viewBox: viewBox.join(' ') }">
+
+  <g data-bind="foreach: edges">
+    <path class="queryplan__edge"
+          data-bind="attr: { d: pathData }" />
+  </g>
+
+  <g data-bind="foreach: nodes">
+    <g class="queryplan__node"
+       data-bind="attr: { transform: 'translate(' + x + ',' + y + ')' }">
+
+      <text text-anchor="middle"
+            dy=".3em"
+            data-bind="text: name"></text>
+
+      <rect data-bind="attr: { fill: fill,
+                               width: width,
+                               height: height,
+                               x: -width / 2,
+                               y: -height / 2,
+                               rx: 5,
+                               ry: 5 }" />
+    </g>
+  </g>
+</svg>

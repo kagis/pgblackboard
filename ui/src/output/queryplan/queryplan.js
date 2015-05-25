@@ -1,5 +1,22 @@
 var d3 = require('./d3');
 var ko = require('knockout');
+var queryplanOverlayTemplate = require('./queryplan-overlay-template.html');
+var queryplanTemplate = require('./queryplan-template.html');
+
+
+function QueryPlanNode(options) {
+    this.name = options.name;
+    this.x = options.x;
+    this.y = options.y;
+
+    var hueDelta = this.highHue = this.lowHue;
+    var hue = hueDelta * options.heat + this.lowHue;
+    this.fill = 'hsl(' + hue + ', 100%, 50%)';
+}
+
+QueryPlanNode.prototype.highHue = 90; /* deg */
+QueryPlanNode.prototype.lowHue = 20; /* deg */
+
 
 module.exports = function (frameWindow, plan) {
 
@@ -123,7 +140,9 @@ module.exports = function (frameWindow, plan) {
     queryplanEl.appendChild(svg);
     queryplanEl.appendChild(popupElem);
 
-    queryplanEl.addEventListener('click', function queryplanClick() {
+    queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
+
+    /*function queryplanClick() {
         queryplanEl.removeEventListener('click', queryplanClick);
         ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
 
@@ -137,10 +156,51 @@ module.exports = function (frameWindow, plan) {
                 }
             }
         });
-    });
+    });*/
 
     frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
 };
+
+// function QueryPlan() {
+//     this.viewBox = [
+//     ];
+//     this.nodes = nodes;
+//     this.edges = edges;
+// }
+
+
+var queryplanOverlay = null;
+
+function getQueryplanOverlay(ownerDocument) {
+    if (!queryplanOverlay) {
+        queryplanOverlay = new QueryplanOverlay();
+        var elem = ownerDocument.createElement('div');
+        elem.innerHTML = queryplanOverlayTemplate;
+        ownerDocument.body.appendChild(elem);
+        ko.applyBindings(queryplanOverlay, elem);
+    }
+    return queryplanOverlay;
+}
+
+function QueryplanOverlay() {
+    this.content = ko.observable();
+}
+
+QueryplanOverlay.prototype.close = function () {
+    this.content(null);
+};
+
+QueryplanOverlay.prototype.show = function (content) {
+    this.content(content);
+};
+
+function handleQueryplanPreviewClick(e) {
+    var previewElem = this;
+    var ownerDocument = previewElem.ownerDocument;
+    var queryplanElem = previewElem.cloneNode(true);
+
+    getQueryplanOverlay(ownerDocument).show(queryplanElem);
+}
 
 
 /** @constructor */
