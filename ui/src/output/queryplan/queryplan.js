@@ -16,6 +16,8 @@ function QueryPlanNode(options) {
 
 QueryPlanNode.prototype.highHue = 90; /* deg */
 QueryPlanNode.prototype.lowHue = 20; /* deg */
+QueryPlanNode.prototype.width = 100;
+QueryPlanNode.prototype.height = 30;
 
 
 module.exports = function (frameWindow, plan) {
@@ -29,14 +31,6 @@ module.exports = function (frameWindow, plan) {
     var tree = d3.layout.tree()
                 .nodeSize([50, 1]);
 
-    var createSVGElem = document.createElementNS.bind(
-        document,
-        'http://www.w3.org/2000/svg'
-    );
-
-    var graphContainer = createSVGElem('g');
-    graphContainer.setAttribute('transform', 'translate(0, 0)');
-
     var nodes = tree.nodes(plan).reverse();
     nodes.forEach(function (d) {
         d.y = d.depth * 150;
@@ -48,49 +42,7 @@ module.exports = function (frameWindow, plan) {
         return [d.y, d.x];
     });
 
-    links.forEach(function (d) {
-        var path = createSVGElem('path');
-        path.setAttribute('d', diagonal(d));
-        path.setAttribute('class', 'queryplan__edge');
 
-        graphContainer.appendChild(path);
-    });
-
-    var nodeWidth = 100;
-    var nodeHeight = 30;
-
-    nodes.forEach(function (d) {
-
-        var nodeLabel = createSVGElem('text');
-        nodeLabel.setAttribute('dy', '.3em');
-        nodeLabel.setAttribute('text-anchor', 'middle');
-        nodeLabel.textContent = d['typ'];
-
-        var nodeRect = createSVGElem('rect');
-        nodeRect.setAttribute('rx', 5);
-        nodeRect.setAttribute('ry', 5);
-        nodeRect.setAttribute('width', nodeWidth);
-        nodeRect.setAttribute('height', nodeHeight);
-        nodeRect.setAttribute('x', -nodeWidth / 2);
-        nodeRect.setAttribute('y', -nodeHeight / 2);
-
-        var lowHue = 90; /* green */
-        var highHue = 20; /* red */
-        var hueDelta = highHue - lowHue;
-        nodeRect.setAttribute(
-            'fill',
-            'hsl(' + (hueDelta * d['heat'] + lowHue) + ', 100%, 50%)'
-        );
-
-        var node = createSVGElem('g');
-        node.setAttribute('class', 'queryplan__node');
-        node.setAttribute('transform', 'translate(' + d.y + ',' + d.x + ')');
-        node.appendChild(nodeRect);
-        node.appendChild(nodeLabel);
-
-
-        graphContainer.appendChild(node);
-    });
 
 
     var hidePopupOnPanEnd = false;
@@ -108,15 +60,8 @@ module.exports = function (frameWindow, plan) {
     var ymin = nodes.map(function (it) { return it.x; })
                     .reduce(function (a, b) { return Math.min(a, b); });
 
-    var svg = createSVGElem('svg');
-    svg.setAttribute('class', 'queryplan__svg');
-    svg.setAttribute('viewBox', [
-        xmin - nodeWidth / 2,
-        ymin - nodeHeight / 2,
-        xmax - xmin + nodeWidth,
-        ymax - ymin + nodeHeight
-    ].join(' '));
-    svg.appendChild(graphContainer);
+
+
 
     // node.addEventListener('mouseenter', function () {
     //     if (pane.isPanning) {
@@ -133,12 +78,39 @@ module.exports = function (frameWindow, plan) {
     //         popup.hide();
     //     }
     // });
+    var nodeWidth = 100;
+    var nodeHeight = 30;
+    var elem = frameWindow.document.createElement('div');
+    elem.innerHTML = queryplanTemplate;
+    ko.applyBindings({
+        nodes: nodes.map(function (n) {
+            var highHue = 20; /* deg */
+            var lowHue = 90; /* deg */
+            var hueDelta = highHue - lowHue;
+            var hue = hueDelta * n['heat'] + lowHue;
+            return {
+                x: n.y,
+                y: n.x,
+                name: n['typ'],
+                fill: 'hsl(' + hue + ', 100%, 50%)',
+                width: nodeWidth,
+                height: nodeHeight
+            };
+        }),
+        edges: links.map(function (d) {
+            return {
+                pathData: diagonal(d)
+            };
+        }),
+        viewBox: [
+            xmin - nodeWidth / 2,
+            ymin - nodeHeight / 2,
+            xmax - xmin + nodeWidth,
+            ymax - ymin + nodeHeight
+        ]
+    }, elem);
 
-
-    var queryplanEl = frameWindow.document.createElement('div');
-    queryplanEl.className = 'queryplan';
-    queryplanEl.appendChild(svg);
-    queryplanEl.appendChild(popupElem);
+    var queryplanEl = elem.children[0];
 
     queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
 

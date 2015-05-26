@@ -11,10 +11,6 @@ module.exports = `
     <g class="queryplan__node"
        data-bind="attr: { transform: 'translate(' + x + ',' + y + ')' }">
 
-      <text text-anchor="middle"
-            dy=".3em"
-            data-bind="text: name"></text>
-
       <rect data-bind="attr: { fill: fill,
                                width: width,
                                height: height,
@@ -22,6 +18,10 @@ module.exports = `
                                y: -height / 2,
                                rx: 5,
                                ry: 5 }" />
+
+      <text text-anchor="middle"
+            dy=".3em"
+            data-bind="text: name"></text>
     </g>
   </g>
 </svg>
