@@ -2,7 +2,7 @@ var d3 = require('./d3');
 var ko = require('knockout');
 var queryplanOverlayTemplate = require('./queryplan-overlay-template.html');
 var queryplanTemplate = require('./queryplan-template.html');
-
+var queryplanPreviewTemplate = require('./queryplan-preview-template.html');
 
 function QueryPlanNode(options) {
     this.name = options.name;
@@ -22,12 +22,60 @@ QueryPlanNode.prototype.height = 30;
 
 module.exports = function (frameWindow, plan) {
 
+    setupQueryplanPreviewClickHandler(frameWindow);
+
     var popupElem = document.createElement('div');
     popupElem.className = 'queryplan__popup';
     document.body.appendChild(popupElem);
 
     var popup = new SVGPopup(popupElem);
 
+
+    var queryplanSVGMarkup = renderQueryplanSVG(plan);
+
+    frameWindow.document.write(`
+        <div class="queryplan-preview">${queryplanSVGMarkup}</div>
+    `);
+
+    // queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
+
+    /*function queryplanClick() {
+        queryplanEl.removeEventListener('click', queryplanClick);
+        ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
+
+        var pane = new SVGPane({
+            paneElem: svg,
+            viewportElem: queryplanEl,
+            onExtentChange: popup.updatePosition.bind(popup),
+            onPanEnd: function () {
+                if (hidePopupOnPanEnd) {
+                    popup.hide();
+                }
+            }
+        });
+    });*/
+
+    // frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
+};
+
+var setupQueryplanPreviewClickHandlerIsDone = false;
+function setupQueryplanPreviewClickHandler(frameWindow) {
+    if (setupQueryplanPreviewClickHandlerIsDone) {
+        return;
+    }
+    setupQueryplanPreviewClickHandlerIsDone = true;
+
+    frameWindow.addEventListener('click', function (e) {
+        var elem = e.target;
+        do {
+            if (elem.matches && elem.matches('.queryplan-preview')) {
+                console.log(elem);
+            }
+        } while (elem = elem.parentNode);
+    }, true);
+}
+
+function renderQueryplanSVG(plan) {
     var tree = d3.layout.tree()
                 .nodeSize([50, 1]);
 
@@ -42,12 +90,6 @@ module.exports = function (frameWindow, plan) {
         return [d.y, d.x];
     });
 
-
-
-
-    var hidePopupOnPanEnd = false;
-
-
     var xmax = nodes.map(function (it) { return it.y; })
                     .reduce(function (a, b) { return Math.max(a, b); });
 
@@ -60,27 +102,9 @@ module.exports = function (frameWindow, plan) {
     var ymin = nodes.map(function (it) { return it.x; })
                     .reduce(function (a, b) { return Math.min(a, b); });
 
-
-
-
-    // node.addEventListener('mouseenter', function () {
-    //     if (pane.isPanning) {
-    //         hidePopupOnPanEnd = false;
-    //     } else {
-    //         popup.setContent(getNodeDescription(d['properties']));
-    //         popup.showOn(node);
-    //     }
-    // });
-    // node.addEventListener('mouseleave', function () {
-    //     if (pane.isPanning) {
-    //         hidePopupOnPanEnd = true;
-    //     } else {
-    //         popup.hide();
-    //     }
-    // });
     var nodeWidth = 100;
     var nodeHeight = 30;
-    var elem = frameWindow.document.createElement('div');
+    var elem = document.createElement('div');
     elem.innerHTML = queryplanTemplate;
     ko.applyBindings({
         nodes: nodes.map(function (n) {
@@ -110,28 +134,8 @@ module.exports = function (frameWindow, plan) {
         ]
     }, elem);
 
-    var queryplanEl = elem.children[0];
-
-    queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
-
-    /*function queryplanClick() {
-        queryplanEl.removeEventListener('click', queryplanClick);
-        ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
-
-        var pane = new SVGPane({
-            paneElem: svg,
-            viewportElem: queryplanEl,
-            onExtentChange: popup.updatePosition.bind(popup),
-            onPanEnd: function () {
-                if (hidePopupOnPanEnd) {
-                    popup.hide();
-                }
-            }
-        });
-    });*/
-
-    frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
-};
+    return elem.children[0].outerHTML;
+}
 
 // function QueryPlan() {
 //     this.viewBox = [
@@ -171,7 +175,7 @@ function handleQueryplanPreviewClick(e) {
     var ownerDocument = previewElem.ownerDocument;
     var queryplanElem = previewElem.cloneNode(true);
 
-    getQueryplanOverlay(ownerDocument).show(queryplanElem);
+    getQueryplanOverlay(ownerDocument).show(queryplanElem.outerHTML);
 }
 
 

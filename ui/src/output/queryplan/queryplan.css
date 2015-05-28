@@ -82,6 +82,52 @@
 
 .node .node-overlay { fill: #888; fill-opacity: .5; }
 
+.queryplan-preview {
+    height: 200px;
+    width: 80%;
+    margin: 1em auto;
+    position: relative;
+    cursor: pointer;
+    padding: .5em;
+    box-sizing: border-box;
+    background-color: #eee;
+    -webkit-filter: saturate(0.5);
+    transition: transform .2s ease,
+                -webkit-filter .2s ease;
+    }
+
+.queryplan-preview > * {
+    width: 100%;
+    height: 100%;
+    }
+/*
+.queryplan-preview::before {
+    content: 'expand';
+    line-height: 200px;
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #888;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transition: opacity .2s ease;
+    background-color: rgba(200, 200, 200, .7);
+    z-index: 1;
+    opacity: 0;
+    }
+
+.queryplan-preview:hover::before {
+    -opacity: 1;
+    }*/
+
+.queryplan-preview:hover {
+    -webkit-filter: none;
+    transform: scale(1.05);
+    }
 
 .queryplan,
 .queryplan__popup {
@@ -114,7 +160,6 @@
 .queryplan {
     overflow: hidden;
     font-size: 14px;
-    height: 200px;
     cursor: pointer;
     display: block;
     }
