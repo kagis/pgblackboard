@@ -58,21 +58,59 @@ module.exports = function (frameWindow, plan) {
     // frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
 };
 
-var setupQueryplanPreviewClickHandlerIsDone = false;
 function setupQueryplanPreviewClickHandler(frameWindow) {
-    if (setupQueryplanPreviewClickHandlerIsDone) {
-        return;
-    }
-    setupQueryplanPreviewClickHandlerIsDone = true;
+     frameWindow.addEventListener(
+        'click',
+        handleQueryplanPreviewClick,
+        true);
+}
 
-    frameWindow.addEventListener('click', function (e) {
-        var elem = e.target;
-        do {
-            if (elem.matches && elem.matches('.queryplan-preview')) {
-                console.log(elem);
-            }
-        } while (elem = elem.parentNode);
-    }, true);
+function handleQueryplanPreviewClick (e) {
+    var elem = e.target;
+    do {
+        if (hasClass(elem, 'queryplan-preview')) {
+            // ko.utils.toggleDomNodeCssClass(
+            //     elem,
+            //     'queryplan-preview--overlayed',
+            //     true
+            // );
+            showQueryplanOverlay(elem.children[0]);
+        }
+    } while (elem = elem.parentNode);
+};
+
+// function delegate(elemToListenOn, eventName, className, handler) {
+//     elemToListenOn.addEventListener(eventName, function () {
+
+//     }, true);
+// }
+
+
+
+function hasClass(elem, testingClassName) {
+    if (typeof elem.classList === 'object') {
+        return elem.classList.contains(testingClassName);
+    }
+
+    var classNames = elem.className;
+    if (typeof classNames === 'object' &&
+        typeof classNames['baseVal'] === 'string')
+    {
+        classNames = classNames['baseVal'];
+    }
+
+    if (typeof classNames === 'string') {
+        return classNames.match(new RegExp('\\b' + testingClassName + '\\b'));
+    }
+
+    return false;
+}
+
+function showQueryplanOverlay(queryplanElem) {
+    var ownerDocument = queryplanElem.ownerDocument;
+
+    getQueryplanOverlay(ownerDocument)
+        .show(queryplanElem.outerHTML);
 }
 
 function renderQueryplanSVG(plan) {
@@ -145,17 +183,16 @@ function renderQueryplanSVG(plan) {
 // }
 
 
-var queryplanOverlay = null;
-
 function getQueryplanOverlay(ownerDocument) {
-    if (!queryplanOverlay) {
-        queryplanOverlay = new QueryplanOverlay();
+    if (!ownerDocument['pgBlackboardQueryplanOverlay']) {
+        var queryplanOverlay = new QueryplanOverlay();
         var elem = ownerDocument.createElement('div');
         elem.innerHTML = queryplanOverlayTemplate;
-        ownerDocument.body.appendChild(elem);
         ko.applyBindings(queryplanOverlay, elem);
+        ownerDocument.body.appendChild(elem.children[0]);
+        ownerDocument['pgBlackboardQueryplanOverlay'] = queryplanOverlay;
     }
-    return queryplanOverlay;
+    return ownerDocument['pgBlackboardQueryplanOverlay'];
 }
 
 function QueryplanOverlay() {
@@ -170,13 +207,13 @@ QueryplanOverlay.prototype.show = function (content) {
     this.content(content);
 };
 
-function handleQueryplanPreviewClick(e) {
-    var previewElem = this;
-    var ownerDocument = previewElem.ownerDocument;
-    var queryplanElem = previewElem.cloneNode(true);
+// function handleQueryplanPreviewClick(e) {
+//     var previewElem = this;
+//     var ownerDocument = previewElem.ownerDocument;
+//     var queryplanElem = previewElem.cloneNode(true);
 
-    getQueryplanOverlay(ownerDocument).show(queryplanElem.outerHTML);
-}
+//     getQueryplanOverlay(ownerDocument).show(queryplanElem.outerHTML);
+// }
 
 
 /** @constructor */
