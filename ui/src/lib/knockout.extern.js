@@ -78,6 +78,23 @@ ko.nativeTemplateEngine.prototype.makeTemplateSource = function (template, templ
 ko.toJS = function (val) {};
 ko.toJSON = function (val) {};
 
+/** @constructor */
+ko.bindingProvider = function () {};
+
+/**
+ * @param {HTMLElement} node
+ * @return {string}
+ */
+ko.bindingProvider.prototype.getBindingsString = function (node, bindingContext) {};
+
+/**
+ * @param {HTMLElement} node
+ * @return {boolean}
+ */
+ko.bindingProvider.prototype.nodeHasBindings = function (node) {};
+
+ko.bindingProvider.instance;
+
 ko.utils = {};
 
 ko.utils.isIe6 = {};

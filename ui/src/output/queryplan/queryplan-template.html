@@ -1,28 +1,52 @@
 module.exports = `
-<svg class="queryplan"
-     data-bind="attr: { viewBox: viewBox.join(' ') }">
+<div class="queryplan-container"
+     data-bind.css.queryplan-container--preview="!isFullPageView()"
+     data-bind.css.queryplan-container--fullpage="isFullPageView"
+     data-bind.click="enterFullPageMode">
 
-  <g data-bind="foreach: edges">
-    <path class="queryplan__edge"
-          data-bind="attr: { d: pathData }" />
-  </g>
+  <svg class="queryplan"
+       data-bind.attr.view_box="viewBox.join(' ')"
+       data-bind.style.width="width + 'px'"
+       data-bind.style.height="height + 'px'">
 
-  <g data-bind="foreach: nodes">
-    <g class="queryplan__node"
-       data-bind="attr: { transform: 'translate(' + x + ',' + y + ')' }">
-
-      <rect data-bind="attr: { fill: fill,
-                               width: width,
-                               height: height,
-                               x: -width / 2,
-                               y: -height / 2,
-                               rx: 5,
-                               ry: 5 }" />
-
-      <text text-anchor="middle"
-            dy=".3em"
-            data-bind="text: name"></text>
+    <g data-bind.foreach="edges">
+      <path class="queryplan__edge"
+            data-bind.attr.d="pathData" />
     </g>
-  </g>
-</svg>
+
+    <g data-bind.foreach="nodes">
+      <g class="queryplan__node"
+         data-bind.queryplan_node_popup="$parent.isFullPageView"
+         data-bind.attr.transform="'translate(' + x + ',' + y + ')'">
+
+        <desc>
+          <table>
+            <tbody data-bind.foreach="properties">
+              <tr>
+                <td data-bind.text="name"></td>
+                <td data-bind.text="value"></td>
+              </tr>
+            </tbody>
+          </table>
+        </desc>
+
+        <rect data-bind.attr.fill="fill"
+              data-bind.attr.width="width"
+              data-bind.attr.height="height"
+              data-bind.attr.x="-width / 2"
+              data-bind.attr.y="-height / 2"
+              data-bind.attr.rx="5"
+              data-bind.attr.ry="5" />
+
+        <text text-anchor="middle"
+              dy=".3em"
+              data-bind.text="name"></text>
+      </g>
+    </g>
+  </svg>
+
+  <button class="queryplan-overlay__close"
+          data-bind.click="close">&times;</button>
+
+</div>
 `;

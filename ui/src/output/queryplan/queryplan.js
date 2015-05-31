@@ -4,6 +4,17 @@ var queryplanOverlayTemplate = require('./queryplan-overlay-template.html');
 var queryplanTemplate = require('./queryplan-template.html');
 var queryplanPreviewTemplate = require('./queryplan-preview-template.html');
 
+
+ko.bindingHandlers['zoompan'] = {
+    'init': function (elem) {
+        new Pane({
+            paneElem: elem,
+            viewportElem: elem.parentNode
+        });
+    }
+};
+
+
 function QueryPlanNode(options) {
     this.name = options.name;
     this.x = options.x;
@@ -24,11 +35,7 @@ module.exports = function (frameWindow, plan) {
 
     setupQueryplanPreviewClickHandler(frameWindow);
 
-    var popupElem = document.createElement('div');
-    popupElem.className = 'queryplan__popup';
-    document.body.appendChild(popupElem);
 
-    var popup = new SVGPopup(popupElem);
 
 
     var queryplanSVGMarkup = renderQueryplanSVG(plan);
@@ -43,7 +50,7 @@ module.exports = function (frameWindow, plan) {
         queryplanEl.removeEventListener('click', queryplanClick);
         ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
 
-        var pane = new SVGPane({
+        var pane = new Pane({
             paneElem: svg,
             viewportElem: queryplanEl,
             onExtentChange: popup.updatePosition.bind(popup),
@@ -58,11 +65,40 @@ module.exports = function (frameWindow, plan) {
     // frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
 };
 
+var queryplanIsInitialized = false;
 function setupQueryplanPreviewClickHandler(frameWindow) {
-     frameWindow.addEventListener(
+    if (queryplanIsInitialized) { return; }
+    queryplanIsInitialized = true;
+
+    frameWindow.addEventListener(
         'click',
         handleQueryplanPreviewClick,
         true);
+
+    var popupElem = frameWindow.document.createElement('div');
+    popupElem.className = 'queryplan__popup';
+    frameWindow.document.body.appendChild(popupElem);
+
+    var popup = new SVGPopup(popupElem);
+
+    frameWindow.addEventListener('mouseover', function (e) {
+        var elem = e.target;
+        do {
+            if (hasClass(elem, 'queryplan__node')) {
+               popup.setContent(elem.getElementsByTagName('desc')[0].innerHTML);
+               popup.showOn(elem);
+            }
+        } while (elem = elem.parentNode);
+    });
+
+    frameWindow.addEventListener('mouseout', function (e) {
+        var elem = e.target;
+        do {
+            if (hasClass(elem, 'queryplan__node')) {
+               popup.hide();
+            }
+        } while (elem = elem.parentNode);
+    });
 }
 
 function handleQueryplanPreviewClick (e) {
@@ -145,31 +181,42 @@ function renderQueryplanSVG(plan) {
     var elem = document.createElement('div');
     elem.innerHTML = queryplanTemplate;
     ko.applyBindings({
-        nodes: nodes.map(function (n) {
+        'nodes': nodes.map(function (n) {
             var highHue = 20; /* deg */
             var lowHue = 90; /* deg */
             var hueDelta = highHue - lowHue;
             var hue = hueDelta * n['heat'] + lowHue;
+            var properties = n['properties'];
+            var propertiesPairs = [];
+            for (var propName in properties) {
+                propertiesPairs.push({
+                    'name': propName,
+                    'value': properties[propName]
+                });
+            }
             return {
-                x: n.y,
-                y: n.x,
-                name: n['typ'],
-                fill: 'hsl(' + hue + ', 100%, 50%)',
-                width: nodeWidth,
-                height: nodeHeight
+                'x': n.y,
+                'y': n.x,
+                'name': n['typ'],
+                'properties': propertiesPairs,
+                'fill': 'hsl(' + hue + ', 100%, 50%)',
+                'width': nodeWidth,
+                'height': nodeHeight
             };
         }),
-        edges: links.map(function (d) {
+        'edges': links.map(function (d) {
             return {
-                pathData: diagonal(d)
+                'pathData': diagonal(d)
             };
         }),
-        viewBox: [
+        'viewBox': [
             xmin - nodeWidth / 2,
             ymin - nodeHeight / 2,
             xmax - xmin + nodeWidth,
             ymax - ymin + nodeHeight
-        ]
+        ],
+        'width': xmax - xmin + nodeWidth,
+        'height': ymax - ymin + nodeHeight
     }, elem);
 
     return elem.children[0].outerHTML;
@@ -196,9 +243,12 @@ function getQueryplanOverlay(ownerDocument) {
 }
 
 function QueryplanOverlay() {
+
+    /** @expose */
     this.content = ko.observable();
 }
 
+/** @expose */
 QueryplanOverlay.prototype.close = function () {
     this.content(null);
 };
@@ -293,7 +343,7 @@ function getNodeDescription(properties) {
 
 
 /** @constructor */
-function SVGPane(options) {
+function Pane(options) {
     this.paneElem = options.paneElem;
     this.viewportElem = options.viewportElem;
     this.translateX = 0;
@@ -319,13 +369,13 @@ function SVGPane(options) {
     );
 }
 
-SVGPane.prototype.minZoom = -20;
+Pane.prototype.minZoom = -20;
 
-SVGPane.prototype.maxZoom = 20;
+Pane.prototype.maxZoom = 20;
 
-SVGPane.prototype.zoomFactor = .1;
+Pane.prototype.zoomFactor = .1;
 
-// SVGPane.prototype.center = function () {
+// Pane.prototype.center = function () {
 //     var paneBBox = this.paneElem.getBBox();
 //     var viewportSize = this.viewportElem.getBoundingClientRect();
 //     this.translateX = (viewportSize.width - paneBBox.width) / 2 - paneBBox.x;
@@ -334,7 +384,7 @@ SVGPane.prototype.zoomFactor = .1;
 // };
 
 
-SVGPane.prototype.applyTransform = function () {
+Pane.prototype.applyTransform = function () {
     setTransform(this.paneElem,
         'translate(' +
             this.translateX + 'px,' +
@@ -358,15 +408,15 @@ function setTransform(elem, value) {
     elem.style[transformProperty] = value;
 }
 
-SVGPane.prototype.setZoomClipped = function (unclippedZoom) {
+Pane.prototype.setZoomClipped = function (unclippedZoom) {
     this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, unclippedZoom));
 };
 
-SVGPane.prototype.getScale = function () {
+Pane.prototype.getScale = function () {
     return Math.exp(this.zoom * this.zoomFactor);
 };
 
-SVGPane.prototype.handleViewportMouseDown = function (e) {
+Pane.prototype.handleViewportMouseDown = function (e) {
     // proceed only for left mouse button
     if (e.button != 0) { return; }
 
@@ -393,7 +443,7 @@ SVGPane.prototype.handleViewportMouseDown = function (e) {
     });
 };
 
-SVGPane.prototype.handleViewportWheel = function (e) {
+Pane.prototype.handleViewportWheel = function (e) {
     // disable zoom while panning
     if (this.isPanning) { return; }
 

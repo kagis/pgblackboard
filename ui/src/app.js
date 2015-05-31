@@ -1,4 +1,5 @@
 var ko = require('knockout');
+var flatBindingProvider = require('./knockout-flatbind');
 
 ko.utils.objectForEach({
 
@@ -28,5 +29,7 @@ ko.utils.extend(ko.extenders, {
     codeEditorDoc: codeEditorDocExtender,
     persist: require('./main/persist-extender')
 });
+
+ko.bindingProvider.instance = new flatBindingProvider();
 
 ko.applyBindings(require('./root-bindingctx'));

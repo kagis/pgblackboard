@@ -1,10 +1,13 @@
 module.exports = `
 <div class="queryplan-overlay"
-     data-bind="css: { 'queryplan-overlay--visible': content }">
+     data-bind.css.queryplan-overlay--visible="content">
+
 
   <div class="queryplan-overlay__content"
-  	   data-bind="html: content"></div>
+       data-bind.zoompan="true"
+       data-bind.html="content"></div>
+
   <button class="queryplan-overlay__close"
-          data-bind="click: close">&times;</button>
+          data-bind.click="close">&times;</button>
 </div>
 `;
