@@ -20,7 +20,7 @@
 //! ]);
 //! ```
 
-extern crate crypto;
+extern crate md5;
 extern crate byteorder;
 extern crate rustc_serialize;
 
@@ -31,8 +31,7 @@ mod types;
 
 pub use types::{type_name, type_isnum};
 
-use crypto::md5::Md5;
-use crypto::digest::Digest;
+use md5::Md5;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use rustc_serialize::{Decodable};
 

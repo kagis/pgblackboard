@@ -9,5 +9,8 @@ doctest = false
 
 [dependencies]
 rustc-serialize = "0.3"
-rust-crypto = "0.2.31"
 byteorder = "0.3.8"
+# rust-crypto = "0.2.31"
+
+[dependencies.rust-md5]
+git = "https://github.com/exe-dealer/rust-md5.git"

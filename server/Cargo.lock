@@ -62,16 +62,8 @@ name = "postgres"
 version = "0.1.0"
 dependencies = [
  "byteorder 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "rust-crypto 0.2.31 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rust-md5 0.2.14 (git+https://github.com/exe-dealer/rust-md5.git)",
  "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rand"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -96,16 +88,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-crypto"
-version = "0.2.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "gcc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
-]
+name = "rust-md5"
+version = "0.2.14"
+source = "git+https://github.com/exe-dealer/rust-md5.git#887a96cb7c94f65504da241f2b2ac1fe8fa1d3d3"
 
 [[package]]
 name = "rustc-serialize"
@@ -116,13 +101,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "threadpool"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "time"
-version = "0.1.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "gcc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 

@@ -15,4 +15,3 @@ regex = "0.1"
 regex_macros = "0.1"
 rustc-serialize = "0.3"
 flate2 = "0.2.6"
-
