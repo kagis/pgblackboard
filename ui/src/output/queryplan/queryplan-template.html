@@ -7,7 +7,8 @@ module.exports = `
   <svg class="queryplan"
        data-bind.attr.view_box="viewBox.join(' ')"
        data-bind.style.width="width + 'px'"
-       data-bind.style.height="height + 'px'">
+       data-bind.style.height="height + 'px'"
+       data-bind.zoompan="isFullPageView">
 
     <g data-bind.foreach="edges">
       <path class="queryplan__edge"
@@ -45,8 +46,10 @@ module.exports = `
     </g>
   </svg>
 
-  <button class="queryplan-overlay__close"
-          data-bind.click="close">&times;</button>
+  <button class="queryplan-container__close"
+          data-bind.visible="isFullPageView"
+          data-bind.click="leaveFullPageMode"
+          data-bind.click_bubble="false">&times;</button>
 
 </div>
 `;

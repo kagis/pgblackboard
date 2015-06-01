@@ -6,10 +6,20 @@ var queryplanPreviewTemplate = require('./queryplan-preview-template.html');
 
 
 ko.bindingHandlers['zoompan'] = {
-    'init': function (elem) {
-        new Pane({
-            paneElem: elem,
-            viewportElem: elem.parentNode
+    'init': function (elem, valueAccessor) {
+        var pane;
+        ko.computed(function () {
+            if (ko.unwrap(valueAccessor())) {
+                pane = new Pane({
+                    paneElem: elem,
+                    viewportElem: elem.parentNode
+                });
+            } else {
+                if (pane) {
+                    pane.dispose();
+                    pane = null;
+                }
+            }
         });
     }
 };
@@ -38,11 +48,12 @@ module.exports = function (frameWindow, plan) {
 
 
 
-    var queryplanSVGMarkup = renderQueryplanSVG(plan);
+    var queryplanContainer = renderQueryplanSVG(plan);
 
-    frameWindow.document.write(`
-        <div class="queryplan-preview">${queryplanSVGMarkup}</div>
-    `);
+    frameWindow.document.currentScript.parentNode.appendChild(queryplanContainer);
+    // frameWindow.document.write(`
+    //     <div class="queryplan-preview">${queryplanSVGMarkup}</div>
+    // `);
 
     // queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
 
@@ -70,10 +81,10 @@ function setupQueryplanPreviewClickHandler(frameWindow) {
     if (queryplanIsInitialized) { return; }
     queryplanIsInitialized = true;
 
-    frameWindow.addEventListener(
-        'click',
-        handleQueryplanPreviewClick,
-        true);
+    // frameWindow.addEventListener(
+    //     'click',
+    //     handleQueryplanPreviewClick,
+    //     true);
 
     var popupElem = frameWindow.document.createElement('div');
     popupElem.className = 'queryplan__popup';
@@ -216,10 +227,21 @@ function renderQueryplanSVG(plan) {
             ymax - ymin + nodeHeight
         ],
         'width': xmax - xmin + nodeWidth,
-        'height': ymax - ymin + nodeHeight
+        'height': ymax - ymin + nodeHeight,
+
+        /** @expose */
+        isFullPageView: ko.observable(false),
+
+        'enterFullPageMode': function () {
+            this.isFullPageView(true);
+        },
+
+        'leaveFullPageMode': function () {
+            this.isFullPageView(false);
+        }
     }, elem);
 
-    return elem.children[0].outerHTML;
+    return elem.children[0];
 }
 
 // function QueryPlan() {
@@ -356,18 +378,37 @@ function Pane(options) {
     this.onPanEnd = options.onPanEnd || noop;
     this.onExtentChange = options.onExtentChange || noop;
 
+    this.handleViewportMouseDown = this.handleViewportMouseDown.bind(this);
+    this.handleViewportWheel = this.handleViewportWheel.bind(this);
+
     this.viewportElem.addEventListener(
         'mousedown',
-        this.handleViewportMouseDown.bind(this),
+        this.handleViewportMouseDown,
         true
     );
 
     this.viewportElem.addEventListener(
         'wheel',
-        this.handleViewportWheel.bind(this),
+        this.handleViewportWheel,
         true
     );
 }
+
+Pane.prototype.dispose = function () {
+    this.viewportElem.removeEventListener(
+        'mousedown',
+        this.handleViewportMouseDown,
+        true
+    );
+
+    this.viewportElem.removeEventListener(
+        'wheel',
+        this.handleViewportWheel,
+        true
+    );
+
+    setTransform(this.paneElem, null);
+};
 
 Pane.prototype.minZoom = -20;
 

@@ -2,7 +2,7 @@
 
 
 .light { color: #555; }
-/*.light*/ .queryplan-overlay { background-color: rgba(255,255,255,.7); }
+/*.light*/ .queryplan-container--fullpage { background-color: rgba(255,255,255,.7); }
 .light .node .node-back { fill: #fff; }
 .light .node text { fill: #333; }
 .light .edgePath path { stroke: #999; }
@@ -15,7 +15,7 @@
     border-top-color: rgba(50, 50, 50, .9);
     }
 
-/*.light*/ .queryplan-overlay {
+/*.light*/ .queryplan-container--fullpage {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.0)   0
                     ,rgba(0,0,0,.0)  1px
@@ -51,7 +51,7 @@
 .dark .edgePath path { stroke: #555; }
 .dark .queryplan-tip        { background-color: rgba(0, 0, 0, .9); }
 .dark .queryplan-tip::after { border-top-color: rgba(0, 0, 0, .9); }
-.dark .queryplan-overlay {
+.dark .queryplan-container--fullpage {
     background-image: -webkit-linear-gradient(left
                     ,rgba(0,0,0,.1)   0
                     ,rgba(0,0,0,.1)  1px
@@ -82,7 +82,7 @@
 
 .node .node-overlay { fill: #888; fill-opacity: .5; }
 
-.queryplan-preview {
+.queryplan-container--preview {
     height: 200px;
     width: 80%;
     margin: 1em auto;
@@ -95,7 +95,7 @@
     transition: -webkit-filter .2s ease;
     }
 
-.queryplan-preview > * {
+.queryplan-container--preview > .queryplan {
     width: 100% !important;
     height: 100% !important;
     }
@@ -123,7 +123,7 @@
     -opacity: 1;
     }*/
 
-.queryplan-preview:hover {
+.queryplan-container--preview:hover {
     -webkit-filter: none;
     }
 
@@ -143,8 +143,7 @@
     }
 
 
-.queryplan-overlay {
-    display: none;
+.queryplan-container--fullpage {
     position: fixed;
     top: 0;
     left: 0;
@@ -152,10 +151,6 @@
     bottom: 0;
 
     background-size: 2px 100%;
-    }
-
-.queryplan-overlay--visible {
-    display: block;
     }
 
 .queryplan-overlay__content {
@@ -278,8 +273,7 @@
     margin-left: -.5em;
     }
 
-
-.queryplan-overlay__close {
+.queryplan-container__close {
     position: absolute;
     top: 1em;
     right: 1em;
