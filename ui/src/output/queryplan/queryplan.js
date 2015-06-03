@@ -1,18 +1,17 @@
 var d3 = require('./d3');
 var ko = require('knockout');
-var queryplanOverlayTemplate = require('./queryplan-overlay-template.html');
 var queryplanTemplate = require('./queryplan-template.html');
-var queryplanPreviewTemplate = require('./queryplan-preview-template.html');
 
 
 ko.bindingHandlers['zoompan'] = {
-    'init': function (elem, valueAccessor) {
+    'init': function (paneElem, valueAccessor) {
         var pane;
-        ko.computed(function () {
+
+        function update() {
             if (ko.unwrap(valueAccessor())) {
-                pane = new Pane({
-                    paneElem: elem,
-                    viewportElem: elem.parentNode
+                pane = new QueryplanPane({
+                    paneElem: paneElem,
+                    viewportElem: paneElem.parentNode
                 });
             } else {
                 if (pane) {
@@ -20,363 +19,257 @@ ko.bindingHandlers['zoompan'] = {
                     pane = null;
                 }
             }
-        });
-    }
-};
-
-
-function QueryPlanNode(options) {
-    this.name = options.name;
-    this.x = options.x;
-    this.y = options.y;
-
-    var hueDelta = this.highHue = this.lowHue;
-    var hue = hueDelta * options.heat + this.lowHue;
-    this.fill = 'hsl(' + hue + ', 100%, 50%)';
-}
-
-QueryPlanNode.prototype.highHue = 90; /* deg */
-QueryPlanNode.prototype.lowHue = 20; /* deg */
-QueryPlanNode.prototype.width = 100;
-QueryPlanNode.prototype.height = 30;
-
-
-module.exports = function (frameWindow, plan) {
-
-    setupQueryplanPreviewClickHandler(frameWindow);
-
-
-
-
-    var queryplanContainer = renderQueryplanSVG(plan);
-
-    frameWindow.document.currentScript.parentNode.appendChild(queryplanContainer);
-    // frameWindow.document.write(`
-    //     <div class="queryplan-preview">${queryplanSVGMarkup}</div>
-    // `);
-
-    // queryplanEl.addEventListener('click', handleQueryplanPreviewClick);
-
-    /*function queryplanClick() {
-        queryplanEl.removeEventListener('click', queryplanClick);
-        ko.utils.toggleDomNodeCssClass(queryplanEl, 'queryplan--focused', true);
-
-        var pane = new Pane({
-            paneElem: svg,
-            viewportElem: queryplanEl,
-            onExtentChange: popup.updatePosition.bind(popup),
-            onPanEnd: function () {
-                if (hidePopupOnPanEnd) {
-                    popup.hide();
-                }
-            }
-        });
-    });*/
-
-    // frameWindow.document['currentScript'].parentNode.appendChild(queryplanEl);
-};
-
-var queryplanIsInitialized = false;
-function setupQueryplanPreviewClickHandler(frameWindow) {
-    if (queryplanIsInitialized) { return; }
-    queryplanIsInitialized = true;
-
-    // frameWindow.addEventListener(
-    //     'click',
-    //     handleQueryplanPreviewClick,
-    //     true);
-
-    var popupElem = frameWindow.document.createElement('div');
-    popupElem.className = 'queryplan__popup';
-    frameWindow.document.body.appendChild(popupElem);
-
-    var popup = new SVGPopup(popupElem);
-
-    frameWindow.addEventListener('mouseover', function (e) {
-        var elem = e.target;
-        do {
-            if (hasClass(elem, 'queryplan__node')) {
-               popup.setContent(elem.getElementsByTagName('desc')[0].innerHTML);
-               popup.showOn(elem);
-            }
-        } while (elem = elem.parentNode);
-    });
-
-    frameWindow.addEventListener('mouseout', function (e) {
-        var elem = e.target;
-        do {
-            if (hasClass(elem, 'queryplan__node')) {
-               popup.hide();
-            }
-        } while (elem = elem.parentNode);
-    });
-}
-
-function handleQueryplanPreviewClick (e) {
-    var elem = e.target;
-    do {
-        if (hasClass(elem, 'queryplan-preview')) {
-            // ko.utils.toggleDomNodeCssClass(
-            //     elem,
-            //     'queryplan-preview--overlayed',
-            //     true
-            // );
-            showQueryplanOverlay(elem.children[0]);
         }
-    } while (elem = elem.parentNode);
+
+        ko.computed({
+            read: update,
+            disposeWhenNodeIsRemoved: paneElem
+        });
+    }
 };
 
-// function delegate(elemToListenOn, eventName, className, handler) {
-//     elemToListenOn.addEventListener(eventName, function () {
+ko.bindingHandlers['queryplanPopup'] = {
+    'init': function (targetElem, valueAccessor) {
 
-//     }, true);
-// }
+        function setupPopup(ownerDocument) {
+            var popupElem = ownerDocument.createElement('div');
+            popupElem.className = 'queryplan-popup';
+            ownerDocument.body.appendChild(popupElem);
+            var popup = new QueryplanPopup(popupElem);
+            ownerDocument.addEventListener('zoompan', popup.updatePosition.bind(popup));
+            return popup;
+        }
 
+        function getPopup() {
+            const popupProp = 'pgBlackboardQueryplanPopup';
+            var ownerDocument = targetElem.ownerDocument;
+            return ownerDocument[popupProp] || (
+                ownerDocument[popupProp] = setupPopup(ownerDocument)
+            );
+        }
+        var isCaptured = false;
+        var hidePopupOnReleaseCapture = false;
 
+        function onMouseDown(e) {
+            if (e.which == 1) {
+                isCaptured = true;
+            }
+        }
 
-function hasClass(elem, testingClassName) {
-    if (typeof elem.classList === 'object') {
-        return elem.classList.contains(testingClassName);
+        function onMouseUp() {
+            isCaptured = false;
+            var popup = getPopup();
+            popup.updatePosition();
+            if (hidePopupOnReleaseCapture) {
+                popup.hide();
+            }
+        }
+
+        function onMouseEnter(e) {
+            hidePopupOnReleaseCapture = false;
+            if (!isCaptured) {
+                var descElem = targetElem.getElementsByTagName('desc')[0];
+                var popup = getPopup();
+                popup.setContent(descElem.innerHTML);
+                popup.showOn(targetElem);
+            }
+        }
+
+        function onMouseLeave(e) {
+            hidePopupOnReleaseCapture = true;
+            if (!isCaptured) {
+                var popup = getPopup();
+                popup.hide();
+            }
+        }
+
+        function update() {
+            if (valueAccessor()) {
+                targetElem.addEventListener('mouseenter', onMouseEnter);
+                targetElem.addEventListener('mouseleave', onMouseLeave);
+                targetElem.addEventListener('mousedown', onMouseDown);
+                targetElem.addEventListener('mouseup', onMouseUp);
+            } else {
+                targetElem.removeEventListener('mouseenter', onMouseEnter);
+                targetElem.removeEventListener('mouseleave', onMouseLeave);
+                targetElem.removeEventListener('mousedown', onMouseDown);
+                targetElem.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+
+        ko.computed({
+            read: update,
+            disposeWhenNodeIsRemoved: targetElem
+        });
     }
+};
 
-    var classNames = elem.className;
-    if (typeof classNames === 'object' &&
-        typeof classNames['baseVal'] === 'string')
-    {
-        classNames = classNames['baseVal'];
-    }
+module.exports = function emitQueryPlan(frameWindow, planTree) {
+    var elemToBind = document.createElement('div');
+    elemToBind.innerHTML = queryplanTemplate;
+    ko.applyBindings(new QueryplanViewModel(planTree), elemToBind);
 
-    if (typeof classNames === 'string') {
-        return classNames.match(new RegExp('\\b' + testingClassName + '\\b'));
-    }
+    frameWindow
+        .document
+        .currentScript
+        .parentNode
+        .appendChild(elemToBind);
+};
 
-    return false;
-}
-
-function showQueryplanOverlay(queryplanElem) {
-    var ownerDocument = queryplanElem.ownerDocument;
-
-    getQueryplanOverlay(ownerDocument)
-        .show(queryplanElem.outerHTML);
-}
-
-function renderQueryplanSVG(plan) {
-    var tree = d3.layout.tree()
-                .nodeSize([50, 1]);
-
-    var nodes = tree.nodes(plan).reverse();
-    nodes.forEach(function (d) {
-        d.y = d.depth * 150;
-    });
-
-    var links = tree.links(nodes);
-
-    var diagonal = d3.svg.diagonal().projection(function (d) {
-        return [d.y, d.x];
-    });
-
-    var xmax = nodes.map(function (it) { return it.y; })
-                    .reduce(function (a, b) { return Math.max(a, b); });
-
-    var xmin = nodes.map(function (it) { return it.y; })
-                    .reduce(function (a, b) { return Math.min(a, b); });
-
-    var ymax = nodes.map(function (it) { return it.x; })
-                    .reduce(function (a, b) { return Math.max(a, b); });
-
-    var ymin = nodes.map(function (it) { return it.x; })
-                    .reduce(function (a, b) { return Math.min(a, b); });
-
+/** @constructor */
+function QueryplanViewModel(planTree) {
     var nodeWidth = 100;
     var nodeHeight = 30;
-    var elem = document.createElement('div');
-    elem.innerHTML = queryplanTemplate;
-    ko.applyBindings({
-        'nodes': nodes.map(function (n) {
-            var highHue = 20; /* deg */
-            var lowHue = 90; /* deg */
-            var hueDelta = highHue - lowHue;
-            var hue = hueDelta * n['heat'] + lowHue;
-            var properties = n['properties'];
-            var propertiesPairs = [];
-            for (var propName in properties) {
-                propertiesPairs.push({
-                    'name': propName,
-                    'value': properties[propName]
-                });
-            }
-            return {
-                'x': n.y,
-                'y': n.x,
-                'name': n['typ'],
-                'properties': propertiesPairs,
-                'fill': 'hsl(' + hue + ', 100%, 50%)',
-                'width': nodeWidth,
-                'height': nodeHeight
-            };
-        }),
-        'edges': links.map(function (d) {
-            return {
-                'pathData': diagonal(d)
-            };
-        }),
-        'viewBox': [
-            xmin - nodeWidth / 2,
-            ymin - nodeHeight / 2,
-            xmax - xmin + nodeWidth,
-            ymax - ymin + nodeHeight
-        ],
-        'width': xmax - xmin + nodeWidth,
-        'height': ymax - ymin + nodeHeight,
+    var highHue = 20; /* deg */
+    var lowHue = 90; /* deg */
+    var hueDelta = highHue - lowHue;
 
-        /** @expose */
-        isFullPageView: ko.observable(false),
+    var treeLayout = d3.layout.tree().nodeSize([50, 1]);
 
-        'enterFullPageMode': function () {
-            this.isFullPageView(true);
-        },
-
-        'leaveFullPageMode': function () {
-            this.isFullPageView(false);
-        }
-    }, elem);
-
-    return elem.children[0];
-}
-
-// function QueryPlan() {
-//     this.viewBox = [
-//     ];
-//     this.nodes = nodes;
-//     this.edges = edges;
-// }
-
-
-function getQueryplanOverlay(ownerDocument) {
-    if (!ownerDocument['pgBlackboardQueryplanOverlay']) {
-        var queryplanOverlay = new QueryplanOverlay();
-        var elem = ownerDocument.createElement('div');
-        elem.innerHTML = queryplanOverlayTemplate;
-        ko.applyBindings(queryplanOverlay, elem);
-        ownerDocument.body.appendChild(elem.children[0]);
-        ownerDocument['pgBlackboardQueryplanOverlay'] = queryplanOverlay;
+    function hsl(hue, saturation, lightness) {
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
-    return ownerDocument['pgBlackboardQueryplanOverlay'];
-}
 
-function QueryplanOverlay() {
+    function dictToArrayOfNameAndValue(dict) {
+        var namesAndValues = [];
+        for (var propName in dict) {
+            namesAndValues.push({
+                'name': propName,
+                'value': dict[propName]
+            });
+        }
+        return namesAndValues;
+    }
 
-    /** @expose */
-    this.content = ko.observable();
+    var preNodes = treeLayout
+        .nodes(planTree)
+        .map(function (it) {
+            it.y = it.depth * 150;
+            return it;
+        });
+
+
+    var diagonal = d3.svg.diagonal().projection(function (it) {
+        return [it.y, it.x];
+    });
+
+    /** @export */
+    this.edges = treeLayout
+        .links(preNodes)
+        .map(function (it) {
+            return {
+                /** @export */
+                pathData: diagonal(it)
+            }
+        });
+
+    /** @export */
+    this.nodes = preNodes.map(function (it) {
+        return {
+            /** @export */
+            x: it.y,
+            /** @export */
+            y: it.x,
+            /** @export */
+            name: it['typ'],
+            /** @export */
+            properties: dictToArrayOfNameAndValue(it['properties']),
+            /** @export */
+            fill: hsl(hueDelta * it['heat'] + lowHue, 100, 50),
+            /** @export */
+            width: nodeWidth,
+            /** @export */
+            height: nodeHeight
+        };
+    });
+
+    var bounds = this.nodes.reduce(
+        function (acc, it) {
+            return {
+                xmin: Math.min(it.x, acc.xmin),
+                xmax: Math.max(it.x, acc.xmax),
+                ymin: Math.min(it.y, acc.ymin),
+                ymax: Math.max(it.y, acc.ymax)
+            };
+        },
+        {
+            xmin: Infinity,
+            xmax: -Infinity,
+            ymin: Infinity,
+            ymax: -Infinity
+        }
+    );
+
+    /** @export */
+    this.viewBox = [
+        bounds.xmin - nodeWidth / 2,
+        bounds.ymin - nodeHeight / 2,
+        bounds.xmax - bounds.xmin + nodeWidth,
+        bounds.ymax - bounds.ymin + nodeHeight
+    ];
+    /** @export */
+    this.width = bounds.xmax - bounds.xmin + nodeWidth;
+    /** @export */
+    this.height = bounds.ymax - bounds.ymin + nodeHeight;
+
+    /** @export */
+    this.isFullPageView = ko.observable(false);
 }
 
 /** @expose */
-QueryplanOverlay.prototype.close = function () {
-    this.content(null);
+QueryplanViewModel.prototype.enterFullPageMode = function () {
+    this.isFullPageView(true);
 };
 
-QueryplanOverlay.prototype.show = function (content) {
-    this.content(content);
+/** @expose */
+QueryplanViewModel.prototype.leaveFullPageMode = function () {
+    this.isFullPageView(false);
 };
-
-// function handleQueryplanPreviewClick(e) {
-//     var previewElem = this;
-//     var ownerDocument = previewElem.ownerDocument;
-//     var queryplanElem = previewElem.cloneNode(true);
-
-//     getQueryplanOverlay(ownerDocument).show(queryplanElem.outerHTML);
-// }
 
 
 /** @constructor */
-function SVGPopup(popupElem) {
+function QueryplanPopup(popupElem) {
     this.currentTarget = null;
-    this.svgPoint = null;
     this.popupElem = popupElem;
 }
 
-SVGPopup.prototype.showOn = function (target) {
+QueryplanPopup.prototype.showOn = function (target) {
     this.currentTarget = target;
-    this.svgPoint = target['ownerSVGElement']['createSVGPoint']();
     this.popupElem.style.display = 'block';
     this.updatePosition();
 };
 
-SVGPopup.prototype.updatePosition = function () {
+QueryplanPopup.prototype.updatePosition = function () {
     if (!this.currentTarget) {
         return;
     }
+    var targetBBox = this.currentTarget.getBoundingClientRect();
+    var top = targetBBox.top;
+    var left = targetBBox.left + targetBBox.width / 2;
+    // setCssTransform(this.popupElem, 'translate(' + left + 'px,' + top + 'px)');
 
-    var targetCTM = this.currentTarget['getScreenCTM']();
-    var targetBBox = this.currentTarget['getBBox']();
-    this.svgPoint.x = targetBBox.x + targetBBox.width / 2;
-    this.svgPoint.y = targetBBox.y;
-    var targetScreenPos = this.svgPoint['matrixTransform'](targetCTM);
-    this.popupElem.style.top = targetScreenPos.y + 'px';
-    this.popupElem.style.left = targetScreenPos.x + 'px';
+    this.popupElem.style.top =  top + 'px';
+    this.popupElem.style.left = left + 'px';
 };
 
-SVGPopup.prototype.hide = function () {
+QueryplanPopup.prototype.hide = function () {
     this.currentTarget = null;
     this.popupElem.style.display = 'none';
 };
 
-SVGPopup.prototype.setContent = function (content) {
+QueryplanPopup.prototype.setContent = function (content) {
     this.popupElem.innerHTML = content;
 };
 
 
-// function buildGraph(node, nodeid, graph) {
-//     var lowHue = 90; /* green */
-//     var highHue = 20; /* red */
-//     var hueDelta = highHue - lowHue;
-
-//     nodeid = nodeid || 1;
-//     graph = graph || createBlankGraph();
-
-//     graph.setNode(nodeid, {
-//         label: node['typ'],
-//         description: getNodeDescription(node['properties']),
-//         fill: node['heat'] && d3.hsl(hueDelta * node['heat'] + lowHue, 1, 0.5)
-//     });
-
-//     node['children'].forEach(function (child, childIndex) {
-//         var parentid = nodeid;
-//         var childid = parentid + childIndex + 1;
-//         buildGraph(child, childid, graph);
-//         graph.setEdge(childid, parentid);
-//     });
-
-//     return graph;
-// }
-
-
-function getNodeDescription(properties) {
-    var description = '<table>';
-    for (var prop in properties) {
-        description += '<tr>' +
-            '<td>' + prop + '</td>' +
-            '<td>' + properties[prop] + '</td>' +
-            '</tr>';
-    }
-    description += '</table>';
-    return description;
-}
-
-
 /** @constructor */
-function Pane(options) {
+function QueryplanPane(options) {
     this.paneElem = options.paneElem;
     this.viewportElem = options.viewportElem;
     this.translateX = 0;
     this.translateY = 0;
     this.zoom = 0;
     this.isPanning = false;
-
-    var noop = function () {};
-    this.onPanStart = options.onPanStart || noop;
-    this.onPanEnd = options.onPanEnd || noop;
-    this.onExtentChange = options.onExtentChange || noop;
 
     this.handleViewportMouseDown = this.handleViewportMouseDown.bind(this);
     this.handleViewportWheel = this.handleViewportWheel.bind(this);
@@ -394,7 +287,7 @@ function Pane(options) {
     );
 }
 
-Pane.prototype.dispose = function () {
+QueryplanPane.prototype.dispose = function () {
     this.viewportElem.removeEventListener(
         'mousedown',
         this.handleViewportMouseDown,
@@ -407,62 +300,38 @@ Pane.prototype.dispose = function () {
         true
     );
 
-    setTransform(this.paneElem, null);
+    setCssTransform(this.paneElem, null);
 };
 
-Pane.prototype.minZoom = -20;
+QueryplanPane.prototype.minZoom = -20;
 
-Pane.prototype.maxZoom = 20;
+QueryplanPane.prototype.maxZoom = 20;
 
-Pane.prototype.zoomFactor = .1;
+QueryplanPane.prototype.zoomFactor = .1;
 
-// Pane.prototype.center = function () {
-//     var paneBBox = this.paneElem.getBBox();
-//     var viewportSize = this.viewportElem.getBoundingClientRect();
-//     this.translateX = (viewportSize.width - paneBBox.width) / 2 - paneBBox.x;
-//     this.translateY = (viewportSize.height - paneBBox.height) / 2 - paneBBox.y;
-//     this.applyTransform();
-// };
-
-
-Pane.prototype.applyTransform = function () {
-    setTransform(this.paneElem,
+QueryplanPane.prototype.applyTransform = function () {
+    setCssTransform(this.paneElem,
         'translate(' +
             this.translateX + 'px,' +
             this.translateY + 'px)' +
         'scale(' + this.getScale() + ')'
     );
-
-    this.onExtentChange();
+    ko.utils.triggerEvent(this.paneElem.ownerDocument, 'zoompan');
 };
 
-var transformProperty = [
-    'transform',
-    'webkitTransform',
-    'MozTransform',
-    'msTransform'
-].filter(function (prop) {
-    return prop in document.body.style;
-})[0];
-
-function setTransform(elem, value) {
-    elem.style[transformProperty] = value;
-}
-
-Pane.prototype.setZoomClipped = function (unclippedZoom) {
+QueryplanPane.prototype.setZoomClipped = function (unclippedZoom) {
     this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, unclippedZoom));
 };
 
-Pane.prototype.getScale = function () {
+QueryplanPane.prototype.getScale = function () {
     return Math.exp(this.zoom * this.zoomFactor);
 };
 
-Pane.prototype.handleViewportMouseDown = function (e) {
+QueryplanPane.prototype.handleViewportMouseDown = function (e) {
     // proceed only for left mouse button
     if (e.button != 0) { return; }
 
     this.isPanning = true;
-    this.onPanStart();
 
     var dx = e.clientX - this.translateX;
     var dy = e.clientY - this.translateY;
@@ -480,11 +349,10 @@ Pane.prototype.handleViewportMouseDown = function (e) {
         doc.removeEventListener('mouseup', handleMouseUp);
         doc.removeEventListener('mousemove', handleMouseMove);
         self.isPanning = false;
-        self.onPanEnd();
     });
 };
 
-Pane.prototype.handleViewportWheel = function (e) {
+QueryplanPane.prototype.handleViewportWheel = function (e) {
     // disable zoom while panning
     if (this.isPanning) { return; }
 
@@ -501,3 +369,16 @@ Pane.prototype.handleViewportWheel = function (e) {
 
     this.applyTransform();
 };
+
+var transformProperty = [
+    'transform',
+    'webkitTransform',
+    'MozTransform',
+    'msTransform'
+].filter(function (prop) {
+    return prop in document.body.style;
+})[0];
+
+function setCssTransform(elem, value) {
+    elem.style[transformProperty] = value;
+}

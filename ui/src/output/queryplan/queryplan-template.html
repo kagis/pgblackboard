@@ -2,53 +2,81 @@ module.exports = `
 <div class="queryplan-container"
      data-bind.css.queryplan-container--preview="!isFullPageView()"
      data-bind.css.queryplan-container--fullpage="isFullPageView"
-     data-bind.click="enterFullPageMode">
+     data-bind.click="function () {
+        this.enterFullPageMode();
+        ko.utils.toggleDomNodeCssClass(
+          $element.ownerDocument.querySelector('.main'),
+          'overlayed',
+          true);
+      }">
 
-  <svg class="queryplan"
-       data-bind.attr.view_box="viewBox.join(' ')"
-       data-bind.style.width="width + 'px'"
-       data-bind.style.height="height + 'px'"
+  <div class="queryplan-container__pane"
        data-bind.zoompan="isFullPageView">
 
-    <g data-bind.foreach="edges">
-      <path class="queryplan__edge"
-            data-bind.attr.d="pathData" />
-    </g>
+    <div class="queryplan-container__center">
 
-    <g data-bind.foreach="nodes">
-      <g class="queryplan__node"
-         data-bind.queryplan_node_popup="$parent.isFullPageView"
-         data-bind.attr.transform="'translate(' + x + ',' + y + ')'">
+      <svg class="queryplan"
+           data-bind.attr.view_box="viewBox.join(' ')"
+           data-bind.style.width="width + 'px'"
+           data-bind.style.height="height + 'px'">
 
-        <desc>
-          <table>
-            <tbody data-bind.foreach="properties">
-              <tr>
-                <td data-bind.text="name"></td>
-                <td data-bind.text="value"></td>
-              </tr>
-            </tbody>
-          </table>
-        </desc>
+        <g data-bind.foreach="edges">
+          <path class="queryplan__edge"
+                data-bind.attr.d="pathData" />
+        </g>
 
-        <rect data-bind.attr.fill="fill"
-              data-bind.attr.width="width"
-              data-bind.attr.height="height"
-              data-bind.attr.x="-width / 2"
-              data-bind.attr.y="-height / 2"
-              data-bind.attr.rx="5"
-              data-bind.attr.ry="5" />
+        <g data-bind.foreach="nodes">
+          <g class="queryplan__node"
+             data-bind.queryplan_popup="$parent.isFullPageView()"
+             data-bind.attr.transform="'translate(' + x + ',' + y + ')'">
 
-        <text text-anchor="middle"
-              dy=".3em"
-              data-bind.text="name"></text>
-      </g>
-    </g>
-  </svg>
+            <desc>
+              <table>
+                <tbody data-bind.foreach="properties">
+                  <tr>
+                    <td data-bind.text="name"></td>
+                    <td data-bind.text="value"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </desc>
+
+            <rect class="queryplan__node-back"
+                  data-bind.attr.width="width"
+                  data-bind.attr.height="height"
+                  data-bind.attr.x="-width / 2"
+                  data-bind.attr.y="-height / 2"
+                  data-bind.attr.rx="5"
+                  data-bind.attr.ry="5" />
+
+            <rect class="queryplan__node-front"
+                  data-bind.style.fill="fill"
+                  data-bind.attr.width="width"
+                  data-bind.attr.height="height"
+                  data-bind.attr.x="-width / 2"
+                  data-bind.attr.y="-height / 2"
+                  data-bind.attr.rx="5"
+                  data-bind.attr.ry="5" />
+
+            <text class="queryplan__node-text"
+                  text-anchor="middle"
+                  dy=".3em"
+                  data-bind.text="name"></text>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
 
   <button class="queryplan-container__close"
           data-bind.visible="isFullPageView"
-          data-bind.click="leaveFullPageMode"
+          data-bind.click="function () {
+            this.leaveFullPageMode();
+            ko.utils.toggleDomNodeCssClass(
+              $element.ownerDocument.querySelector('.main'),
+              'overlayed',
+              false);
+          }"
           data-bind.click_bubble="false">&times;</button>
 
 </div>

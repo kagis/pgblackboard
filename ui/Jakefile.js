@@ -144,6 +144,8 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
         common_js_entry_module: 'app.js',
         common_js_module_path_prefix: 'src/lib/',
         output_wrapper: '(function(){%output%})();',
+        export_local_property_definitions: true,
+        generate_exports: true,
 
         // If you specify a directory here, all files inside are used
         externs: jsExterns,

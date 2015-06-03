@@ -1,86 +1,8 @@
-
-
-
-.light { color: #555; }
-/*.light*/ .queryplan-container--fullpage { background-color: rgba(255,255,255,.7); }
-.light .node .node-back { fill: #fff; }
-.light .node text { fill: #333; }
-.light .edgePath path { stroke: #999; }
-
-/*.light*/ .queryplan__popup {
-    background-color: rgba(50, 50, 50, .9);
+.queryplan-container,
+.queryplan-popup {
+    font-family: Ubuntu, Verdana, sans-serif;
     }
 
-/*.light*/ .queryplan__popup::after {
-    border-top-color: rgba(50, 50, 50, .9);
-    }
-
-/*.light*/ .queryplan-container--fullpage {
-    background-image: -webkit-linear-gradient(left
-                    ,rgba(0,0,0,.0)   0
-                    ,rgba(0,0,0,.0)  1px
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.1)  2px);
-
-    background-image: -moz-linear-gradient(left
-                    ,rgba(0,0,0,.0)   0
-                    ,rgba(0,0,0,.0)  1px
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.1)  2px);
-
-    background-image: -ms-linear-gradient(left
-                    ,rgba(0,0,0,.0)   0
-                    ,rgba(0,0,0,.0)  1px
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.1)  2px);
-
-    background-image: linear-gradient(to left
-                    ,rgba(0,0,0,.0)   0
-                    ,rgba(0,0,0,.0)  1px
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.1)  2px);
-    }
-
-
-
-
-.dark { color: #ddd; }
-/*.dark .queryplan { background-color: rgba(39, 40, 34,.7); }*/
-.dark .node .node-back { fill: #000; }
-.dark .node text { fill: #ddd; }
-.dark .edgePath path { stroke: #555; }
-.dark .queryplan-tip        { background-color: rgba(0, 0, 0, .9); }
-.dark .queryplan-tip::after { border-top-color: rgba(0, 0, 0, .9); }
-.dark .queryplan-container--fullpage {
-    background-image: -webkit-linear-gradient(left
-                    ,rgba(0,0,0,.1)   0
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.5)  1px
-                    ,rgba(0,0,0,.5)  2px);
-
-    background-image: -moz-linear-gradient(left
-                    ,rgba(0,0,0,.1)   0
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.5)  1px
-                    ,rgba(0,0,0,.5)  2px);
-
-    background-image: -ms-linear-gradient(left
-                    ,rgba(0,0,0,.1)   0
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.5)  1px
-                    ,rgba(0,0,0,.5)  2px);
-
-    background-image: linear-gradient(to left
-                    ,rgba(0,0,0,.1)   0
-                    ,rgba(0,0,0,.1)  1px
-                    ,rgba(0,0,0,.5)  1px
-                    ,rgba(0,0,0,.5)  2px);
-    }
-
-
-
-
-.node .node-overlay { fill: #888; fill-opacity: .5; }
 
 .queryplan-container--preview {
     height: 200px;
@@ -90,58 +12,26 @@
     cursor: pointer;
     padding: .5em;
     box-sizing: border-box;
-    background-color: #eee;
     -webkit-filter: saturate(0.5);
     transition: -webkit-filter .2s ease;
     }
 
-.queryplan-container--preview > .queryplan {
+/*.light*/ .queryplan-container--preview {
+    background-color: #eee;
+    }
+
+.dark .queryplan-container--preview {
+    background-color: #2F2F2F;
+    }
+
+.queryplan-container--preview .queryplan {
     width: 100% !important;
     height: 100% !important;
     }
-/*
-.queryplan-preview::before {
-    content: 'expand';
-    line-height: 200px;
-    text-align: center;
-    font-size: 32px;
-    font-weight: bold;
-    text-transform: uppercase;
-    color: #888;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transition: opacity .2s ease;
-    background-color: rgba(200, 200, 200, .7);
-    z-index: 1;
-    opacity: 0;
-    }
-
-.queryplan-preview:hover::before {
-    -opacity: 1;
-    }*/
 
 .queryplan-container--preview:hover {
     -webkit-filter: none;
     }
-
-.queryplan-preview--overlayed {
-    visibility: hidden;
-    }
-
-.queryplan,
-.queryplan__popup {
-    font-family: Ubuntu, Verdana, sans-serif;
-    }
-
-.queryplan__edge {
-    fill: none;
-    stroke: #555;
-    stroke-width: 2px;
-    }
-
 
 .queryplan-container--fullpage {
     position: fixed;
@@ -149,39 +39,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-
+    cursor: -webkit-grab;
+    cursor: grab;
     background-size: 2px 100%;
     }
 
-.queryplan-overlay__content {
-    display: inline-block;
-    }
-
-
-.queryplan {
-    overflow: hidden;
-    font-size: 14px;
-    cursor: pointer;
-    display: block;
-    }
-
-.queryplan--focused {
-    cursor: -webkit-grab;
-    cursor: grab;
-    z-index: 1;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 100%;
-    width: 100%;
-    -webkit-user-select: none;
-       -moz-user-select: none;
-            user-select: none;
-    }
-
-/*.light*/ .queryplan--focused {
+/*.light*/ .queryplan-container--fullpage {
     background-color: rgba(255,255,255,.7);
     background-image: linear-gradient(to left
                     ,rgba(0,0,0,.0)   0
@@ -190,21 +53,16 @@
                     ,rgba(0,0,0,.1)  2px);
     }
 
-.dark .queryplan--focused {
-    background-color: rgba(39, 40, 34,.9);
+.dark .queryplan-container--fullpage {
+    background-color: rgba(39, 40, 34,.7);
     background-image: linear-gradient(to left
                     ,rgba(0,0,0,.1)   0
                     ,rgba(0,0,0,.1)  1px
                     ,rgba(0,0,0,.5)  1px
                     ,rgba(0,0,0,.5)  2px);
     }
-/*
-.queryplan,
-.queryplan > g {
-    outline: 2px solid black;
-}*/
 
-.queryplan:active {
+.queryplan-container--fullpage:active {
     cursor: -webkit-grabbing;
     cursor: grabbing;
     -webkit-touch-callout: none;
@@ -212,27 +70,35 @@
     -khtml-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    user-select: none;
     }
 
-.queryplan {
-    max-height: 100%;
+.queryplan-container__close {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    z-index: 10;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+    font-size: 16px;
+    font-weight: bold;
+    }
+
+.queryplan-container__pane {
+    width: 100%;
+    height: 100%;
+    }
+
+.queryplan-container__center {
+    width: 100%;
+    height: 100%;
+    transform: translate(50%, 50%);
     }
 
 
-.edgePath path {
-    stroke-width: 2px;
-    fill: none;
-    }
-
-
-
-
-.queryplan__popup {
-    -webkit-transform: translate(-50%, -100%);
-       -moz-transform: translate(-50%, -100%);
-        -ms-transform: translate(-50%, -100%);
-            transform: translate(-50%, -100%);
+.queryplan-popup {
+    transform: translate(-50%, -100%);
 
     position: fixed;
     z-index: 1;
@@ -250,16 +116,35 @@
     white-space: nowrap;
     pointer-events: none;
     display: none;
+
+    left: 0;
+    top: 0;
     }
 
-.queryplan__popup table {
+/*.light*/ .queryplan-popup {
+    background-color: rgba(50, 50, 50, .9);
+    }
+
+/*.light*/ .queryplan-popup::after {
+    border-top-color: rgba(50, 50, 50, .9);
+    }
+
+.dark .queryplan-popup {
+    background-color: rgba(0, 0, 0, .9);
+    }
+
+.dark .queryplan-popup::after {
+    border-top-color: rgba(0, 0, 0, .9);
+    }
+
+.queryplan-popup table {
     color: inherit;
     font-family: inherit;
     font-size: inherit;
     }
 
 /* Creates a small triangle extender for the tooltip */
-.queryplan__popup::after {
+.queryplan-popup::after {
     content: '';
     display: block;
     border-width: .5em;
@@ -273,15 +158,54 @@
     margin-left: -.5em;
     }
 
-.queryplan-container__close {
-    position: absolute;
-    top: 1em;
-    right: 1em;
-    z-index: 10;
-    cursor: pointer;
-    border: none;
-    background: none;
-    color: inherit;
-    font-size: 16px;
-    font-weight: bold;
+/*svg*/.queryplan {
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    font-size: 14px;
+    display: block;
+    }
+
+.queryplan__node-front {
+    fill: #888;
+    fill-opacity: .7;
+    }
+
+/*.light*/ .queryplan__node-back {
+    fill: #fff;
+    }
+
+.dark .queryplan__node-back {
+    fill: #000;
+    }
+
+/*.light*/ .queryplan__node-text {
+    fill: #333;
+    }
+
+.dark .queryplan__node-text {
+    fill: #ddd;
+    }
+
+/*path*/.queryplan__edge {
+    fill: none;
+    stroke: #555;
+    stroke-width: 2px;
+    }
+
+/*.light*/ .queryplan__edge {
+    stroke: #999;
+    }
+
+.dark .queryplan__edge {
+    stroke: #555;
+    }
+
+.main.overlayed {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    overflow: hidden;
     }
