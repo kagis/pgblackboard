@@ -228,7 +228,7 @@ impl http::Response for SqlExecResponse {
         } = self_;
 
         println!("executing: {:?}", &sqlscript);
-        let execution_events = dbconn.execute_script(&sqlscript).unwrap();
+
 
         let mut w = try!(w.start(http::Status::Ok));
         try!(w.write_content_type("text/html; charset=utf-8"));
@@ -241,14 +241,14 @@ impl http::Response for SqlExecResponse {
         try!(match map_or_table {
 
             MapOrTable::Table => dispatch_exec_events(
-                execution_events,
+                dbconn,
                 view::TableView::new(&mut w),
                 &sqlscript,
                 sqlscript_offset
             ),
 
             MapOrTable::Map => dispatch_exec_events(
-                execution_events,
+                dbconn,
                 view::MapView::new(&mut w),
                 &sqlscript,
                 sqlscript_offset
@@ -262,13 +262,12 @@ impl http::Response for SqlExecResponse {
     }
 }
 
-fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
-                                            mut view: TView,
-                                            sqlscript: &str,
-                                            sqlscript_offset: LineCol)
-                                            -> io::Result<()>
-    where TEventsIter: Iterator<Item=pg::ExecutionEvent>,
-          TView: view::View
+fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
+                               mut view: TView,
+                               sqlscript: &str,
+                               sqlscript_offset: LineCol)
+                               -> io::Result<()>
+    where TView: view::View
 {
     use self::view::View;
 
@@ -308,76 +307,121 @@ fn dispatch_exec_events<TEventsIter, TView>(execution_events: TEventsIter,
     //     }
     // }
 
-    let mut latest_cols_descr = Vec::new();
-    let mut last_row = Vec::new();
+    let mut fields_descrs = Vec::new();
 
-    for event in execution_events {
-        match event {
-            pg::ExecutionEvent::RowsetBegin(cols_descr) => {
-                latest_rowset_id += 1;
+    {
+        let execution_events = dbconn.execute_script(&sqlscript).unwrap();
+        let mut last_row = Vec::new();
 
-                try!(view.render_rowset_begin(latest_rowset_id, &cols_descr.iter().map(|x| view::FieldDescription {
-                    name: &x.name,
-                    typ: match pg::type_name(x.type_oid) {
-                        Some(typ) => typ,
-                        None => "---"
-                    },
-                    is_numeric: pg::type_isnum(x.type_oid)
-                }).collect::<Vec<_>>()));
-                latest_cols_descr = cols_descr;
-                last_row = Vec::new();
-            }
-
-            pg::ExecutionEvent::RowFetched(row) => {
-                {
-                    let row_iter = row.iter().map(|maybe_val| {
-                        maybe_val.as_ref().map(|val| &val[..])
-                    });
-
-                    try!(view.render_row(row_iter, &latest_cols_descr));
+        for event in execution_events {
+            match event {
+                pg::ExecutionEvent::RowsetBegin(cols_descr) => {
+                    latest_rowset_id += 1;
+                    try!(view.render_rowset_begin(latest_rowset_id, &cols_descr));
+                    // latest_cols_descr = cols_descr;
+                    fields_descrs.push(cols_descr);
+                    last_row = Vec::new();
                 }
-                last_row = row;
-            }
 
-            pg::ExecutionEvent::RowsetEnd { is_explain } => {
-                try!(view.render_rowset_end());
+                pg::ExecutionEvent::RowFetched(row) => {
+                    {
+                        let row_iter = row.iter().map(|maybe_val| {
+                            maybe_val.as_ref().map(|val| &val[..])
+                        });
 
-                if is_explain {
-                    if let [Some(ref plan_str)] = &last_row[..] {
-                        if let Ok(plan) = json::Json::from_str(&plan_str) {
-                            if let Some(plan) = queryplan_from_json(plan) {
-                                try!(view.render_queryplan(&plan));
+                        try!(view.render_row(row_iter,
+                                             fields_descrs
+                                                .last()
+                                                .map_or(&[], |it| &it[..])));
+                    }
+                    last_row = row;
+                }
+
+                pg::ExecutionEvent::RowsetEnd { is_explain } => {
+                    try!(view.render_rowset_end());
+
+                    if is_explain {
+                        if let [Some(ref plan_str)] = &last_row[..] {
+                            if let Ok(plan) = json::Json::from_str(&plan_str) {
+                                if let Some(plan) = queryplan_from_json(plan) {
+                                    try!(view.render_queryplan(&plan));
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            pg::ExecutionEvent::NonQueryExecuted(cmd) => {
-                try!(view.render_nonquery(&cmd))
-            }
+                pg::ExecutionEvent::NonQueryExecuted(cmd) => {
+                    try!(view.render_nonquery(&cmd))
+                }
 
-            pg::ExecutionEvent::SqlErrorOccured(err) => {
+                pg::ExecutionEvent::SqlErrorOccured(err) => {
 
-                let linecol = err.position.map(|pos| {
-                    let mut linecol = LineCol::end_of_str(&sqlscript[..pos]);
-                    linecol.line += sqlscript_offset.line;
-                    linecol
-                });
+                    let linecol = err.position.map(|pos| {
+                        let mut linecol = LineCol::end_of_str(&sqlscript[..pos]);
+                        linecol.line += sqlscript_offset.line;
+                        linecol
+                    });
 
-                try!(view.render_error(&err.message,
-                                  linecol.map(|x| x.line).unwrap_or(0),
-                                  linecol.map(|x| x.col).unwrap_or(0)));
-            }
+                    // TODO: must not add error on 0 line when there was
+                    //       no position provided in error message
+                    try!(view.render_error(&err.message,
+                                      linecol.map(|x| x.line).unwrap_or(0),
+                                      linecol.map(|x| x.col).unwrap_or(0)));
+                }
 
-            pg::ExecutionEvent::IoErrorOccured(err) => {
-                try!(view.render_error(&err, 0, 0));
-            }
+                pg::ExecutionEvent::IoErrorOccured(err) => {
+                    try!(view.render_error(&err, 0, 0));
+                }
 
-            pg::ExecutionEvent::Notice(notice) => {
-                try!(view.render_notice(&notice.message));
-            }
-        };
+                pg::ExecutionEvent::Notice(notice) => {
+                    try!(view.render_notice(&notice.message));
+                }
+            };
+        }
+    }
+
+
+    println!("{:#?}", fields_descrs);
+
+
+    let tables_oids = fields_descrs
+        .iter()
+        .flat_map(|it| it.iter())
+        .filter_map(|it| it.table_oid)
+        .map(|it| it.to_string())
+        .collect::<Vec<_>>()
+        .connect(",");
+
+    let unique_keys = if !tables_oids.is_empty() {
+        Some(dbconn.query::<(pg::Oid, String)>(&format!(
+            "SELECT indrelid AS table_oid
+                   ,indkey AS columns_ids
+               FROM pg_index
+              WHERE indisunique
+                AND indexprs IS NULL
+                AND indrelid IN ({tables_oids})
+           ORDER BY indisprimary DESC",
+           tables_oids = tables_oids))
+            .unwrap()
+            .into_iter()
+            .map(|(oid, ids_str)| (
+                oid,
+                ids_str.split(' ')
+                        .filter_map(|it| it.parse::<i32>().ok())
+                        .collect::<Vec<_>>()
+            ))
+            .collect::<Vec<_>>())
+    } else {
+        None
+    };
+
+    println!("{:#?}", unique_keys);
+
+    for (rowset_id, descr) in fields_descrs.iter().enumerate() {
+        // is rowset insertable
+        // is rowset updatable
+        // is rowset deletable
     }
 
     try!(view.render_outro());

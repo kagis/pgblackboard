@@ -58,7 +58,9 @@ impl Decoder for RowDecoder {
     }
 
     fn read_u32(&mut self) -> DecodeResult<u32> {
-        unimplemented!()
+        self.read_str().and_then(|s| {
+            s.parse().map_err(|err| DecodeError::ParseError)
+        })
     }
 
     fn read_u16(&mut self) -> DecodeResult<u16> {
@@ -161,13 +163,14 @@ impl Decoder for RowDecoder {
     fn read_tuple<T, F>(&mut self, len: usize, f: F) -> DecodeResult<T>
         where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
-        unimplemented!()
+        f(self)
     }
 
     fn read_tuple_arg<T, F>(&mut self, a_idx: usize, f: F) -> DecodeResult<T>
         where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
-        unimplemented!()
+        self.reading_value = try!(self.row.next().ok_or(DecodeError::MissingField));
+        f(self)
     }
 
     fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> DecodeResult<T>

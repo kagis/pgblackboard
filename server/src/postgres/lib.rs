@@ -29,7 +29,7 @@ mod decoder;
 mod cstr;
 mod types;
 
-pub use types::{type_name, type_isnum};
+use types::{type_name, type_isnum};
 
 use md5::Md5;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -79,16 +79,7 @@ pub struct FieldDescription {
     /// the attribute number of the column; otherwise zero.
     pub column_id: Option<i16>,
 
-    /// The object ID of the field's data type.
-    pub type_oid: Oid,
-
-    /// The data type size (see pg_type.typlen).
-    /// Note that negative values denote variable-width types.
-    pub type_size: FieldTypeSize,
-
-    /// The type modifier (see pg_attribute.atttypmod).
-    /// The meaning of the modifier is type-specific.
-    pub type_modifier: i32,
+    pub typ: DataType,
 
     /// The format code being used for the field.
     /// Currently will be zero (text) or one (binary).
@@ -99,7 +90,34 @@ pub struct FieldDescription {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-pub enum FieldTypeSize {
+pub struct DataType {
+    /// The object ID of the field's data type.
+    pub oid: Oid,
+
+    /// The type modifier (see pg_attribute.atttypmod).
+    /// The meaning of the modifier is type-specific.
+    pub modifier: i32,
+
+    /// The data type size (see pg_type.typlen).
+    /// Note that negative values denote variable-width types.
+    pub size: DataTypeSize
+}
+
+impl DataType {
+    pub fn formatted(&self) -> String {
+        type_name(self.oid)
+            .unwrap_or("unknown")
+            .to_string()
+    }
+
+    pub fn isnum(&self) -> bool {
+        type_isnum(self.oid)
+    }
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum DataTypeSize {
     Fixed(usize),
     Variable,
 }
@@ -534,12 +552,14 @@ fn read_row_description<T: BufRead>(reader: &mut T) -> io::Result<Vec<FieldDescr
                 0 => None,
                 id => Some(id)
             },
-            type_oid: try!(reader.read_u32::<BigEndian>()),
-            type_size: match try!(reader.read_i16::<BigEndian>()) {
-                len if len < 0 => FieldTypeSize::Variable,
-                len => FieldTypeSize::Fixed(len as usize),
+            typ: DataType {
+                oid: try!(reader.read_u32::<BigEndian>()),
+                modifier: try!(reader.read_i32::<BigEndian>()),
+                size: match try!(reader.read_i16::<BigEndian>()) {
+                    len if len < 0 => DataTypeSize::Variable,
+                    len => DataTypeSize::Fixed(len as usize),
+                }
             },
-            type_modifier: try!(reader.read_i32::<BigEndian>()),
             format: match try!(reader.read_i16::<BigEndian>()) {
                 0 => FieldFormat::Text,
                 1 => FieldFormat::Binary,
@@ -988,18 +1008,22 @@ mod test {
                     name: "id".to_string(),
                     table_oid: None,
                     column_id: None,
-                    type_oid: 23,
-                    type_size: FieldTypeSize::Fixed(4),
-                    type_modifier: -1,
+                    typ: DataType {
+                        oid: 23,
+                        size: DataTypeSize::Fixed(4),
+                        modifier: -1,
+                    },
                     format: FieldFormat::Text
                 },
                 FieldDescription {
                     name: "name".to_string(),
                     table_oid: None,
                     column_id: None,
-                    type_oid: 705,
-                    type_size: FieldTypeSize::Variable,
-                    type_modifier: -1,
+                    typ: DataType {
+                        oid: 705,
+                        size: DataTypeSize::Variable,
+                        modifier: -1,
+                    },
                     format: FieldFormat::Text
                 },
             ]),

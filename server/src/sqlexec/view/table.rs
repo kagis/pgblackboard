@@ -1,4 +1,4 @@
-use super::{View, FieldDescription, QueryPlan};
+use super::{View, QueryPlan};
 use std::io::{self, Write};
 use rustc_serialize::json;
 use pg;
@@ -45,14 +45,14 @@ impl<W: Write> View for TableView<W> {
 
     fn render_rowset_begin(&mut self,
                            rowset_id: i32,
-                           cols_descr: &[FieldDescription])
+                           cols_descr: &[pg::FieldDescription])
                            -> io::Result<()>
     {
         let out = &mut self.writer;
 
         let numeric_cols = cols_descr.iter()
                                      .enumerate()
-                                     .filter(|&(_, col)| col.is_numeric)
+                                     .filter(|&(_, col)| col.typ.isnum())
                                      .map(|(i, _)| i + 1);
 
         try!(out.write_all(b"<style>"));
@@ -75,7 +75,7 @@ impl<W: Write> View for TableView<W> {
                     </small>\
                 </th>",
                 colname = col.name,
-                coltype = col.typ));
+                coltype = col.typ.formatted()));
         }
         try!(out.write_all(b"</tr>"));
         try!(out.write_all(b"</thead>"));

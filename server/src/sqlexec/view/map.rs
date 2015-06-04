@@ -1,4 +1,4 @@
-use super::{View, FieldDescription, QueryPlan};
+use super::{View, QueryPlan};
 use std::io::{self, Write};
 use pg;
 use rustc_serialize::json;
@@ -36,7 +36,7 @@ impl<W: Write> View for MapView<W> {
 
     fn render_rowset_begin(&mut self,
                            rowset_id: i32,
-                           cols_descr: &[FieldDescription])
+                           cols_descr: &[pg::FieldDescription])
                            -> io::Result<()>
     {
         self.rendered_rows_count = 0;

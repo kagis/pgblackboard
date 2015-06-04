@@ -16,7 +16,7 @@ pub trait View {
 
     fn render_rowset_begin(&mut self,
                            rowset_id: i32,
-                           &[FieldDescription])
+                           &[pg::FieldDescription])
                            -> io::Result<()>;
 
     fn render_rowset_end(&mut self) -> io::Result<()>;
@@ -60,12 +60,4 @@ pub struct QueryPlan {
     pub typ: String,
     pub properties: json::Object,
     pub children: Vec<QueryPlan>
-}
-
-
-
-pub struct FieldDescription<'a, 'b> {
-    pub name: &'a str,
-    pub typ: &'b str,
-    pub is_numeric: bool,
 }
