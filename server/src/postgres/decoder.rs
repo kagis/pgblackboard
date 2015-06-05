@@ -86,7 +86,9 @@ impl Decoder for RowDecoder {
     }
 
     fn read_i16(&mut self) -> DecodeResult<i16> {
-        unimplemented!()
+        self.read_str().and_then(|s| {
+            s.parse().map_err(|err| DecodeError::ParseError)
+        })
     }
 
     fn read_i8(&mut self) -> DecodeResult<i8> {

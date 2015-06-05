@@ -1,4 +1,4 @@
-use super::{View, QueryPlan};
+use super::{View, QueryPlan, EditableTable};
 use std::io::{self, Write};
 use pg;
 use rustc_serialize::json;
@@ -146,12 +146,11 @@ impl<W: Write> View for MapView<W> {
 
     fn make_rowset_editable(&mut self,
                             rowset_id: i32,
-                            table_name: &str,
-                            col_names: &[&str],
-                            pk_mask: &[bool])
+                            editable_table: &EditableTable)
                             -> io::Result<()>
     {
-        self.writer.write_all(b"")
+        Ok(())
+        // self.writer.write_all(b"")
     }
 
     fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {

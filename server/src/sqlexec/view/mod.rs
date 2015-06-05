@@ -43,14 +43,29 @@ pub trait View {
 
     fn make_rowset_editable(&mut self,
                             rowset_id: i32,
-                            table_name: &str,
-                            col_names: &[&str],
-                            pk_mask: &[bool])
+                            editable_table: &EditableTable)
                             -> io::Result<()>;
 
     fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()>;
 
     // fn flush(&self) -> io::Result<()>;
+}
+
+#[derive(Debug)]
+#[derive(RustcEncodable)]
+pub struct EditableTable {
+    pub table_id: String,
+    pub columns: Vec<EditableColumn>
+}
+
+#[derive(Debug)]
+#[derive(RustcEncodable)]
+pub struct EditableColumn {
+    pub field_idx: Option<usize>,
+    pub column_id: String,
+    pub is_key: bool,
+    pub is_notnull: bool,
+    pub has_default: bool
 }
 
 #[derive(Debug)]

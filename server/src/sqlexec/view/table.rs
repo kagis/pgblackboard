@@ -1,4 +1,4 @@
-use super::{View, QueryPlan};
+use super::{View, QueryPlan, EditableTable};
 use std::io::{self, Write};
 use rustc_serialize::json;
 use pg;
@@ -93,14 +93,17 @@ impl<W: Write> View for TableView<W> {
 
     fn make_rowset_editable(&mut self,
                             rowset_id: i32,
-                            table_name: &str,
-                            col_names: &[&str],
-                            pk_mask: &[bool])
+                            editable_table: &EditableTable)
                             -> io::Result<()>
     {
-        try!(write!(&mut self.writer, "<script>pgBlackboardOutput\
-                                .makeRowsetEditable();\
-                                </script>"));
+
+        try!(write!(&mut self.writer,
+                    "<script>pgBlackboardOutput\
+                    .makeRowsetEditable({rowset_id}, {editable_table});\
+                    </script>",
+                    rowset_id = rowset_id,
+                    editable_table = json::as_json(editable_table)
+                    ));
 
         Ok(())
     }
