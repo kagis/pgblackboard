@@ -136,6 +136,7 @@ impl<'a> http::Resource for SqlExecEndpoint<'a> {
 
         Box::new(SqlExecResponse {
             dbconn: dbconn,
+            dbname: sqlscript_and_dbname.dbname.to_string(),
             map_or_table: form.view.unwrap_or(MapOrTable::Table),
             // selrange: selrange,
 
@@ -212,6 +213,7 @@ enum MapOrTable {
 
 struct SqlExecResponse {
     dbconn: pg::Connection,
+    dbname: String,
     map_or_table: MapOrTable,
     sqlscript: String,
     sqlscript_offset: LineCol,
@@ -223,6 +225,7 @@ impl http::Response for SqlExecResponse {
         let self_ = *self;
         let SqlExecResponse {
             mut dbconn,
+            dbname,
             map_or_table,
             sqlscript,
             sqlscript_offset,
@@ -245,6 +248,7 @@ impl http::Response for SqlExecResponse {
             MapOrTable::Table => dispatch_exec_events(
                 dbconn,
                 view::TableView::new(&mut w),
+                &dbname,
                 &sqlscript,
                 sqlscript_offset
             ),
@@ -252,6 +256,7 @@ impl http::Response for SqlExecResponse {
             MapOrTable::Map => dispatch_exec_events(
                 dbconn,
                 view::MapView::new(&mut w),
+                &dbname,
                 &sqlscript,
                 sqlscript_offset
             )
@@ -266,6 +271,7 @@ impl http::Response for SqlExecResponse {
 
 fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
                                mut view: TView,
+                               dbname: &str,
                                sqlscript: &str,
                                sqlscript_offset: LineCol)
                                -> io::Result<()>
@@ -481,6 +487,7 @@ fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
 
             if rowset_is_updatable_and_deletable || rowset_is_insertable {
                 try!(view.make_rowset_editable(rowset_id as i32, &view::EditableTable {
+                    dbname: dbname.to_string(),
                     table_id: selected_table_oid.to_string(),
                     columns: cols_of_selected_table
                 }));

@@ -37,6 +37,14 @@ impl http::Handler for DbDir {
                 }.handle_http_req(tail, req)
             }
 
+            ["tables", tableid] => {
+                TableResource {
+                    pgaddr: self.pgaddr.clone(),
+                    dbname: self.dbname.clone(),
+                    tableid: tableid.to_string()
+                }.handle_http_req(&[], req)
+            }
+
             // ["tables", tableid] => {
 
             // }
@@ -268,4 +276,67 @@ fn connectdb_for_dbdir(
             })
         }
     } as Box<http::Response>)
+}
+
+
+struct TableResource {
+    pgaddr: String,
+    dbname: String,
+    tableid: String
+}
+
+impl http::Resource for TableResource {
+    fn patch(&self, req: &http::Request) -> Box<http::Response> {
+        let mut dbconn = match connectdb_for_dbdir(&self.pgaddr, &self.dbname, req) {
+            Ok(dbconn) => dbconn,
+            Err(resp) => return resp
+        };
+
+        #[derive(Debug)]
+        #[derive(RustcDecodable)]
+        enum PatchAction {
+            Insert,
+            Update,
+            Delete
+        }
+
+        #[derive(Debug)]
+        #[derive(RustcDecodable)]
+        struct Form {
+            action: PatchAction,
+            changes: ::std::collections::BTreeMap<String, String>,
+            key: ::std::collections::BTreeMap<String, String>
+        }
+
+        let content = match req.content.as_ref() {
+            Some(x) => x,
+            None => return Box::new(JsonResponse {
+                content: "Missing content",
+                status: http::Status::BadRequest
+            })
+        };
+
+        let utf8_content = match ::std::str::from_utf8(content) {
+            Ok(x) => x,
+            Err(..) => return Box::new(JsonResponse {
+                content: "Invalid UTF8 content",
+                status: http::Status::BadRequest
+            })
+        };
+
+        let form = match json::decode::<Form>(utf8_content) {
+            Ok(x) => x,
+            Err(..) => return Box::new(JsonResponse {
+                content: "Cannot decode form",
+                status: http::Status::BadRequest
+            })
+        };
+
+        println!("{:#?}", form);
+
+        Box::new(JsonResponse {
+            content: "hello",
+            status: http::Status::Ok
+        })
+    }
 }
