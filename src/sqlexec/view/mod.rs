@@ -54,6 +54,7 @@ pub trait View {
 #[derive(Debug)]
 #[derive(RustcEncodable)]
 pub struct EditableTable {
+    pub dbname: String,
     pub table_id: String,
     pub columns: Vec<EditableColumn>
 }

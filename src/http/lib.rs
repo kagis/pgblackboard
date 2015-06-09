@@ -140,7 +140,7 @@ pub struct Request {
     pub method: Method,
     pub path: Vec<String>,
     pub query_string: Vec<(String, String)>,
-    pub content: Option<RequestContent>,
+    pub content: Option<Vec<u8>>,
     pub credentials: Option<RequestCredentials>,
     pub if_non_match: Option<String>,
 }
@@ -157,11 +157,9 @@ pub enum RequestCredentials {
 impl Request {
 
     pub fn decode_urlencoded_form<T: Decodable>(&self) -> form::DecodeResult<T> {
-        let content = self.content.clone();
-        if let Some(RequestContent::UrlEncoded(keyvals)) = content {
-            return form::decode_form(keyvals)
-        }
-        panic!("Url encoded form expected");
+        let content = self.content.as_ref().unwrap();
+        let form = parse_qs(content);
+        form::decode_form(form)
     }
 
     fn read_from<T: BufRead>(reader: &mut T) -> io::Result<Request> {
@@ -239,17 +237,11 @@ impl Request {
         }
 
         let content = if content_length > 0 {
-
             println!("content-length={}", content_length);
-            let mut content = Vec::with_capacity(content_length);
-            content.extend((0..content_length).map(|_| 0));
-            try!(reader.read_all(&mut content));
-
-            Some(if is_urlenc_content {
-                RequestContent::UrlEncoded(parse_qs(&content))
-            } else {
-                RequestContent::Binary(content)
-            })
+            let mut buf = Vec::with_capacity(content_length);
+            buf.extend((0..content_length).map(|_| 0));
+            try!(reader.read_all(&mut buf));
+            Some(buf)
         } else {
             None
         };
@@ -261,7 +253,6 @@ impl Request {
             content: content,
             credentials: credentials,
             if_non_match: if_non_match
-            //basic_auth: authorization,
         })
     }
 }
