@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use rustc_serialize::json;
 use http;
 use pg;
+use ui;
 
 pub struct IndexPage<'a> {
     pub pgaddr: &'a str
@@ -106,14 +107,14 @@ impl http::Response for IndexPageResponse {
         let mut initial_data = BTreeMap::new();
         initial_data.insert("databases", &self.databases);
 
-        let index_html = include_str!(concat!(env!("PGBB_UI_DIR"), "/index.html"));
-        let index_html = index_html
-            .replace("/*INITIAL_DATA_PLACEHOLDER*/",
-                     &json::encode(&initial_data).unwrap());
+        let mut html = vec![];
+        ui::render_home_page(&mut html,
+                             json::as_json(&initial_data)
+                             ).unwrap();
 
         let mut w = try!(w.start(http::Status::Ok));
         try!(w.write_content_type("text/html; charset=utf-8"));
-        w.write_content(index_html.as_bytes())
+        w.write_content(&html)
     }
 }
 
@@ -130,12 +131,13 @@ impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
             try!(w.write_www_authenticate_basic("postgres"));
         }
 
-        let html = format!(
-            include_str!(concat!(env!("PGBB_UI_DIR"), "/err.html")),
-            code = self.status as u16,
-            phrase = self.status.phrase(),
-            message = self.message);
+        let mut html = vec![];
+        ui::render_error_page(&mut html,
+                            self.status as u16,
+                            self.status.phrase(),
+                            self.message
+                            ).unwrap();
 
-        w.write_content(html.as_bytes())
+        w.write_content(&html)
     }
 }

@@ -4,11 +4,12 @@ version = "0.2.0"
 dependencies = [
  "argparse 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "http 0.2.0",
- "postgres 0.1.0",
- "regex 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http 0.0.1",
+ "postgres 0.0.1",
+ "regex 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex_macros 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ui 0.0.1",
 ]
 
 [[package]]
@@ -32,14 +33,14 @@ dependencies = [
 
 [[package]]
 name = "gcc"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "http"
-version = "0.2.0"
+version = "0.0.1"
 dependencies = [
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "threadpool 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -53,30 +54,30 @@ name = "miniz-sys"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "postgres"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "byteorder 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-md5 0.2.14 (git+https://github.com/exe-dealer/rust-md5.git)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "regex"
-version = "0.1.32"
+version = "0.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex-syntax 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex-syntax 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "regex-syntax"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -84,7 +85,7 @@ name = "regex_macros"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -94,11 +95,15 @@ source = "git+https://github.com/exe-dealer/rust-md5.git#887a96cb7c94f65504da241
 
 [[package]]
 name = "rustc-serialize"
-version = "0.3.14"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "threadpool"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "ui"
+version = "0.0.1"
 

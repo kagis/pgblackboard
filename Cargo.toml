@@ -1,0 +1,15 @@
+[project]
+name = "pgblackboard"
+version = "0.2.0"
+authors = ["exe-dealer <exe-dealer@yandex.ru>"]
+
+[dependencies]
+http            = { path = "./src/http" }
+postgres        = { path = "./src/postgres" }
+ui              = { path = "./src/ui" }
+
+argparse        = "0.1"
+flate2          = "0.2.6"
+regex           = "0.1"
+regex_macros    = "0.1"
+rustc-serialize = "0.3"

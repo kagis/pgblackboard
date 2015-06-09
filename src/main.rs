@@ -9,6 +9,7 @@ extern crate regex;
 extern crate rustc_serialize;
 extern crate postgres as pg;
 extern crate http;
+extern crate ui;
 
 mod index;
 mod sqlexec;

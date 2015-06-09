@@ -1,6 +1,6 @@
 language: rust
 rust: nightly
-script: "make test"
+script: "cargo test --package postgres && cargo test --package http && cargo test && (cd src/ui && npm test)"
 jdk:
     - openjdk7
 before_script:

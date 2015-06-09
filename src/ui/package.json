@@ -2,13 +2,8 @@
   "name": "pgblackboard-ui",
   "description": "pgBlackboard user interface",
   "author": "exe-dealer <exe-dealer@yandex.ru>",
-  "license": "BSD-2-Clause",
   "private": true,
-  "version": "0.0.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/exe-dealer/pgblackboard"
-  },
+  "version": "0.0.1",
   "devDependencies": {
     "jscs": "~1.11.3",
     "jshint": "^2.7.0",
@@ -31,16 +26,17 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "build": "npm install --production && jake",
-    "test": "npm install --production && JASMINE_CONFIG_PATH=jasmine.json jasmine",
-    "start": "npm install && nodejs server.js",
-    "lint": "npm run install && npm run jshint && npm run jscs",
-    "jshint": "jshint src --exclude src/bundle-index.js",
-    "jscs": "jscs src --exclude src/bundle-index.js --verbose",
+    "build": "jake",
+    "test": "JASMINE_CONFIG_PATH=jasmine.json jasmine",
+    "start": "nodejs server.js",
+    "lint": "npm run jshint && npm run jscs",
+    "jshint": "jshint . --exclude node_modules",
+    "jscs": "jscs . --exclude node_modules --verbose",
     "clean": "jake clean"
   },
   "jshintConfig": {
-    "sub": true
+    "sub": true,
+    "esnext": true
   },
   "jscsConfig": {
     "preset": "yandex",
@@ -49,6 +45,9 @@
     "disallowSpacesInsideObjectBrackets": null,
     "disallowQuotedKeysInObjects": null,
     "disallowMultipleVarDecl": "exceptUndefined",
-    "validateIndentation": 4
+    "validateIndentation": 4,
+    "excludeFiles": [
+      "node_modules/**"
+    ]
   }
 }
