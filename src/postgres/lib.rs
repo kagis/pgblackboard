@@ -1,4 +1,5 @@
 #![feature(buf_stream)]
+#![feature(collections)]
 
 //! ```rust
 //! extern crate rustc_serialize;
@@ -28,6 +29,7 @@ mod sqlstate;
 mod decoder;
 mod cstr;
 mod types;
+mod sql;
 
 use types::{type_name, type_isnum};
 
