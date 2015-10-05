@@ -426,15 +426,31 @@ fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
             .collect::<Vec<_>>()
     };
 
+    #[derive(RustcDecodable)]
+    struct ColumnDescr {
+        table_oid: pg::Oid,
+        table_name: String,
+        schema_name: String,
+        id: i16,
+        name: String,
+        is_notnull: bool,
+        has_default: bool,
+    }
+
     let cols_of_all_selected_tables = if tables_oids.is_empty() {
         vec![]
     } else {
-        dbconn.query::<(pg::Oid, i16, bool, bool)>(&format!(
+        dbconn.query::<ColumnDescr>(&format!(
             "SELECT attrelid
+                   ,relname
+                   ,nspname
                    ,attnum
+                   ,attname
                    ,attnotnull
                    ,atthasdef
                FROM pg_attribute
+                    JOIN pg_class ON pg_class.oid = attrelid
+                    JOIN pg_namespace ON pg_namespace.oid = relnamespace
               WHERE attnum > 0
                 AND NOT attisdropped
                 AND attrelid IN ({tables_oids})",
@@ -444,19 +460,19 @@ fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
 
     println!("{:#?}", keys_of_all_selected_tables);
 
-    for (rowset_id, descr) in fields_descrs.iter().enumerate() {
+    for (rowset_id, fields) in fields_descrs.iter().enumerate() {
 
-        let tables_oids = descr.iter()
-                                .filter_map(|it| it.table_oid)
+        let tables_oids = fields.iter()
+                                .filter_map(|field| field.table_oid)
                                 .collect::<BTreeSet<_>>();
 
         if tables_oids.len() == 1 {
             let selected_table_oid = tables_oids.into_iter().next().unwrap();
 
-            let selected_col_ids = descr.iter()
-                    .filter(|it| it.table_oid == Some(selected_table_oid))
-                    .filter_map(|it| it.column_id)
-                    .map(|it| it.to_string())
+            let selected_col_ids = fields.iter()
+                    .filter(|field| field.table_oid == Some(selected_table_oid))
+                    .filter_map(|field| field.column_id)
+                    .map(|column_id| column_id.to_string())
                     .collect::<BTreeSet<_>>();
 
             let empty_set = BTreeSet::new();
@@ -467,28 +483,36 @@ fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
                     .unwrap_or(&empty_set);
 
             let cols_of_selected_table = cols_of_all_selected_tables.iter()
-                    .filter(|&&(table_oid, _, _, _)| table_oid == selected_table_oid)
-                    .map(|&(_, col_id, is_notnull, has_default)| view::EditableColumn {
-                        column_id: col_id.to_string(),
-                        is_notnull: is_notnull,
-                        has_default: has_default,
-                        is_key: selected_key.contains(&col_id.to_string()[..]),
-                        field_idx: descr.iter().position(|it| it.column_id == Some(col_id))
+                    .filter(|col| col.table_oid == selected_table_oid)
+                    .map(|col| view::EditableColumn {
+                        name: col.name.clone(),
+                        is_key: selected_key.contains(&col.id.to_string()[..]),
+                        is_notnull: col.is_notnull,
+                        has_default: col.has_default,
+                        field_idx: fields.iter().position(|field| field.column_id == Some(col.id))
                     })
                     .collect::<Vec<_>>();
 
-            let mandatory_col_ids = cols_of_selected_table.iter()
-                    .filter(|it| it.is_notnull && !it.has_default)
-                    .map(|it| it.column_id.clone())
+            let mandatory_col_ids = cols_of_all_selected_tables.iter()
+                    .filter(|col| col.table_oid == selected_table_oid)
+                    .filter(|col| col.is_notnull && !col.has_default)
+                    .map(|col| col.id.to_string())
                     .collect::<BTreeSet<_>>();
 
             let rowset_is_updatable_and_deletable = !selected_key.is_empty();
             let rowset_is_insertable = mandatory_col_ids.is_subset(&selected_col_ids);
 
             if rowset_is_updatable_and_deletable || rowset_is_insertable {
+                let (schema_name, table_name) = cols_of_all_selected_tables.iter()
+                    .filter(|col| col.table_oid == selected_table_oid)
+                    .map(|col| (col.schema_name.clone(), col.table_name.clone()))
+                    .next()
+                    .unwrap();
+
                 try!(view.make_rowset_editable(rowset_id as i32, &view::EditableTable {
-                    dbname: dbname.to_string(),
-                    table_id: selected_table_oid.to_string(),
+                    db_name: dbname.to_string(),
+                    schema_name: schema_name,
+                    table_name: table_name,
                     columns: cols_of_selected_table
                 }));
             }

@@ -53,11 +53,15 @@ impl<W: Write> View for TableView<W> {
         let numeric_cols = cols_descr.iter()
                                      .enumerate()
                                      .filter(|&(_, col)| col.typ.isnum())
-                                     .map(|(i, _)| i + 1);
+                                     .map(|(i, _)| i + 1 /* rowheader */
+                                                     + 1 /* one-based */);
 
         try!(out.write_all(b"<style>"));
-        for i in numeric_cols {
-            try!(write!(out, "#rowset{} td:nth-child({}),", rowset_id, i));
+        for (i, field_idx) in numeric_cols.enumerate() {
+            if i > 0 {
+                try!(write!(out, ","));
+            }
+            try!(write!(out, "#rowset{} td:nth-child({})", rowset_id, field_idx));
         }
         try!(out.write_all(b"{ text-align: right; }"));
         try!(out.write_all(b"</style>"));

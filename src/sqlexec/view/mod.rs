@@ -54,19 +54,20 @@ pub trait View {
 #[derive(Debug)]
 #[derive(RustcEncodable)]
 pub struct EditableTable {
-    pub dbname: String,
-    pub table_id: String,
-    pub columns: Vec<EditableColumn>
+    pub db_name: String,
+    pub schema_name: String,
+    pub table_name: String,
+    pub columns: Vec<EditableColumn>,
 }
 
 #[derive(Debug)]
 #[derive(RustcEncodable)]
 pub struct EditableColumn {
-    pub field_idx: Option<usize>,
-    pub column_id: String,
+    pub name: String,
     pub is_key: bool,
     pub is_notnull: bool,
-    pub has_default: bool
+    pub has_default: bool,
+    pub field_idx: Option<usize>,
 }
 
 #[derive(Debug)]

@@ -8,15 +8,19 @@ module.exports = function (frameWindow, outputGlobal) {
     /** @export */
     outputGlobal.makeRowsetEditable = function (rowsetId, editingTable) {
         var tableElem = frameWindow.document.querySelectorAll('.rowset')[rowsetId];
-        tableElem.setAttribute('data-table', editingTable['table_id']);
-        tableElem.setAttribute('data-database', editingTable['dbname']);
+        tableElem.setAttribute('data-database', editingTable['db_name']);
+        tableElem.setAttribute('data-schema', editingTable['schema_name']);
+        tableElem.setAttribute('data-table', editingTable['table_name']);
+
         var headCells = tableElem.querySelectorAll('thead th');
         for (var i = 1; i < headCells.length; i++) {
             var cell = headCells[i];
             var colDescr = editingTable['columns'].filter(function (it) { return it['field_idx'] === i - 1; })[0];
-            cell.setAttribute('data-name', colDescr['column_id']);
-            if (colDescr['is_key']) {
-                cell.setAttribute('data-key', 'true');
+            if (colDescr) {
+                cell.setAttribute('data-name', colDescr['name']);
+                if (colDescr['is_key']) {
+                    cell.setAttribute('data-key', 'true');
+                }
             }
         }
 
@@ -69,8 +73,11 @@ module.exports = function (frameWindow, outputGlobal) {
             var cells = row.cells;
             for (var i = 1 /* skip row header */; i < cells.length; i++) {
                 var cell = cells[i];
-                saveCellOriginalValue(cell);
-                cell.contentEditable = CONTENT_EDITABLE;
+                var headcell = table.tHead.rows[0].cells[i];
+                if (headcell.hasAttribute('data-name') /* cell is editable */) {
+                    saveCellOriginalValue(cell);
+                    cell.contentEditable = CONTENT_EDITABLE;
+                }
             }
             clickedCell.focus();
         }
@@ -150,6 +157,7 @@ module.exports = function (frameWindow, outputGlobal) {
             'databases',
             table.getAttribute('data-database'),
             'tables',
+            table.getAttribute('data-schema'),
             table.getAttribute('data-table')
         ].map(encodeURIComponent).join('/'));
         req.onloadend = onLoadEnd;

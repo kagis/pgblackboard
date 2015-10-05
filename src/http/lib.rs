@@ -1,5 +1,6 @@
 #![feature(buf_stream)]
- #![feature(collections)]
+#![feature(collections)]
+#![feature(slice_position_elem)]
 
 extern crate threadpool;
 extern crate rustc_serialize;

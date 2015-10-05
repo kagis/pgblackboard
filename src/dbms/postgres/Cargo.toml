@@ -7,10 +7,12 @@ name = "postgres"
 path = "lib.rs"
 doctest = false
 
+[[bin]]
+name = "pgmsg"
+path = "lib.rs"
+doctest = false
+test = false
+
+
 [dependencies]
 rustc-serialize = "0.3"
-byteorder = "0.3.8"
-# rust-crypto = "0.2.31"
-
-[dependencies.rust-md5]
-git = "https://github.com/exe-dealer/rust-md5.git"

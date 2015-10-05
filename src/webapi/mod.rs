@@ -37,11 +37,12 @@ impl http::Handler for DbDir {
                 }.handle_http_req(tail, req)
             }
 
-            ["tables", tableid] => {
+            ["tables", schema_name, table_name] => {
                 TableResource {
                     pgaddr: self.pgaddr.clone(),
                     dbname: self.dbname.clone(),
-                    tableid: tableid.to_string()
+                    schema_name: schema_name.to_string(),
+                    table_name: table_name.to_string()
                 }.handle_http_req(&[], req)
             }
 
@@ -282,7 +283,8 @@ fn connectdb_for_dbdir(
 struct TableResource {
     pgaddr: String,
     dbname: String,
-    tableid: String
+    schema_name: String,
+    table_name: String,
 }
 
 impl http::Resource for TableResource {
@@ -304,8 +306,8 @@ impl http::Resource for TableResource {
         #[derive(RustcDecodable)]
         struct Form {
             action: PatchAction,
-            changes: ::std::collections::BTreeMap<String, String>,
-            key: ::std::collections::BTreeMap<String, String>
+            changes: ::std::collections::BTreeMap<String, Option<String>>,
+            key: ::std::collections::BTreeMap<String, Option<String>>
         }
 
         let content = match req.content.as_ref() {
@@ -332,7 +334,41 @@ impl http::Resource for TableResource {
             })
         };
 
-        println!("{:#?}", form);
+        match form.action {
+            PatchAction::Update => {
+                let update_result = dbconn.update_row(
+                    &self.schema_name,
+                    &self.table_name,
+                    &form.key,
+                    &form.changes,
+                );
+
+                match update_result {
+                    Ok(updated_row) => return Box::new(JsonResponse {
+                        status: http::Status::Ok,
+                        content: updated_row
+                    }),
+                    Err(pg::TableModifyError::RowNotFound) => return Box::new(JsonResponse {
+                        status: http::Status::Conflict,
+                        content: "Row was not found."
+                    }),
+                    Err(pg::TableModifyError::NotUniqueKey) => return Box::new(JsonResponse {
+                        status: http::Status::Conflict,
+                        content: "Key is not unique."
+                    }),
+                    Err(e) => return Box::new(JsonResponse {
+                        status: http::Status::InternalServerError,
+                        content: format!("{:#?}", e)
+                    }),
+                }
+            }
+
+            _ => return Box::new(JsonResponse {
+                content: "Action is not implemented",
+                status: http::Status::BadRequest
+            })
+        };
+
 
         Box::new(JsonResponse {
             content: "hello",

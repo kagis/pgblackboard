@@ -7,6 +7,7 @@ authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 http            = { path = "./src/http" }
 postgres        = { path = "./src/postgres" }
 ui              = { path = "./src/ui" }
+dbms            = { path = "./src/dbms" }
 
 argparse        = "0.1"
 flate2          = "0.2.6"

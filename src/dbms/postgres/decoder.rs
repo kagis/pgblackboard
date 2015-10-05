@@ -1,6 +1,12 @@
 #![allow(unused_variables)]
 
 use rustc_serialize::{Decodable, Decoder};
+use std::str::FromStr;
+
+pub fn decode_row<T: Decodable>(row: Vec<Option<String>>) -> DecodeResult<T> {
+    let mut decoder = RowDecoder::new(row);
+    Decodable::decode(&mut decoder)
+}
 
 struct RowDecoder {
     row: ::std::vec::IntoIter<Option<String>>,
@@ -13,6 +19,12 @@ impl RowDecoder {
             reading_value: None,
             row: row.into_iter(),
         }
+    }
+
+    fn read_from_str<T: FromStr>(&mut self) -> DecodeResult<T> {
+        self.read_str().and_then(|s| {
+            s.parse().map_err(|err| DecodeError::ParseError)
+        })
     }
 }
 
@@ -42,6 +54,7 @@ impl ::std::fmt::Display for DecodeError {
 
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
+
 impl Decoder for RowDecoder {
     type Error = DecodeError;
 
@@ -49,51 +62,16 @@ impl Decoder for RowDecoder {
         unimplemented!()
     }
 
-    fn read_usize(&mut self) -> DecodeResult<usize> {
-        unimplemented!()
-    }
-
-    fn read_u64(&mut self) -> DecodeResult<u64> {
-        unimplemented!()
-    }
-
-    fn read_u32(&mut self) -> DecodeResult<u32> {
-        self.read_str().and_then(|s| {
-            s.parse().map_err(|err| DecodeError::ParseError)
-        })
-    }
-
-    fn read_u16(&mut self) -> DecodeResult<u16> {
-        unimplemented!()
-    }
-
-    fn read_u8(&mut self) -> DecodeResult<u8> {
-        unimplemented!()
-    }
-
-    fn read_isize(&mut self) -> DecodeResult<isize> {
-        unimplemented!()
-    }
-
-    fn read_i64(&mut self) -> DecodeResult<i64> {
-        unimplemented!()
-    }
-
-    fn read_i32(&mut self) -> DecodeResult<i32> {
-        self.read_str().and_then(|s| {
-            s.parse().map_err(|err| DecodeError::ParseError)
-        })
-    }
-
-    fn read_i16(&mut self) -> DecodeResult<i16> {
-        self.read_str().and_then(|s| {
-            s.parse().map_err(|err| DecodeError::ParseError)
-        })
-    }
-
-    fn read_i8(&mut self) -> DecodeResult<i8> {
-        unimplemented!()
-    }
+    fn read_usize(&mut self) -> DecodeResult<usize> { self.read_from_str() }
+    fn read_u64(&mut self) -> DecodeResult<u64> { self.read_from_str() }
+    fn read_u32(&mut self) -> DecodeResult<u32> { self.read_from_str() }
+    fn read_u16(&mut self) -> DecodeResult<u16> { self.read_from_str() }
+    fn read_u8(&mut self) -> DecodeResult<u8> { self.read_from_str() }
+    fn read_isize(&mut self) -> DecodeResult<isize> { self.read_from_str() }
+    fn read_i64(&mut self) -> DecodeResult<i64> { self.read_from_str() }
+    fn read_i32(&mut self) -> DecodeResult<i32> { self.read_from_str() }
+    fn read_i16(&mut self) -> DecodeResult<i16> { self.read_from_str() }
+    fn read_i8(&mut self) -> DecodeResult<i8> { self.read_from_str() }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
         self.read_str().and_then(|s| match &s[..] {
@@ -230,10 +208,7 @@ impl Decoder for RowDecoder {
 
 }
 
-pub fn decode_row<T: Decodable>(row: Vec<Option<String>>) -> DecodeResult<T> {
-    let mut decoder = RowDecoder::new(row);
-    Decodable::decode(&mut decoder)
-}
+
 
 #[cfg(test)]
 mod test {
