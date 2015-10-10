@@ -1,12 +1,12 @@
 use std::net::TcpStream;
-use std::io::{self, BufStream, Write};
+use std::io::{ self, Write };
 
 use super::status::Status;
 
 
 
 
-pub struct ResponseStarter(pub BufStream<TcpStream>);
+pub struct ResponseStarter(pub TcpStream);
 
 impl ResponseStarter {
     pub fn start(mut self, status: Status) -> io::Result<ResponseWriter> {
@@ -27,7 +27,7 @@ impl ResponseStarter {
 
 
 
-pub struct ResponseWriter(BufStream<TcpStream>);
+pub struct ResponseWriter(TcpStream);
 
 impl ResponseWriter {
     pub fn write_header<TVal: ::std::fmt::Display>(&mut self, name: &str, value: TVal) -> io::Result<&mut Self> {
@@ -72,7 +72,7 @@ impl ResponseWriter {
 }
 
 
-pub struct ChunkedWriter(BufStream<TcpStream>);
+pub struct ChunkedWriter(TcpStream);
 
 impl ChunkedWriter {
     pub fn end(&mut self) -> io::Result<()> {

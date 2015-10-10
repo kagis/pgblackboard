@@ -10,4 +10,4 @@ select concat_ws(e'\n'
     ,''
 ) as def
 from pg_trigger
-where oid = %(nodeid)s
+where oid = $1

@@ -1,12 +1,11 @@
-#![feature(read_exact)]
-#![feature(str_char)]
-
 extern crate rustc_serialize;
 
 mod postgres;
 
+pub use self::postgres::PgDbms;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
+use std::ops::Range;
 
 pub trait Dbms {
 
@@ -17,8 +16,7 @@ pub trait Dbms {
         user: &str,
         password: &str,
         script: &str,
-        char_offset: usize,
-        char_len: usize)
+        selection: Option<Range<usize>>)
         -> Self::ExecIter;
 
     fn insert_row(
@@ -151,6 +149,7 @@ pub enum TableModifyError {
 #[derive(RustcDecodable)]
 #[derive(RustcEncodable)]
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct DbObj {
 
     /// Name of owner database

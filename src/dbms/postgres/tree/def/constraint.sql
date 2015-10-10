@@ -10,4 +10,4 @@ select concat_ws(e'\n'
     ,'ROLLBACK;'
     ,''
 ) as def
-from pg_constraint where oid = %(nodeid)s::oid
+from pg_constraint where oid = $1::oid

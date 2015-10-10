@@ -72,6 +72,8 @@ impl Decoder for RowDecoder {
     fn read_i32(&mut self) -> DecodeResult<i32> { self.read_from_str() }
     fn read_i16(&mut self) -> DecodeResult<i16> { self.read_from_str() }
     fn read_i8(&mut self) -> DecodeResult<i8> { self.read_from_str() }
+    fn read_f64(&mut self) -> DecodeResult<f64> { self.read_from_str() }
+    fn read_f32(&mut self) -> DecodeResult<f32> { self.read_from_str() }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
         self.read_str().and_then(|s| match &s[..] {
@@ -81,13 +83,6 @@ impl Decoder for RowDecoder {
         })
     }
 
-    fn read_f64(&mut self) -> DecodeResult<f64> {
-        unimplemented!()
-    }
-
-    fn read_f32(&mut self) -> DecodeResult<f32> {
-        unimplemented!()
-    }
 
     fn read_char(&mut self) -> DecodeResult<char> {
         unimplemented!()

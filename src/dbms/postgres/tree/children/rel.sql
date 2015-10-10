@@ -1,5 +1,6 @@
 with param_cte as (
-    select %(nodeid)s::oid as param_oid
+    select $1::oid as param_oid,
+           $2::text
 )
 (
   select current_database()                                 as database

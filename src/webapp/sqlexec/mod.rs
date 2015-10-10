@@ -14,12 +14,12 @@ use std::ops::Range;
 use std::collections::BTreeSet;
 
 use http;
-use pg;
+use dbms::Dbms;
 
 use rustc_serialize::json;
 
-pub struct SqlExecEndpoint<'a> {
-    pub pgaddr: &'a str
+pub struct SqlExecEndpoint<'dbms, TDbms: Dbms + 'dbms> {
+    pub dbms: &'dbms TDbms
 }
 
 impl<'a> http::Resource for SqlExecEndpoint<'a> {
@@ -210,30 +210,17 @@ enum MapOrTable {
     Table
 }
 
-
-struct SqlExecResponse {
-    dbconn: pg::Connection,
-    dbname: String,
+struct SqlExecResponse<TExecIter: Iterator<Item=ExecEvent>> {
+    execiter: TExecIter,
     map_or_table: MapOrTable,
-    sqlscript: String,
-    sqlscript_offset: LineCol,
-    // selrange: Option<Range<LineCol>>,
 }
 
 impl http::Response for SqlExecResponse {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
-        let self_ = *self;
         let SqlExecResponse {
-            mut dbconn,
-            dbname,
+            execiter,
             map_or_table,
-            sqlscript,
-            sqlscript_offset,
-            // selrange,
-        } = self_;
-
-        println!("executing: {:?}", &sqlscript);
-
+        } = *self;
 
         let mut w = try!(w.start(http::Status::Ok));
         try!(w.write_content_type("text/html; charset=utf-8"));
@@ -246,19 +233,13 @@ impl http::Response for SqlExecResponse {
         try!(match map_or_table {
 
             MapOrTable::Table => dispatch_exec_events(
-                dbconn,
+                execiter,
                 view::TableView::new(&mut w),
-                &dbname,
-                &sqlscript,
-                sqlscript_offset
             ),
 
             MapOrTable::Map => dispatch_exec_events(
-                dbconn,
+                execiter,
                 view::MapView::new(&mut w),
-                &dbname,
-                &sqlscript,
-                sqlscript_offset
             )
         });
 
@@ -269,13 +250,12 @@ impl http::Response for SqlExecResponse {
     }
 }
 
-fn dispatch_exec_events<TView>(mut dbconn: pg::Connection,
-                               mut view: TView,
-                               dbname: &str,
-                               sqlscript: &str,
-                               sqlscript_offset: LineCol)
-                               -> io::Result<()>
-    where TView: view::View
+fn dispatch_exec_events<TExecIter, TView>(
+    mut execiter: TExecIter,
+    mut view: TView)
+    -> io::Result<()>
+    where TView: view::View,
+          TExecIter: Iterator<Item=ExecEvent>
 {
     use self::view::View;
 

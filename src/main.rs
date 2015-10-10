@@ -3,21 +3,21 @@
 #![feature(custom_attribute)]
 #![feature(core)]
 #![feature(iter_arith)]
+#![feature(read_exact)]
+#![feature(str_char)]
 #![plugin(regex_macros)]
 
 extern crate argparse;
 extern crate regex;
 extern crate rustc_serialize;
-extern crate postgres as pg;
 extern crate http;
 extern crate ui;
 
-mod index;
-mod sqlexec;
-mod webapi;
-mod statres;
+mod dbms;
+mod webapp;
 
-use std::io;
+use self::dbms::PgDbms;
+use self::webapp::WebApplication;
 
 
 fn main() {
@@ -44,45 +44,13 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
+    let dbms = PgDbms {
+        addr: pgaddr
+    };
+
     let webapp = WebApplication {
-        pgaddr: pgaddr
+        dbms: dbms
     };
 
     http::serve_forever(&httpaddr, webapp).unwrap();
-}
-
-struct WebApplication {
-    pub pgaddr: String
-}
-
-impl http::Handler for WebApplication {
-    fn handle_http_req(&self,
-                       path: &[&str],
-                       req: &http::Request)
-                       -> Box<http::Response>
-    {
-        match path {
-            [""] => index::IndexPage {
-                pgaddr: &self.pgaddr,
-            }.handle_http_req(&[], req),
-
-            ["exec"] => sqlexec::SqlExecEndpoint {
-                pgaddr: &self.pgaddr
-            }.handle_http_req(&[], req),
-
-            ["databases", dbname, tail..] => webapi::DbDir {
-                pgaddr: self.pgaddr.clone(),
-                dbname: dbname.to_string()
-            }.handle_http_req(tail, req),
-
-            ["favicon.ico"] => statres::FAVICON_ICO.handle_http_req(&[], req),
-            ["bundle-index.js"] => statres::BUNDLE_INDEX.handle_http_req(&[], req),
-            ["bundle-map.js"] => statres::BUNDLE_MAP.handle_http_req(&[], req),
-
-            _ => Box::new(index::ErrorResponse {
-                status: http::Status::NotFound,
-                message: "The requested URL was not found."
-            })
-        }
-    }
 }

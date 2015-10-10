@@ -1,7 +1,7 @@
 with parent_cte as (
     with params_cte as (
-        select %(nodeid)s::oid    as parent_oid
-              ,%(nodetype)s::text as parent_type
+        select $1::oid    as parent_oid
+              ,$2::text   as parent_type
     )
     select case parent_type when 'schema'    then parent_oid end as schema_oid
           ,case parent_type when 'extension' then parent_oid end as ext_oid

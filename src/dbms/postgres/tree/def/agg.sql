@@ -1,7 +1,7 @@
 with agg_cte as (
     select *
     from pg_proc join pg_aggregate on oid = aggfnoid
-    where aggfnoid = %(nodeid)s
+    where aggfnoid = $1
 )
 select concat_ws(e'\n'
     ,'/*'

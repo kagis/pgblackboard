@@ -6,6 +6,3 @@ build = "build.rs"
 [lib]
 name = "ui"
 path = "lib.rs"
-
-# [dependencies.rust-md5]
-# git = "https://github.com/exe-dealer/rust-md5.git"

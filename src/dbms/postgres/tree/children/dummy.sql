@@ -1,2 +1,4 @@
-SELECT null
-WHERE false
+SELECT NULL
+ WHERE false
+   AND $1::text IS NOT NULL
+   AND $2::text IS NOT NULL

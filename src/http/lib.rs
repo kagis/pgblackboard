@@ -1,6 +1,5 @@
 #![feature(buf_stream)]
 #![feature(collections)]
-#![feature(slice_position_elem)]
 
 extern crate threadpool;
 extern crate rustc_serialize;
@@ -22,7 +21,7 @@ use self::rustc_serialize::{json, Decodable};
 use self::threadpool::ThreadPool;
 use self::readall::{ReadAll};
 
-use std::io::{self, BufRead, BufStream, Read, Write};
+use std::io::{self, BufRead, BufWriter, BufReader, Read, Write};
 use std::net::{TcpListener};
 use std::ascii::AsciiExt;
 use std::sync::{Arc};
@@ -185,7 +184,7 @@ impl Request {
         }
 
         let url = req_line[(left_space_pos + 1)..right_space_pos].as_bytes();
-        let (path, query_string) = match url.position_elem(&b'?') {
+        let (path, query_string) = match url.iter().position(|&it| it == b'?') {
             Some(question_pos) => (
                 &url[0..question_pos],
                 parse_qs(&url[(question_pos + 1)..]),
@@ -507,13 +506,14 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
         let handler = handler.clone();
         match stream_result {
             Err(e) => { println!("{}", e); }
-            Ok(stream) => pool.execute(move || {
+            Ok(mut stream) => pool.execute(move || {
                 println!("new connection");
-                let mut buf_stream = BufStream::with_capacities(/*read*/1024,
-                                                                /*write*/0,
-                                                                stream);
 
-                let req = Request::read_from(&mut buf_stream).unwrap();
+                let req = {
+                    let mut bufread = BufReader::with_capacity(1024, &mut stream);
+                    Request::read_from(&mut bufread).unwrap()
+                };
+
 
                 println!("{user} {method} {path:?}",
                          method=req.method,
@@ -529,7 +529,7 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
                     .collect::<Vec<_>>();
 
                 let resp = handler.handle_http_req(&path_slices_vec[..], &req);
-                let resp_result = resp.write_to(ResponseStarter(buf_stream));
+                let resp_result = resp.write_to(ResponseStarter(stream));
                 if let Err(e) = resp_result {
                     println!("error while sending response {}", e);
                 }
