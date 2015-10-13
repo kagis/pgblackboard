@@ -8,6 +8,7 @@ use self::tree::DbObjType;
 use self::execiter::PgExecIter;
 use super::*;
 use std::ops::Range;
+use rustc_serialize::Decodable;
 
 pub struct PgDbms {
     pub addr: String,
@@ -79,29 +80,18 @@ impl Dbms for PgDbms {
         password: &str)
         -> Result<Vec<DbObj>, DbObjError>
     {
-        let mut conn = try!(connect(
+        let conn = try!(connect(
             &self.addr[..],
             "postgres",
             user,
             password
         ));
 
-        let dbobjs = {
-            try!(conn.parse_statement("", include_str!("tree/children/databases.sql")));
-            let mut cursor = conn.execute_statement("", &[]);
-            let mut dbobjs = vec![];
-            for row in cursor.by_ref() {
-                dbobjs.push(try!(decoder::decode_row::<DbObj>(row).map_err(|err| {
-                    DbObjError::InternalError(Box::new(err))
-                })));
-            }
-            try!(cursor.complete());
-            dbobjs
-        };
-
-        try!(conn.close());
-
-        Ok(dbobjs)
+        query_dbobj(
+            conn,
+            include_str!("tree/children/databases.sql"),
+            &[]
+        )
     }
 
     fn get_child_dbobjs(
@@ -113,7 +103,7 @@ impl Dbms for PgDbms {
         parent_dbobj_id: &str)
         -> Result<Vec<DbObj>, DbObjError>
     {
-        let mut conn = try!(connect(
+        let conn = try!(connect(
             &self.addr[..],
             database,
             user,
@@ -125,25 +115,10 @@ impl Dbms for PgDbms {
 
         let query = parent_dbobj_typ.children_query();
 
-        let children = {
-            try!(conn.parse_statement("", query));
-            let mut cursor = conn.execute_statement("", &[
-                Some(parent_dbobj_id),
-                Some(parent_dbobj_typ.to_str())
-            ]);
-            let mut result = vec![];
-            for row in cursor.by_ref() {
-                result.push(try!(decoder::decode_row::<DbObj>(row).map_err(|err| {
-                    DbObjError::InternalError(Box::new(err))
-                })));
-            }
-            try!(cursor.complete());
-            result
-        };
-
-        try!(conn.close());
-
-        Ok(children)
+        query_dbobj(conn, query, &[
+            Some(parent_dbobj_id),
+            Some(parent_dbobj_typ.to_str())
+        ])
     }
 
     fn get_dbobj_script(
@@ -155,7 +130,7 @@ impl Dbms for PgDbms {
         dbobj_id: &str)
         -> Result<String, DbObjError>
     {
-        let mut conn = try!(connect(
+        let conn = try!(connect(
             &self.addr[..],
             database,
             user,
@@ -167,25 +142,10 @@ impl Dbms for PgDbms {
 
         let query = dbobj_typ.definition_query();
 
-        let def = {
-            #[derive(RustcDecodable)]
-            struct DbObjDefinition {
-                def: String,
-            }
-
-            try!(conn.parse_statement("", query));
-            let mut cursor = conn.execute_statement("", &[Some(dbobj_id)]);
-            let mut result = vec![];
-            for row in cursor.by_ref() {
-                result.push(try!(decoder::decode_row::<DbObjDefinition>(row).map_err(|err| {
-                    DbObjError::InternalError(Box::new(err))
-                })));
-            }
-            try!(cursor.complete());
-            try!(result.pop().ok_or(DbObjError::DbObjNotFound)).def
-        };
-
-        try!(conn.close());
+        #[derive(RustcDecodable)]
+        struct DbObjDef { def: String }
+        let mut defs = try!(query_dbobj::<DbObjDef>(conn, query, &[Some(dbobj_id)]));
+        let def = try!(defs.pop().ok_or(DbObjError::DbObjNotFound)).def;
 
         Ok([
             "\\connect ",
@@ -196,6 +156,24 @@ impl Dbms for PgDbms {
     }
 }
 
+fn query_dbobj<TRecord: Decodable>(
+    mut conn: Connection,
+    stmt_body: &str,
+    params: &[Option<&str>])
+    -> Result<Vec<TRecord>, DbObjError>
+{
+    try!(conn.parse_statement("", stmt_body));
+    let mut cursor = conn.execute_statement("", params);
+    let mut records = vec![];
+    for row in cursor.by_ref() {
+        records.push(try!(decoder::decode_row(row).map_err(|err| {
+            DbObjError::InternalError(Box::new(err))
+        })));
+    }
+    let (_cmdtag, mut conn) = try!(cursor.complete());
+    try!(conn.close());
+    Ok(records)
+}
 
 
 impl ::std::convert::From<connection::Error> for DbObjError {

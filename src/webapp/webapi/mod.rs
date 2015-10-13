@@ -7,6 +7,18 @@ use rustc_serialize::{json, Encodable};
 use dbms::Dbms;
 use self::objects::DbObjDir;
 
+pub fn handle_dbdir_req<TDbms: Dbms>(
+    dbms: &TDbms,
+    database: &str,
+    tail: &[&str],
+    req: &http::Request)
+    -> Box<http::Response>
+{
+    http::Handler::handle_http_req(&DbDir {
+        dbms: dbms,
+        dbname: database.to_string(),
+    }, tail, req)
+}
 
 pub struct DbDir<'dbms, TDbms: Dbms + 'dbms> {
     pub dbms: &'dbms TDbms,

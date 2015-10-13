@@ -1,7 +1,8 @@
-use super::{View, QueryPlan, EditableTable};
-use std::io::{self, Write};
+use super::View;
+use super::linecol::LineCol;
+use dbms::{ Field, QueryPlanNode };
+use std::io::{ self, Write };
 use rustc_serialize::json;
-use pg;
 
 static INTRO: &'static [u8] = b"\
     <!DOCTYPE html>\
@@ -17,13 +18,15 @@ static OUTRO: &'static [u8] = b"</div></body></html>\r\n";
 
 
 pub struct TableView<W: Write> {
-    writer: W
+    writer: W,
+    last_rowset_id: usize
 }
 
 impl<W: Write> TableView<W> {
     pub fn new(writer: W) -> TableView<W> {
         TableView {
-            writer: writer
+            writer: writer,
+            last_rowset_id: 0,
         }
     }
 }
@@ -43,16 +46,18 @@ impl<W: Write> View for TableView<W> {
         self.writer.write_all(OUTRO)
     }
 
-    fn render_rowset_begin(&mut self,
-                           rowset_id: i32,
-                           cols_descr: &[pg::FieldDescription])
-                           -> io::Result<()>
+    fn render_rowset_begin(
+        &mut self,
+        cols_descr: &[Field])
+        -> io::Result<()>
     {
         let out = &mut self.writer;
+        self.last_rowset_id += 1;
+        let rowset_id = self.last_rowset_id;
 
         let numeric_cols = cols_descr.iter()
                                      .enumerate()
-                                     .filter(|&(_, col)| col.typ.isnum())
+                                     .filter(|&(_, col)| col.is_num)
                                      .map(|(i, _)| i + 1 /* rowheader */
                                                      + 1 /* one-based */);
 
@@ -66,7 +71,7 @@ impl<W: Write> View for TableView<W> {
         try!(out.write_all(b"{ text-align: right; }"));
         try!(out.write_all(b"</style>"));
 
-        try!(write!(out, "<table class='rowset' id='rowset{}'>", rowset_id));
+        try!(write!(out, "<table class='rowset'>"));
         try!(out.write_all(b"<thead>"));
         try!(out.write_all(b"<tr>"));
         try!(out.write_all(b"<th class='rowset-corner'></th>"));
@@ -79,7 +84,7 @@ impl<W: Write> View for TableView<W> {
                     </small>\
                 </th>",
                 colname = col.name,
-                coltype = col.typ.formatted()));
+                coltype = col.typ));
         }
         try!(out.write_all(b"</tr>"));
         try!(out.write_all(b"</thead>"));
@@ -88,35 +93,23 @@ impl<W: Write> View for TableView<W> {
         Ok(())
     }
 
-    fn render_rowset_end(&mut self) -> io::Result<()> {
+    fn render_rowset_end(
+        &mut self)
+        -> io::Result<()>
+    {
         let writer = &mut self.writer;
         try!(writer.write_all(b"</tbody>"));
         try!(writer.write_all(b"</table>"));
         Ok(())
     }
 
-    fn make_rowset_editable(&mut self,
-                            rowset_id: i32,
-                            editable_table: &EditableTable)
-                            -> io::Result<()>
+    fn render_row<'a, T>(
+        &mut self,
+        row: T,
+        descrs: &[Field])
+        -> io::Result<()>
+        where T: Iterator<Item=Option<&'a str>>
     {
-
-        try!(write!(&mut self.writer,
-                    "<script>pgBlackboardOutput\
-                    .makeRowsetEditable({rowset_id}, {editable_table});\
-                    </script>",
-                    rowset_id = rowset_id,
-                    editable_table = json::as_json(editable_table)
-                    ));
-
-        Ok(())
-    }
-
-    fn render_row<'a, T>(&mut self,
-                         row: T,
-                         descrs: &[pg::FieldDescription])
-                         -> io::Result<()>
-        where T: Iterator<Item=Option<&'a str>> {
 
         let writer = &mut self.writer;
         try!(writer.write_all(b"<tr>"));
@@ -132,21 +125,26 @@ impl<W: Write> View for TableView<W> {
         Ok(())
     }
 
-    fn render_error(&mut self,
-                    message: &str,
-                    script_line: usize,
-                    script_col: usize)
-                    -> io::Result<()>
+    fn render_error(
+        &mut self,
+        message: &str,
+        linecol: Option<LineCol>)
+        -> io::Result<()>
     {
         let writer = &mut self.writer;
-        try!(invoke_js_set_error(writer, message, script_line));
+        try!(invoke_js_set_error(writer, message, linecol));
         try!(writer.write_all(b"<pre class=\"message message--error\">"));
         try!(writer.write_all(message.as_bytes()));
         try!(writer.write_all(b"</pre>"));
         Ok(())
     }
 
-    fn render_notice(&mut self, message: &str) -> io::Result<()> {
+    fn render_notice(
+        &mut self,
+        message: &str,
+        linecol: Option<LineCol>)
+        -> io::Result<()>
+    {
         let writer = &mut self.writer;
         try!(writer.write_all(b"<pre>"));
         try!(writer.write_all(message.as_bytes()));
@@ -154,7 +152,11 @@ impl<W: Write> View for TableView<W> {
         Ok(())
     }
 
-    fn render_nonquery(&mut self, command_tag: &str) -> io::Result<()> {
+    fn render_nonquery(
+        &mut self,
+        command_tag: &str)
+        -> io::Result<()>
+    {
         let writer = &mut self.writer;
         try!(writer.write_all(b"<pre>"));
         try!(writer.write_all(command_tag.as_bytes()));
@@ -162,7 +164,11 @@ impl<W: Write> View for TableView<W> {
         Ok(())
     }
 
-    fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
+    fn render_queryplan(
+        &mut self,
+        plan: &QueryPlanNode)
+        -> io::Result<()>
+    {
         write!(self.writer,
                "<script>pgBlackboardOutput.queryPlan({});</script>",
                json::as_json(plan))
@@ -173,22 +179,20 @@ impl<W: Write> View for TableView<W> {
     // }
 }
 
-
-
-
-
-
-fn invoke_js_set_error<W>(writer: &mut W,
-                          message: &str,
-                          script_line: usize)
-                          -> io::Result<()>
-                          where W: Write
+fn invoke_js_set_error<W>(
+    writer: &mut W,
+    message: &str,
+    linecol: Option<LineCol>)
+    -> io::Result<()>
+    where W: Write
 {
-    write!(writer,
+    write!(
+        writer,
         "<script>pgBlackboardOutput.setError({{\
-            \"message\":{message:?},\
+            \"message\":{message},\
             \"line\":{line}\
         }});</script>",
-        message = message,
-        line = script_line)
+        message = json::as_json(&message),
+        line = json::as_json(&linecol.map(|it| it.line))
+    )
 }

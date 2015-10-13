@@ -1,5 +1,24 @@
 use std::iter::Iterator;
 
+// pub fn trimstart_comments(statement: &str) -> &str {
+//     let mut tail = statement;
+//
+//     loop {
+//         tail = eat_whitespaces(tail);
+//         let maybe_new_tail = eat_line_comment(tail)
+//                         .or_else(|| eat_block_comment(tail));
+//
+//         if let Some(new_tail) = maybe_new_tail {
+//             tail = new_tail
+//         } else {
+//             break;
+//         }
+//     }
+//
+//     tail
+// }
+
+
 pub fn split_statements<'a>(script: &'a str) -> SplitStatements<'a> {
     SplitStatements { script: script }
 }
@@ -93,6 +112,10 @@ fn eat_dollar_quote(src: &str) -> Option<(&str, &str)> {
     None
 }
 
+// fn eat_whitespaces(src: &str) -> &str {
+//     eat_while(src, |ch| ch.is_whitespace())
+// }
+
 fn eat_while<F>(src: &str, f: F) -> &str where F: Fn(char) -> bool {
     let mut tail = src;
     while let Some(n) = tail.slice_shift_char()
@@ -179,6 +202,39 @@ fn eat_until_escaped<'a, 'b>(src: &'a str,
 #[cfg(test)]
 mod test {
     use super::next_statement;
+    // use super::trimstart_comments;
+
+    // #[test]
+    // fn trimstart_comments_block() {
+    //     assert_eq!(
+    //         trimstart_comments("/*comment*/select"),
+    //         "select"
+    //     );
+    // }
+    //
+    // #[test]
+    // fn trimstart_comments_line() {
+    //     assert_eq!(
+    //         trimstart_comments("--comment\nselect"),
+    //         "select"
+    //     );
+    // }
+    //
+    // #[test]
+    // fn trimstart_comments_whitespaces() {
+    //     assert_eq!(
+    //         trimstart_comments(" \t\nselect"),
+    //         "select"
+    //     );
+    // }
+    //
+    // #[test]
+    // fn trimstart_comments_all() {
+    //     assert_eq!(
+    //         trimstart_comments(" /*comment*/ \n--comment\n select"),
+    //         "select"
+    //     );
+    // }
 
     fn assert_no_split(script: &str) {
         assert_eq!(next_statement(script), (script, ""));
@@ -260,4 +316,3 @@ mod test {
     //                Some(("$tag$", "content")));
     // }
 }
-

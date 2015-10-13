@@ -316,7 +316,7 @@ impl Connection {
     }
 
     pub fn execute_statement(
-        &mut self,
+        mut self,
         stmt_name: &str,
         params: &[Option<&str>])
         -> Cursor
@@ -344,77 +344,86 @@ impl Connection {
 
         match response_message {
             BackendMessage::BindComplete => Cursor::new(self),
+            BackendMessage::ErrorResponse(err) => {
+                match self.wait_for_ready() {
+                    Ok(()) => {},
+                    Err(err) => return Cursor::new_err(err, self),
+                };
+                Cursor::new_err(Error::SqlError(err), self)
+            }
             unexpected => Cursor::new_err(self.bad_response(&unexpected), self)
         }
     }
 
-    pub fn begin_transation(&mut self) -> Result<Transaction, Error> {
-        Transaction::begin(self)
-    }
+    // pub fn begin_transation(&mut self) -> Result<Transaction, Error> {
+    //     Transaction::begin(self)
+    // }
 
     pub fn close(mut self) -> Result<(), Error> {
         self.write_message(TerminateMessage)
     }
 }
 
-pub struct Transaction<'conn> {
-    conn: &'conn mut Connection
-}
+// pub struct Transaction<'conn> {
+//     conn: &'conn mut Connection
+// }
+//
+// impl<'conn> Transaction<'conn> {
+//     fn begin(conn: &'conn mut Connection) -> Result<Transaction, Error> {
+//         conn.parse_statement("", "BEGIN")
+//             .and_then(|_| conn.execute_statement("", &[]).complete())
+//             .map(move |_| Transaction { conn: conn })
+//     }
+//
+//     pub fn commit(self) -> Result<(), Error> {
+//         self.conn.parse_statement("", "COMMIT")
+//             .and_then(|_| self.conn.execute_statement("", &[]).complete())
+//             .map(|_| ())
+//     }
+// }
+//
+// impl<'conn> Drop for Transaction<'conn> {
+//     fn drop(&mut self) {
+//         if self.conn.transaction_status != TransactionStatus::Idle {
+//             let rollback_result = self.conn.parse_statement("", "ROLLBACK")
+//                     .and_then(|_| self.conn.execute_statement("", &[]).complete());
+//
+//             if let Err(rollback_err) = rollback_result {
+//                 println!("Error while rollback transaction: {:#?}", rollback_err);
+//             }
+//         }
+//     }
+// }
 
-impl<'conn> Transaction<'conn> {
-    fn begin(conn: &'conn mut Connection) -> Result<Transaction, Error> {
-        conn.parse_statement("", "BEGIN")
-            .and_then(|_| conn.execute_statement("", &[]).complete())
-            .map(move |_| Transaction { conn: conn })
-    }
-
-    pub fn commit(self) -> Result<(), Error> {
-        self.conn.parse_statement("", "BEGIN")
-            .and_then(|_| self.conn.execute_statement("", &[]).complete())
-            .map(|_| ())
-    }
-}
-
-impl<'conn> Drop for Transaction<'conn> {
-    fn drop(&mut self) {
-        if self.conn.transaction_status != TransactionStatus::Idle {
-            let rollback_result = self.conn.parse_statement("", "ROLLBACK")
-                    .and_then(|_| self.conn.execute_statement("", &[]).complete());
-
-            if let Err(rollback_err) = rollback_result {
-                println!("Error while rollback transaction: {:#?}", rollback_err);
-            }
-        }
-    }
-}
-
-pub struct Cursor<'conn> {
-    conn: &'conn mut Connection,
+pub struct Cursor {
+    conn: Connection,
     result: Option<Result<String, Error>>,
 }
 
-impl<'conn> Cursor<'conn> {
-    fn new(conn: &'conn mut Connection) -> Cursor<'conn> {
+impl Cursor {
+    fn new(conn: Connection) -> Cursor {
         Cursor {
             conn: conn,
             result: None,
         }
     }
 
-    fn new_err(err: Error, conn: &'conn mut Connection) -> Cursor<'conn> {
+    fn new_err(err: Error, conn: Connection) -> Cursor {
         Cursor {
             conn: conn,
             result: Some(Err(err)),
         }
     }
 
-    pub fn complete(mut self) -> Result<String, Error> {
+    pub fn complete(mut self) -> Result<(String, Connection), Error> {
         while let Some(_) = self.next() {}
-        self.result.expect("Cursor has no result.")
+        let Cursor { conn, result } = self;
+        result.expect("Cursor has no result.")
+              .map(|cmd_tag| (cmd_tag, conn))
     }
 }
 
-impl<'conn> Iterator for Cursor<'conn> {
+impl Iterator for Cursor {
     type Item = Vec<Option<String>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -438,6 +447,10 @@ impl<'conn> Iterator for Cursor<'conn> {
             BackendMessage::CommandComplete { command_tag } => {
                 self.conn.wait_for_ready().unwrap();
                 Ok(command_tag)
+            }
+            BackendMessage::EmptyQueryResponse => {
+                self.conn.wait_for_ready().unwrap();
+                Ok("".to_string())
             }
             BackendMessage::ErrorResponse(sql_err) => {
                 self.conn.wait_for_ready().unwrap();
@@ -509,5 +522,3 @@ mod test {
     use super::*;
 
 }
-
-

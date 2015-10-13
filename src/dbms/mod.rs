@@ -9,7 +9,7 @@ use std::ops::Range;
 
 pub trait Dbms {
 
-    type ExecIter: Iterator<Item=ExecEvent>;
+    type ExecIter: Iterator<Item=ExecEvent> + 'static;
 
     fn execute_script(
         &self,
@@ -85,20 +85,18 @@ pub enum ExecEvent {
 
     RowsetBegin(Vec<Field>),
 
-    RowsetEnd,
-
     Row(Vec<Option<String>>),
 
     QueryPlan(QueryPlanNode),
 
     Notice {
-        char_pos: Option<usize>,
-        message: String
+        message: String,
+        bytepos: Option<usize>,
     },
 
     Error {
-        char_pos: Option<usize>,
-        message: String
+        message: String,
+        bytepos: Option<usize>,
     }
 }
 

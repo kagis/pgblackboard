@@ -1,16 +1,23 @@
 mod splitting;
 mod metacmd;
+mod explain;
 
 use self::splitting::split_statements;
 use self::metacmd::extract_connect_metacmd;
-use super::connection::{ connect, Connection };
-use dbms::ExecEvent;
+use self::explain::queryplan_from_jsonstr;
+use super::connection::{ connect, Connection, Cursor };
+use dbms::{ ExecEvent, Field, Column };
 use std::ops::Range;
+use std::collections::VecDeque;
+
 
 
 pub struct PgExecIter {
     conn: Option<Connection>,
     err: Option<String>,
+    cursor: Option<Cursor>,
+    stmts: VecDeque<String>,
+    maybe_explain_json: Option<Option<String>>
 }
 
 impl PgExecIter {
@@ -45,7 +52,12 @@ impl PgExecIter {
 
         PgExecIter {
             conn: Some(conn),
-            err: None
+            err: None,
+            cursor: None,
+            maybe_explain_json: None,
+            stmts: split_statements(database_and_script.sqlscript)
+                        .map(|it| it.to_string())
+                        .collect(),
         }
     }
 
@@ -53,6 +65,9 @@ impl PgExecIter {
         PgExecIter {
             conn: None,
             err: Some(message.to_string()),
+            cursor: None,
+            maybe_explain_json: None,
+            stmts: VecDeque::new(),
         }
     }
 }
@@ -64,8 +79,81 @@ impl Iterator for PgExecIter {
         if let Some(err_message) = self.err.take() {
             return Some(ExecEvent::Error {
                 message: err_message,
-                char_pos: None,
+                bytepos: None,
             });
+        }
+
+        if let Some(mut cursor) = self.cursor.take() {
+            if let Some(row) = cursor.next() {
+
+                if self.maybe_explain_json.is_none() {
+                    if let Some(maybe_val) = row.first() {
+                        self.maybe_explain_json = Some(
+                            maybe_val.as_ref().map(|it| it.to_string())
+                        );
+                    }
+                }
+
+                self.cursor = Some(cursor);
+                return Some(ExecEvent::Row(row))
+            } else {
+                let maybe_explain_json = self.maybe_explain_json.take();
+                match cursor.complete() {
+                    Ok((cmdtag, conn)) => {
+                        self.conn = Some(conn);
+
+                        if cmdtag == "EXPLAIN" {
+                            if let Some(explain_json) = maybe_explain_json {
+                                if let Some(ref explain_json) = explain_json {
+                                    if let Some(plan) = queryplan_from_jsonstr(explain_json) {
+                                        return Some(ExecEvent::QueryPlan(plan));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        return Some(ExecEvent::Error {
+                            message: format!("{:#?}", err),
+                            bytepos: None,
+                        });
+                    }
+                }
+            }
+        }
+
+        if let Some(mut conn) = self.conn.take() {
+            if let Some(stmt) = self.stmts.pop_front() {
+                conn.parse_statement("", &stmt[..]).unwrap();
+                let fields = conn.describe_statement("").unwrap();
+                if fields.is_empty() {
+                    return match conn.execute_statement("", &[]).complete() {
+                        Ok((cmdtag, conn)) => {
+                            self.conn = Some(conn);
+                            Some(ExecEvent::NonQuery {
+                                command_tag: cmdtag
+                            })
+                        }
+                        Err(err) => {
+                            Some(ExecEvent::Error {
+                                message: format!("{:#?}", err),
+                                bytepos: None,
+                            })
+                        }
+                    }
+                } else {
+                    let fields = fields.into_iter().map(|it| Field {
+                        name: it.name,
+                        is_num: false,
+                        typ: "type".to_string(),
+                        src_column: None,
+                    }).collect();
+                    self.cursor = Some(conn.execute_statement("", &[]));
+                    return Some(ExecEvent::RowsetBegin(fields));
+                }
+            } else {
+                conn.close().unwrap();
+            }
         }
 
         None

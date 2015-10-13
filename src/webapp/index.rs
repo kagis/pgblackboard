@@ -5,6 +5,17 @@ use http;
 use dbms::{ Dbms, DbObj, DbObjError };
 use ui;
 
+pub fn handle_index_req<TDbms: Dbms>(
+    dbms: &TDbms,
+    req: &http::Request)
+    -> Box<http::Response>
+{
+    http::Handler::handle_http_req(
+        &IndexResource { dbms: dbms },
+        &[],
+        req
+    )
+}
 
 pub struct IndexResource<'dbms, TDbms: Dbms + 'dbms> {
     pub dbms: &'dbms TDbms

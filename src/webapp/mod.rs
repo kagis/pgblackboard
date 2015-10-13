@@ -1,13 +1,18 @@
 mod index;
-// mod sqlexec;
+mod sqlexec;
 mod webapi;
 mod statres;
 
 use http;
 use dbms::Dbms;
-use self::index::IndexResource;
-use self::statres::{ FAVICON_RESOURCE, BUNDLE_INDEX_RESOURCE, BUNDLE_MAP_RESOURCE };
-use self::webapi::DbDir;
+use self::index::handle_index_req;
+use self::sqlexec::handle_sqlexec_req;
+use self::webapi::handle_dbdir_req;
+use self::statres::{
+    FAVICON_RESOURCE,
+    BUNDLE_INDEX_RESOURCE,
+    BUNDLE_MAP_RESOURCE,
+};
 
 
 pub struct WebApplication<TDbms: Dbms> {
@@ -15,20 +20,15 @@ pub struct WebApplication<TDbms: Dbms> {
 }
 
 impl<TDbms: Dbms> http::Handler for WebApplication<TDbms> {
-    fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
+    fn handle_http_req(
+        &self, path: &[&str],
+        req: &http::Request)
+        -> Box<http::Response>
+    {
         match path {
-            [""] => IndexResource {
-                dbms: &self.dbms
-            }.handle_http_req(&[], req),
-
-            // ["exec"] => sqlexec::SqlExecEndpoint {
-            //     pgaddr: &self.pgaddr
-            // }.handle_http_req(&[], req),
-
-            ["databases", dbname, tail..] => DbDir {
-                dbms: &self.dbms,
-                dbname: dbname.to_string()
-            }.handle_http_req(tail, req),
+            [""] => handle_index_req(&self.dbms, req),
+            ["exec"] => handle_sqlexec_req(&self.dbms, req),
+            ["databases", db, tail..] => handle_dbdir_req(&self.dbms, db, tail, req),
 
             ["favicon.ico"] => FAVICON_RESOURCE.handle_http_req(&[], req),
             ["bundle-index.js"] => BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),

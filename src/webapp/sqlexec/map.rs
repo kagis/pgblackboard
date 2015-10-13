@@ -1,6 +1,7 @@
-use super::{View, QueryPlan, EditableTable};
-use std::io::{self, Write};
-use pg;
+use super::View;
+use super::linecol::LineCol;
+use dbms::{ Field, QueryPlanNode };
+use std::io::{ self, Write };
 use rustc_serialize::json;
 
 pub struct MapView<W: Write> {
@@ -21,7 +22,10 @@ impl<W: Write> MapView<W> {
 
 impl<W: Write> View for MapView<W> {
 
-    fn render_intro(&mut self) -> io::Result<()> {
+    fn render_intro(
+        &mut self)
+        -> io::Result<()>
+    {
         let ref mut writer = self.writer;
         try!(writer.write_all(INTRO));
         try!(writer.write_all(b"<script>frameElement\
@@ -30,14 +34,17 @@ impl<W: Write> View for MapView<W> {
         Ok(())
     }
 
-    fn render_outro(&mut self) -> io::Result<()> {
+    fn render_outro(
+        &mut self)
+        -> io::Result<()>
+    {
         self.writer.write_all(OUTRO)
     }
 
-    fn render_rowset_begin(&mut self,
-                           rowset_id: i32,
-                           cols_descr: &[pg::FieldDescription])
-                           -> io::Result<()>
+    fn render_rowset_begin(
+        &mut self,
+        cols_descr: &[Field])
+        -> io::Result<()>
     {
         self.rendered_rows_count = 0;
         self.geom_col_idx = cols_descr.iter().position(|col| {
@@ -54,7 +61,10 @@ impl<W: Write> View for MapView<W> {
         Ok(())
     }
 
-    fn render_rowset_end(&mut self) -> io::Result<()> {
+    fn render_rowset_end(
+        &mut self)
+        -> io::Result<()>
+    {
         if self.rendered_rows_count > 0 {
             try!(self.writer.write_all(b"]});</script>"));
         }
@@ -62,10 +72,11 @@ impl<W: Write> View for MapView<W> {
         Ok(())
     }
 
-    fn render_row<'a, T>(&mut self,
-                         row: T,
-                         descrs: &[pg::FieldDescription])
-                         -> io::Result<()>
+    fn render_row<'a, T>(
+        &mut self,
+        row: T,
+        descrs: &[Field])
+        -> io::Result<()>
         where T: Iterator<Item=Option<&'a str>>
     {
         let geom_col_idx = match self.geom_col_idx {
@@ -121,39 +132,37 @@ impl<W: Write> View for MapView<W> {
         Ok(())
     }
 
-    fn render_notice(&mut self,
-                     message: &str)
-                     -> io::Result<()>
+    fn render_notice(
+        &mut self,
+        message: &str,
+        linecol: Option<LineCol>)
+        -> io::Result<()>
     {
         self.writer.write_all(b"")
     }
 
-    fn render_error(&mut self,
-                    message: &str,
-                    script_line: usize,
-                    script_col: usize)
-                    -> io::Result<()>
+    fn render_error(
+        &mut self,
+        message: &str,
+        linecol: Option<LineCol>)
+        -> io::Result<()>
     {
         self.writer.write_all(b"")
     }
 
-    fn render_nonquery(&mut self,
-                       command_tag: &str)
-                       -> io::Result<()>
+    fn render_nonquery(
+        &mut self,
+        command_tag: &str)
+        -> io::Result<()>
     {
         self.writer.write_all(b"")
     }
 
-    fn make_rowset_editable(&mut self,
-                            rowset_id: i32,
-                            editable_table: &EditableTable)
-                            -> io::Result<()>
+    fn render_queryplan(
+        &mut self,
+        plan: &QueryPlanNode)
+        -> io::Result<()>
     {
-        Ok(())
-        // self.writer.write_all(b"")
-    }
-
-    fn render_queryplan(&mut self, plan: &QueryPlan) -> io::Result<()> {
         Ok(())
     }
 }

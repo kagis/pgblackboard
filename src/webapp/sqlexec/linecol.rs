@@ -1,7 +1,14 @@
+// pub fn linecol_to_bytepos(line: usize, col: usize) -> Option<usize> {
+//     LineCol { line: line, col: col }.to_bytepos()
+// }
+
 #[derive(Debug)]
-#[derive(Eq, PartialEq)]
-#[derive(Ord, PartialOrd)]
-#[derive(Clone, Copy)]
+#[derive(Eq)]
+#[derive(PartialEq)]
+#[derive(Ord)]
+#[derive(PartialOrd)]
+#[derive(Clone)]
+#[derive(Copy)]
 pub struct LineCol {
     /// 0-based line number
     pub line: usize,
