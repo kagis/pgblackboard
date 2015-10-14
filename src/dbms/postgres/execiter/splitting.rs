@@ -1,22 +1,86 @@
 use std::iter::Iterator;
 
-// pub fn trimstart_comments(statement: &str) -> &str {
-//     let mut tail = statement;
-//
-//     loop {
-//         tail = eat_whitespaces(tail);
-//         let maybe_new_tail = eat_line_comment(tail)
-//                         .or_else(|| eat_block_comment(tail));
-//
-//         if let Some(new_tail) = maybe_new_tail {
-//             tail = new_tail
-//         } else {
-//             break;
-//         }
-//     }
-//
-//     tail
-// }
+pub fn extract_connect_metacmd(sqlscript: &str) -> Option<SqlScriptAndDbName> {
+
+    fn eat_database_name(src: &str) -> Option<(&str, &str)> {
+        let tail = eat_while(src, |ch| ch.is_alphanumeric() || ch == '_');
+        if tail.len() != src.len() {
+            return Some((
+                &src[..src.len() - tail.len()],
+                tail,
+            ));
+        }
+
+        let mut tail = src;
+        while let Some(new_tail) = eat_ident(tail) {
+            tail = new_tail;
+        }
+
+        if tail.len() != src.len() {
+            return Some((
+                &src[..src.len() - tail.len()],
+                tail,
+            ));
+        }
+
+        None
+    }
+
+    fn unquote_ident(mut quoted: &str) -> String {
+        if quoted.starts_with("\"") {
+            quoted = &quoted[1..];
+        }
+        if quoted.ends_with("\"") {
+            quoted = &quoted[..quoted.len() - 1];
+        }
+        quoted.replace("\"\"", "\"")
+    }
+
+    fn eat_whitespaces_except_lf(src: &str) -> &str {
+        eat_while(src, |ch| ch != '\n' && ch.is_whitespace())
+    }
+
+    fn eat_whitespaces_except_crlf_required(src: &str) -> Option<&str> {
+        let tail = eat_while(src, |ch| ch != '\n' &&
+                                       ch != '\r' &&
+                                       ch.is_whitespace());
+
+        if tail.len() == src.len() { None } else { Some(tail) }
+    }
+
+    Some(eat_whitespaces(sqlscript))
+        .and_then(|tail| eat_exact(tail, "\\connect")
+                     .or(eat_exact(tail, "\\c")))
+        .and_then(|tail| eat_whitespaces_except_crlf_required(tail))
+        .and_then(|tail| eat_database_name(tail).map(|(db, tail_)| (db, sqlscript.len() - tail.len(), tail_)))
+        .and_then(|(db, db_pos, tail)| Some((db, db_pos, eat_whitespaces_except_lf(tail))))
+        .and_then(|(db, db_pos, tail)| eat_exact(tail, "\n").map(|tail| (db, db_pos, tail)))
+        .map(|(db, db_pos, tail)| SqlScriptAndDbName {
+            database: unquote_ident(db),
+            database_pos: db_pos,
+            sqlscript: tail,
+            sqlscript_pos: sqlscript.len() - tail.len(),
+        })
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub struct SqlScriptAndDbName<'a> {
+    pub database: String,
+    pub database_pos: usize,
+    pub sqlscript: &'a str,
+    pub sqlscript_pos: usize,
+}
+
+pub fn trimstart_comments(statement: &str) -> &str {
+    let mut tail = eat_whitespaces(statement);
+    while let Some(new_tail) = eat_line_comment(tail)
+                   .or_else(|| eat_block_comment(tail))
+    {
+        tail = eat_whitespaces(new_tail);
+    }
+    tail
+}
 
 
 pub fn split_statements<'a>(script: &'a str) -> SplitStatements<'a> {
@@ -112,9 +176,9 @@ fn eat_dollar_quote(src: &str) -> Option<(&str, &str)> {
     None
 }
 
-// fn eat_whitespaces(src: &str) -> &str {
-//     eat_while(src, |ch| ch.is_whitespace())
-// }
+fn eat_whitespaces(src: &str) -> &str {
+    eat_while(src, |ch| ch.is_whitespace())
+}
 
 fn eat_while<F>(src: &str, f: F) -> &str where F: Fn(char) -> bool {
     let mut tail = src;
@@ -202,39 +266,40 @@ fn eat_until_escaped<'a, 'b>(src: &'a str,
 #[cfg(test)]
 mod test {
     use super::next_statement;
-    // use super::trimstart_comments;
+    use super::trimstart_comments;
+    use super::{ extract_connect_metacmd, SqlScriptAndDbName };
 
-    // #[test]
-    // fn trimstart_comments_block() {
-    //     assert_eq!(
-    //         trimstart_comments("/*comment*/select"),
-    //         "select"
-    //     );
-    // }
-    //
-    // #[test]
-    // fn trimstart_comments_line() {
-    //     assert_eq!(
-    //         trimstart_comments("--comment\nselect"),
-    //         "select"
-    //     );
-    // }
-    //
-    // #[test]
-    // fn trimstart_comments_whitespaces() {
-    //     assert_eq!(
-    //         trimstart_comments(" \t\nselect"),
-    //         "select"
-    //     );
-    // }
-    //
-    // #[test]
-    // fn trimstart_comments_all() {
-    //     assert_eq!(
-    //         trimstart_comments(" /*comment*/ \n--comment\n select"),
-    //         "select"
-    //     );
-    // }
+    #[test]
+    fn trimstart_comments_block() {
+        assert_eq!(
+            trimstart_comments("/*comment*/select"),
+            "select"
+        );
+    }
+
+    #[test]
+    fn trimstart_comments_line() {
+        assert_eq!(
+            trimstart_comments("--comment\nselect"),
+            "select"
+        );
+    }
+
+    #[test]
+    fn trimstart_comments_whitespaces() {
+        assert_eq!(
+            trimstart_comments(" \t\nselect"),
+            "select"
+        );
+    }
+
+    #[test]
+    fn trimstart_comments_all() {
+        assert_eq!(
+            trimstart_comments(" /*comment*/ \n--comment\n select"),
+            "select"
+        );
+    }
 
     fn assert_no_split(script: &str) {
         assert_eq!(next_statement(script), (script, ""));
@@ -305,14 +370,44 @@ mod test {
         assert_no_split(r#"SELECT 1 -- one;\n, ..."#);
     }
 
-    // #[test]
-    // fn test_eat_until() {
-    //     assert_eq!(eat_until("abcd'efg", "'"), "efg");
-    // }
 
-    // #[test]
-    // fn test_eat_dollat_quote() {
-    //     assert_eq!(eat_dollar_quote("$tag$content"),
-    //                Some(("$tag$", "content")));
-    // }
+    #[test]
+    fn extract_connect_to_postgres() {
+        assert_eq!(
+            extract_connect_metacmd(
+                "\\connect postgres\nselect 'awesome'"
+            ),
+            Some(SqlScriptAndDbName {
+                database: "postgres".to_string(),
+                database_pos: 9,
+                sqlscript: "select 'awesome'",
+                sqlscript_pos: 18
+            })
+        );
+    }
+
+    #[test]
+    fn extract_connect_to_db_with_quotes() {
+        assert_eq!(
+            extract_connect_metacmd(
+                "\\connect \"weird \"\"db\"\"\"\nselect 'awesome'"
+            ),
+            Some(SqlScriptAndDbName {
+                database: "weird \"db\"".to_string(),
+                database_pos: 9,
+                sqlscript: "select 'awesome'",
+                sqlscript_pos: 24
+            })
+        );
+    }
+
+    #[test]
+    fn fail_extract_connect_when_missing_sep() {
+        assert_eq!(
+            extract_connect_metacmd(
+                "\\connect_db\nselect 'awesome'"
+            ),
+            None
+        );
+    }
 }

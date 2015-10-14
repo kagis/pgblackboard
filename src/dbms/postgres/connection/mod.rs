@@ -12,11 +12,11 @@ pub use self::sqlstate::{
     SqlState,
     SqlStateClass,
 };
+pub use self::backend::SqlError;
 
 use self::backend::{
     BackendMessage,
     FieldDescription,
-    SqlError,
     Notice,
     ErrorOrNotice,
     TransactionStatus,
@@ -40,6 +40,7 @@ use self::frontend::{
 use std::mem;
 use std::io::{ self, Read, Write };
 use std::net::{ TcpStream, ToSocketAddrs };
+use std::collections::VecDeque;
 
 
 struct MessageStream<S: Read + Write> {
@@ -68,36 +69,18 @@ pub enum Error {
     IoError(io::Error)
 }
 
-
-type InternalStream = TcpStream;
-
-
-pub type ConnectionResult = Result<Connection, ConnectionError>;
-
-#[derive(Debug)]
-pub enum ConnectionError {
-    AuthFailed,
-    DatabaseNotExists,
-    UnsupportedAuthMethod,
-
-    /// Occurs when password was not requested by
-    /// postgres server during authentication phase.
-    NoPasswordRequested,
-
-    ErrorResponse(ErrorOrNotice),
-    IoError(io::Error),
-}
-
 impl ::std::convert::From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::IoError(err)
     }
 }
 
+type InternalStream = TcpStream;
+
 pub struct Connection {
     stream: MessageStream<InternalStream>,
     transaction_status: TransactionStatus,
-    notices: Vec<Notice>,
+    notices: VecDeque<Notice>,
     is_desynchronized: bool,
 }
 
@@ -193,7 +176,7 @@ impl Connection {
         Ok(Connection {
             stream: stream,
             transaction_status: TransactionStatus::Idle,
-            notices: vec![],
+            notices: VecDeque::new(),
             is_desynchronized: false,
         })
     }
@@ -223,7 +206,7 @@ impl Connection {
 
                 }
                 BackendMessage::NoticeResponse(notice) => {
-                    self.notices.push(notice);
+                    self.notices.push_back(notice);
                 }
                 other => return Ok(other)
             }
@@ -245,8 +228,12 @@ impl Connection {
         ))
     }
 
-    pub fn take_notices(&mut self) -> Vec<Notice> {
-        mem::replace(&mut self.notices, vec![])
+    // pub fn take_notices(&mut self) -> Vec<Notice> {
+    //     mem::replace(&mut self.notices, vec![])
+    // }
+
+    pub fn pop_notice(&mut self) -> Option<Notice> {
+        self.notices.pop_front()
     }
 
     pub fn parse_statement(

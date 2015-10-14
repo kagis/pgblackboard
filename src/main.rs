@@ -1,7 +1,6 @@
 #![feature(plugin)]
 #![feature(slice_patterns)]
 #![feature(custom_attribute)]
-#![feature(core)]
 #![feature(iter_arith)]
 #![feature(read_exact)]
 #![feature(str_char)]
