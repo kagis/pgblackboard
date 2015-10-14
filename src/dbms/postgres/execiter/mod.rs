@@ -63,8 +63,8 @@ impl PgExecIter {
 
     fn new_err(message: &str) -> PgExecIter {
         PgExecIter {
-            conn: None,
             err: Some(message.to_string()),
+            conn: None,
             cursor: None,
             maybe_explain_json: None,
             stmts: VecDeque::new(),
@@ -95,7 +95,7 @@ impl Iterator for PgExecIter {
                 }
 
                 self.cursor = Some(cursor);
-                return Some(ExecEvent::Row(row))
+                return Some(ExecEvent::Row(row));
             } else {
                 let maybe_explain_json = self.maybe_explain_json.take();
                 match cursor.complete() {
