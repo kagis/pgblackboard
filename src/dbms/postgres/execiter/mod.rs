@@ -5,7 +5,8 @@ use self::splitting::split_statements;
 use self::splitting::trimstart_comments;
 use self::splitting::extract_connect_metacmd;
 use self::explain::queryplan_from_jsonstr;
-use super::connection::{ self, connect, Connection, Cursor };
+use super::connection::{ self, connect, Connection, Cursor, Oid };
+use super::ConnectionExt;
 use dbms::{ ExecEvent, Field, Column };
 use std::ops::Range;
 use std::collections::VecDeque;
@@ -45,13 +46,12 @@ impl PgExecIter {
             password
         );
 
-        let conn = match conn_result {
+        let mut conn = match conn_result {
             Ok(conn) => conn,
             Err(err) => return PgExecIter::new_err(
                 &format!("{:#?}", err)[..]
             )
         };
-
 
         let (message_bytepos_offset, sqlscript_to_execute) = match selection {
             Some(selection) => (
@@ -168,14 +168,13 @@ impl Iterator for PgExecIter {
                         Err(ref err) => Some(self.make_err_event(err))
                     }
                 } else {
-                    let fields = pg_fields_descrs.into_iter().map(|it| Field {
-                        name: it.name,
-                        is_num: false,
-                        typ: "type".to_string(),
-                        src_column: None,
-                    }).collect();
-                    self.cursor = Some(conn.execute_statement("", &[]));
-                    return Some(ExecEvent::RowsetBegin(fields));
+                    return match map_pgfields_to_dbmsfields(&mut conn, pg_fields_descrs) {
+                        Ok(fields) => {
+                            self.cursor = Some(conn.execute_statement("", &[]));
+                            Some(ExecEvent::RowsetBegin(fields))
+                        }
+                        Err(ref err) => Some(self.make_err_event(err))
+                    };
                 }
             } else {
                 conn.close().unwrap();
@@ -213,4 +212,150 @@ impl PgExecIter {
             bytepos:  bytepos.map(|it| it + self.message_bytepos_offset),
         }
     }
+}
+
+fn map_pgfields_to_dbmsfields(
+    conn: &mut Connection,
+    pg_fields: Vec<connection::FieldDescription>)
+    -> Result<Vec<Field>, connection::Error>
+{
+    use std::collections::BTreeSet;
+
+    let mut src_columns = vec![];
+    src_columns.extend((0..pg_fields.len()).map(|_| None));
+
+    let queried_tables_oids = pg_fields
+        .iter()
+        .filter_map(|it| it.table_oid)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    // single table selected
+    if let [table_oid] = &queried_tables_oids[..] {
+
+
+        #[derive(RustcDecodable)]
+        struct ColumnDescr {
+            id: i16,
+            name: String,
+            is_notnull: bool,
+            has_default: bool,
+        }
+
+        let (_cmdtag, cols_descrs) = try!(conn.query::<ColumnDescr>(
+            "SELECT attnum
+                   ,attname
+                   ,attnotnull
+                   ,atthasdef
+               FROM pg_attribute
+              WHERE attnum > 0
+                AND NOT attisdropped
+                AND attrelid = $1",
+            &[Some(&format!("{}", table_oid)[..])]
+        ));
+
+        let (_cmdtag, keys) = try!(conn.query::<(String,)>(
+            "SELECT indkey
+               FROM pg_index
+              WHERE indisunique
+                AND indexprs IS NULL
+                AND indrelid = $1
+           ORDER BY indisprimary DESC",
+           &[Some(&format!("{}", table_oid)[..])]));
+
+        let keys = keys
+            .into_iter()
+            .map(|(key_col_ids_space_separated,)| {
+                key_col_ids_space_separated
+                        .split(' ')
+                        .map(|it| it.to_string())
+                        .collect::<BTreeSet<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        let selected_cols_ids = pg_fields
+            .iter()
+            .filter(|field| field.table_oid == Some(table_oid))
+            .filter_map(|field| field.column_id)
+            .map(|column_id| column_id.to_string())
+            .collect::<BTreeSet<_>>();
+
+        let empty_set = BTreeSet::new();
+        let selected_key = keys
+            .iter()
+            .find(|key| key.is_subset(&selected_cols_ids))
+            .unwrap_or(&empty_set);
+
+        let mandatory_cols_ids = cols_descrs
+            .iter()
+            .filter(|col| col.is_notnull && !col.has_default)
+            .map(|col| col.id.to_string())
+            .collect::<BTreeSet<_>>();
+
+        let rowset_is_updatable_and_deletable = !selected_key.is_empty();
+        let rowset_is_insertable = mandatory_cols_ids.is_subset(&selected_cols_ids);
+
+        if rowset_is_updatable_and_deletable || rowset_is_insertable {
+            src_columns = pg_fields
+                .iter()
+                .map(|pg_field| cols_descrs.iter().find(|col_descr| Some(col_descr.id) == pg_field.column_id))
+                .map(|maybe_col_descr| maybe_col_descr.map(|col_descr| Column {
+                    owner_database: conn.database().to_string(),
+                    owner_table: table_oid.to_string(),
+                    name: col_descr.name.clone(),
+                    is_key: selected_key.contains(&col_descr.id.to_string()[..]),
+                    is_notnull: col_descr.is_notnull,
+                    has_default: col_descr.has_default,
+                }))
+                .collect::<Vec<_>>();
+        }
+    }
+
+    let typ_descrs = try!(describe_types(
+        conn,
+        &pg_fields
+    ));
+
+    Ok(pg_fields
+        .into_iter()
+        .zip(typ_descrs.into_iter())
+        .zip(src_columns.into_iter())
+        .map(|((field_descr, typ_descr), src_col)| Field {
+            name: field_descr.name,
+            is_num: typ_descr.1,
+            typ: typ_descr.0,
+            src_column: src_col,
+        })
+        .collect())
+}
+//
+// fn describe_table(
+//     conn:,
+//     table_oid: Oid)
+//     -> Result<Vec<(String, bool)>, connection::Error>
+// {
+//
+//
+//
+// }
+
+
+fn describe_types(
+    conn: &mut Connection,
+    pg_fields: &[connection::FieldDescription])
+    -> Result<Vec<(String, bool)>, connection::Error>
+{
+    conn.query("
+        select format_type($1[i][1], $1[i][2]), typcategory = 'N'
+        from generate_series(1, array_length($1::int[][], 1)) as i
+            join pg_type on pg_type.oid = $1[i][1]
+    ", &[Some(&format!(
+        "{{{0}}}",
+        (&pg_fields
+            .iter()
+            .map(|it| format!("{{{0},{1}}}", it.typ_oid, it.typ_modifier))
+            .collect::<Vec<_>>()[..])
+            .join(",")
+    )[..])]).map(|(_cmdtag, typ_descrs)| typ_descrs)
 }

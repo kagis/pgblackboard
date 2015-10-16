@@ -3,35 +3,39 @@ use std::mem;
 
 pub struct StartupMessage<'a, 'b> {
     pub user: &'a str,
-    pub database: &'b str
+    pub database: &'b str,
 }
 
 pub struct PasswordMessage<'a> {
-    pub password: &'a str
+    pub password: &'a str,
 }
 
 pub struct QueryMessage<'a> {
-    pub query: &'a str
+    pub query: &'a str,
 }
 
 pub struct ParseMessage<'a, 'b> {
     pub stmt_name: &'a str,
-    pub stmt_body: &'b str
+    pub stmt_body: &'b str,
 }
 
 pub struct BindMessage<'a, 'b, 'c> {
     pub portal_name: &'a str,
     pub stmt_name: &'b str,
-    pub params: &'c[Option<&'c str>]
+    pub params: &'c[Option<&'c str>],
 }
 
 pub struct ExecuteMessage<'a> {
     pub portal_name: &'a str,
-    pub row_limit: u32
+    pub row_limit: u32,
 }
 
 pub struct DescribeStatementMessage<'a> {
-    pub stmt_name: &'a str
+    pub stmt_name: &'a str,
+}
+
+pub struct CloseStatementMessage<'a> {
+    pub stmt_name: &'a str,
 }
 
 pub struct TerminateMessage;
@@ -154,6 +158,14 @@ impl<'a> FrontendMessage for ExecuteMessage<'a> {
     fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
         out.write_cstr(self.portal_name)
             .and_then(|_| (out.write_u32_be(self.row_limit)))
+    }
+}
+
+impl<'a> FrontendMessage for CloseStatementMessage<'a> {
+    fn ident(&self) -> Option<u8> { Some(b'C') }
+    fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
+        out.write_u8(b'S')
+            .and_then(|_| (out.write_cstr(self.stmt_name)))
     }
 }
 

@@ -100,6 +100,7 @@ pub enum ExecEvent {
     }
 }
 
+/// Describes field of query result
 #[derive(Debug)]
 pub struct Field {
     pub name: String,
@@ -108,11 +109,12 @@ pub struct Field {
     pub src_column: Option<Column>,
 }
 
+/// Describes column of table
 #[derive(Debug)]
 pub struct Column {
-    pub schema: String,
-    pub table: String,
-    pub column: String,
+    pub owner_database: String,
+    pub owner_table: String,
+    pub name: String,
     pub is_key: bool,
     pub is_notnull: bool,
     pub has_default: bool,

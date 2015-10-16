@@ -1,4 +1,4 @@
-extern crate flate2;
+// extern crate flate2;
 
 mod linecol;
 mod table;
@@ -7,8 +7,8 @@ mod map;
 use self::linecol::LineCol;
 use self::table::TableView;
 use self::map::MapView;
-use self::flate2::write::GzEncoder;
-use self::flate2::Compression;
+// use self::flate2::write::GzEncoder;
+// use self::flate2::Compression;
 use std::io::{self, Write, BufWriter};
 use std::cmp;
 use std::ops::Range;
@@ -180,46 +180,11 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for SqlExecEndpoint<'dbms, TDbms
         //     }
         // };
 
-
         Box::new(SqlExecResponse {
             execiter: execiter,
             map_or_table: form.view.unwrap_or(MapOrTable::Table),
             sqlscript: form.sqlscript,
-            // // selrange: selrange,
-            //
-            // sqlscript: match maybe_selrange.as_ref() {
-            //     None => sqlscript_and_dbname.sqlscript,
-            //     Some(selrange) => {
-            //         let start_bpos = match selrange.start.to_bytepos(&form.sqlscript) {
-            //             Some(bpos) => bpos,
-            //             None => return Box::new(SqlExecErrorResponse {
-            //                 status: http::Status::BadRequest,
-            //                 message: "Selection is out of range."
-            //             })
-            //         };
-            //
-            //         let end_bpos = match selrange.end.to_bytepos(&form.sqlscript) {
-            //             Some(bpos) => bpos,
-            //             None => return Box::new(SqlExecErrorResponse {
-            //                 status: http::Status::BadRequest,
-            //                 message: "Selection is out of range."
-            //             })
-            //         };
-            //
-            //         &form.sqlscript[start_bpos..end_bpos]
-            //     }
-            // }.to_string(),
-            //
-            // sqlscript_offset: maybe_selrange.map_or(
-            //     sqlscript_and_dbname.sqlscript_linecol,
-            //     |it| it.start
-            // )
         })
-
-        // Box::new(JsonResponse {
-        //     status: http::Status::Ok,
-        //     content: format!("Got form\r\n{:?}", form)
-        // })
     }
 }
 

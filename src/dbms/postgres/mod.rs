@@ -162,15 +162,7 @@ fn query_dbobj<TRecord: Decodable>(
     params: &[Option<&str>])
     -> Result<Vec<TRecord>, DbObjError>
 {
-    try!(conn.parse_statement("", stmt_body));
-    let mut cursor = conn.execute_statement("", params);
-    let mut records = vec![];
-    for row in cursor.by_ref() {
-        records.push(try!(decoder::decode_row(row).map_err(|err| {
-            DbObjError::InternalError(Box::new(err))
-        })));
-    }
-    let (_cmdtag, mut conn) = try!(cursor.complete());
+    let (_cmdtag, records) = try!(conn.query(stmt_body, params));
     try!(conn.close());
     Ok(records)
 }
@@ -183,8 +175,38 @@ impl ::std::convert::From<connection::Error> for DbObjError {
                 SqlStateClass::InvalidCatalogName => DbObjError::DatabaseNotFound,
                 _ => DbObjError::InternalError(Box::new(sql_err))
             },
-            connection::Error::IoError(io_err) => DbObjError::InternalError(Box::new(io_err))
+            connection::Error::IoError(io_err) => DbObjError::InternalError(Box::new(io_err)),
+            connection::Error::OtherError(err) => DbObjError::InternalError(err),
         }
+    }
+}
+
+trait ConnectionExt {
+    fn query<TRecord: Decodable>(
+        &mut self,
+        stmt_body: &str,
+        params: &[Option<&str>])
+        -> Result<(String, Vec<TRecord>), connection::Error>;
+}
+
+impl ConnectionExt for connection::Connection {
+    fn query<TRecord: Decodable>(
+        &mut self,
+        stmt_body: &str,
+        params: &[Option<&str>])
+        -> Result<(String, Vec<TRecord>), connection::Error>
+    {
+        let stmt_name = "pgblackboard_stmt";
+        try!(self.parse_statement(stmt_name, stmt_body));
+        let (rows, cmdtag) = try!(self.execute_statement_into_vec(stmt_name, params));
+        try!(self.close_statement(stmt_name));
+        let mut records = vec![];
+        for row in rows.into_iter() {
+            records.push(try!(decoder::decode_row(row).map_err(|err| {
+                connection::Error::OtherError(Box::new(err))
+            })));
+        }
+        Ok((cmdtag, records))
     }
 }
 

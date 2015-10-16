@@ -112,7 +112,7 @@ module.exports = function (frameWindow, outputGlobal) {
     // submit dirty row when switch to another row
     onCell('blur', function (blurredCell, blurredRow) {
         setTimeout(function () {
-            var focusedEl = document.activeElement;
+            var focusedEl = frameWindow.document.activeElement;
             if (blurredRow !== focusedEl.parentNode/*TR*/) {
 
                 // disable editing on blurred row

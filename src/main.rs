@@ -1,13 +1,10 @@
-#![feature(plugin)]
 #![feature(slice_patterns)]
 #![feature(custom_attribute)]
 #![feature(iter_arith)]
 #![feature(read_exact)]
 #![feature(str_char)]
-#![plugin(regex_macros)]
 
 extern crate argparse;
-extern crate regex;
 extern crate rustc_serialize;
 extern crate http;
 extern crate ui;

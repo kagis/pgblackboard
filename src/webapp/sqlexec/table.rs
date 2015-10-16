@@ -48,21 +48,22 @@ impl<W: Write> View for TableView<W> {
 
     fn render_rowset_begin(
         &mut self,
-        cols_descr: &[Field])
+        fields: &[Field])
         -> io::Result<()>
     {
         let out = &mut self.writer;
         self.last_rowset_id += 1;
         let rowset_id = self.last_rowset_id;
 
-        let numeric_cols = cols_descr.iter()
-                                     .enumerate()
-                                     .filter(|&(_, col)| col.is_num)
-                                     .map(|(i, _)| i + 1 /* rowheader */
-                                                     + 1 /* one-based */);
+        let numeric_fields = fields
+            .iter()
+            .enumerate()
+            .filter(|&(_, field)| field.is_num)
+            .map(|(i, _)| i + 1 /* rowheader */
+                            + 1 /* one-based */);
 
         try!(out.write_all(b"<style>"));
-        for (i, field_idx) in numeric_cols.enumerate() {
+        for (i, field_idx) in numeric_fields.enumerate() {
             if i > 0 {
                 try!(write!(out, ","));
             }
@@ -71,18 +72,37 @@ impl<W: Write> View for TableView<W> {
         try!(out.write_all(b"{ text-align: right; }"));
         try!(out.write_all(b"</style>"));
 
-        try!(write!(out, "<table class='rowset'>"));
+        try!(write!(out, "<table class='rowset'"));
+        if let Some(some_col) = fields.iter()
+                                      .filter_map(|it| it.src_column.as_ref())
+                                      .next()
+        {
+            try!(write!(
+                out,
+                " data-database='{}' data-table='{}'",
+                some_col.owner_database,
+                some_col.owner_table
+            ));
+        }
+        try!(write!(out, ">"));
         try!(out.write_all(b"<thead>"));
         try!(out.write_all(b"<tr>"));
         try!(out.write_all(b"<th class='rowset-corner'></th>"));
-        for col in cols_descr {
-            try!(write!(out,
-                "<th class='rowset-colheader'>\
+        for col in fields {
+            try!(write!(out, "<th class='rowset-colheader'"));
+            if let Some(ref src_column) = col.src_column {
+                if src_column.is_key {
+                    try!(write!(out, " data-key='true'"));
+                }
+                try!(write!(out, " data-name='{}'", src_column.name));
+            }
+            try!(write!(out, ">\
                     {colname}\
                     <small class='rowset-coltype'>\
                         {coltype}\
                     </small>\
                 </th>",
+
                 colname = col.name,
                 coltype = col.typ));
         }

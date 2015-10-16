@@ -7,8 +7,6 @@ authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 http            = { path = "./src/http" }
 ui              = { path = "./src/ui" }
 
-argparse        = "0.1"
-flate2          = "0.2.6"
-regex           = "0.1"
-regex_macros    = "0.1"
+argparse        = "0.2"
+# flate2          = "0.2.6"
 rustc-serialize = "0.3"

@@ -12,16 +12,18 @@ pub use self::sqlstate::{
     SqlState,
     SqlStateClass,
 };
-pub use self::backend::SqlError;
+pub use self::backend::{
+    SqlError,
+    Notice,
+    Oid,
+    FieldDescription,
+};
 
 use self::backend::{
     BackendMessage,
-    FieldDescription,
-    Notice,
     ErrorOrNotice,
     TransactionStatus,
     Row,
-    Oid,
 };
 
 use self::frontend::{
@@ -32,6 +34,7 @@ use self::frontend::{
     BindMessage,
     ExecuteMessage,
     DescribeStatementMessage,
+    CloseStatementMessage,
     TerminateMessage,
     FlushMessage,
     SyncMessage,
@@ -41,7 +44,6 @@ use std::mem;
 use std::io::{ self, Read, Write };
 use std::net::{ TcpStream, ToSocketAddrs };
 use std::collections::VecDeque;
-
 
 struct MessageStream<S: Read + Write> {
     inner: S
@@ -66,7 +68,8 @@ impl<S: Read + Write> MessageStream<S> {
 #[derive(Debug)]
 pub enum Error {
     SqlError(SqlError),
-    IoError(io::Error)
+    IoError(io::Error),
+    OtherError(Box<::std::error::Error>),
 }
 
 impl ::std::convert::From<io::Error> for Error {
@@ -78,10 +81,13 @@ impl ::std::convert::From<io::Error> for Error {
 type InternalStream = TcpStream;
 
 pub struct Connection {
+    database: String,
     stream: MessageStream<InternalStream>,
     transaction_status: TransactionStatus,
     notices: VecDeque<Notice>,
     is_desynchronized: bool,
+    current_execution_result: Option<Result<String, Error>>,
+    is_executing: bool,
 }
 
 pub fn connect<T>(
@@ -94,7 +100,7 @@ pub fn connect<T>(
 {
     use std::time::Duration;
     let stream = try!(InternalStream::connect(addr));
-    stream.set_read_timeout(Some(Duration::new(1, 0)));
+    // stream.set_read_timeout(Some(Duration::new(1, 0)));
 
     Connection::connect_database(stream,
                                  database,
@@ -174,10 +180,13 @@ impl Connection {
         }
 
         Ok(Connection {
+            database: database.to_string(),
             stream: stream,
             transaction_status: TransactionStatus::Idle,
             notices: VecDeque::new(),
             is_desynchronized: false,
+            current_execution_result: None,
+            is_executing: false,
         })
     }
 
@@ -208,6 +217,9 @@ impl Connection {
                 BackendMessage::NoticeResponse(notice) => {
                     self.notices.push_back(notice);
                 }
+                BackendMessage::ParameterStatus { .. } => {
+
+                }
                 other => return Ok(other)
             }
         }
@@ -231,6 +243,10 @@ impl Connection {
     // pub fn take_notices(&mut self) -> Vec<Notice> {
     //     mem::replace(&mut self.notices, vec![])
     // }
+
+    pub fn database(&self) -> &str {
+        &self.database
+    }
 
     pub fn pop_notice(&mut self) -> Option<Notice> {
         self.notices.pop_front()
@@ -308,6 +324,61 @@ impl Connection {
         params: &[Option<&str>])
         -> Cursor
     {
+        if let Err(err) = self.begin_execute_statement(stmt_name, params) {
+            self.current_execution_result = Some(Err(err));
+        }
+        Cursor { conn: self }
+    }
+
+    pub fn close_statement(
+        &mut self,
+        stmt_name: &str)
+        -> Result<(), Error>
+    {
+        try!(self.write_message(CloseStatementMessage {
+            stmt_name: stmt_name,
+        }));
+
+        try!(self.write_message(SyncMessage));
+
+        match try!(self.read_message()) {
+            BackendMessage::CloseComplete => {
+                try!(self.wait_for_ready());
+                Ok(())
+            }
+            BackendMessage::ErrorResponse(err) => {
+                try!(self.wait_for_ready());
+                Err(Error::SqlError(err))
+            }
+            ref unexpected => Err(self.bad_response(unexpected))
+        }
+    }
+
+    pub fn execute_statement_into_vec(
+        &mut self,
+        stmt_name: &str,
+        params: &[Option<&str>])
+        -> Result<(Vec<Row>, String), Error>
+    {
+        try!(self.begin_execute_statement(stmt_name, params));
+        let mut rows = vec![];
+        while let Some(row) = self.fetch_row() {
+            rows.push(row);
+        }
+        self.current_execution_result
+            .take()
+            .expect("All rows was fetched without result.")
+            .map(|cmdtag| (rows, cmdtag.to_string()))
+    }
+
+    fn begin_execute_statement(
+        &mut self,
+        stmt_name: &str,
+        params: &[Option<&str>])
+        -> Result<(), Error>
+    {
+        self.current_execution_result = None;
+
         let bind_message = BindMessage {
             stmt_name: stmt_name,
             portal_name: "",
@@ -324,22 +395,55 @@ impl Connection {
             .and_then(|_| self.write_message(SyncMessage))
             .and_then(|_| self.read_message());
 
-        let response_message = match response {
+        match try!(response) {
+            BackendMessage::BindComplete => {
+                self.is_executing = true;
+                Ok(())
+            },
+            BackendMessage::ErrorResponse(err) => {
+                try!(self.wait_for_ready());
+                Err(Error::SqlError(err))
+            }
+            ref unexpected => Err(self.bad_response(unexpected))
+        }
+    }
+
+    fn fetch_row(&mut self) -> Option<Row> {
+        if !self.is_executing {
+            return  None
+        }
+
+        let message = match self.read_message() {
             Ok(message) => message,
-            Err(err) => return Cursor::new_err(err, self)
+            Err(err) => {
+                self.current_execution_result = Some(Err(err));
+                return None;
+            }
         };
 
-        match response_message {
-            BackendMessage::BindComplete => Cursor::new(self),
-            BackendMessage::ErrorResponse(err) => {
-                match self.wait_for_ready() {
-                    Ok(()) => {},
-                    Err(err) => return Cursor::new_err(err, self),
-                };
-                Cursor::new_err(Error::SqlError(err), self)
+        self.current_execution_result = Some(match message {
+            BackendMessage::DataRow(values) => {
+                return Some(values);
             }
-            unexpected => Cursor::new_err(self.bad_response(&unexpected), self)
-        }
+            BackendMessage::CommandComplete { command_tag } => {
+                self.wait_for_ready().unwrap();
+                Ok(command_tag)
+            }
+            BackendMessage::EmptyQueryResponse => {
+                self.wait_for_ready().unwrap();
+                Ok("".to_string())
+            }
+            BackendMessage::ErrorResponse(sql_err) => {
+                self.wait_for_ready().unwrap();
+                Err(Error::SqlError(sql_err))
+            }
+            unexpected => {
+                Err(self.bad_response(&unexpected))
+            }
+        });
+
+        self.is_executing = false;
+        None
     }
 
     // pub fn begin_transation(&mut self) -> Result<Transaction, Error> {
@@ -384,128 +488,20 @@ impl Connection {
 
 pub struct Cursor {
     conn: Connection,
-    result: Option<Result<String, Error>>,
 }
 
 impl Cursor {
-    fn new(conn: Connection) -> Cursor {
-        Cursor {
-            conn: conn,
-            result: None,
-        }
-    }
-
-    fn new_err(err: Error, conn: Connection) -> Cursor {
-        Cursor {
-            conn: conn,
-            result: Some(Err(err)),
-        }
-    }
-
     pub fn complete(mut self) -> Result<(String, Connection), Error> {
         while let Some(_) = self.next() {}
-        let Cursor { conn, result } = self;
-        result.expect("Cursor has no result.")
-              .map(|cmd_tag| (cmd_tag, conn))
+        let Cursor { mut conn } = self;
+        conn.current_execution_result
+            .take()
+            .expect("Cursor has no result.")
+            .map(|cmd_tag| (cmd_tag.to_string(), conn))
     }
 }
 
 impl Iterator for Cursor {
-    type Item = Vec<Option<String>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-
-        if self.result.is_some() {
-            return None;
-        }
-
-        let message = match self.conn.read_message() {
-            Ok(message) => message,
-            Err(err) => {
-                self.result = Some(Err(err));
-                return None;
-            }
-        };
-
-        self.result = Some(match message {
-            BackendMessage::DataRow(values) => {
-                return Some(values);
-            }
-            BackendMessage::CommandComplete { command_tag } => {
-                self.conn.wait_for_ready().unwrap();
-                Ok(command_tag)
-            }
-            BackendMessage::EmptyQueryResponse => {
-                self.conn.wait_for_ready().unwrap();
-                Ok("".to_string())
-            }
-            BackendMessage::ErrorResponse(sql_err) => {
-                self.conn.wait_for_ready().unwrap();
-                Err(Error::SqlError(sql_err))
-            }
-            unexpected => {
-                Err(self.conn.bad_response(&unexpected))
-            }
-        });
-
-        None
-    }
-}
-
-// fn main() {
-//     use std::io::{ self, BufRead };
-
-//     let mut conn = connect("localhost:5432",
-//                            "test",
-//                            "postgres",
-//                            "postgres").unwrap();
-
-//     conn.parse_statement("s", "select *, case when i % 2 = 0 then r('even') end from generate_series(0, 5) as i").unwrap();
-//     let descr = conn.describe_statement("s").unwrap();
-//     let (data, cmd_tag) = {
-//         let mut cursor = conn.execute_statement("s", &[]);
-//         (cursor.by_ref().collect::<Vec<_>>(), cursor.complete().unwrap())
-//     };
-
-//     println!("{:#?}", descr);
-//     println!("{:#?}", data);
-//     println!("{:#?}", conn.take_notices());
-//     unreachable!();
-
-
-//     let mut stream = conn.stream;
-
-//     let stdin = io::stdin();
-//     for line_result in stdin.lock().lines() {
-//         let line = line_result.unwrap();
-//         if let [message_name, args..] = &line.split('\t').collect::<Vec<_>>()[..] {
-//             // match message_name {
-//             //     "query" => stream.write_query_message(args[0]),
-//             //     "sync" => stream.write_sync_message(),
-//             //     "parse" => stream.write_parse_message(args[0], args[1]),
-//             //     "describe_stmt" => stream.write_describe_stmt_message(args[0]),
-//             //     "bind" => stream.write_bind_message(args[0], args[1]),
-//             //     "execute" => stream.write_execute_message(args[0], args[1].parse().unwrap()),
-//             //     "flush" => stream.write_flush_message(),
-//             //     _ => {
-//             //         println!("unknown frontend message");
-//             //         continue;
-//             //     }
-//             // }.unwrap();
-
-//             while let Ok(backend_msg) = stream.read_message() {
-//                 // println!("-> {:#?}", backend_msg);
-//             }
-//         }
-
-//         println!("ready for input");
-//     }
-// }
-
-
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
+    type Item = Row;
+    fn next(&mut self) -> Option<Self::Item> { self.conn.fetch_row() }
 }
