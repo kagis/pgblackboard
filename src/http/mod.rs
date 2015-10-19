@@ -1,6 +1,3 @@
-#![feature(buf_stream)]
-#![feature(collections)]
-
 extern crate threadpool;
 extern crate rustc_serialize;
 

@@ -5,7 +5,7 @@ mod execiter;
 mod sql;
 
 use self::connection::{connect, Connection, SqlState, SqlStateClass, Oid};
-use self::tree::DbObjType;
+use self::tree::{definition_query, children_query};
 use self::execiter::PgExecIter;
 use self::sql::{quote_ident, quote_literal};
 use dbms::*;
@@ -221,14 +221,12 @@ impl Dbms for PgDbms {
             password
         ));
 
-        let parent_dbobj_typ = try!(DbObjType::from_str(parent_dbobj_typ)
-                                        .ok_or(DbObjError::UnknownDbObjType));
+        let query = try!(children_query(parent_dbobj_typ)
+                            .ok_or(DbObjError::UnknownDbObjType));
 
-        let query = parent_dbobj_typ.children_query();
-
-        query_dbobj(conn, query, &[
+        query_dbobj(conn, &query, &[
             Some(parent_dbobj_id),
-            Some(parent_dbobj_typ.to_str())
+            Some(parent_dbobj_typ),
         ])
     }
 
@@ -248,18 +246,8 @@ impl Dbms for PgDbms {
             password
         ));
 
-        let dbobj_typ = try!(DbObjType::from_str(dbobj_typ)
-                                        .ok_or(DbObjError::UnknownDbObjType));
-
-        let query = dbobj_typ.definition_query();
-        let query = format!(
-            "SELECT '\\connect '::text \
-                 || quote_ident(current_database()) \
-                 || '\r\n\r\n'::text \
-                 || def::text \
-               FROM ({}) AS a",
-            query
-        );
+        let query = try!(definition_query(dbobj_typ)
+                            .ok_or(DbObjError::UnknownDbObjType));
 
         let mut defs = try!(query_dbobj::<(String,)>(conn, &query, &[Some(dbobj_id)]));
         let (def,) = try!(defs.pop().ok_or(DbObjError::DbObjNotFound));

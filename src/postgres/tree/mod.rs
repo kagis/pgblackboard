@@ -1,64 +1,54 @@
-macro_rules! dbobjtype_map {
-    ( $(( $enumvar:ident, $strid:expr, $children_file:expr, $def_file:expr)),* ) => {
+pub fn definition_query(dbobj_typ: &str) -> Option<String> {
+    let query = match dbobj_typ {
+        "database"     => include_str!("def/database.sql"),
+        "schema"       => include_str!("def/schema.sql"),
+        "extension"    => include_str!("def/ext.sql"),
+        "table"        => include_str!("def/rel.sql"),
+        "view"         => include_str!("def/rel.sql"),
+        "matview"      => include_str!("def/rel.sql"),
+        "foreigntable" => include_str!("def/rel.sql"),
+        "agg"          => include_str!("def/agg.sql"),
+        "func"         => include_str!("def/func.sql"),
+        "column"       => include_str!("def/column.sql"),
+        "pkcolumn"     => include_str!("def/column.sql"),
+        "fkcolumn"     => include_str!("def/column.sql"),
+        "index"        => include_str!("def/index.sql"),
+        "trigger"      => include_str!("def/trigger.sql"),
+        "foreignkey"   => include_str!("def/constraint.sql"),
+        "check"        => include_str!("def/constraint.sql"),
+        "unique"       => include_str!("def/constraint.sql"),
+        _              => return None,
+    };
 
-        #[derive(Copy, Clone)]
-        #[derive(Debug)]
-        #[derive(PartialEq)]
-        pub enum DbObjType {
-            $($enumvar,)*
-        }
-
-        impl DbObjType {
-            pub fn from_str(inp: &str) -> Option<DbObjType> {
-                Some(match inp {
-                    $($strid => DbObjType::$enumvar,)*
-                    _ => return None
-                })
-            }
-
-            pub fn to_str(self) -> &'static str {
-                match self {
-                    $(DbObjType::$enumvar => $strid,)*
-                }
-            }
-
-            pub fn children_query(self) -> &'static str {
-                match self {
-                    $(DbObjType::$enumvar => {
-                        include_str!(concat!("children/", $children_file))
-                    })*
-                }
-            }
-
-            pub fn definition_query(self) -> &'static str {
-                match self {
-                    $(DbObjType::$enumvar => {
-                        include_str!(concat!("def/", $def_file))
-                    })*
-                }
-            }
-        }
-
-    }
+    Some(format!(
+       "SELECT '\\connect '::text \
+            || quote_ident(current_database()) \
+            || '\r\n\r\n'::text \
+            || def::text \
+          FROM ({}) AS a",
+       query
+   ))
 }
 
-dbobjtype_map! {
-     (Database             ,"database"     ,"database.sql"   ,"database.sql"   )
-    ,(Schema               ,"schema"       ,"schema_ext.sql" ,"schema.sql"     )
-    ,(Extension            ,"extension"    ,"schema_ext.sql" ,"ext.sql"        )
-    ,(Table                ,"table"        ,"rel.sql"        ,"rel.sql"        )
-    ,(View                 ,"view"         ,"rel.sql"        ,"rel.sql"        )
-    ,(MaterializedView     ,"matview"      ,"rel.sql"        ,"rel.sql"        )
-    ,(ForeignTable         ,"foreigntable" ,"rel.sql"        ,"rel.sql"        )
-    ,(AggregateFunction    ,"agg"          ,"dummy.sql"      ,"agg.sql"        )
-    ,(Function             ,"func"         ,"dummy.sql"      ,"func.sql"       )
-    ,(Column               ,"column"       ,"dummy.sql"      ,"column.sql"     )
-    ,(PrimaryKeyColumn     ,"pkcolumn"     ,"dummy.sql"      ,"column.sql"     )
-    ,(ForeignKeyColumn     ,"fkcolumn"     ,"dummy.sql"      ,"column.sql"     )
-    ,(Index                ,"index"        ,"dummy.sql"      ,"index.sql"      )
-    ,(Trigger              ,"trigger"      ,"dummy.sql"      ,"trigger.sql"    )
-    ,(ForeignKeyConstraint ,"foreignkey"   ,"dummy.sql"      ,"constraint.sql" )
-    ,(CheckConstraint      ,"check"        ,"dummy.sql"      ,"constraint.sql" )
-    ,(UniqueConstraint     ,"unique"       ,"dummy.sql"      ,"constraint.sql" )
+pub fn children_query(dbobj_typ: &str) -> Option<&str> {
+    Some(match dbobj_typ {
+        "database"     => include_str!("children/database.sql"),
+        "schema"       => include_str!("children/schema_ext.sql"),
+        "extension"    => include_str!("children/schema_ext.sql"),
+        "table"        => include_str!("children/rel.sql"),
+        "view"         => include_str!("children/rel.sql"),
+        "matview"      => include_str!("children/rel.sql"),
+        "foreigntable" => include_str!("children/rel.sql"),
+        "agg"          => include_str!("children/dummy.sql"),
+        "func"         => include_str!("children/dummy.sql"),
+        "column"       => include_str!("children/dummy.sql"),
+        "pkcolumn"     => include_str!("children/dummy.sql"),
+        "fkcolumn"     => include_str!("children/dummy.sql"),
+        "index"        => include_str!("children/dummy.sql"),
+        "trigger"      => include_str!("children/dummy.sql"),
+        "foreignkey"   => include_str!("children/dummy.sql"),
+        "check"        => include_str!("children/dummy.sql"),
+        "unique"       => include_str!("children/dummy.sql"),
+        _              => return None,
+    })
 }
-

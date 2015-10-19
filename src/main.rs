@@ -5,9 +5,9 @@
 
 extern crate argparse;
 extern crate rustc_serialize;
-extern crate http;
 extern crate ui;
 
+mod http;
 mod dbms;
 mod webapp;
 mod postgres;

@@ -3,8 +3,8 @@ name = "pgblackboard"
 version = "0.2.0"
 dependencies = [
  "argparse 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "http 0.0.1",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "threadpool 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ui 0.0.1",
 ]
 
@@ -12,14 +12,6 @@ dependencies = [
 name = "argparse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "http"
-version = "0.0.1"
-dependencies = [
- "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "threadpool 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "rustc-serialize"
