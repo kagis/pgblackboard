@@ -7,7 +7,7 @@ pub struct DbObjDir<'dbms, TDbms: Dbms + 'dbms> {
     pub dbms: &'dbms TDbms,
     pub user: String,
     pub password: String,
-    pub dbname: String,
+    pub database: String,
     pub objtype: String,
     pub objid: String,
 }
@@ -19,7 +19,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbObjDir<'dbms, TDbms> {
                 dbms: self.dbms,
                 user: self.user.clone(),
                 password: self.password.clone(),
-                dbname: self.dbname.clone(),
+                database: self.database.clone(),
                 objtype: self.objtype.clone(),
                 objid: self.objid.clone(),
             }.handle_http_req(&[], req),
@@ -28,7 +28,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbObjDir<'dbms, TDbms> {
                 dbms: self.dbms,
                 user: self.user.clone(),
                 password: self.password.clone(),
-                dbname: self.dbname.clone(),
+                database: self.database.clone(),
                 objtype: self.objtype.clone(),
                 objid: self.objid.clone(),
             }.handle_http_req(&[], req),
@@ -45,7 +45,7 @@ struct DbObjChildren<'dbms, TDbms: Dbms + 'dbms> {
     dbms: &'dbms TDbms,
     user: String,
     password: String,
-    dbname: String,
+    database: String,
     objtype: String,
     objid: String,
 }
@@ -56,7 +56,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjChildren<'dbms, TDbms> 
         let dbobj_children_result = self.dbms.get_child_dbobjs(
             &self.user,
             &self.password,
-            &self.dbname,
+            &self.database,
             &self.objtype,
             &self.objid
         );
@@ -76,7 +76,7 @@ struct DbObjDefinition<'dbms, TDbms: Dbms + 'dbms> {
     dbms: &'dbms TDbms,
     user: String,
     password: String,
-    dbname: String,
+    database: String,
     objtype: String,
     objid: String,
 }
@@ -87,7 +87,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjDefinition<'dbms, TDbms
         let dbobj_def_result = self.dbms.get_dbobj_script(
             &self.user,
             &self.password,
-            &self.dbname,
+            &self.database,
             &self.objtype,
             &self.objid
         );

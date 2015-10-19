@@ -1,50 +1,67 @@
 use std::io::{ self, Write };
 use std::mem;
+use std::fmt::Debug;
 
+#[derive(Debug)]
 pub struct StartupMessage<'a, 'b> {
     pub user: &'a str,
     pub database: &'b str,
 }
 
+#[derive(Debug)]
 pub struct PasswordMessage<'a> {
     pub password: &'a str,
 }
 
+#[derive(Debug)]
 pub struct QueryMessage<'a> {
     pub query: &'a str,
 }
 
+#[derive(Debug)]
 pub struct ParseMessage<'a, 'b> {
     pub stmt_name: &'a str,
     pub stmt_body: &'b str,
 }
 
+#[derive(Debug)]
 pub struct BindMessage<'a, 'b, 'c> {
     pub portal_name: &'a str,
     pub stmt_name: &'b str,
     pub params: &'c[Option<&'c str>],
 }
 
+#[derive(Debug)]
 pub struct ExecuteMessage<'a> {
     pub portal_name: &'a str,
     pub row_limit: u32,
 }
 
+#[derive(Debug)]
 pub struct DescribeStatementMessage<'a> {
     pub stmt_name: &'a str,
 }
 
+#[derive(Debug)]
 pub struct CloseStatementMessage<'a> {
     pub stmt_name: &'a str,
 }
 
+#[derive(Debug)]
 pub struct TerminateMessage;
 
+#[derive(Debug)]
 pub struct FlushMessage;
 
+#[derive(Debug)]
 pub struct SyncMessage;
 
-pub fn write_message<W: Write, M: FrontendMessage>(out: &mut W, msg: M) -> io::Result<()> {
+pub fn write_message<W: Write, M: FrontendMessage>(
+    out: &mut W, msg: M)
+    -> io::Result<()>
+{
+    println!("<- {:#?}", &msg);
+
     let payload_len = {
         struct CountWriter { count: usize }
 
@@ -73,7 +90,7 @@ pub fn write_message<W: Write, M: FrontendMessage>(out: &mut W, msg: M) -> io::R
         .and_then(|_| (out.flush()))
 }
 
-pub trait FrontendMessage {
+pub trait FrontendMessage: Debug {
     fn ident(&self) -> Option<u8> { None }
     fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> { Ok(()) }
 }

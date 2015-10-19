@@ -1,11 +1,13 @@
 mod objects;
-// mod tables;
+mod tables;
 
 use http;
 use std::io;
 use rustc_serialize::{json, Encodable};
 use dbms::Dbms;
 use self::objects::DbObjDir;
+use self::tables::TableResource;
+
 
 pub fn handle_dbdir_req<TDbms: Dbms>(
     dbms: &TDbms,
@@ -16,13 +18,13 @@ pub fn handle_dbdir_req<TDbms: Dbms>(
 {
     http::Handler::handle_http_req(&DbDir {
         dbms: dbms,
-        dbname: database.to_string(),
+        database: database.to_string(),
     }, tail, req)
 }
 
 pub struct DbDir<'dbms, TDbms: Dbms + 'dbms> {
     pub dbms: &'dbms TDbms,
-    pub dbname: String,
+    pub database: String,
 }
 
 impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbDir<'dbms, TDbms> {
@@ -47,19 +49,18 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbDir<'dbms, TDbms> {
                 dbms: self.dbms,
                 user: user.to_string(),
                 password: password.to_string(),
-                dbname: self.dbname.clone(),
+                database: self.database.clone(),
                 objtype: objtype.to_string(),
                 objid: objid.to_string(),
             }.handle_http_req(tail, req),
 
-            // ["tables", schema_name, table_name] => TableResource {
-            //     dbms: self.dbms,
-            //     user: user.clone(),
-            //     password: password.clone(),
-            //     dbname: self.dbname.clone(),
-            //     schema_name: schema_name.to_string(),
-            //     table_name: table_name.to_string()
-            // }.handle_http_req(&[], req),
+            ["tables", table_name] => TableResource {
+                dbms: self.dbms,
+                user: user.to_string(),
+                password: password.to_string(),
+                database: self.database.clone(),
+                table: table_name.to_string(),
+            }.handle_http_req(&[], req),
 
             _ => Box::new(JsonResponse {
                 status: http::Status::NotFound,
@@ -70,10 +71,9 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbDir<'dbms, TDbms> {
 }
 
 
-
 struct JsonResponse<T: Encodable> {
     status: http::Status,
-    content: T
+    content: T,
 }
 
 impl<T: Encodable> http::Response for JsonResponse<T> {

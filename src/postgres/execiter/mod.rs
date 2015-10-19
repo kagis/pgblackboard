@@ -194,22 +194,24 @@ impl PgExecIter {
     }
 
     fn make_err_event(&self, err: &connection::Error) -> ExecEvent {
-        let mut bytepos = Some(
-            &self.current_stmt.len() -
-            trimstart_comments(&self.current_stmt).len()
-        );
+        match *err {
+            connection::Error::SqlError(ref sql_err) => ExecEvent::Error {
+                message: format!("{}: {}", sql_err.severity, sql_err.message),
+                bytepos: Some(
+                    sql_err.position
+                        .and_then(|charpos| self.current_stmt.char_indices()
+                                                             .nth(charpos)
+                                                             .map(|(bpos, _ch)| bpos))
+                        .unwrap_or(self.current_stmt.len()
+                                   - trimstart_comments(&self.current_stmt).len())
+                        + self.message_bytepos_offset
+                ),
+            },
 
-        if let connection::Error::SqlError(
-            connection::SqlError { position: Some(charpos), .. }
-        ) = *err {
-            if let Some((stmt_bytepos, _)) = self.current_stmt.char_indices().nth(charpos) {
-                bytepos = Some(stmt_bytepos);
-            }
-        }
-
-        ExecEvent::Error {
-            message: format!("{:#?}", err),
-            bytepos:  bytepos.map(|it| it + self.message_bytepos_offset),
+            ref other => ExecEvent::Error {
+                message: format!("{:#?}", other),
+                bytepos: None,
+            },
         }
     }
 }

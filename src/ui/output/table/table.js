@@ -157,7 +157,6 @@ module.exports = function (frameWindow, outputGlobal) {
             'databases',
             table.getAttribute('data-database'),
             'tables',
-            table.getAttribute('data-schema'),
             table.getAttribute('data-table')
         ].map(encodeURIComponent).join('/'));
         req.onloadend = onLoadEnd;

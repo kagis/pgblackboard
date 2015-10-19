@@ -1,5 +1,6 @@
 use std::io::{ self, Read };
 use std::mem;
+use std::collections::BTreeMap;
 use super::SqlState;
 
 pub fn read_message<T: Read>(reader: &mut T) -> io::Result<BackendMessage> {
@@ -253,6 +254,36 @@ pub struct ErrorOrNotice {
     // R
     /// The name of the source-code routine reporting the error.
     pub routine: Option<String>,
+
+    // s
+    /// Schema name: if the error was associated with a specific
+    /// database object, the name of the schema containing that object, if any.
+    pub schema_name: Option<String>,
+
+    // t
+    /// Table name: if the error was associated with a specific table,
+    /// the name of the table. (Refer to the schema name field for
+    /// the name of the table's schema.)
+    pub table_name: Option<String>,
+
+    // c
+    /// Column name: if the error was associated with a specific table column,
+    /// the name of the column. (Refer to the schema and table name fields
+    /// to identify the table.)
+    pub column_name: Option<String>,
+
+    // d
+    /// Data type name: if the error was associated with a specific data type,
+    /// the name of the data type. (Refer to the schema name field for the
+    /// name of the data type's schema.)
+    pub datatype_name: Option<String>,
+
+    // n
+    /// Constraint name: if the error was associated with a specific constraint,
+    /// the name of the constraint. Refer to fields listed above for the associated
+    /// table or domain. (For this purpose, indexes are treated as constraints,
+    /// even if they weren't created with constraint syntax.)
+    pub constraint_name: Option<String>,
 }
 
 impl ::std::error::Error for ErrorOrNotice {
@@ -476,54 +507,28 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
 }
 
 fn read_error_or_notice<T: Read>(reader: &mut T) -> io::Result<ErrorOrNotice> {
-    let mut severity = None;
-    let mut code = None;
-    let mut message = None;
-    let mut detail = None;
-    let mut hint = None;
-    let mut position = None;
-    let mut internal_position = None;
-    let mut internal_query = None;
-    let mut where_ = None;
-    let mut file = None;
-    let mut line = None;
-    let mut routine = None;
-    loop {
-        let field_code = try!(reader.read_u8());
-        if field_code == 0 {
-            break;
-        }
-        let field_val = try!(reader.read_cstr());
-        *match field_code {
-            b'S' => &mut severity,
-            b'C' => &mut code,
-            b'M' => &mut message,
-            b'D' => &mut detail,
-            b'H' => &mut hint,
-            b'P' => &mut position,
-            b'p' => &mut internal_position,
-            b'q' => &mut internal_query,
-            b'W' => &mut where_,
-            b'F' => &mut file,
-            b'L' => &mut line,
-            b'R' => &mut routine,
-            _ => continue,
-        } = Some(field_val);
+    let mut fields = BTreeMap::new();
+    while let field_code @ 1 ... 255 = try!(reader.read_u8()) {
+        fields.insert(field_code, try!(reader.read_cstr()));
     }
-
     Ok(ErrorOrNotice {
-        severity: severity.unwrap_or("".to_string()),
-        code: SqlState::from_code(&code.unwrap_or("".to_string())),
-        message: message.unwrap_or("".to_string()),
-        detail: detail,
-        hint: hint,
-        position: position.and_then(|x| x.parse().ok()),
-        internal_position: internal_position.and_then(|x| x.parse().ok()),
-        internal_query: internal_query,
-        where_: where_,
-        file: file,
-        line: line.and_then(|x| x.parse().ok()),
-        routine: routine,
+        severity: fields.remove(&b'S').unwrap_or("".to_string()),
+        code: fields.remove(&b'C').map_or(SqlState::Unknown, |c| SqlState::from_code(&c)),
+        message: fields.remove(&b'M').unwrap_or("".to_string()),
+        detail: fields.remove(&b'D'),
+        hint: fields.remove(&b'H'),
+        position: fields.remove(&b'P').and_then(|x| x.parse().ok()),
+        internal_position: fields.remove(&b'p').and_then(|x| x.parse().ok()),
+        internal_query: fields.remove(&b'q'),
+        where_: fields.remove(&b'W'),
+        file: fields.remove(&b'F'),
+        line: fields.remove(&b'L').and_then(|x| x.parse().ok()),
+        routine: fields.remove(&b'R'),
+        schema_name: fields.remove(&b's'),
+        table_name: fields.remove(&b't'),
+        column_name: fields.remove(&b'c'),
+        datatype_name: fields.remove(&b'd'),
+        constraint_name: fields.remove(&b'n'),
     })
 }
 

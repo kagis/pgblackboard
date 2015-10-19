@@ -1,5 +1,4 @@
 #![feature(slice_patterns)]
-#![feature(custom_attribute)]
 #![feature(iter_arith)]
 #![feature(read_exact)]
 #![feature(str_char)]
@@ -11,8 +10,9 @@ extern crate ui;
 
 mod dbms;
 mod webapp;
+mod postgres;
 
-use self::dbms::PgDbms;
+use self::postgres::PgDbms;
 use self::webapp::WebApplication;
 
 

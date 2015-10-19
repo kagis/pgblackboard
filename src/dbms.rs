@@ -1,8 +1,3 @@
-extern crate rustc_serialize;
-
-mod postgres;
-
-pub use self::postgres::PgDbms;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
 use std::ops::Range;
@@ -24,7 +19,6 @@ pub trait Dbms {
         user: &str,
         password: &str,
         database: &str,
-        schema: &str,
         table: &str,
         row: &DictRow)
         -> Result<DictRow, TableModifyError>;
@@ -34,7 +28,6 @@ pub trait Dbms {
         user: &str,
         password: &str,
         database: &str,
-        schema: &str,
         table: &str,
         key: &DictRow,
         changes: &DictRow)
@@ -45,10 +38,9 @@ pub trait Dbms {
         user: &str,
         password: &str,
         database: &str,
-        schema: &str,
         table: &str,
         key: &DictRow)
-        -> Result<(), TableModifyError>;
+        -> Result<DictRow, TableModifyError>;
 
     fn get_root_dbobjs(
         &self,
@@ -135,6 +127,7 @@ pub struct QueryPlanNode {
 pub enum TableModifyError {
     DatabaseNotFound,
     InvalidCredentials,
+    UnknownTable,
     RowNotFound,
     NotUniqueKey,
     EmptyKey,

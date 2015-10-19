@@ -40,36 +40,32 @@ use self::frontend::{
     SyncMessage,
 };
 
-use std::mem;
 use std::io::{ self, Read, Write };
 use std::net::{ TcpStream, ToSocketAddrs };
 use std::collections::VecDeque;
 
-struct MessageStream<S: Read + Write> {
-    inner: S
-}
-
-impl<S: Read + Write> MessageStream<S> {
-    pub fn new(inner: S) -> MessageStream<S> {
-        MessageStream { inner: inner }
-    }
-}
-
-impl<S: Read + Write> MessageStream<S> {
-    pub fn read_message(&mut self) -> io::Result<BackendMessage> {
-        backend::read_message(&mut self.inner)
-    }
-
-    pub fn write_message<M: FrontendMessage>(&mut self, msg: M) -> io::Result<()> {
-        frontend::write_message(&mut self.inner, msg)
-    }
-}
 
 #[derive(Debug)]
 pub enum Error {
     SqlError(SqlError),
     IoError(io::Error),
     OtherError(Box<::std::error::Error>),
+}
+
+impl ::std::error::Error for Error {
+    fn description(&self) -> &str {
+        match *self {
+            Error::SqlError(ref err) => &err.message,
+            Error::IoError(ref err) => err.description(),
+            Error::OtherError(ref err) => err.description(),
+        }
+    }
+}
+
+impl ::std::fmt::Display for Error {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{:#?}", self)
+    }
 }
 
 impl ::std::convert::From<io::Error> for Error {
@@ -79,14 +75,15 @@ impl ::std::convert::From<io::Error> for Error {
 }
 
 type InternalStream = TcpStream;
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub struct Connection {
     database: String,
-    stream: MessageStream<InternalStream>,
+    stream: InternalStream,
     transaction_status: TransactionStatus,
     notices: VecDeque<Notice>,
     is_desynchronized: bool,
-    current_execution_result: Option<Result<String, Error>>,
+    current_execution_result: Option<Result<String>>,
     is_executing: bool,
 }
 
@@ -95,39 +92,48 @@ pub fn connect<T>(
     database: &str,
     user: &str,
     password: &str)
-    -> Result<Connection, Error>
+    -> Result<Connection>
     where T: ToSocketAddrs
 {
-    use std::time::Duration;
+    // use std::time::Duration;
     let stream = try!(InternalStream::connect(addr));
     // stream.set_read_timeout(Some(Duration::new(1, 0)));
 
-    Connection::connect_database(stream,
-                                 database,
-                                 user,
-                                 password)
+    Connection::startup(
+        stream,
+        database,
+        user,
+        password,
+    )
 }
 
 impl Connection {
 
-    fn connect_database(
+    fn startup(
         stream: InternalStream,
         database: &str,
         user: &str,
         password: &str)
-        -> Result<Connection, Error>
+        -> Result<Connection>
     {
+        let mut conn = Connection {
+            database: database.to_string(),
+            stream: stream,
+            transaction_status: TransactionStatus::Idle,
+            notices: VecDeque::new(),
+            is_desynchronized: false,
+            current_execution_result: None,
+            is_executing: false,
+        };
 
-        let mut stream = MessageStream::new(stream);
-
-        try!(stream.write_message(StartupMessage {
+        try!(conn.write_message(StartupMessage {
             user: user,
-            database: database
+            database: database,
         }));
 
         let mut password_was_requested = false;
         loop {
-            match try!(stream.read_message()) {
+            match try!(conn.read_message()) {
 
                 BackendMessage::AuthenticationMD5Password { salt } => {
                     let mut hasher = Md5::new();
@@ -138,12 +144,12 @@ impl Connection {
                     hasher.input(pwduser_hash.as_bytes());
                     hasher.input(&salt);
                     let output = format!("md5{}", hasher.result_str());
-                    try!(stream.write_message(PasswordMessage { password: &output }));
+                    try!(conn.write_message(PasswordMessage { password: &output }));
                     password_was_requested = true;
                 }
 
                 BackendMessage::AuthenticationCleartextPassword => {
-                     try!(stream.write_message(PasswordMessage { password: password }));
+                     try!(conn.write_message(PasswordMessage { password: password }));
                     password_was_requested = true;
                 }
 
@@ -172,25 +178,14 @@ impl Connection {
 
                 BackendMessage::ReadyForQuery { .. } => break,
 
-                ref unexpected => return Err(Error::IoError(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Unexpected message while startup.",
-                ))),
+                ref unexpected => return Err(conn.bad_response(unexpected)),
             }
         }
 
-        Ok(Connection {
-            database: database.to_string(),
-            stream: stream,
-            transaction_status: TransactionStatus::Idle,
-            notices: VecDeque::new(),
-            is_desynchronized: false,
-            current_execution_result: None,
-            is_executing: false,
-        })
+        Ok(conn)
     }
 
-    fn wait_for_ready(&mut self) -> Result<(), Error> {
+    fn wait_for_ready(&mut self) -> Result<()> {
         match try!(self.read_message()) {
             BackendMessage::ReadyForQuery { transaction_status } => {
                 self.transaction_status = transaction_status;
@@ -200,9 +195,9 @@ impl Connection {
         }
     }
 
-    fn read_message(&mut self) -> Result<BackendMessage, Error> {
+    fn read_message(&mut self) -> Result<BackendMessage> {
         loop {
-            let message = match self.stream.read_message() {
+            let message = match backend::read_message(&mut self.stream) {
                 Ok(message) => message,
                 Err(err) => {
                     self.is_desynchronized = true;
@@ -225,8 +220,8 @@ impl Connection {
         }
     }
 
-    fn write_message<T: FrontendMessage>(&mut self, msg: T) -> Result<(), Error> {
-        self.stream.write_message(msg).map_err(|err| {
+    fn write_message<T: FrontendMessage>(&mut self, msg: T) -> Result<()> {
+        frontend::write_message(&mut self.stream, msg).map_err(|err| {
             self.is_desynchronized = true;
             Error::IoError(err)
         })
@@ -240,10 +235,6 @@ impl Connection {
         ))
     }
 
-    // pub fn take_notices(&mut self) -> Vec<Notice> {
-    //     mem::replace(&mut self.notices, vec![])
-    // }
-
     pub fn database(&self) -> &str {
         &self.database
     }
@@ -256,7 +247,7 @@ impl Connection {
         &mut self,
         stmt_name: &str,
         stmt_body: &str)
-        -> Result<(), Error>
+        -> Result<()>
     {
 
         try!(self.write_message(ParseMessage {
@@ -282,7 +273,7 @@ impl Connection {
     pub fn describe_statement(
         &mut self,
         stmt_name: &str)
-        -> Result<Vec<FieldDescription>, Error>
+        -> Result<Vec<FieldDescription>>
     {
         try!(self.write_message(DescribeStatementMessage {
             stmt_name: stmt_name
@@ -324,7 +315,7 @@ impl Connection {
         params: &[Option<&str>])
         -> Cursor
     {
-        if let Err(err) = self.begin_execute_statement(stmt_name, params) {
+        if let Err(err) = self.begin_execute_statement(stmt_name, 0, params) {
             self.current_execution_result = Some(Err(err));
         }
         Cursor { conn: self }
@@ -333,7 +324,7 @@ impl Connection {
     pub fn close_statement(
         &mut self,
         stmt_name: &str)
-        -> Result<(), Error>
+        -> Result<()>
     {
         try!(self.write_message(CloseStatementMessage {
             stmt_name: stmt_name,
@@ -357,10 +348,11 @@ impl Connection {
     pub fn execute_statement_into_vec(
         &mut self,
         stmt_name: &str,
+        row_limit: u32,
         params: &[Option<&str>])
-        -> Result<(Vec<Row>, String), Error>
+        -> Result<(Vec<Row>, String)>
     {
-        try!(self.begin_execute_statement(stmt_name, params));
+        try!(self.begin_execute_statement(stmt_name, row_limit, params));
         let mut rows = vec![];
         while let Some(row) = self.fetch_row() {
             rows.push(row);
@@ -374,8 +366,9 @@ impl Connection {
     fn begin_execute_statement(
         &mut self,
         stmt_name: &str,
+        row_limit: u32,
         params: &[Option<&str>])
-        -> Result<(), Error>
+        -> Result<()>
     {
         self.current_execution_result = None;
 
@@ -387,7 +380,7 @@ impl Connection {
 
         let execute_message = ExecuteMessage {
             portal_name: "",
-            row_limit: 0
+            row_limit: row_limit,
         };
 
         let response = self.write_message(bind_message)
@@ -410,7 +403,7 @@ impl Connection {
 
     fn fetch_row(&mut self) -> Option<Row> {
         if !self.is_executing {
-            return  None
+            return None
         }
 
         let message = match self.read_message() {
@@ -422,35 +415,31 @@ impl Connection {
         };
 
         self.current_execution_result = Some(match message {
-            BackendMessage::DataRow(values) => {
-                return Some(values);
-            }
+            BackendMessage::DataRow(values) => return Some(values),
             BackendMessage::CommandComplete { command_tag } => {
-                self.wait_for_ready().unwrap();
-                Ok(command_tag)
+                self.wait_for_ready().and(Ok(command_tag))
             }
             BackendMessage::EmptyQueryResponse => {
-                self.wait_for_ready().unwrap();
-                Ok("".to_string())
+                self.wait_for_ready().and(Ok("".to_string()))
             }
             BackendMessage::ErrorResponse(sql_err) => {
-                self.wait_for_ready().unwrap();
-                Err(Error::SqlError(sql_err))
+                self.wait_for_ready().and(Err(Error::SqlError(sql_err)))
             }
-            unexpected => {
-                Err(self.bad_response(&unexpected))
+            BackendMessage::PortalSuspended => {
+                self.wait_for_ready().and(Ok("".to_string()))
             }
+            ref unexpected => Err(self.bad_response(&unexpected))
         });
 
         self.is_executing = false;
         None
     }
 
-    // pub fn begin_transation(&mut self) -> Result<Transaction, Error> {
+    // pub fn begin_transation(&mut self) -> Result<Transaction> {
     //     Transaction::begin(self)
     // }
 
-    pub fn close(mut self) -> Result<(), Error> {
+    pub fn close(mut self) -> Result<()> {
         self.write_message(TerminateMessage)
     }
 }
@@ -460,13 +449,13 @@ impl Connection {
 // }
 //
 // impl<'conn> Transaction<'conn> {
-//     fn begin(conn: &'conn mut Connection) -> Result<Transaction, Error> {
+//     fn begin(conn: &'conn mut Connection) -> Result<Transaction> {
 //         conn.parse_statement("", "BEGIN")
 //             .and_then(|_| conn.execute_statement("", &[]).complete())
 //             .map(move |_| Transaction { conn: conn })
 //     }
 //
-//     pub fn commit(self) -> Result<(), Error> {
+//     pub fn commit(self) -> Result<()> {
 //         self.conn.parse_statement("", "COMMIT")
 //             .and_then(|_| self.conn.execute_statement("", &[]).complete())
 //             .map(|_| ())
@@ -491,7 +480,7 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub fn complete(mut self) -> Result<(String, Connection), Error> {
+    pub fn complete(mut self) -> Result<(String, Connection)> {
         while let Some(_) = self.next() {}
         let Cursor { mut conn } = self;
         conn.current_execution_result
