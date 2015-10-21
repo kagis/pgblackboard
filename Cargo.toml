@@ -4,7 +4,7 @@ version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 
 [dependencies]
-ui              = { path = "./src/ui" }
+ui = { path = "./src/ui" }
 
 argparse = "0.2"
 rustc-serialize = "0.3"

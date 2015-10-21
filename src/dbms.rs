@@ -146,12 +146,12 @@ pub enum TableModifyError {
 pub struct DbObj {
 
     /// Name of owner database
-    database: String,
-    id: String,
-    typ: String,
-    name: String,
-    comment: Option<String>,
-    has_children: bool,
+    pub database: String,
+    pub id: String,
+    pub typ: String,
+    pub name: String,
+    pub comment: Option<String>,
+    pub has_children: bool,
 }
 
 /// Describes error which may occur while

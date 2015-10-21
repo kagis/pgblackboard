@@ -1,6 +1,3 @@
-#![feature(read_exact)]
-#![feature(slice_patterns)]
-
 mod md5;
 mod sqlstate;
 mod backend;
