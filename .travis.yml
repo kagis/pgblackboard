@@ -1,5 +1,7 @@
 language: rust
 rust: nightly
+install:
+  - (cd src/ui && npm install)
 script:
   - (cd src/ui && npm test)
   - cargo test
