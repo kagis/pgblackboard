@@ -13,4 +13,4 @@ env:
 jdk:
   - openjdk7
 before_script:
-  - psql -c "CREATE USER $PGUSER WITH SUPERUSER LOGIN PASSWORD $PGPASSWORD;" -U postgres
+  - psql -c "CREATE USER $PGUSER WITH SUPERUSER LOGIN PASSWORD '$PGPASSWORD';" -U postgres
