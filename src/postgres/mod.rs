@@ -4,6 +4,9 @@ mod tree;
 mod execiter;
 mod sql;
 
+#[cfg(test)]
+mod tests;
+
 use self::connection::{connect, Connection, SqlState, SqlStateClass, Oid};
 use self::tree::{definition_query, children_query};
 use self::execiter::PgExecIter;
@@ -341,102 +344,5 @@ impl ConnectionExt for connection::Connection {
             })));
         }
         Ok((cmdtag, records))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use dbms::Dbms;
-    use std::env;
-
-    fn get_dbms() -> PgDbms {
-        PgDbms {
-            addr: format!("{}:{}", get_pghost(), get_pgport())
-        }
-    }
-
-    fn get_pguser() -> String { env::var("PGUSER").unwrap() }
-    fn get_pgpassword() -> String { env::var("PGPASSWORD").unwrap() }
-    fn get_pghost() -> String { env::var("PGHOST").unwrap() }
-    fn get_pgport() -> String { env::var("PGPORT").unwrap() }
-
-    fn pgexec(database: &str, script: &str) -> Result<(), String> {
-        use std::process::Command;
-
-        let output = Command::new("psql")
-                .arg("--dbname").arg(database)
-                .arg("--host").arg(&get_pghost())
-                .arg("--port").arg(&get_pgport())
-                .arg("--username").arg(&get_pguser())
-                .arg("--command").arg(script)
-                .output()
-                .unwrap();
-
-        if output.status.success() {
-            Ok(())
-        } else {
-            Err(String::from_utf8_lossy(&output.stderr).to_string())
-        }
-    }
-
-    #[test] #[ignore]
-    fn list_databases() {
-
-        let _ = pgexec("postgres", "CREATE DATABASE test_list_databases");
-
-        let root_dbobjs = get_dbms().get_root_dbobjs(
-            &get_pguser(),
-            &get_pgpassword(),
-        ).unwrap();
-
-        assert!(root_dbobjs.iter().any(|it| it.name == "test_list_databases"));
-
-    }
-
-    #[test] #[ignore]
-    fn list_schemas() {
-
-        let _ = pgexec("postgres", "DROP DATABASE test_list_schemas_db");
-        pgexec("postgres", "CREATE DATABASE test_list_schemas_db").unwrap();
-        pgexec("test_list_schemas_db", "CREATE SCHEMA test_list_schemas_schema").unwrap();
-
-        let child_dbobjs = get_dbms().get_child_dbobjs(
-            &get_pguser(),
-            &get_pgpassword(),
-            "test_list_schemas_db",
-            "database",
-            "test_list_schemas_db",
-        ).unwrap();
-
-        assert!(child_dbobjs.iter().any(|it| it.name == "test_list_schemas_schema"));
-
-    }
-
-    #[test] #[ignore]
-    fn list_tables() {
-
-        let _ = pgexec("postgres", "DROP DATABASE test_list_tables_db");
-        pgexec("postgres", "CREATE DATABASE test_list_tables_db").unwrap();
-        pgexec("test_list_tables_db", "CREATE TABLE test_list_tables_table(foo INT)").unwrap();
-
-        let schemas = get_dbms().get_child_dbobjs(
-            &get_pguser(),
-            &get_pgpassword(),
-            "test_list_tables_db",
-            "database",
-            "test_list_tables_db",
-        ).unwrap();
-
-        let child_dbobjs = get_dbms().get_child_dbobjs(
-            &get_pguser(),
-            &get_pgpassword(),
-            "test_list_tables_db",
-            "schema",
-            "public",
-        ).unwrap();
-
-        assert!(child_dbobjs.iter().any(|it| it.name == "test_list_tables_table"));
-
     }
 }

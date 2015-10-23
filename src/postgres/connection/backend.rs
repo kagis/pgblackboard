@@ -1,7 +1,11 @@
-use std::io::{ self, Read };
+use std::io;
+use std::io::Read;
 use std::mem;
 use std::collections::BTreeMap;
+use std::error;
+use std::fmt;
 use super::SqlState;
+
 
 pub fn read_message<T: Read>(reader: &mut T) -> io::Result<BackendMessage> {
     let ident = try!(reader.read_u8());
@@ -179,106 +183,85 @@ pub enum TransactionStatus {
     InFailedTransaction,
 }
 
-
-pub type SqlError = ErrorOrNotice;
-pub type Notice = ErrorOrNotice;
-
 #[derive(Debug)]
 #[derive(PartialEq)]
-pub struct ErrorOrNotice {
+pub struct PgErrorOrNotice {
 
-    // S
     /// The field contents are ERROR, FATAL, or PANIC (in an error message),
     /// or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message), or a
     /// localized translation of one of these. Always present.
     pub severity: String,
 
-    // C
     /// The SQLSTATE code for the error (see Appendix A). Not localizable.
     /// Always present.
     pub code: SqlState,
 
-    // M
     /// The primary human-readable error message. This should be accurate
     /// but terse (typically one line). Always present.
     pub message: String,
 
-    // D
     /// An optional secondary error message carrying more detail about
     /// the problem. Might run to multiple lines.
     pub detail: Option<String>,
 
-    // H
     /// An optional suggestion what to do about the problem.
     /// This is intended to differ from Detail in that it offers advice
     /// (potentially inappropriate) rather than hard facts.
     /// Might run to multiple lines.
     pub hint: Option<String>,
 
-    // P
     /// The field value is a decimal ASCII integer, indicating an error cursor
     /// position as an index into the original query string.
     /// The first character has index 1,
     /// and positions are measured in characters not bytes.
     pub position: Option<usize>,
 
-    // p
     /// This is defined the same as the P field, but it is used when the cursor
     /// position refers to an internally generated command rather than the one
     /// submitted by the client. The q field will always appear when this
     /// field appears.
     pub internal_position: Option<usize>,
 
-    // q
     /// The text of a failed internally-generated command. This could be,
     /// for example, a SQL query issued by a PL/pgSQL function.
     pub internal_query: Option<String>,
 
-    // W
     /// An indication of the context in which the error occurred.
     /// Presently this includes a call stack traceback of active procedural
     /// language functions and internally-generated queries. The trace is
     /// one entry per line, most recent first.
     pub where_: Option<String>,
 
-    // F
     /// The file name of the source-code location
     /// where the error was reported.
     pub file: Option<String>,
 
-    // L
     /// The line number of the source-code location
     /// where the error was reported.
     pub line: Option<usize>,
 
-    // R
     /// The name of the source-code routine reporting the error.
     pub routine: Option<String>,
 
-    // s
     /// Schema name: if the error was associated with a specific
     /// database object, the name of the schema containing that object, if any.
     pub schema_name: Option<String>,
 
-    // t
     /// Table name: if the error was associated with a specific table,
     /// the name of the table. (Refer to the schema name field for
     /// the name of the table's schema.)
     pub table_name: Option<String>,
 
-    // c
     /// Column name: if the error was associated with a specific table column,
     /// the name of the column. (Refer to the schema and table name fields
     /// to identify the table.)
     pub column_name: Option<String>,
 
-    // d
     /// Data type name: if the error was associated with a specific data type,
     /// the name of the data type. (Refer to the schema name field for the
     /// name of the data type's schema.)
     pub datatype_name: Option<String>,
 
-    // n
     /// Constraint name: if the error was associated with a specific constraint,
     /// the name of the constraint. Refer to fields listed above for the associated
     /// table or domain. (For this purpose, indexes are treated as constraints,
@@ -286,16 +269,42 @@ pub struct ErrorOrNotice {
     pub constraint_name: Option<String>,
 }
 
-impl ::std::error::Error for ErrorOrNotice {
+impl error::Error for PgErrorOrNotice {
     fn description(&self) -> &str {
         &self.message[..]
     }
 }
 
-impl ::std::fmt::Display for ErrorOrNotice {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+impl fmt::Display for PgErrorOrNotice {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.message)
     }
+}
+
+fn read_error_or_notice<T: Read>(reader: &mut T) -> io::Result<PgErrorOrNotice> {
+    let mut fields = BTreeMap::new();
+    while let field_code @ 1 ... 255 = try!(reader.read_u8()) {
+        fields.insert(field_code, try!(reader.read_cstr()));
+    }
+    Ok(PgErrorOrNotice {
+        severity: fields.remove(&b'S').unwrap_or("".to_string()),
+        code: fields.remove(&b'C').map_or(SqlState::Unknown, |c| SqlState::from_code(&c)),
+        message: fields.remove(&b'M').unwrap_or("".to_string()),
+        detail: fields.remove(&b'D'),
+        hint: fields.remove(&b'H'),
+        position: fields.remove(&b'P').and_then(|x| x.parse().ok()),
+        internal_position: fields.remove(&b'p').and_then(|x| x.parse().ok()),
+        internal_query: fields.remove(&b'q'),
+        where_: fields.remove(&b'W'),
+        file: fields.remove(&b'F'),
+        line: fields.remove(&b'L').and_then(|x| x.parse().ok()),
+        routine: fields.remove(&b'R'),
+        schema_name: fields.remove(&b's'),
+        table_name: fields.remove(&b't'),
+        column_name: fields.remove(&b'c'),
+        datatype_name: fields.remove(&b'd'),
+        constraint_name: fields.remove(&b'n'),
+    })
 }
 
 #[derive(Debug)]
@@ -393,13 +402,13 @@ pub enum BackendMessage {
     EmptyQueryResponse,
 
     /// Byte1('E') Identifies the message as an error.
-    ErrorResponse(ErrorOrNotice),
+    ErrorResponse(PgErrorOrNotice),
 
     /// Identifies the message as a no-data indicator.
     NoData,
 
     /// Byte1('N') Identifies the message as a notice.
-    NoticeResponse(ErrorOrNotice),
+    NoticeResponse(PgErrorOrNotice),
 
     /// Byte1('A') Identifies the message as a notification response.
     NotificationResponse {
@@ -506,31 +515,7 @@ fn read_data_row<T: Read>(reader: &mut T) -> io::Result<Vec<Option<String>>> {
     Ok(values)
 }
 
-fn read_error_or_notice<T: Read>(reader: &mut T) -> io::Result<ErrorOrNotice> {
-    let mut fields = BTreeMap::new();
-    while let field_code @ 1 ... 255 = try!(reader.read_u8()) {
-        fields.insert(field_code, try!(reader.read_cstr()));
-    }
-    Ok(ErrorOrNotice {
-        severity: fields.remove(&b'S').unwrap_or("".to_string()),
-        code: fields.remove(&b'C').map_or(SqlState::Unknown, |c| SqlState::from_code(&c)),
-        message: fields.remove(&b'M').unwrap_or("".to_string()),
-        detail: fields.remove(&b'D'),
-        hint: fields.remove(&b'H'),
-        position: fields.remove(&b'P').and_then(|x| x.parse().ok()),
-        internal_position: fields.remove(&b'p').and_then(|x| x.parse().ok()),
-        internal_query: fields.remove(&b'q'),
-        where_: fields.remove(&b'W'),
-        file: fields.remove(&b'F'),
-        line: fields.remove(&b'L').and_then(|x| x.parse().ok()),
-        routine: fields.remove(&b'R'),
-        schema_name: fields.remove(&b's'),
-        table_name: fields.remove(&b't'),
-        column_name: fields.remove(&b'c'),
-        datatype_name: fields.remove(&b'd'),
-        constraint_name: fields.remove(&b'n'),
-    })
-}
+
 
 
 trait ReadExt {
@@ -603,11 +588,8 @@ impl<R: Read> ReadExt for R {
 
     fn read_cstr(&mut self) -> io::Result<String> {
         let mut buf = vec![];
-        loop {
-            match try!(self.read_u8()) {
-                0 => break,
-                b => buf.push(b)
-            }
+        while let b @ 1 ... 255 = try!(self.read_u8()) {
+            buf.push(b)
         }
         String::from_utf8(buf).map_err(|err| {
             io::Error::new(io::ErrorKind::Other, err)

@@ -9,17 +9,16 @@ pub use self::sqlstate::{
     SqlState,
     SqlStateClass,
 };
+
 pub use self::backend::{
-    SqlError,
-    Notice,
+    PgErrorOrNotice,
     Oid,
     FieldDescription,
+    TransactionStatus,
 };
 
 use self::backend::{
     BackendMessage,
-    ErrorOrNotice,
-    TransactionStatus,
     Row,
 };
 
@@ -44,7 +43,7 @@ use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub enum Error {
-    SqlError(SqlError),
+    SqlError(PgErrorOrNotice),
     IoError(io::Error),
     OtherError(Box<::std::error::Error>),
 }
@@ -78,7 +77,7 @@ pub struct Connection {
     database: String,
     stream: InternalStream,
     transaction_status: TransactionStatus,
-    notices: VecDeque<Notice>,
+    notices: VecDeque<PgErrorOrNotice>,
     is_desynchronized: bool,
     current_execution_result: Option<Result<String>>,
     is_executing: bool,
@@ -236,7 +235,7 @@ impl Connection {
         &self.database
     }
 
-    pub fn pop_notice(&mut self) -> Option<Notice> {
+    pub fn pop_notice(&mut self) -> Option<PgErrorOrNotice> {
         self.notices.pop_front()
     }
 

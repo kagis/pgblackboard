@@ -14,10 +14,8 @@ CARGO = cd server && PGBB_UI_DIR=$(realpath ui/dist) cargo
 		clean-ui \
 		deb
 
-all: build-ui
-	$(CARGO) build --release --verbose
-	mkdir -p output
-	cp server/target/release/pgblackboard output/pgblackboard
+all:
+	cargo build
 
 build-ui:
 	$(NPM) run build

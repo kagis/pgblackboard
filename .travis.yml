@@ -1,7 +1,16 @@
 language: rust
 rust: nightly
-script: "cargo test && (cd src/ui && npm test)"
+script:
+  - (cd src/ui && npm test)
+  - cargo test
+  - cargo test -- --ignored
+env:
+  global:
+    - PGUSER=pgblackboard_test_user
+    - PGPASSWORD=pgblackboard_test_pwd
+    - PGHOST=localhost
+    - PGPORT=5432
 jdk:
-    - openjdk7
+  - openjdk7
 before_script:
-  - psql -c "create user pgblackboard_test_user with superuser login password 'pgblackboard_test_pwd';" -U postgres
+  - psql -c "CREATE USER $PGUSER WITH SUPERUSER LOGIN PASSWORD $PGPASSWORD;" -U postgres
