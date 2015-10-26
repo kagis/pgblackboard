@@ -18,53 +18,46 @@ pub trait Dbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
+        table_path: &[&str],
         row: &DictRow)
-        -> Result<DictRow, TableModifyError>;
+        -> Result<DictRow>;
 
     fn update_row(
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
+        table_path: &[&str],
         key: &DictRow,
         changes: &DictRow)
-        -> Result<DictRow, TableModifyError>;
+        -> Result<DictRow>;
 
     fn delete_row(
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
+        table_path: &[&str],
         key: &DictRow)
-        -> Result<DictRow, TableModifyError>;
+        -> Result<DictRow>;
 
     fn get_root_dbobjs(
         &self,
         user: &str,
         password: &str)
-        -> Result<Vec<DbObj>, DbObjError>;
+        -> Result<Vec<DbObj>>;
 
     fn get_child_dbobjs(
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        parent_dbobj_typ: &str,
-        parent_dbobj_id: &str)
-        -> Result<Vec<DbObj>, DbObjError>;
+        parent_obj_path: &[&str])
+        -> Result<Vec<DbObj>>;
 
     fn get_dbobj_script(
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        dbobj_typ: &str,
-        dbobj_id: &str)
-        -> Result<String, DbObjError>;
+        obj_path: &[&str])
+        -> Result<String>;
 }
 
 pub type DictRow = BTreeMap<String, Option<String>>;
@@ -123,19 +116,53 @@ pub struct QueryPlanNode {
     pub children: Vec<QueryPlanNode>,
 }
 
+pub type Result<T> = ::std::result::Result<T, Error>;
+
 #[derive(Debug)]
-pub enum TableModifyError {
-    DatabaseNotFound,
+pub struct Error {
+    pub kind: ErrorKind,
+    pub message: String,
+}
+
+impl Error {
+    pub fn new(kind: ErrorKind, message: &str) -> Error {
+        Error {
+            kind: kind,
+            message: message.to_string(),
+        }
+    }
+}
+
+impl ::std::fmt::Display for Error {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{:#?}", self)
+    }
+}
+
+impl ::std::error::Error for Error {
+    fn description(&self) -> &str {
+        &self.message
+    }
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ErrorKind {
     InvalidCredentials,
-    UnknownTable,
-    RowNotFound,
-    NotUniqueKey,
-    EmptyKey,
-    InvalidInput {
-        column: Option<String>,
-        message: String,
-    },
-    InternalError(Box<::std::error::Error>),
+
+    // Requesting table not exists
+    UnexistingPath,
+
+    // Row with specified key was not found
+    UnexistingRow,
+
+    // More than one row will be affected
+    AmbiguousKey,
+
+    // Invalid column value was specified
+    InvalidInput { column: Option<String> },
+
+    InternalError,
 }
 
 /// Describes database objects like tables, views, functions, triggers etc.
@@ -151,26 +178,28 @@ pub struct DbObj {
     pub typ: String,
     pub name: String,
     pub comment: Option<String>,
+
+    // TODO: can_have_children
     pub has_children: bool,
 }
-
-/// Describes error which may occur while
-/// retrieving information about database objects.
-#[derive(Debug)]
-pub enum DbObjError {
-
-    /// Specified database name was not found.
-    DatabaseNotFound,
-
-    /// Authorization failed.
-    InvalidCredentials,
-
-    /// Unknown type of database object was specified.
-    UnknownDbObjType,
-
-    /// DbObjNotFound
-    DbObjNotFound,
-
-    /// Some other error
-    InternalError(Box<::std::error::Error>),
-}
+//
+// /// Describes error which may occur while
+// /// retrieving information about database objects.
+// #[derive(Debug)]
+// pub enum DbObjError {
+//
+//     /// Specified database name was not found.
+//     DatabaseNotFound,
+//
+//     /// Authorization failed.
+//     InvalidCredentials,
+//
+//     /// Unknown type of database object was specified.
+//     UnknownDbObjType,
+//
+//     /// DbObjNotFound
+//     DbObjNotFound,
+//
+//     /// Some other error
+//     InternalError(Box<::std::error::Error>),
+// }

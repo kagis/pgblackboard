@@ -2,10 +2,10 @@ use std::io;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
 use http;
-use dbms::{ Dbms, DbObj, DbObjError };
+use dbms;
 use ui;
 
-pub fn handle_index_req<TDbms: Dbms>(
+pub fn handle_index_req<TDbms: dbms::Dbms>(
     dbms: &TDbms,
     req: &http::Request)
     -> Box<http::Response>
@@ -13,15 +13,15 @@ pub fn handle_index_req<TDbms: Dbms>(
     http::Handler::handle_http_req(
         &IndexResource { dbms: dbms },
         &[],
-        req
+        req,
     )
 }
 
-pub struct IndexResource<'dbms, TDbms: Dbms + 'dbms> {
+pub struct IndexResource<'dbms, TDbms: dbms::Dbms + 'dbms> {
     pub dbms: &'dbms TDbms
 }
 
-impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for IndexResource<'dbms, TDbms> {
+impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for IndexResource<'dbms, TDbms> {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
 
         use http::RequestCredentials::Basic;
@@ -52,15 +52,15 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for IndexResource<'dbms, TDbms> 
             Ok(root_dbobjs) => Box::new(IndexResponse {
                 root_dbobjs: root_dbobjs
             }),
-            Err(err) => match err {
-                DbObjError::InvalidCredentials => Box::new(ErrorResponse {
+            Err(err) => match err.kind {
+                dbms::ErrorKind::InvalidCredentials => Box::new(ErrorResponse {
                     status: Unauthorized,
-                    message: "Invalid username or password."
+                    message: err.message,
                 }),
 
                 _ => Box::new(ErrorResponse {
                     status: InternalServerError,
-                    message: "Failed to connect database, see log for details."
+                    message: err.message,
                 })
             }
         }
@@ -68,7 +68,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for IndexResource<'dbms, TDbms> 
 }
 
 struct IndexResponse {
-    root_dbobjs: Vec<DbObj>
+    root_dbobjs: Vec<dbms::DbObj>
 }
 
 impl http::Response for IndexResponse {
@@ -90,7 +90,7 @@ impl http::Response for IndexResponse {
 
 pub struct ErrorResponse<T> {
     pub status: http::Status,
-    pub message: T
+    pub message: T,
 }
 
 impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
@@ -102,11 +102,12 @@ impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
         }
 
         let mut html = vec![];
-        ui::render_error_page(&mut html,
-                            self.status as u16,
-                            self.status.phrase(),
-                            self.message
-                            ).unwrap();
+        ui::render_error_page(
+            &mut html,
+            self.status as u16,
+            self.status.phrase(),
+            self.message
+        ).unwrap();
 
         w.write_content(&html)
     }

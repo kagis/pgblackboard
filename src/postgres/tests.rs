@@ -3,58 +3,181 @@ use dbms::*;
 use std::env;
 
 #[test] #[ignore]
-fn should_update_row() {
+fn update_one_row() {
 
-    let foo_table_oid = resetdb_and_exec(
-        "should_update_row",
+    let database = create_database().unwrap();
+
+    let foo_table_oid = pgexec(
+        &database,
         "CREATE TABLE public.foo(id INT, bar TEXT);
-         INSERT INTO public.foo (id, bar) VALUES (1, 'hello');
+         INSERT INTO public.foo (id, bar) VALUES (1, 'hello'), (2, 'world');
          SELECT 'public.foo'::regclass::oid;"
      ).unwrap();
 
     get_dbms().update_row(
         &get_pguser(),
         &get_pgpassword(),
-        "should_update_row",
-        &format!("{}", foo_table_oid),
-        &vec![("id".to_string(), Some("1".to_string()))].into_iter().collect(),
-        &vec![("bar".to_string(), Some("updated".to_string()))].into_iter().collect(),
+        &[&database, &format!("{}", foo_table_oid)],
+        &dictrow(&[("id", Some("1"))]),
+        &dictrow(&[("bar", Some("hi"))]),
     ).unwrap();
 
-    let updated_val = pgexec(
-        "should_update_row",
-        "SELECT bar FROM public.foo WHERE id = 1"
-    ).unwrap();
-
-    assert_eq!(updated_val, "updated");
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "1|hi\n\
+         2|world"
+    );
 }
 
 #[test] #[ignore]
-fn should_not_update_more_than_one_row() {
+fn update_more_than_one_row() {
 
-    let foo_table_oid = resetdb_and_exec(
-        "should_not_update_more_than_one_row",
+    let database = create_database().unwrap();
+    let foo_table_oid = pgexec(
+        &database,
         "CREATE TABLE public.foo(id INT, bar TEXT);
          INSERT INTO public.foo (id, bar) VALUES (1, 'hello'), (1, 'world');
          SELECT 'public.foo'::regclass::oid;"
      ).unwrap();
 
-    let update_result = get_dbms().update_row(
-        &get_pguser(),
-        &get_pgpassword(),
-        "should_not_update_more_than_one_row",
-        &format!("{}", foo_table_oid),
-        &vec![("id".to_string(), Some("1".to_string()))].into_iter().collect(),
-        &vec![("bar".to_string(), Some("updated".to_string()))].into_iter().collect(),
+    assert_eq!(
+        get_dbms().update_row(
+            &get_pguser(),
+            &get_pgpassword(),
+            &[&database, &format!("{}", foo_table_oid)],
+            &dictrow(&[("id", Some("1"))]),
+            &dictrow(&[("bar", Some("hi"))]),
+        ).unwrap_err().kind,
+        ErrorKind::AmbiguousKey
     );
 
-    let row_count = pgexec(
-        "should_not_update_more_than_one_row",
-        "SELECT COUNT(*) FROM public.foo WHERE id = 1 AND bar IN ('hello', 'world')"
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "1|hello\n\
+         1|world"
+    );
+}
+
+#[test] #[ignore]
+fn update_unexisting_row() {
+    let database = create_database().unwrap();
+    let foo_table_oid = pgexec(
+        &database,
+        "CREATE TABLE public.foo(id INT, bar TEXT);
+         INSERT INTO public.foo (id, bar) VALUES (2, 'hello');
+         SELECT 'public.foo'::regclass::oid;"
+     ).unwrap();
+
+     assert_eq!(
+        get_dbms().update_row(
+            &get_pguser(),
+            &get_pgpassword(),
+            &[&database, &format!("{}", foo_table_oid)],
+            &dictrow(&[("id", Some("1"))]),
+            &dictrow(&[("bar", Some("hi"))]),
+        ).unwrap_err().kind,
+        ErrorKind::UnexistingRow
+    );
+
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "2|hello"
+    );
+}
+
+#[test] #[ignore]
+fn update_unexisting_table() {
+    let database = create_database().unwrap();
+    assert_eq!(
+        get_dbms().update_row(
+            &get_pguser(),
+            &get_pgpassword(),
+            &[&database, "0", /* unexisting OID */],
+            &dictrow(&[("id", Some("1"))]),
+            &dictrow(&[("bar", Some("hi"))]),
+        ).unwrap_err().kind,
+        ErrorKind::UnexistingPath
+    );
+}
+
+#[test] #[ignore]
+fn delete_one_row() {
+    let database = create_database().unwrap();
+
+    let foo_table_oid = pgexec(
+        &database,
+        "CREATE TABLE public.foo(id INT, bar TEXT);
+         INSERT INTO public.foo (id, bar) VALUES (1, 'hello'), (2, 'world');
+         SELECT 'public.foo'::regclass::oid;"
+     ).unwrap();
+
+    get_dbms().delete_row(
+        &get_pguser(),
+        &get_pgpassword(),
+        &[&database, &format!("{}", foo_table_oid)],
+        &dictrow(&[("id", Some("1"))]),
     ).unwrap();
 
-    assert!(update_result.is_err());
-    assert_eq!(row_count, "2");
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "2|world"
+    );
+}
+
+#[test] #[ignore]
+fn delete_more_than_one_row() {
+
+    let database = create_database().unwrap();
+
+    let foo_table_oid = pgexec(
+        &database,
+        "CREATE TABLE public.foo(id INT, bar TEXT);
+         INSERT INTO public.foo (id, bar) VALUES (1, 'hello'), (1, 'world');
+         SELECT 'public.foo'::regclass::oid;"
+     ).unwrap();
+
+    assert_eq!(
+        get_dbms().delete_row(
+            &get_pguser(),
+            &get_pgpassword(),
+            &[&database, &format!("{}", foo_table_oid)],
+            &dictrow(&[("id", Some("1"))]),
+        ).unwrap_err().kind,
+        ErrorKind::AmbiguousKey
+    );
+
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "1|hello\n\
+         1|world"
+    );
+}
+
+#[test] #[ignore]
+fn delete_unexisting_row() {
+    let database = create_database().unwrap();
+
+    let foo_table_oid = pgexec(
+        &database,
+        "CREATE TABLE public.foo(id INT, bar TEXT);
+         INSERT INTO public.foo (id, bar) VALUES (2, 'hello');
+         SELECT 'public.foo'::regclass::oid;"
+    ).unwrap();
+
+    assert_eq!(
+        get_dbms().delete_row(
+            &get_pguser(),
+            &get_pgpassword(),
+            &[&database, &format!("{}", foo_table_oid)],
+            &dictrow(&[("id", Some("1"))]),
+        ).unwrap_err().kind,
+        ErrorKind::UnexistingRow
+    );
+
+    assert_eq!(
+        pgexec(&database, "SELECT * FROM public.foo ORDER BY id").unwrap(),
+        "2|hello"
+    );
 }
 
 
@@ -70,7 +193,7 @@ fn get_pgpassword() -> String { env::var("PGPASSWORD").unwrap() }
 fn get_pghost() -> String { env::var("PGHOST").unwrap() }
 fn get_pgport() -> String { env::var("PGPORT").unwrap() }
 
-fn pgexec(database: &str, script: &str) -> Result<String, String> {
+fn pgexec(database: &str, script: &str) -> ::std::result::Result<String, String> {
     use std::process::Command;
 
     let output = Command::new("psql")
@@ -86,18 +209,28 @@ fn pgexec(database: &str, script: &str) -> Result<String, String> {
             .unwrap();
 
     if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        String::from_utf8(output.stdout)
+                .map_err(|e| e.to_string())
+                .map(|s| s.trim().to_string())
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
 }
 
-fn resetdb_and_exec(database: &str, script: &str) -> Result<String, String> {
-    let _ = pgexec("postgres", &format!("DROP DATABASE {}", database));
-    try!(pgexec("postgres", &format!("CREATE DATABASE {}", database)));
-    pgexec(database, script)
+fn dictrow(pairs: &[(&str, Option<&str>)]) -> DictRow {
+    pairs.iter()
+         .map(|&(key, val)| (key.to_string(), val.map(|val| val.to_string())))
+         .collect()
 }
 
+fn create_database() -> ::std::result::Result<String, String> {
+    let database_name = try!(pgexec(
+        "postgres",
+        "SELECT 'pgbbtest_' || md5(random()::text || now()::text)"
+    ));
+    try!(pgexec("postgres", &format!("CREATE DATABASE {}", database_name)));
+    Ok(database_name)
+}
 
 
 #[test] #[ignore]
@@ -124,9 +257,9 @@ fn list_schemas() {
     let child_dbobjs = get_dbms().get_child_dbobjs(
         &get_pguser(),
         &get_pgpassword(),
-        "test_list_schemas_db",
+        &["test_list_schemas_db",
         "database",
-        "test_list_schemas_db",
+        "test_list_schemas_db"],
     ).unwrap();
 
     assert!(child_dbobjs.iter().any(|it| it.name == "test_list_schemas_schema"));

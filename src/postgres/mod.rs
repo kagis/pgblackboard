@@ -11,7 +11,7 @@ use self::connection::{connect, Connection, SqlState, SqlStateClass, Oid};
 use self::tree::{definition_query, children_query};
 use self::execiter::PgExecIter;
 use self::sql::{quote_ident, quote_literal};
-use dbms::*;
+use dbms;
 use std::ops::Range;
 use rustc_serialize::Decodable;
 
@@ -19,7 +19,7 @@ pub struct PgDbms {
     pub addr: String,
 }
 
-impl Dbms for PgDbms {
+impl dbms::Dbms for PgDbms {
     type ExecIter = PgExecIter;
 
     fn execute_script(
@@ -43,11 +43,12 @@ impl Dbms for PgDbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
-        row: &DictRow)
-        -> Result<DictRow, TableModifyError>
+        table_path: &[&str],
+        row: &dbms::DictRow)
+        -> dbms::Result<dbms::DictRow>
     {
+        let (database, table_oid) = try!(unpack_table_path(table_path));
+
         let mut conn = try!(connect(
             &self.addr[..],
             database,
@@ -55,11 +56,10 @@ impl Dbms for PgDbms {
             password
         ));
 
-        let table_oid = try!(table.parse().map_err(|_| TableModifyError::UnknownTable));
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
 
         Ok({
-            let mut result = DictRow::new();
+            let mut result = dbms::DictRow::new();
             result.insert("full_table_name".to_string(), Some(full_table_name));
             result
         })
@@ -69,14 +69,15 @@ impl Dbms for PgDbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
-        key: &DictRow,
-        changes: &DictRow)
-        -> Result<DictRow, TableModifyError>
+        table_path: &[&str],
+        key: &dbms::DictRow,
+        changes: &dbms::DictRow)
+        -> dbms::Result<dbms::DictRow>
     {
+        let (database, table_oid) = try!(unpack_table_path(table_path));
+
         if key.is_empty() {
-            return Err(TableModifyError::EmptyKey);
+            return Err(empty_key());
         }
 
         let mut conn = try!(connect(
@@ -86,7 +87,6 @@ impl Dbms for PgDbms {
             password
         ));
 
-        let table_oid = try!(table.parse().map_err(|_| TableModifyError::UnknownTable));
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
 
         let (stmt, column_names_by_values_positions) = {
@@ -143,34 +143,32 @@ impl Dbms for PgDbms {
                                   .map(|it| (descr, it)));
 
         let (descr, (rows, _cmdtag)) = try!(modify_result.map_err(|err| match err {
-            connection::Error::SqlError(sql_err) => TableModifyError::InvalidInput {
-                message: sql_err.message,
-                column: sql_err.position
+            connection::Error::SqlError(sql_err) => invalid_input(
+                &sql_err.message,
+                sql_err.position
                     .and_then(|pos| column_names_by_values_positions.get(&pos))
-                    .map(|it| it.clone())
-            },
-            other => TableModifyError::InternalError(Box::new(other)),
+                    .map(|it| it.clone()),
+            ),
+            other => dbms::Error::new(
+                dbms::ErrorKind::InternalError,
+                &format!("{:#?}", other),
+            ),
         }));
 
         let mut rows = rows.into_iter();
-        let returned_row = try!(rows.next().ok_or(TableModifyError::RowNotFound));
-        try!(rows.next().map(|_| Err(TableModifyError::NotUniqueKey)).unwrap_or(Ok(())));
+        let returned_row = try!(rows.next().ok_or(unexisting_row()));
+        try!(rows.next().map(|_| Err(ambiguous_key())).unwrap_or(Ok(())));
 
         try!(conn.query::<()>("COMMIT", &[]).map_err(|err| match err {
-            connection::Error::SqlError(sql_err) => TableModifyError::InvalidInput {
-                message: sql_err.message,
-                column: None
-            },
-            connection::Error::IoError(io_err) => {
-                TableModifyError::InternalError(Box::new(io_err))
-            }
-            other => TableModifyError::InternalError(Box::new(other))
+            connection::Error::SqlError(sql_err) => invalid_input(&sql_err.message, None),
+            connection::Error::IoError(io_err) => internal_error(&io_err),
+            other => internal_error(&other),
         }));
 
         let dict = descr.iter()
                         .map(|field_descr| field_descr.name.clone())
                         .zip(returned_row)
-                        .collect::<DictRow>();
+                        .collect::<dbms::DictRow>();
 
         Ok(dict)
 
@@ -180,19 +178,79 @@ impl Dbms for PgDbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        table: &str,
-        key: &DictRow)
-        -> Result<DictRow, TableModifyError>
+        table_path: &[&str],
+        key: &dbms::DictRow)
+        -> dbms::Result<dbms::DictRow>
     {
-        unimplemented!();
+        let (database, table_oid) = try!(unpack_table_path(table_path));
+
+        if key.is_empty() {
+            return Err(empty_key());
+        }
+
+        let mut conn = try!(connect(
+            &self.addr[..],
+            database,
+            user,
+            password
+        ));
+
+        let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
+
+        fn col_eq_val((col, maybe_val): (&String, &Option<String>)) -> String {
+            let quoted_col = quote_ident(col);
+            match maybe_val.as_ref() {
+                Some(val) => format!("{}={}", quoted_col, quote_literal(val)),
+                None => format!("{} IS NULL", quoted_col)
+            }
+        }
+
+        let stmt = format!(
+            "DELETE FROM {} WHERE {} RETURNING *",
+            full_table_name,
+            key.iter()
+                .map(col_eq_val)
+                .collect::<Vec<_>>()
+                .join(" AND ")
+        );
+
+        try!(conn.query::<()>("BEGIN", &[]));
+
+        println!("{}", stmt);
+
+        let modify_result = conn.parse_statement("", &stmt)
+            .and_then(|_| conn.describe_statement(""))
+            .and_then(|descr| conn.execute_statement_into_vec("", 2, &[])
+                                  .map(|it| (descr, it)));
+
+        let (descr, (rows, _cmdtag)) = try!(modify_result.map_err(|err| match err {
+            connection::Error::SqlError(sql_err) => invalid_input(&sql_err.message, None),
+            other => internal_error(&other),
+        }));
+
+        let mut rows = rows.into_iter();
+        let returned_row = try!(rows.next().ok_or(unexisting_row()));
+        try!(rows.next().map(|_| Err(ambiguous_key())).unwrap_or(Ok(())));
+
+        try!(conn.query::<()>("COMMIT", &[]).map_err(|err| match err {
+            connection::Error::SqlError(sql_err) => invalid_input(&sql_err.message, None),
+            connection::Error::IoError(io_err) => internal_error(&io_err),
+            other => internal_error(&other),
+        }));
+
+        let dict = descr.iter()
+                        .map(|field_descr| field_descr.name.clone())
+                        .zip(returned_row)
+                        .collect::<dbms::DictRow>();
+
+        Ok(dict)
     }
 
     fn get_root_dbobjs(
         &self,
         user: &str,
         password: &str)
-        -> Result<Vec<DbObj>, DbObjError>
+        -> dbms::Result<Vec<dbms::DbObj>>
     {
         let conn = try!(connect(
             &self.addr[..],
@@ -212,11 +270,11 @@ impl Dbms for PgDbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        parent_dbobj_typ: &str,
-        parent_dbobj_id: &str)
-        -> Result<Vec<DbObj>, DbObjError>
+        parent_obj_path: &[&str])
+        -> dbms::Result<Vec<dbms::DbObj>>
     {
+        let (database, parent_dbobj_typ, parent_dbobj_id) = try!(unpack_obj_path(parent_obj_path));
+
         let conn = try!(connect(
             &self.addr[..],
             database,
@@ -225,7 +283,7 @@ impl Dbms for PgDbms {
         ));
 
         let query = try!(children_query(parent_dbobj_typ)
-                            .ok_or(DbObjError::UnknownDbObjType));
+                            .ok_or(unexisting_path("Unknown object type")));
 
         query_dbobj(conn, &query, &[
             Some(parent_dbobj_id),
@@ -237,11 +295,11 @@ impl Dbms for PgDbms {
         &self,
         user: &str,
         password: &str,
-        database: &str,
-        dbobj_typ: &str,
-        dbobj_id: &str)
-        -> Result<String, DbObjError>
+        obj_path: &[&str])
+        -> dbms::Result<String>
     {
+        let (database, dbobj_typ, dbobj_id) = try!(unpack_obj_path(obj_path));
+
         let conn = try!(connect(
             &self.addr[..],
             database,
@@ -250,10 +308,10 @@ impl Dbms for PgDbms {
         ));
 
         let query = try!(definition_query(dbobj_typ)
-                            .ok_or(DbObjError::UnknownDbObjType));
+                            .ok_or(unexisting_path("Unknown object type")));
 
         let mut defs = try!(query_dbobj::<(String,)>(conn, &query, &[Some(dbobj_id)]));
-        let (def,) = try!(defs.pop().ok_or(DbObjError::DbObjNotFound));
+        let (def,) = try!(defs.pop().ok_or(unexisting_path("Object not found")));
 
         Ok(def)
     }
@@ -262,7 +320,7 @@ impl Dbms for PgDbms {
 fn resolve_table_oid(
     conn: &mut Connection,
     table_oid: Oid)
-    -> Result<String, TableModifyError>
+    -> dbms::Result<String>
 {
     let stmt = "SELECT quote_ident(pg_namespace.nspname) \
                     || '.' \
@@ -277,43 +335,52 @@ fn resolve_table_oid(
 
     rows.pop()
         .map(|(full_table_name,)| full_table_name)
-        .ok_or(TableModifyError::UnknownTable)
+        .ok_or(unexisting_path("Table not found."))
+}
+
+fn unpack_table_path<'a>(table_path: &'a [&'a str]) -> Result<(&'a str, Oid), dbms::Error> {
+    if let [database, table_oid_str] = table_path {
+        table_oid_str.parse()
+                     .map(|table_oid| (database, table_oid))
+                     .map_err(|_| unexisting_path("Malformed table oid."))
+    } else {
+        Err(unexisting_path("2 segments expected: database/table_oid."))
+    }
+}
+
+fn unpack_obj_path<'a>(table_path: &'a [&'a str]) -> Result<(&'a str, &'a str, &'a str), dbms::Error> {
+    if let [database, objtyp, objid] = table_path {
+        Ok((database, objtyp, objid))
+    } else {
+        Err(unexisting_path("3 segments expected: database/object_type/object_id."))
+    }
 }
 
 fn query_dbobj<TRecord: Decodable>(
     mut conn: Connection,
     stmt_body: &str,
     params: &[Option<&str>])
-    -> Result<Vec<TRecord>, DbObjError>
+    -> dbms::Result<Vec<TRecord>>
 {
     let (_cmdtag, records) = try!(conn.query(stmt_body, params));
     try!(conn.close());
     Ok(records)
 }
 
-
-impl ::std::convert::From<connection::Error> for DbObjError {
-    fn from(err: connection::Error) -> DbObjError {
+impl ::std::convert::From<connection::Error> for dbms::Error {
+    fn from(err: connection::Error) -> dbms::Error {
         match err {
-            connection::Error::SqlError(sql_err) => match sql_err.code.class() {
-                SqlStateClass::InvalidCatalogName => DbObjError::DatabaseNotFound,
-                _ => DbObjError::InternalError(Box::new(sql_err))
-            },
-            connection::Error::IoError(io_err) => DbObjError::InternalError(Box::new(io_err)),
-            connection::Error::OtherError(err) => DbObjError::InternalError(err),
-        }
-    }
-}
 
-impl ::std::convert::From<connection::Error> for TableModifyError {
-    fn from(err: connection::Error) -> TableModifyError {
-        match err {
             connection::Error::SqlError(sql_err) => match sql_err.code.class() {
-                SqlStateClass::InvalidCatalogName => TableModifyError::DatabaseNotFound,
-                _ => TableModifyError::InternalError(Box::new(sql_err))
+                SqlStateClass::InvalidCatalogName => unexisting_path("Database not found."),
+                SqlStateClass::InvalidAuthorizationSpecification => dbms::Error::new(
+                    dbms::ErrorKind::InvalidCredentials,
+                    &sql_err.message,
+                ),
+                _ => internal_error(&sql_err),
             },
-            connection::Error::IoError(io_err) => TableModifyError::InternalError(Box::new(io_err)),
-            connection::Error::OtherError(err) => TableModifyError::InternalError(err),
+            connection::Error::IoError(io_err) => internal_error(&io_err),
+            connection::Error::OtherError(err) => internal_error(&err),
         }
     }
 }
@@ -345,4 +412,46 @@ impl ConnectionExt for connection::Connection {
         }
         Ok((cmdtag, records))
     }
+}
+
+fn unexisting_row() -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::UnexistingRow,
+        "Row was not found.",
+    )
+}
+
+fn empty_key() -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::AmbiguousKey,
+        "Key is empty.",
+    )
+}
+
+fn ambiguous_key() -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::AmbiguousKey,
+        "Key is not unique.",
+    )
+}
+
+fn invalid_input(message: &str, column: Option<String>) -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::InvalidInput { column: column },
+        message,
+    )
+}
+
+fn unexisting_path(message: &str) -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::UnexistingPath,
+        message,
+    )
+}
+
+fn internal_error<T: ::std::fmt::Debug>(message: &T) -> dbms::Error {
+    dbms::Error::new(
+        dbms::ErrorKind::InternalError,
+        &format!("{:#?}", message),
+    )
 }

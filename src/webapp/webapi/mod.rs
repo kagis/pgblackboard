@@ -58,8 +58,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbDir<'dbms, TDbms> {
                 dbms: self.dbms,
                 user: user.to_string(),
                 password: password.to_string(),
-                database: self.database.clone(),
-                table: table_name.to_string(),
+                table_path: vec![table_name.to_string(), self.database.clone()],
             }.handle_http_req(&[], req),
 
             _ => Box::new(JsonResponse {

@@ -1,9 +1,9 @@
 use http;
-use dbms::{ Dbms, DbObjError };
+use dbms;
 use super::JsonResponse;
 
 
-pub struct DbObjDir<'dbms, TDbms: Dbms + 'dbms> {
+pub struct DbObjDir<'dbms, TDbms: dbms::Dbms + 'dbms> {
     pub dbms: &'dbms TDbms,
     pub user: String,
     pub password: String,
@@ -12,25 +12,21 @@ pub struct DbObjDir<'dbms, TDbms: Dbms + 'dbms> {
     pub objid: String,
 }
 
-impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbObjDir<'dbms, TDbms> {
+impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Handler for DbObjDir<'dbms, TDbms> {
     fn handle_http_req(&self, path: &[&str], req: &http::Request) -> Box<http::Response> {
         match path {
             ["children"] => DbObjChildren {
                 dbms: self.dbms,
                 user: self.user.clone(),
                 password: self.password.clone(),
-                database: self.database.clone(),
-                objtype: self.objtype.clone(),
-                objid: self.objid.clone(),
+                obj_path: vec![self.database.clone(), self.objtype.clone(), self.objid.clone()],
             }.handle_http_req(&[], req),
 
             ["definition"] => DbObjDefinition {
                 dbms: self.dbms,
                 user: self.user.clone(),
                 password: self.password.clone(),
-                database: self.database.clone(),
-                objtype: self.objtype.clone(),
-                objid: self.objid.clone(),
+                obj_path: vec![self.database.clone(), self.objtype.clone(), self.objid.clone()],
             }.handle_http_req(&[], req),
 
             _ => Box::new(JsonResponse {
@@ -41,24 +37,25 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbObjDir<'dbms, TDbms> {
     }
 }
 
-struct DbObjChildren<'dbms, TDbms: Dbms + 'dbms> {
+struct DbObjChildren<'dbms, TDbms: dbms::Dbms + 'dbms> {
     dbms: &'dbms TDbms,
     user: String,
     password: String,
-    database: String,
-    objtype: String,
-    objid: String,
+    obj_path: Vec<String>,
 }
 
-impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjChildren<'dbms, TDbms> {
+impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for DbObjChildren<'dbms, TDbms> {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
+
+        let ref obj_path = self.obj_path
+                                 .iter()
+                                 .map(|seg| &seg[..])
+                                 .collect::<Vec<_>>();
 
         let dbobj_children_result = self.dbms.get_child_dbobjs(
             &self.user,
             &self.password,
-            &self.database,
-            &self.objtype,
-            &self.objid
+            obj_path,
         );
 
         match dbobj_children_result {
@@ -72,24 +69,25 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjChildren<'dbms, TDbms> 
     }
 }
 
-struct DbObjDefinition<'dbms, TDbms: Dbms + 'dbms> {
+struct DbObjDefinition<'dbms, TDbms: dbms::Dbms + 'dbms> {
     dbms: &'dbms TDbms,
     user: String,
     password: String,
-    database: String,
-    objtype: String,
-    objid: String,
+    obj_path: Vec<String>,
 }
 
-impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjDefinition<'dbms, TDbms> {
+impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for DbObjDefinition<'dbms, TDbms> {
     fn get(&self, req: &http::Request) -> Box<http::Response> {
+
+        let ref obj_path = self.obj_path
+                                 .iter()
+                                 .map(|seg| &seg[..])
+                                 .collect::<Vec<_>>();
 
         let dbobj_def_result = self.dbms.get_dbobj_script(
             &self.user,
             &self.password,
-            &self.database,
-            &self.objtype,
-            &self.objid
+            obj_path,
         );
 
         match dbobj_def_result {
@@ -103,31 +101,13 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for DbObjDefinition<'dbms, TDbms
 }
 
 
-fn handle_dbobj_error(dbobj_err: &DbObjError) -> Box<http::Response> {
-    match *dbobj_err {
-        DbObjError::DatabaseNotFound => Box::new(JsonResponse {
-            status: http::Status::NotFound,
-            content: "Database not exists."
-        }),
-
-        DbObjError::InvalidCredentials => Box::new(JsonResponse {
-            status: http::Status::Unauthorized,
-            content: "Invalid username or password."
-        }),
-
-        DbObjError::UnknownDbObjType => Box::new(JsonResponse {
-            status: http::Status::NotFound,
-            content: "Unknown type of database object."
-        }),
-
-        DbObjError::DbObjNotFound => Box::new(JsonResponse {
-            status: http::Status::NotFound,
-            content: "Database object was not found."
-        }),
-
-        DbObjError::InternalError(ref err) => Box::new(JsonResponse {
-            status: http::Status::InternalServerError,
-            content: err.to_string()
-        }),
-    }
+fn handle_dbobj_error(dbobj_err: &dbms::Error) -> Box<http::Response> {
+    Box::new(JsonResponse {
+        status: match dbobj_err.kind {
+            dbms::ErrorKind::UnexistingPath => http::Status::NotFound,
+            dbms::ErrorKind::InvalidCredentials => http::Status::Unauthorized,
+            _ => http::Status::InternalServerError
+        },
+        content: dbobj_err.message.clone(),
+    })
 }
