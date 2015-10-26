@@ -38,7 +38,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for SqlExecEndpoint<'dbms, TDbms
     fn post(&self, req: &http::Request) -> Box<http::Response> {
 
         use http::RequestCredentials::Basic;
-        let (user, passwd) = match req.credentials.as_ref() {
+        let credentials = match req.credentials.as_ref() {
             Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
             // Some(..) => return Box::new(JsonResponse {
             //     status: Unauthorized,
@@ -133,8 +133,7 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Resource for SqlExecEndpoint<'dbms, TDbms
 
 
         let execiter = self.dbms.execute_script(
-            user,
-            passwd,
+            credentials,
             &form.sqlscript,
             selection,
         );

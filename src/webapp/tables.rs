@@ -1,18 +1,33 @@
 use http;
 use dbms;
 use super::JsonResponse;
+use super::get_req_credentials;
+use super::error_response;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
 
-
-pub struct TableResource<'dbms, TDbms: dbms::Dbms + 'dbms> {
-    pub dbms: &'dbms TDbms,
-    pub user: String,
-    pub password: String,
-    pub table_path: Vec<String>,
+pub fn handle_table_req<TDbms: dbms::Dbms>(
+    dbms: &TDbms,
+    table_path: &[&str],
+    req: &http::Request)
+    -> Box<http::Response>
+{
+    http::Handler::handle_http_req(
+        &TableResource {
+            dbms: dbms,
+            table_path: table_path,
+        },
+        &[],
+        req,
+    )
 }
 
-impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for TableResource<'dbms, TDbms> {
+struct TableResource<'dbms, 'p, TDbms: dbms::Dbms + 'dbms> {
+    dbms: &'dbms TDbms,
+    table_path: &'p [&'p str],
+}
+
+impl<'dbms, 'p, TDbms: dbms::Dbms + 'dbms> http::Resource for TableResource<'dbms, 'p, TDbms> {
     fn patch(&self, req: &http::Request) -> Box<http::Response> {
 
         #[derive(Debug)]
@@ -30,6 +45,11 @@ impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for TableResource<'dbms, T
             changes: BTreeMap<String, Option<String>>,
             key: BTreeMap<String, Option<String>>,
         }
+
+        let credentials = match get_req_credentials(req) {
+            Ok(credentials) => credentials,
+            Err(err_resp) => return err_resp,
+        };
 
         let content = match req.content.as_ref() {
             Some(x) => x,
@@ -55,29 +75,21 @@ impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for TableResource<'dbms, T
             }),
         };
 
-        let ref table_path = self.table_path
-                                 .iter()
-                                 .map(|seg| &seg[..])
-                                 .collect::<Vec<_>>();
-
         let modify_result = match form.action {
             PatchAction::Update => self.dbms.update_row(
-                &self.user,
-                &self.password,
-                table_path,
+                credentials,
+                self.table_path,
                 &form.key,
                 &form.changes,
             ),
             PatchAction::Insert => self.dbms.insert_row(
-                &self.user,
-                &self.password,
-                table_path,
+                credentials,
+                self.table_path,
                 &form.changes,
             ),
             PatchAction::Delete => self.dbms.insert_row(
-                &self.user,
-                &self.password,
-                table_path,
+                credentials,
+                self.table_path,
                 &form.key,
             ),
         };
@@ -87,17 +99,7 @@ impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for TableResource<'dbms, T
                 status: http::Status::Ok,
                 content: affected_row,
             }),
-            Err(err) => Box::new(JsonResponse {
-                content: err.message,
-                status: match err.kind {
-                    dbms::ErrorKind::InvalidCredentials => http::Status::Unauthorized,
-                    dbms::ErrorKind::UnexistingPath => http::Status::NotFound,
-                    dbms::ErrorKind::UnexistingRow => http::Status::Conflict,
-                    dbms::ErrorKind::AmbiguousKey => http::Status::Conflict,
-                    dbms::ErrorKind::InvalidInput { .. } => http::Status::BadRequest,
-                    dbms::ErrorKind::InternalError => http::Status::InternalServerError,
-                },
-            }),
+            Err(ref err) => error_response(err),
         }
     }
 }

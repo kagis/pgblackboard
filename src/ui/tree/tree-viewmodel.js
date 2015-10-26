@@ -49,13 +49,15 @@ function TreeNode(nodeDTO) {
     /** @expose */
     this.comment = nodeDTO['comment'];
 
-    /** @expose
+    /**
      * toggler is visible when `hasChildren` is true
+     * @expose
      */
-    this.hasChildren = nodeDTO['has_children'];
+    this.hasChildren = nodeDTO['can_have_children'];
 
-    /** @expose
+    /**
      * horizontal line is drawn above groupStart node
+     * @expose
      */
     this.isGroupStart = nodeDTO['isGroupStart'];
 }
@@ -120,12 +122,7 @@ TreeNode.prototype.checkIsCollapsed = function () {
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
 
-    // var quotedDatabase = this.database;
-    // if (quotedDatabase.indexOf('"') !== -1) {
-    //     quotedDatabase = '"' + quotedDatabase.replace(/"/g, '""') + '"';
-    // }
-
-    this._sqlexec('definition', {
+    this._sqlexec('definitions', {
         success: function (resp) {
             doc(resp);
             doc.notifySubscribers(doc(), 'ready');
@@ -141,22 +138,16 @@ TreeNode.prototype.getDoc = function () {
 
 /** @private */
 TreeNode.prototype.loadChildren = function (options) {
-    return this._sqlexec('children', options);
+    return this._sqlexec('tree', options);
 };
 
 TreeNode.prototype._sqlexec = function (action, options) {
     var req = new XMLHttpRequest();
     req.onload = onLoad;
-    req.onerror = onLoadEnd;
-    req.open('GET', [
-        'databases',
-        this._nodeDTO['database'],
-        'objects',
-        this._nodeDTO['typ'],
-        this._nodeDTO['id'] || '_',
-        action
-    ].map(encodeURIComponent).join('/'));
-
+    req.onerror = onError;
+    req.open('GET', [action].concat(this._nodeDTO['path'])
+                            .map(encodeURIComponent)
+                            .join('/'));
     req.send();
 
     var callbackContext = this;
@@ -171,7 +162,7 @@ TreeNode.prototype._sqlexec = function (action, options) {
         }
     }
 
-    function onLoadEnd(e) {
+    function onError(e) {
         options.error.call(callbackContext);
     }
 };

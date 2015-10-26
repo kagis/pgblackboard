@@ -8,4 +8,5 @@ PGUSER=postgres \
 PGPASSWORD=postgres \
 cargo test -- --ignored
 
+sudo docker logs $CONTAINERID
 sudo docker rm --force $CONTAINERID

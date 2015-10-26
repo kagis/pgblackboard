@@ -7,7 +7,7 @@ use self::splitting::extract_connect_metacmd;
 use self::explain::queryplan_from_jsonstr;
 use super::connection::{ self, connect, Connection, Cursor, Oid };
 use super::ConnectionExt;
-use dbms::{ ExecEvent, Field, Column };
+use dbms::{ self, ExecEvent, Field, Column };
 use std::ops::Range;
 use std::collections::VecDeque;
 
@@ -26,8 +26,7 @@ pub struct PgExecIter {
 impl PgExecIter {
     pub fn new(
         pgaddr: &str,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         script: &str,
         selection: Option<Range<usize>>)
         -> PgExecIter
@@ -42,8 +41,7 @@ impl PgExecIter {
         let conn_result = connect(
             pgaddr,
             &database_and_script.database[..],
-            user,
-            password
+            credentials,
         );
 
         let mut conn = match conn_result {

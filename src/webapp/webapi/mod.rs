@@ -69,6 +69,19 @@ impl<'dbms, TDbms: Dbms + 'dbms> http::Handler for DbDir<'dbms, TDbms> {
     }
 }
 
+fn error_response(err: &dbms::Error) -> Box<http::Response> {
+    Box::new(JsonResponse {
+        content: err.message.clone(),
+        status: match err.kind {
+            dbms::ErrorKind::InvalidCredentials => http::Status::Unauthorized,
+            dbms::ErrorKind::UnexistingPath => http::Status::NotFound,
+            dbms::ErrorKind::UnexistingRow => http::Status::Conflict,
+            dbms::ErrorKind::AmbiguousKey => http::Status::Conflict,
+            dbms::ErrorKind::InvalidInput { .. } => http::Status::BadRequest,
+            dbms::ErrorKind::InternalError => http::Status::InternalServerError,
+        },
+    })
+}
 
 struct JsonResponse<T: Encodable> {
     status: http::Status,

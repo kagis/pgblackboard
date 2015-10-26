@@ -31,7 +31,7 @@ impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for IndexResource<'dbms, T
             InternalServerError,
         };
 
-        let (user, passwd) = match req.credentials.as_ref() {
+        let credentials = match req.credentials.as_ref() {
             Some(&Basic { ref user, ref passwd }) => (&user[..], &passwd[..]),
             // Some(..) => return Box::new(JsonResponse {
             //     status: Unauthorized,
@@ -43,10 +43,7 @@ impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for IndexResource<'dbms, T
             })
         };
 
-        let root_dbobjs_result = self.dbms.get_root_dbobjs(
-            user,
-            passwd,
-        );
+        let root_dbobjs_result = self.dbms.get_root_dbobjs(credentials);
 
         match root_dbobjs_result {
             Ok(root_dbobjs) => Box::new(IndexResponse {

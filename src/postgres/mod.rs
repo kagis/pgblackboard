@@ -1,6 +1,7 @@
 mod connection;
 mod decoder;
-mod tree;
+mod objchildren;
+mod objdef;
 mod execiter;
 mod sql;
 
@@ -8,7 +9,8 @@ mod sql;
 mod tests;
 
 use self::connection::{connect, Connection, SqlState, SqlStateClass, Oid};
-use self::tree::{definition_query, children_query};
+use self::objchildren::children_query;
+use self::objdef::definition_query;
 use self::execiter::PgExecIter;
 use self::sql::{quote_ident, quote_literal};
 use dbms;
@@ -24,16 +26,14 @@ impl dbms::Dbms for PgDbms {
 
     fn execute_script(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         script: &str,
         selection: Option<Range<usize>>)
         -> Self::ExecIter
     {
         PgExecIter::new(
             &self.addr[..],
-            user,
-            password,
+            credentials,
             script,
             selection,
         )
@@ -41,8 +41,7 @@ impl dbms::Dbms for PgDbms {
 
     fn insert_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         table_path: &[&str],
         row: &dbms::DictRow)
         -> dbms::Result<dbms::DictRow>
@@ -52,8 +51,7 @@ impl dbms::Dbms for PgDbms {
         let mut conn = try!(connect(
             &self.addr[..],
             database,
-            user,
-            password
+            credentials,
         ));
 
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
@@ -67,8 +65,7 @@ impl dbms::Dbms for PgDbms {
 
     fn update_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         table_path: &[&str],
         key: &dbms::DictRow,
         changes: &dbms::DictRow)
@@ -83,8 +80,7 @@ impl dbms::Dbms for PgDbms {
         let mut conn = try!(connect(
             &self.addr[..],
             database,
-            user,
-            password
+            credentials,
         ));
 
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
@@ -176,8 +172,7 @@ impl dbms::Dbms for PgDbms {
 
     fn delete_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         table_path: &[&str],
         key: &dbms::DictRow)
         -> dbms::Result<dbms::DictRow>
@@ -191,8 +186,7 @@ impl dbms::Dbms for PgDbms {
         let mut conn = try!(connect(
             &self.addr[..],
             database,
-            user,
-            password
+            credentials,
         ));
 
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
@@ -248,53 +242,79 @@ impl dbms::Dbms for PgDbms {
 
     fn get_root_dbobjs(
         &self,
-        user: &str,
-        password: &str)
+        credentials: dbms::Credentials)
         -> dbms::Result<Vec<dbms::DbObj>>
     {
         let conn = try!(connect(
             &self.addr[..],
             "postgres",
-            user,
-            password
+            credentials,
         ));
 
-        query_dbobj(
+        #[derive(RustcDecodable)]
+        struct DbObj_ {
+            database: String,
+            id: String,
+            typ: String,
+            name: String,
+            comment: Option<String>,
+            can_have_children: bool,
+        }
+
+        query_dbobj::<DbObj_>(
             conn,
-            include_str!("tree/children/databases.sql"),
+            include_str!("objchildren/databases.sql"),
             &[]
-        )
+        ).map(|dbobjs| dbobjs.into_iter().map(|it| dbms::DbObj {
+            path: vec![it.database, it.typ, it.id],
+            name: it.name,
+            comment: it.comment,
+            can_have_children: it.can_have_children,
+        }).collect())
     }
 
     fn get_child_dbobjs(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         parent_obj_path: &[&str])
         -> dbms::Result<Vec<dbms::DbObj>>
     {
+        #[derive(RustcDecodable)]
+        struct DbObj_ {
+            database: String,
+            id: String,
+            typ: String,
+            name: String,
+            comment: Option<String>,
+            can_have_children: bool,
+        }
+
         let (database, parent_dbobj_typ, parent_dbobj_id) = try!(unpack_obj_path(parent_obj_path));
 
         let conn = try!(connect(
             &self.addr[..],
             database,
-            user,
-            password
+            credentials,
         ));
 
         let query = try!(children_query(parent_dbobj_typ)
                             .ok_or(unexisting_path("Unknown object type")));
 
-        query_dbobj(conn, &query, &[
+        query_dbobj::<DbObj_>(conn, &query, &[
             Some(parent_dbobj_id),
             Some(parent_dbobj_typ),
-        ])
+        ]).map(|dbobjs| dbobjs.into_iter().map(|it| dbms::DbObj {
+            path: vec![it.database, it.typ, it.id],
+            name: it.name,
+            comment: it.comment,
+            can_have_children: it.can_have_children,
+        }).collect())
+
     }
 
     fn get_dbobj_script(
         &self,
-        user: &str,
-        password: &str,
+        credentials: dbms::Credentials,
         obj_path: &[&str])
         -> dbms::Result<String>
     {
@@ -303,8 +323,7 @@ impl dbms::Dbms for PgDbms {
         let conn = try!(connect(
             &self.addr[..],
             database,
-            user,
-            password
+            credentials,
         ));
 
         let query = try!(definition_query(dbobj_typ)

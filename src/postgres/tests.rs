@@ -15,8 +15,7 @@ fn update_one_row() {
      ).unwrap();
 
     get_dbms().update_row(
-        &get_pguser(),
-        &get_pgpassword(),
+        (&get_pguser(), &get_pgpassword()),
         &[&database, &format!("{}", foo_table_oid)],
         &dictrow(&[("id", Some("1"))]),
         &dictrow(&[("bar", Some("hi"))]),
@@ -42,8 +41,7 @@ fn update_more_than_one_row() {
 
     assert_eq!(
         get_dbms().update_row(
-            &get_pguser(),
-            &get_pgpassword(),
+            (&get_pguser(), &get_pgpassword()),
             &[&database, &format!("{}", foo_table_oid)],
             &dictrow(&[("id", Some("1"))]),
             &dictrow(&[("bar", Some("hi"))]),
@@ -70,8 +68,7 @@ fn update_unexisting_row() {
 
      assert_eq!(
         get_dbms().update_row(
-            &get_pguser(),
-            &get_pgpassword(),
+            (&get_pguser(), &get_pgpassword()),
             &[&database, &format!("{}", foo_table_oid)],
             &dictrow(&[("id", Some("1"))]),
             &dictrow(&[("bar", Some("hi"))]),
@@ -90,9 +87,8 @@ fn update_unexisting_table() {
     let database = create_database().unwrap();
     assert_eq!(
         get_dbms().update_row(
-            &get_pguser(),
-            &get_pgpassword(),
-            &[&database, "0", /* unexisting OID */],
+            (&get_pguser(), &get_pgpassword()),
+            &[&database, "0" /* unexisting OID */],
             &dictrow(&[("id", Some("1"))]),
             &dictrow(&[("bar", Some("hi"))]),
         ).unwrap_err().kind,
@@ -112,8 +108,7 @@ fn delete_one_row() {
      ).unwrap();
 
     get_dbms().delete_row(
-        &get_pguser(),
-        &get_pgpassword(),
+        (&get_pguser(), &get_pgpassword()),
         &[&database, &format!("{}", foo_table_oid)],
         &dictrow(&[("id", Some("1"))]),
     ).unwrap();
@@ -138,8 +133,7 @@ fn delete_more_than_one_row() {
 
     assert_eq!(
         get_dbms().delete_row(
-            &get_pguser(),
-            &get_pgpassword(),
+            (&get_pguser(), &get_pgpassword()),
             &[&database, &format!("{}", foo_table_oid)],
             &dictrow(&[("id", Some("1"))]),
         ).unwrap_err().kind,
@@ -166,8 +160,7 @@ fn delete_unexisting_row() {
 
     assert_eq!(
         get_dbms().delete_row(
-            &get_pguser(),
-            &get_pgpassword(),
+            (&get_pguser(), &get_pgpassword()),
             &[&database, &format!("{}", foo_table_oid)],
             &dictrow(&[("id", Some("1"))]),
         ).unwrap_err().kind,
@@ -235,31 +228,22 @@ fn create_database() -> ::std::result::Result<String, String> {
 
 #[test] #[ignore]
 fn list_databases() {
-
-    let _ = pgexec("postgres", "CREATE DATABASE test_list_databases");
-
     let root_dbobjs = get_dbms().get_root_dbobjs(
-        &get_pguser(),
-        &get_pgpassword(),
+        (&get_pguser(), &get_pgpassword()),
     ).unwrap();
 
-    assert!(root_dbobjs.iter().any(|it| it.name == "test_list_databases"));
-
+    assert!(root_dbobjs.iter().any(|it| it.name == "postgres"));
 }
 
 #[test] #[ignore]
 fn list_schemas() {
 
-    let _ = pgexec("postgres", "DROP DATABASE test_list_schemas_db");
-    pgexec("postgres", "CREATE DATABASE test_list_schemas_db").unwrap();
-    pgexec("test_list_schemas_db", "CREATE SCHEMA test_list_schemas_schema").unwrap();
+    let database = create_database().unwrap();
+    pgexec(&database, "CREATE SCHEMA test_list_schemas_schema").unwrap();
 
     let child_dbobjs = get_dbms().get_child_dbobjs(
-        &get_pguser(),
-        &get_pgpassword(),
-        &["test_list_schemas_db",
-        "database",
-        "test_list_schemas_db"],
+        (&get_pguser(), &get_pgpassword()),
+        &[&database, "database", "test_list_schemas_db"],
     ).unwrap();
 
     assert!(child_dbobjs.iter().any(|it| it.name == "test_list_schemas_schema"));

@@ -8,24 +8,21 @@ pub trait Dbms {
 
     fn execute_script(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         script: &str,
         selection: Option<Range<usize>>)
         -> Self::ExecIter;
 
     fn insert_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         table_path: &[&str],
         row: &DictRow)
         -> Result<DictRow>;
 
     fn update_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         table_path: &[&str],
         key: &DictRow,
         changes: &DictRow)
@@ -33,32 +30,30 @@ pub trait Dbms {
 
     fn delete_row(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         table_path: &[&str],
         key: &DictRow)
         -> Result<DictRow>;
 
     fn get_root_dbobjs(
         &self,
-        user: &str,
-        password: &str)
+        credentials: Credentials)
         -> Result<Vec<DbObj>>;
 
     fn get_child_dbobjs(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         parent_obj_path: &[&str])
         -> Result<Vec<DbObj>>;
 
     fn get_dbobj_script(
         &self,
-        user: &str,
-        password: &str,
+        credentials: Credentials,
         obj_path: &[&str])
         -> Result<String>;
 }
+
+pub type Credentials<'user, 'pwd> = (&'user str, &'pwd str);
 
 pub type DictRow = BTreeMap<String, Option<String>>;
 
@@ -150,7 +145,7 @@ impl ::std::error::Error for Error {
 pub enum ErrorKind {
     InvalidCredentials,
 
-    // Requesting table not exists
+    // Requesting table or other database object not found
     UnexistingPath,
 
     // Row with specified key was not found
@@ -171,35 +166,8 @@ pub enum ErrorKind {
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub struct DbObj {
-
-    /// Name of owner database
-    pub database: String,
-    pub id: String,
-    pub typ: String,
+    pub path: Vec<String>,
     pub name: String,
     pub comment: Option<String>,
-
-    // TODO: can_have_children
-    pub has_children: bool,
+    pub can_have_children: bool,
 }
-//
-// /// Describes error which may occur while
-// /// retrieving information about database objects.
-// #[derive(Debug)]
-// pub enum DbObjError {
-//
-//     /// Specified database name was not found.
-//     DatabaseNotFound,
-//
-//     /// Authorization failed.
-//     InvalidCredentials,
-//
-//     /// Unknown type of database object was specified.
-//     UnknownDbObjType,
-//
-//     /// DbObjNotFound
-//     DbObjNotFound,
-//
-//     /// Some other error
-//     InternalError(Box<::std::error::Error>),
-// }

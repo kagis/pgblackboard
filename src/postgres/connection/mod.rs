@@ -86,8 +86,7 @@ pub struct Connection {
 pub fn connect<T>(
     addr: T,
     database: &str,
-    user: &str,
-    password: &str)
+    credentials: (&str, &str))
     -> Result<Connection>
     where T: ToSocketAddrs
 {
@@ -98,8 +97,8 @@ pub fn connect<T>(
     Connection::startup(
         stream,
         database,
-        user,
-        password,
+        credentials.0,
+        credentials.1,
     )
 }
 
