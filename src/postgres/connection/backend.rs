@@ -473,11 +473,11 @@ fn read_row_description<T: Read>(reader: &mut T) -> io::Result<Vec<FieldDescript
                 id => Some(id)
             },
             typ_oid: try!(reader.read_u32_be()),
-            typ_modifier: try!(reader.read_i32_be()),
             typ_size: match try!(reader.read_i16_be()) {
                 len if len < 0 => DataTypeSize::Variable,
                 len => DataTypeSize::Fixed(len as usize),
             },
+            typ_modifier: try!(reader.read_i32_be()),
             format: match try!(reader.read_i16_be()) {
                 0 => FieldFormat::Text,
                 1 => FieldFormat::Binary,

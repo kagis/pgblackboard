@@ -152,13 +152,14 @@ module.exports = function (frameWindow, outputGlobal) {
             }
         }
 
-        var req = new XMLHttpRequest();
-        req.open('PATCH', [
-            'databases',
+        var tablePath = [
             table.getAttribute('data-database'),
-            'tables',
             table.getAttribute('data-table')
-        ].map(encodeURIComponent).join('/'));
+        ];
+        var req = new XMLHttpRequest();
+        req.open('PATCH', ['tables'].concat(tablePath)
+                                    .map(encodeURIComponent)
+                                    .join('/'));
         req.onloadend = onLoadEnd;
         req.onload = onLoad;
         req.send(JSON.stringify({

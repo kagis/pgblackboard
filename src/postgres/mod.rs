@@ -266,6 +266,7 @@ impl dbms::Dbms for PgDbms {
             include_str!("objchildren/databases.sql"),
             &[]
         ).map(|dbobjs| dbobjs.into_iter().map(|it| dbms::DbObj {
+            typ: it.typ.clone(),
             path: vec![it.database, it.typ, it.id],
             name: it.name,
             comment: it.comment,
@@ -304,6 +305,7 @@ impl dbms::Dbms for PgDbms {
             Some(parent_dbobj_id),
             Some(parent_dbobj_typ),
         ]).map(|dbobjs| dbobjs.into_iter().map(|it| dbms::DbObj {
+            typ: it.typ.clone(),
             path: vec![it.database, it.typ, it.id],
             name: it.name,
             comment: it.comment,

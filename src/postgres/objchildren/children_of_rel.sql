@@ -15,7 +15,7 @@ with param_cte as (
               end                                           as type
         ,concat_ws(' ', attname, ':'
             ,case when not attnotnull then 'nullable' end
-            ,format_type(atttypid, null)
+            ,format_type(atttypid, atttypmod)
         )                                                   as name
         ,col_description(attrelid, attnum)                  as comment
         ,false                                              as has_children

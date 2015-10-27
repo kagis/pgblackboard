@@ -169,5 +169,6 @@ pub struct DbObj {
     pub path: Vec<String>,
     pub name: String,
     pub comment: Option<String>,
+    pub typ: String,
     pub can_have_children: bool,
 }
