@@ -104,12 +104,12 @@
     left: 50%;
     margin-top: -.5em;
     margin-left: -.5em;
-    font-size: 40px;
+    font-size: 60px;
     opacity: .5;
 
     width: 1em;
     height: 1em;
-    border: .2em solid;
+    border: .1em solid;
     border-top-color: transparent;
     border-left-color: transparent;
     border-radius: 50%;

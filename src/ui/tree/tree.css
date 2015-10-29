@@ -39,18 +39,24 @@
     text-overflow: ellipsis;
     }
 
-.treenode__header--active {
-    font-weight: bold;
-    }
-
 /*.light*/ .treenode__header--active,
 /*.light*/ .treenode__header:hover {
     background-color: rgba(0, 0, 0, 0.1);
     }
 
+/*.light*/ .treenode__header--active {
+    color: black;
+    -box-shadow: 4px 0 0 -2px #8f908a inset;
+    }
+
 .dark .treenode__header--active,
 .dark .treenode__header:hover {
     background-color: rgba(255, 255, 255, .1);
+    }
+
+.dark .treenode__header--active {
+    color: white;
+    -box-shadow: 4px 0 0 -2px #333 inset;
     }
 
 .treenode__toggler {

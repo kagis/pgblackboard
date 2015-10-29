@@ -7,18 +7,25 @@
     line-height: 1.4375;
 }
 
-.myquery:hover,
-.myquery--active {
+/*.light*/.myquery:hover,
+/*.light*/.myquery--active {
     background-color: rgba(0,0,0,.1);
     }
+
+/*.light*/.myquery--active {
+    color: black;
+}
 
 .dark .myquery:hover,
 .dark .myquery--active {
     background-color: rgba(255,255,255,.1);
     }
 
+.dark .myquery--active {
+    color: white;
+}
+
 .myquery--active .myquery__name {
-    font-weight: bold;
     width: calc(100% - 4em);
     }
 

@@ -7,7 +7,7 @@ var redirect = require('connect-redirection');
 var bodyParser = require('body-parser');
 
 var app = connect()
-    .use(serveStatic(path.join(__dirname, 'src')))
+    .use(serveStatic(__dirname))
 
     .use(redirect())
     .use(bodyParser.urlencoded({ extended: false }))
