@@ -11,13 +11,20 @@ TreeNode.prototype.getDoc = function () {
 };
 
 TreeNode.prototype.loadChildren = function (options) {
-    setTimeout(
-        options.success.bind(
-            this,
-            options.parent.children || []
-        ),
-        500
-    );
+    if (options.parent.childrenLoadError) {
+        setTimeout(
+            options.error.bind(this, options.parent.childrenLoadError),
+            100
+        );
+    } else {
+        setTimeout(
+            options.success.bind(
+                this,
+                options.parent.children || []
+            ),
+            500
+        );
+    }
 };
 
 module.exports = {
@@ -35,6 +42,22 @@ module.exports = {
         database('database', [
 
         ]),
+
+        {
+            childrenLoadError: 'Database not found.',
+            name: 'unexisting',
+            typ: 'database',
+            can_have_children: true,
+            children: []
+        },
+
+        {
+            childrenLoadError: 'Network error occured.',
+            name: 'nonetwork',
+            typ: 'database',
+            can_have_children: true,
+            children: []
+        },
 
         schema('schema', [
         ]),
@@ -72,6 +95,8 @@ module.exports = {
 
         func('function'),
         agg('aggregate'),
+
+
     ],
     initialCode: 'demo'
 };

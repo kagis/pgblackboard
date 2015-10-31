@@ -1,0 +1,27 @@
+var ko = require('knockout');
+
+module.exports = {
+    'before': ['css'],
+    'init': function (element, valueAccessor) {
+        var modSplitter = '--';
+        var firstClassPref = element.className.trimLeft().split(' ')[0] + modSplitter;
+        var currentMod;
+        ko.computed(function () {
+            var value = ko.unwrap(valueAccessor());
+            if (typeof value == 'object') {
+                ko.utils.objectForEach(value, function (modName, shouldHaveMod) {
+                    ko.utils.toggleDomNodeCssClass(
+                        element,
+                        firstClassPref + modName,
+                        ko.unwrap(shouldHaveMod)
+                    );
+                });
+            } else {
+                value = String(value || '');
+                ko.utils.toggleDomNodeCssClass(element, firstClassPref + currentMod, false);
+                ko.utils.toggleDomNodeCssClass(element, firstClassPref + value, true);
+                currentMod = value;
+            }
+        }, null, { 'disposeWhenNodeIsRemoved': element });
+    }
+};

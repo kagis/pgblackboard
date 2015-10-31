@@ -27,10 +27,22 @@ module.exports = `
                data-bind="text: comment"></small>
       </a>
 
+      <div class="treenode__message-layout"
+           data-bind.mod.visible="message"
+           data-bind.with="message">
+        <div class="baloon">
+          <div class="treenode__message"
+               data-bind.mod.error="isError"
+               data-bind.mod.info="!ko.unwrap(isError)"
+               data-bind.text="body">
+          </div>
+        </div>
+      </div>
+
       <!-- ugly recursive template call -->
       <ul class="tree tree--children"
           data-bind="template: {
-            if: isExpanded,
+            if: nodes,
             foreach: nodes,
             nodes: ko.nativeTemplateEngine.instance.renderTemplate(
                       $element.parentNode.parentNode,

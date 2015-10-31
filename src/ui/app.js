@@ -22,7 +22,8 @@ var codeEditorDocExtender = require('./codeform/codemirror/codeeditordoc-extende
 
 ko.utils.extend(ko.bindingHandlers, {
     'codeEditor': codeEditorBinding,
-    'outputFrame': require('./output/outputframe-binding')
+    'outputFrame': require('./output/outputframe-binding'),
+    'mod': require('./bindings/mod')
 });
 
 ko.utils.extend(ko.extenders, {

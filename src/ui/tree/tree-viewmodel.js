@@ -10,21 +10,45 @@ function Tree(params) {
 
     /** @expose */
     this.nodes = params['nodes'].map(this.createNode, this);
+
+    /** @private */
+    this.lastNodeWithMessage = null;
 }
 
 Tree.TreeNode = TreeNode;
 
 /** @private */
 Tree.prototype.createNode = function (dto) {
-    return new TreeNode(dto);
+    return new TreeNode(dto, this);
+};
+
+/** @private */
+Tree.prototype.setNodeMessage = function (node, message) {
+    if (this.lastNodeWithMessage) {
+        this.lastNodeWithMessage.message(null);
+    }
+
+    if (message) {
+        this.lastNodeWithMessage = node;
+    }
+
+    node.message(message);
 };
 
 /** @constructor */
-function TreeNode(nodeDTO) {
-    this._nodeDTO = nodeDTO;
+function TreeNode(nodeDTO, ownerTree) {
+
+    /** @private */
+    this.nodeDTO = nodeDTO;
+
+    /** @private */
+    this.ownerTree = ownerTree;
 
     /** @expose */
-    this.nodes = ko.observable();
+    this.nodes = ko.observable(null);
+
+    /** @expose */
+    this.message = ko.observable(null);
 
     /** @expose */
     this.isExpanding = ko.observable(false);
@@ -80,7 +104,7 @@ TreeNode.prototype.collapse = function () {
 TreeNode.prototype.expand = function () {
     this.isExpanding(true);
     this.loadChildren({
-        parent: this._nodeDTO,
+        parent: this.nodeDTO,
         success: this.onChildrenLoaded.bind(this),
         error: this.onChildrenLoadError.bind(this)
     });
@@ -89,18 +113,29 @@ TreeNode.prototype.expand = function () {
 /** @private */
 TreeNode.prototype.onChildrenLoaded = function (nodeDTOs) {
     this.isExpanding(false);
-    this.nodes(nodeDTOs.map(this.createChild, this));
+    if (nodeDTOs.length > 0) {
+        this.ownerTree.setNodeMessage(this, null);
+        this.nodes(nodeDTOs.map(this.createChild, this));
+    } else {
+        this.ownerTree.setNodeMessage(this, {
+            'isError': false,
+            'body': 'There is no child items yet.'
+        });
+    }
 };
 
 /** @private */
 TreeNode.prototype.createChild = function (dto) {
-    return new this.constructor(dto);
+    return new this.constructor(dto, this.ownerTree);
 };
 
 /** @private */
-TreeNode.prototype.onChildrenLoadError = function () {
+TreeNode.prototype.onChildrenLoadError = function (errorMessage) {
     this.isExpanding(false);
-    alert('ERROR while loading child tree nodes.');
+    this.ownerTree.setNodeMessage(this, {
+        'isError': true,
+        'body': errorMessage
+    });
 };
 
 /** @private */
@@ -122,13 +157,13 @@ TreeNode.prototype.checkIsCollapsed = function () {
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
 
-    this._sqlexec('definitions', {
+    this.request('definitions', {
         success: function (resp) {
             doc(resp);
             doc.notifySubscribers(doc(), 'ready');
         },
-        error: function () {
-            doc('/*\n  ERROR while loading definition.\n*/');
+        error: function (message) {
+            doc('/*\n  ' + message + '\n*/');
             doc.notifySubscribers(doc(), 'ready');
         }
     });
@@ -138,14 +173,15 @@ TreeNode.prototype.getDoc = function () {
 
 /** @private */
 TreeNode.prototype.loadChildren = function (options) {
-    return this._sqlexec('tree', options);
+    return this.request('tree', options);
 };
 
-TreeNode.prototype._sqlexec = function (action, options) {
+/** @private */
+TreeNode.prototype.request = function (action, options) {
     var req = new XMLHttpRequest();
     req.onload = onLoad;
     req.onerror = onError;
-    req.open('GET', [action].concat(this._nodeDTO['path'])
+    req.open('GET', [action].concat(this.nodeDTO['path'])
                             .map(encodeURIComponent)
                             .join('/'));
     req.send();
@@ -153,16 +189,18 @@ TreeNode.prototype._sqlexec = function (action, options) {
     var callbackContext = this;
 
     function onLoad(e) {
+        var responseObj = JSON.parse(e.target.responseText);
         if (e.target.status === 200) {
-            // because IE does not support responseType='json'
-            var jsonResp = JSON.parse(e.target.responseText);
-            options.success.call(callbackContext, jsonResp);
+            options.success.call(callbackContext, responseObj);
         } else {
-            options.error.call(callbackContext);
+            options.error.call(callbackContext, responseObj);
         }
     }
 
     function onError(e) {
-        options.error.call(callbackContext);
+        options.error.call(
+            callbackContext,
+            'Network error occured.'
+        );
     }
 };

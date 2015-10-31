@@ -77,5 +77,8 @@ select_stmt_cte as (
     ) as select_stmt
     from select_attrs_cte
 )
-select (select select_stmt from select_stmt_cte) || e'\n\n/*\n'
-    || (select table_def from table_def_cte) || e'\n*/\n' as def
+select select_stmt
+    || e'\n\n/*\n'
+    || table_def
+    || e'\n*/\n' as def
+  from select_stmt_cte, table_def_cte

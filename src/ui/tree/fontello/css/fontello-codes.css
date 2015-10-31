@@ -1,7 +1,9 @@
 
 .fontello-table:before { content: '\e800'; } /* '' */
 .fontello-database:before { content: '\e801'; } /* '' */
+.fontello-error:before { content: '\e802'; } /* '' */
 .fontello-link:before { content: '\e803'; } /* '' */
+.fontello-info:before { content: '\e804'; } /* '' */
 .fontello-trigger:before { content: '\e805'; } /* '' */
 .fontello-schema:before { content: '\e806'; } /* '' */
 .fontello-check:before { content: '\e807'; } /* '' */

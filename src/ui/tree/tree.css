@@ -290,6 +290,96 @@
     opacity: .7;
     }
 
+.treenode__message-layout {
+    display: none;
+    margin-top: .5em;
+    margin-bottom: .4em;
+    }
+
+.treenode__message-layout--visible {
+    display: inline-block;
+    }
+
+.treenode__message {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    }
+
+.treenode__message::before {
+    font-family: 'tree-fontello';
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    speak: none;
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    text-align: center;
+    text-transform: none;
+    line-height: 1em;
+    margin-right: .3em;
+    }
+
+/*.light*/.treenode__message--info {
+    color: #888;
+    }
+
+.dark .treenode__message--info {
+    color: #aaa;
+    }
+
+.treenode__message--info::before {
+    content: '\e804';
+    }
+
+.treenode__message--error {
+    color: #D65151;
+    }
+
+.treenode__message--error::before {
+    content: '\e802';
+    }
+
+.baloon {
+    position: relative;
+    border: 1px solid;
+    padding: .3em .2em;
+    font-size: smaller;
+    border-radius: 2px;
+    min-width: 1em;
+    box-shadow: 0 0 .4em;
+    }
+
+/*.light*/.baloon {
+    background-color: white;
+    color: #ddd;
+    }
+
+.dark .baloon {
+    background-color: #333;
+    color: #222;
+    }
+
+/* tip */
+.baloon::before {
+    content: '';
+    position: absolute;
+    font-size: 8px;
+    width: 1em;
+    height: 1em;
+    box-sizing: border-box;
+    top: -.5em;
+    left: .8em;
+    background-color: inherit;
+    transform: rotate(45deg);
+    border: 1px solid;
+    border-left-color: inherit;
+    border-top-color: inherit;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    }
+
 @font-face {
     font-family: 'tree-fontello';
     src: url('./fontello/font/fontello.woff') format('woff');

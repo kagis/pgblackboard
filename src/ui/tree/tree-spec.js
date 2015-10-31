@@ -14,7 +14,9 @@ describe('tree node', function () {
     }
 
     beforeEach(function () {
-        treeNode = new TreeNode({});
+        treeNode = new TreeNode({}, {
+            setNodeMessage: function () {}
+        });
         spyOn(treeNode, 'loadChildren').and.callFake(function (options) {
             finishChildrenLoad = function (children) {
                 options.success.call(treeNode, children);
@@ -41,7 +43,7 @@ describe('tree node', function () {
 
     it('should collapse when toggle again', function () {
         treeNode.toggle();
-        finishChildrenLoad([]);
+        finishChildrenLoad([{ name: 'childNode' }]);
         treeNode.toggle();
         expect(treeNodeState()).toEqual(['collapsed']);
     });
