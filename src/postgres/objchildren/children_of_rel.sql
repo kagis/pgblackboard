@@ -19,7 +19,7 @@ with param_cte as (
         )                                                   as name
         ,col_description(attrelid, attnum)                  as comment
         ,false                                              as has_children
-        ,1                                                  as "group"
+        ,''                                                 as "group"
   from param_cte, pg_attribute
       left outer join pg_index on indrelid = attrelid and
                                   attnum = any(indkey) and
@@ -38,7 +38,7 @@ with param_cte as (
         ,conname                                            as name
         ,obj_description(oid, 'pg_constraint')              as comment
         ,false                                              as has_children
-        ,2                                                  as "group"
+        ,'constraints'                                      as "group"
   from param_cte, pg_constraint
   where contype in ('c', 'f', 'u')
       and conrelid = param_oid
@@ -50,7 +50,7 @@ with param_cte as (
         ,relname                                            as name
         ,obj_description(indexrelid, 'pg_class')            as comment
         ,false                                              as has_children
-        ,3                                                  as "group"
+        ,'indexes'                                          as "group"
   from param_cte, pg_index
       join pg_class on indexrelid = oid
       left outer join pg_constraint on conindid = indexrelid
@@ -65,7 +65,7 @@ with param_cte as (
         ,tgname                                             as name
         ,obj_description(oid, 'pg_trigger')                 as comment
         ,false                                              as has_children
-        ,4                                                  as "group"
+        ,'triggers'                                         as "group"
   from pg_trigger, param_cte
   where tgrelid = param_oid
       and tgconstraint = 0

@@ -271,6 +271,7 @@ impl dbms::Dbms for PgDbms {
             name: it.name,
             comment: it.comment,
             can_have_children: it.can_have_children,
+            group: "".to_string(),
         }).collect())
     }
 
@@ -288,6 +289,7 @@ impl dbms::Dbms for PgDbms {
             name: String,
             comment: Option<String>,
             can_have_children: bool,
+            group: String,
         }
 
         let (database, parent_dbobj_typ, parent_dbobj_id) = try!(unpack_obj_path(parent_obj_path));
@@ -310,6 +312,7 @@ impl dbms::Dbms for PgDbms {
             name: it.name,
             comment: it.comment,
             can_have_children: it.can_have_children,
+            group: it.group,
         }).collect())
 
     }

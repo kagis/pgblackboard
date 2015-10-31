@@ -18,8 +18,11 @@ function Tree(params) {
 Tree.TreeNode = TreeNode;
 
 /** @private */
-Tree.prototype.createNode = function (dto) {
-    return new TreeNode(dto, this);
+Tree.prototype.createNode = function (dto, index, array) {
+    var groupStart = index > 0 &&
+                     array[index - 1]['group'] != dto['group'] &&
+                     dto['group'];
+    return new TreeNode(dto, this, groupStart);
 };
 
 /** @private */
@@ -36,7 +39,7 @@ Tree.prototype.setNodeMessage = function (node, message) {
 };
 
 /** @constructor */
-function TreeNode(nodeDTO, ownerTree) {
+function TreeNode(nodeDTO, ownerTree, groupStart) {
 
     /** @private */
     this.nodeDTO = nodeDTO;
@@ -83,7 +86,7 @@ function TreeNode(nodeDTO, ownerTree) {
      * horizontal line is drawn above groupStart node
      * @expose
      */
-    this.isGroupStart = nodeDTO['isGroupStart'];
+    this.groupStart = groupStart;
 }
 
 /** @expose */
@@ -115,18 +118,13 @@ TreeNode.prototype.onChildrenLoaded = function (nodeDTOs) {
     this.isExpanding(false);
     if (nodeDTOs.length > 0) {
         this.ownerTree.setNodeMessage(this, null);
-        this.nodes(nodeDTOs.map(this.createChild, this));
+        this.nodes(nodeDTOs.map(this.ownerTree.createNode, this.ownerTree));
     } else {
         this.ownerTree.setNodeMessage(this, {
             'isError': false,
             'body': 'There is no child items yet.'
         });
     }
-};
-
-/** @private */
-TreeNode.prototype.createChild = function (dto) {
-    return new this.constructor(dto, this.ownerTree);
 };
 
 /** @private */

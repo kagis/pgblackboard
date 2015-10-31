@@ -1,7 +1,8 @@
 module.exports = `
   <ul class="tree" data-bind="foreach: nodes">
     <li class="treenode"
-        data-bind="css: { 'treenode--groupstart': isGroupStart }">
+        data-bind.mod.groupstart="groupStart"
+        data-bind.attr.data-group="groupStart">
 
       <button class="treenode__toggler"
               data-bind="click: toggle, visible: hasChildren">

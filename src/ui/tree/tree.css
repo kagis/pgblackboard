@@ -18,8 +18,29 @@
 .treenode--groupstart {
     border-top-width: 1px;
     border-top-style: dotted;
-    padding-top: .2em;
-    margin-top: .2em;
+    padding-top: .5em;
+    margin-top: .5em;
+    }
+
+.treenode--groupstart::before {
+    content: attr(data-group);
+    position: absolute;
+    top: -.5em;
+    left: 5em;
+    line-height: 1em;
+    font-size: x-small;
+    padding-left: .5em;
+    padding-right: .5em;
+    }
+
+/*.light*/ .treenode--groupstart::before {
+    color: #888;
+    background-color: #FCFCFC;
+    }
+
+.dark .treenode--groupstart::before {
+    color: #888;
+    background-color: #272822;
     }
 
 /*.light*/ .treenode--groupstart {

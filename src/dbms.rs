@@ -171,4 +171,5 @@ pub struct DbObj {
     pub comment: Option<String>,
     pub typ: String,
     pub can_have_children: bool,
+    pub group: String,
 }
