@@ -26,9 +26,10 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "build": "jake",
-    "test": "JASMINE_CONFIG_PATH=jasmine.json jasmine",
-    "start": "nodejs server.js",
+    "installdep-and-build": "npm install --production && npm run build",
+    "build": "jake -f ui/Jakefile.js",
+    "test": "JASMINE_CONFIG_PATH=ui/jasmine.json jasmine",
+    "start": "nodejs ui/dev/server.js",
     "lint": "npm run jshint && npm run jscs",
     "jshint": "jshint . --exclude node_modules",
     "jscs": "jscs . --exclude node_modules --verbose",

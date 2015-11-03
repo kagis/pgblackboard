@@ -1,6 +1,8 @@
+extern crate ui;
+
 use http;
 use std::io;
-use ui;
+
 
 pub const FAVICON_RESOURCE: StaticResource = StaticResource {
     content: ui::FAVICON_ICO,

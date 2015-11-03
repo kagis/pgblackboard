@@ -5,7 +5,6 @@
 
 extern crate argparse;
 extern crate rustc_serialize;
-extern crate ui;
 
 mod http;
 mod dbms;

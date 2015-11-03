@@ -1,9 +1,15 @@
+extern crate ui;
+
 use std::io;
+use std::io::Write;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
 use http;
 use dbms;
-use ui;
+use std::fmt::Display;
+
+
+
 
 pub fn handle_index_req<TDbms: dbms::Dbms>(
     dbms: &TDbms,
@@ -90,7 +96,7 @@ pub struct ErrorResponse<T> {
     pub message: T,
 }
 
-impl<T: ::std::fmt::Display> http::Response for ErrorResponse<T> {
+impl<T: Display> http::Response for ErrorResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("text/html; charset=utf-8"));

@@ -7,17 +7,19 @@ var redirect = require('connect-redirection');
 var bodyParser = require('body-parser');
 
 var app = connect()
-    .use(serveStatic(__dirname))
-
+    .use(serveStatic(path.join(__dirname, '..')))
     .use(redirect())
+    .use('/bundle-index.js', function (_req, res) {
+        res.redirect('/dev/bundle-index.js');
+    })
     .use(bodyParser.urlencoded({ extended: false }))
     .use('/exec', function (req, res, next) {
         switch (req.body.view) {
         case 'Table':
-            res.redirect('/output/table/table-demo.html');
+            res.redirect('output/table/table-demo.html');
             break;
         case 'Map':
-            res.redirect('/output/map/map-demo.html');
+            res.redirect('output/map/map-demo.html');
             break;
         }
     });

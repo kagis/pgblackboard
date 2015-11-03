@@ -25,13 +25,13 @@ function getJsSources(moduleName, jsSources) {
             requiredModuleName = path.join(baseDir, requiredModuleName);
             getJsSources(requiredModuleName, jsSources)
         } else {
-            jsSources[path.join('lib', requiredModuleName)] = true;
+            jsSources[path.join('ui/lib', requiredModuleName)] = true;
         }
     }
     return Object.keys(jsSources);
 }
 
-var jsSources = getJsSources('app.js');
+var jsSources = getJsSources('ui/app.js');
 
 var libs = {};
 jsSources.forEach(function (jsFilename) {
@@ -48,23 +48,23 @@ libs = Object.keys(libs);
 
 
 var jsExterns = [
-    'lib/knockout.extern.js',
-    'lib/codemirror.extern.js',
-    'lib/leaflet.extern.js'
+    'ui/lib/knockout.extern.js',
+    'ui/lib/codemirror.extern.js',
+    'ui/lib/leaflet.extern.js'
 ];
 
 var cssFiles = [
     'node_modules/codemirror/lib/codemirror.css',
-    'main/main.css',
-    'nav/nav.css',
-    'tree/tree.css',
-    'myqueries/myqueries.css',
-    'splitpanel/splitpanel.css',
-    'codeform/codeform.css',
-    'codeform/codemirror/codeeditor.css',
+    'ui/components/main/main.css',
+    'ui/components/nav/nav.css',
+    'ui/components/tree/tree.css',
+    'ui/components/myqueries/myqueries.css',
+    'ui/components/splitpanel/splitpanel.css',
+    'ui/components/codeform/codeform.css',
+    'ui/components/codeform/codemirror/codeeditor.css',
 ];
 
-var outdir = process.env.OUT_DIR || 'dist';
+var outdir = process.env.OUT_DIR || 'target/ui';
 var cachedir = path.join(outdir, 'cache');
 
 jake.mkdirP(cachedir);
@@ -84,17 +84,17 @@ task('clean', function () {
     jake.rmRf(outdir);
 });
 
-file(path.join(outdir, 'favicon.ico'), ['favicon.ico'], function () {
-    jake.cpR('favicon.ico', this.name);
+file(path.join(outdir, 'favicon.ico'), ['ui/favicon.ico'], function () {
+    jake.cpR('ui/favicon.ico', this.name);
 });
 
 var indexPrereqs = [
-    'index.html',
+    'ui/index.html',
      path.join(cachedir, 'loading-indicator.css')
 ];
 
 file(path.join(outdir, 'index.html'), indexPrereqs, function () {
-    var indexHtml = fs.readFileSync('index.html').toString();
+    var indexHtml = fs.readFileSync('ui/index.html').toString();
 
     // embedding loading indicator styles
     indexHtml = indexHtml.replace(
@@ -110,11 +110,11 @@ file(path.join(cachedir, 'app.css'),
     processCssTarget);
 
 file(path.join(outdir, 'err.html'),
-    ['err/err.html',
+    ['ui/err/err.html',
      path.join(cachedir, 'err.css')],
     function () {
 
-    var errHtml = readTextFromFile('err/err.html');
+    var errHtml = readTextFromFile('ui/err/err.html');
     errHtml = errHtml.replace(
         '<link rel="stylesheet" href="err.css" />',
         embeddedStyle(
@@ -127,7 +127,7 @@ file(path.join(outdir, 'err.html'),
 });
 
 file(path.join(cachedir, 'err.css'),
-    ['err/err.css'],
+    ['ui/err/err.css'],
     processCssTarget);
 
 var appjsPrereqs = jsSources.concat(jsExterns);
@@ -141,8 +141,8 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
         language_in: 'ECMASCRIPT6_STRICT',
         language_out: 'ECMASCRIPT5_STRICT',
         process_common_js_modules: true,
-        common_js_entry_module: 'app.js',
-        common_js_module_path_prefix: 'lib/',
+        common_js_entry_module: 'ui/app.js',
+        common_js_module_path_prefix: 'ui/lib/',
         output_wrapper: '(function(){%output%})();',
         export_local_property_definitions: true,
         generate_exports: true,
@@ -163,13 +163,13 @@ file(path.join(cachedir, 'app.js'), appjsPrereqs, { async: true }, function () {
 });
 
 var mapjsPrereqs = [
-    'output/map/map.js',
-    'lib/leaflet.extern.js'
+    'ui/output/map/map.js',
+    'ui/lib/leaflet.extern.js'
 ];
 
 file(path.join(cachedir, 'map.js'), mapjsPrereqs, { async: true }, function () {
     var targetFileName = this.name;
-    closureCompiler.compile(['output/map/map.js'], {
+    closureCompiler.compile(['ui/output/map/map.js'], {
         compilation_level: 'ADVANCED_OPTIMIZATIONS',
         warning_level: 'VERBOSE',
         formatting: 'PRETTY_PRINT',
@@ -181,7 +181,7 @@ file(path.join(cachedir, 'map.js'), mapjsPrereqs, { async: true }, function () {
         output_wrapper: '(function(){%output%})();',
 
         // If you specify a directory here, all files inside are used
-        externs: ['lib/leaflet.extern.js'],
+        externs: ['ui/lib/leaflet.extern.js'],
     },
     function (errorsAndWarnings, result) {
         if (result) {
@@ -231,12 +231,12 @@ file(path.join(outdir, 'bundle-index.js'), indexBundlePrereqs, function () {
 });
 
 file(path.join(cachedir, 'table.css'),
-    ['output/queryplan/queryplan.css',
-     'output/table/table.css'],
+    ['ui/output/queryplan/queryplan.css',
+     'ui/output/table/table.css'],
     processCssTarget);
 
 file(path.join(cachedir, 'loading-indicator.css'),
-    ['loading-indicator/loading-indicator.css'],
+    ['ui/loading-indicator/loading-indicator.css'],
     processCssTarget);
 
 file(path.join(outdir, 'bundle-map.js'),
@@ -259,7 +259,7 @@ file(path.join(outdir, 'bundle-map.js'),
 
 file(path.join(cachedir, 'map.css'),
     ['node_modules/leaflet/dist/leaflet.css',
-     'output/map/map.css'],
+     'ui/output/map/map.css'],
      processCssTarget);
 
 rule('.min.css', '.css', function () {

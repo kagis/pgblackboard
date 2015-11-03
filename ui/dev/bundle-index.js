@@ -1,13 +1,13 @@
 document.write(`
     <link href="http://cdnjs.cloudflare.com/ajax/libs/codemirror/5.0.0/codemirror.css" rel="stylesheet" />
-    <link href="codeform/codemirror/codeeditor.css" rel="stylesheet" />
+    <link href="components/codeform/codemirror/codeeditor.css" rel="stylesheet" />
 
-    <link href="main/main.css" rel="stylesheet" />
-    <link href="codeform/codeform.css" rel="stylesheet" />
-    <link href="splitpanel/splitpanel.css" rel="stylesheet" />
-    <link href="nav/nav.css" rel="stylesheet" />
-    <link href="myqueries/myqueries.css" rel="stylesheet" />
-    <link href="tree/tree.css" rel="stylesheet" />
+    <link href="components/main/main.css" rel="stylesheet" />
+    <link href="components/codeform/codeform.css" rel="stylesheet" />
+    <link href="components/splitpanel/splitpanel.css" rel="stylesheet" />
+    <link href="components/nav/nav.css" rel="stylesheet" />
+    <link href="components/myqueries/myqueries.css" rel="stylesheet" />
+    <link href="components/tree/tree.css" rel="stylesheet" />
 
     <script src="https://cdn.rawgit.com/ModuleLoader/es6-module-loader/v0.16.6/dist/es6-module-loader.src.js"></script>
     <script src="https://cdn.rawgit.com/systemjs/systemjs/0.16.11/dist/system.src.js"></script>
@@ -21,7 +21,7 @@ document.write(`
             "codemirror/*": "http://cdnjs.cloudflare.com/ajax/libs/codemirror/5.0.0/*.js",
         },
         "map": {
-            "root-bindingctx": "demo",
+            "root-bindingctx": "dev/demo",
             "codemirror/lib/codemirror": "codemirror"
         },
     });

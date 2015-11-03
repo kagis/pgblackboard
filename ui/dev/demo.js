@@ -1,5 +1,5 @@
 var ko = require('knockout');
-var TreeNode = require('./tree/tree-viewmodel').TreeNode;
+var TreeNode = require('../components/tree/tree-viewmodel').TreeNode;
 
 TreeNode.prototype.getDoc = function () {
     var doc = ko.observable().extend({ codeEditorDoc: true });
