@@ -1,9 +1,9 @@
 language: rust
 rust: nightly
 install:
-  - (cd src/ui && npm install)
+  - npm install
 script:
-  - (cd src/ui && npm test)
+  - npm test
   - cargo test
   - cargo test -- --ignored
 env:
