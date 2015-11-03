@@ -10,17 +10,20 @@ TreeNode.prototype.getDoc = function () {
     return doc;
 };
 
+/** @private */
+TreeNode.prototype.nodeLimit = 5;
+
 TreeNode.prototype.loadChildren = function (options) {
-    if (options.parent.childrenLoadError) {
+    if (this.path.childrenLoadError) {
         setTimeout(
-            options.error.bind(this, options.parent.childrenLoadError),
+            options.error.bind(this, this.path.childrenLoadError),
             100
         );
     } else {
         setTimeout(
             options.success.bind(
                 this,
-                options.parent.children || []
+                this.path.children || []
             ),
             500
         );
@@ -31,32 +34,39 @@ module.exports = {
     myQueriesStorage: window.sessionStorage,
     databases: [
         database('postgres', [
-            schema('information_schema', [
-
-            ]),
-            schema('pg_catalog', [
-            ]),
+            schema('information_schema'),
+            schema('pg_catalog'),
             schema('public'),
         ]),
 
         database('database', [
-
+            schema('information_schema'),
+            schema('pg_catalog'),
+            schema('public'),
+            schema('schema1'),
+            schema('schema2'),
+            schema('schema3'),
+            schema('schema4'),
+            schema('schema5'),
+            schema('schema6'),
+            schema('schema7'),
+            schema('schema8'),
+            schema('schema9'),
+            schema('schema10'),
         ]),
 
         {
-            childrenLoadError: 'Database not found.',
             name: 'unexisting',
             typ: 'database',
             can_have_children: true,
-            children: []
+            path: { childrenLoadError: 'Database not found.' }
         },
 
         {
-            childrenLoadError: 'Network error occured.',
             name: 'nonetwork',
             typ: 'database',
             can_have_children: true,
-            children: []
+            path: { childrenLoadError: 'Network error occured.' }
         },
 
         schema('schema', [
@@ -116,7 +126,7 @@ function database(name, children) {
         name: name,
         typ: 'database',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -125,7 +135,7 @@ function schema(name, children) {
         name: name,
         typ: 'schema',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -134,7 +144,7 @@ function extension(name, children) {
         name: name,
         typ: 'extension',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -143,7 +153,7 @@ function table(name, children) {
         name: name,
         typ: 'table',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -152,7 +162,7 @@ function view(name, children) {
         name: name,
         typ: 'view',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -161,7 +171,7 @@ function matview(name, children) {
         name: name,
         typ: 'matview',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -170,7 +180,7 @@ function foreigntable(name, children) {
         name: name,
         typ: 'foreigntable',
         can_have_children: true,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -179,7 +189,7 @@ function pkcolumn(name, children) {
         name: name,
         typ: 'pkcolumn',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -188,7 +198,7 @@ function fkcolumn(name, children) {
         name: name,
         typ: 'fkcolumn',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -197,7 +207,7 @@ function column(name, children) {
         name: name,
         typ: 'column',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -206,7 +216,7 @@ function index(name, children) {
         name: name,
         typ: 'index',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -215,7 +225,7 @@ function trigger(name, children) {
         name: name,
         typ: 'trigger',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -224,7 +234,7 @@ function foreignkey(name, children) {
         name: name,
         typ: 'foreignkey',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -233,7 +243,7 @@ function check(name, children) {
         name: name,
         typ: 'check',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -242,7 +252,7 @@ function unique(name, children) {
         name: name,
         typ: 'unique',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -251,7 +261,7 @@ function func(name, children) {
         name: name,
         typ: 'func',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }
 
@@ -260,6 +270,6 @@ function agg(name, children) {
         name: name,
         typ: 'agg',
         can_have_children: false,
-        children: children
+        path: { children: children }
     };
 }

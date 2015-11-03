@@ -81,6 +81,7 @@
     }
 
 .treenode__toggler {
+    display: none;
     position: absolute;
     left: -1.1em;
     top: .1875em;
@@ -99,6 +100,10 @@
     line-height: 1em;
     cursor: pointer;
     white-space: nowrap;
+    }
+
+.treenode__toggler--visible {
+    display: block;
     }
 
 .treenode__toggler:hover {
@@ -309,6 +314,47 @@
 
 .treenode__comment {
     opacity: .7;
+    }
+
+.treenode__showall-layout {
+    padding-left: 1.3em;
+    line-height: 1.4375em;
+    }
+
+.treenode__showall {
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: none;
+    outline: none;
+    font-family: inherit;
+    font-size: smaller;
+    line-height: 1em;
+    cursor: pointer;
+    white-space: nowrap;
+    color: #888;
+    }
+
+.treenode__showall::-webkit-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+.treenode__showall::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+    }
+
+.treenode__showall:hover {
+    text-decoration: underline;
+    }
+
+.treenode__showall::before {
+    content: '…';
+    margin-left: .4em;
+    speak: none;
+    text-decoration: none;
     }
 
 .treenode__message-layout {

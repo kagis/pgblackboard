@@ -1,9 +1,9 @@
 DOCKER_IMAGE=postgres-9.4 #pgblackboard_test_postgres
 sudo docker build --tag $DOCKER_IMAGE - < postgres.dockerfile
-CONTAINERID=$(sudo docker run --detach $DOCKER_IMAGE)
+CONTAINERID=$(sudo docker run --publish 5432 --detach $DOCKER_IMAGE)
 
-PGHOST=$(sudo docker inspect --format='{{.NetworkSettings.IPAddress}}' $CONTAINERID) \
-PGPORT=5432 \
+PGHOST=localhost \
+PGPORT=$(sudo docker inspect --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}' $CONTAINERID) \
 PGUSER=postgres \
 PGPASSWORD=postgres \
 cargo test -- --ignored

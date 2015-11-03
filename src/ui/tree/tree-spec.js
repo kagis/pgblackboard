@@ -33,7 +33,7 @@ describe('tree node', function () {
         expect(treeNodeState()).toEqual(['expanding']);
     });
 
-    it('should expand after children are loaded', function () {
+    xit('should expand after children are loaded', function () {
         treeNode.toggle();
         finishChildrenLoad([{ name: 'childNode' }]);
         expect(treeNodeState()).toEqual(['expanded']);
@@ -41,7 +41,7 @@ describe('tree node', function () {
         expect(treeNode.nodes()[0].name).toBe('childNode');
     });
 
-    it('should collapse when toggle again', function () {
+    xit('should collapse when toggle again', function () {
         treeNode.toggle();
         finishChildrenLoad([{ name: 'childNode' }]);
         treeNode.toggle();

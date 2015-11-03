@@ -1,31 +1,32 @@
 module.exports = `
-  <ul class="tree" data-bind="foreach: nodes">
+  <ul class="tree" data-bind.foreach="nodes">
     <li class="treenode"
         data-bind.mod.groupstart="groupStart"
         data-bind.attr.data-group="groupStart">
 
       <button class="treenode__toggler"
-              data-bind="click: toggle, visible: hasChildren">
+              data-bind.mod.visible="isExpandable"
+              data-bind.click="toggle">
 
         <i class="treenode__toggler-icon"
-           data-bind="css: { 'treenode__toggler-icon--collapsed': isCollapsed,
-                             'treenode__toggler-icon--expanding': isExpanding,
-                             'treenode__toggler-icon--expanded': isExpanded }"></i>
+           data-bind.mod.collapsed="isCollapsed"
+           data-bind.mod.expanding="isExpanding"
+           data-bind.mod.expanded="isExpanded"></i>
 
       </button>
 
       <a class="treenode__header"
-         data-bind="css: { 'treenode__header--active': isSelected },
-                    click: $component.selectNode,
-                    attr: { title: comment }">
+         data-bind.mod.active="isSelected"
+         data-bind.attr.title="comment"
+         data-bind.click="$component.selectNode">
 
         <i class="treenode__icon"
-           data-bind="css: 'treenode__icon--' + type"></i>
+           data-bind.mod="type"></i>
 
-        <span data-bind="text: name"></span>
+        <span data-bind.text="name"></span>
 
         <small class="treenode__comment"
-               data-bind="text: comment"></small>
+               data-bind.text="comment"></small>
       </a>
 
       <div class="treenode__message-layout"
@@ -51,6 +52,14 @@ module.exports = `
                       {},
                       $element.ownerDocument)
           }"></ul>
+
+      <div class="treenode__showall-layout"
+           data-bind.if="nodesAreLimited">
+        <button class="treenode__showall"
+                data-bind.click="showAllNodes">
+          show all <strong data-bind.text="allNodesCount"></strong> items
+        </button>
+      </div>
     </li>
   </ul>
 `;

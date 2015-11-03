@@ -42,13 +42,25 @@ Tree.prototype.setNodeMessage = function (node, message) {
 function TreeNode(nodeDTO, ownerTree, groupStart) {
 
     /** @private */
-    this.nodeDTO = nodeDTO;
+    this.path = nodeDTO['path'];
 
     /** @private */
     this.ownerTree = ownerTree;
 
+    /** @private */
+    this.allNodes = ko.observable(null);
+
     /** @expose */
-    this.nodes = ko.observable(null);
+    this.allNodesCount = ko.pureComputed(this.getAllNodesCount, this);
+
+    /** @expose */
+    this.limitNodes = ko.observable(true);
+
+    /** @expose */
+    this.nodesAreLimited = ko.pureComputed(this.checkNodesAreLimited, this);
+
+    /** @expose */
+    this.nodes = ko.pureComputed(this.getNodes, this);
 
     /** @expose */
     this.message = ko.observable(null);
@@ -61,8 +73,6 @@ function TreeNode(nodeDTO, ownerTree, groupStart) {
 
     /** @expose */
     this.isCollapsed = ko.pureComputed(this.checkIsCollapsed, this);
-
-    this.expansionState = ko.pureComputed(this.getExpansionState, this);
 
     /** @expose */
     this.isSelected = ko.observable(false);
@@ -77,10 +87,10 @@ function TreeNode(nodeDTO, ownerTree, groupStart) {
     this.comment = nodeDTO['comment'];
 
     /**
-     * toggler is visible when `hasChildren` is true
+     * toggler is visible when `isExpandable` is true
      * @expose
      */
-    this.hasChildren = nodeDTO['can_have_children'];
+    this.isExpandable = nodeDTO['can_have_children'];
 
     /**
      * horizontal line is drawn above groupStart node
@@ -88,6 +98,33 @@ function TreeNode(nodeDTO, ownerTree, groupStart) {
      */
     this.groupStart = groupStart;
 }
+
+/** @private */
+TreeNode.prototype.nodeLimit = 200;
+
+/** @private */
+TreeNode.prototype.getAllNodesCount = function () {
+    return this.allNodes() && this.allNodes().length;
+};
+
+/** @private */
+TreeNode.prototype.checkNodesAreLimited = function () {
+    var limitedNodes = this.nodes();
+    var allNodes = this.allNodes();
+    return Boolean(
+        allNodes &&
+        limitedNodes &&
+        limitedNodes.length < allNodes.length
+    );
+};
+
+/** @private */
+TreeNode.prototype.getNodes = function () {
+    var allNodes = this.allNodes();
+    return allNodes && (
+        this.limitNodes() ? allNodes.slice(0, this.nodeLimit) : allNodes
+    );
+};
 
 /** @expose */
 TreeNode.prototype.toggle = function () {
@@ -98,16 +135,21 @@ TreeNode.prototype.toggle = function () {
     }
 };
 
+/** @expose */
+TreeNode.prototype.showAllNodes = function () {
+    this.limitNodes(false);
+};
+
 /** @private */
 TreeNode.prototype.collapse = function () {
-    this.nodes(null);
+    this.allNodes(null);
+    this.limitNodes(true);
 };
 
 /** @private */
 TreeNode.prototype.expand = function () {
     this.isExpanding(true);
     this.loadChildren({
-        parent: this.nodeDTO,
         success: this.onChildrenLoaded.bind(this),
         error: this.onChildrenLoadError.bind(this)
     });
@@ -118,7 +160,7 @@ TreeNode.prototype.onChildrenLoaded = function (nodeDTOs) {
     this.isExpanding(false);
     if (nodeDTOs.length > 0) {
         this.ownerTree.setNodeMessage(this, null);
-        this.nodes(nodeDTOs.map(this.ownerTree.createNode, this.ownerTree));
+        this.allNodes(nodeDTOs.map(this.ownerTree.createNode, this.ownerTree));
     } else {
         this.ownerTree.setNodeMessage(this, {
             'isError': false,
@@ -134,12 +176,6 @@ TreeNode.prototype.onChildrenLoadError = function (errorMessage) {
         'isError': true,
         'body': errorMessage
     });
-};
-
-/** @private */
-TreeNode.prototype.getExpansionState = function (argument) {
-    return this.isExpanding() ? 'expanding' :
-           this.isExpanded() ? 'expanded' : 'collapsed';
 };
 
 /** @private */
@@ -179,7 +215,7 @@ TreeNode.prototype.request = function (action, options) {
     var req = new XMLHttpRequest();
     req.onload = onLoad;
     req.onerror = onError;
-    req.open('GET', [action].concat(this.nodeDTO['path'])
+    req.open('GET', [action].concat(this.path)
                             .map(encodeURIComponent)
                             .join('/'));
     req.send();

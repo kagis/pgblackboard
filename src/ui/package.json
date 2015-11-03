@@ -15,7 +15,7 @@
   "dependencies": {
     "knockout": "~3.3.0",
     "leaflet": "~0.7.3",
-    "codemirror": "~5.0.0",
+    "codemirror": "~5.8.0",
     "jake": "~8.0.12",
     "closurecompiler": "^1.5.1",
     "autoprefixer-core": "~5.1.7",
@@ -49,5 +49,12 @@
     "excludeFiles": [
       "node_modules/**"
     ]
+  },
+  "eslintConfig": {
+    "extends": "eslint:recommended",
+    "ecmaFeatures": {
+      "blockBindings": true,
+      "templateStrings": true
+    }
   }
 }
