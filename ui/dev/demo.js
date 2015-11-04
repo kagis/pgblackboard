@@ -10,7 +10,6 @@ TreeNode.prototype.getDoc = function () {
     return doc;
 };
 
-/** @private */
 TreeNode.prototype.nodeLimit = 5;
 
 TreeNode.prototype.loadChildren = function (options) {
