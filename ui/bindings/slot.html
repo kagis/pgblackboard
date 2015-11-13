@@ -7,7 +7,7 @@ require(['knockout'], function (ko) {
       var bindingValue = valueAccessor();
       var slotName;
       var slotData;
-      if (typeof bindingValue == 'string') {
+      if (bindingValue === null || typeof bindingValue == 'string') {
         slotName = bindingValue;
       } else if (typeof bindingValue == 'object') {
         slotName = bindingValue['name'];
