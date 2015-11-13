@@ -1,6 +1,7 @@
 <link rel="import" href="../knockout.html" />
 <link rel="import" href="../knockout-flatbind.html" />
 <link rel="import" href="../bindings/cssmod.html" />
+<link rel="import" href="../bindings/slot.html" />
 
 <style media="screen">
 .splitpanel-v__splitter,
@@ -94,8 +95,7 @@
 
   <div class="splitpanel-h__left"
      data-bind-style="aPanelPos"
-     data-bind-template.nodes="[aPanelContent]"
-     data-bind-template.data="$parent">
+     data-bind-slot="'left'">
   </div>
 
   <div class="splitpanel-h__splitter"
@@ -105,8 +105,7 @@
 
   <div class="splitpanel-h__right"
      data-bind-style="bPanelPos"
-     data-bind-template.nodes="[bPanelContent]"
-     data-bind-template.data="$parent">
+     data-bind-slot="'right'">
   </div>
   </div>
 </script>
@@ -117,8 +116,7 @@
 
   <div class="splitpanel-v__top"
      data-bind-style="aPanelPos"
-     data-bind-template.nodes="[aPanelContent]"
-     data-bind-template.data="$parent">
+     data-bind-slot="'top'">
   </div>
 
   <div class="splitpanel-v__splitter"
@@ -128,8 +126,7 @@
 
   <div class="splitpanel-v__bottom"
      data-bind-style="bPanelPos"
-     data-bind-template.nodes="[bPanelContent]"
-     data-bind-template.data="$parent">
+     data-bind-slot="'bottom'">
   </div>
   </div>
 </script>
@@ -137,27 +134,8 @@
 <script>
 define('pgbb-splitpanel-viewmodel', ['knockout'], function (ko) {
 
-  function splitPanelViewModel(isHorizontal) {
-    function createViewModel(params, componentInfo) {
-      var elemTemplateNodes = componentInfo['templateNodes'].filter(
-        function (node) { return node.nodeType == 1; }
-      );
-      var panel1 = elemTemplateNodes[0];
-      var panel2 = elemTemplateNodes[1];
-      return new SplitPanel(panel1, panel2, isHorizontal);
-    }
-
-    return { 'createViewModel': createViewModel };
-  }
-
   /** @constructor */
-  function SplitPanel(aPanelContent, bPanelContent, isHorizontal) {
-    /** @expose */
-    this.aPanelContent = aPanelContent;
-
-    /** @expose */
-    this.bPanelContent = bPanelContent;
-
+  function SplitPanel(isHorizontal) {
     /** @expose */
     this.aPanelPos = ko.observable();
 
@@ -246,7 +224,7 @@ define('pgbb-splitpanel-viewmodel', ['knockout'], function (ko) {
     ko.utils.triggerEvent(window.document, 'resize');
   };
 
-  return splitPanelViewModel;
+  return SplitPanel;
 
 });
 </script>
@@ -256,12 +234,12 @@ require(['knockout', 'pgbb-splitpanel-viewmodel'], function (ko, viewModel) {
   ko.components.register('pgbb-splitpanel-h', {
     synchronous: true,
     template: { element: 'pgbb-splitpanel-h-template' },
-    viewModel: viewModel(true /* isHorizontal */)
+    viewModel: viewModel.bind(null, true /* isHorizontal */)
   });
   ko.components.register('pgbb-splitpanel-v', {
     synchronous: true,
     template: { element: 'pgbb-splitpanel-v-template' },
-    viewModel: viewModel(false /* isHorizontal */)
+    viewModel:  viewModel.bind(null, false /* isHorizontal */)
   });
 });
 </script>

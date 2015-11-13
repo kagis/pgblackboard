@@ -195,29 +195,30 @@
          data-bind-component="'pgbb-splitpanel-h'">
 
       <div class="main__nav"
-           data-bind="component: {
-             name: 'pgbb-nav',
-             params: {
-               selectedDoc: selectedDoc,
-               databases: databases,
-               myQueriesStorage: myQueriesStorage
-             }
-           }"></div>
+           slot="left"
+           data-bind-component.name="'pgbb-nav'"
+           data-bind-component.params.selected_doc="selectedDoc"
+           data-bind-component.params.databases="databases"
+           data-bind-component.params.my_queries_storage="myQueriesStorage">
+      </div>
 
       <div class="main__splitpanel-v"
-           data-bind="component: 'pgbb-splitpanel-v'">
+           slot="right"
+           data-bind-component="'pgbb-splitpanel-v'">
 
         <form class="main__codeform"
               target="output-iframe"
               method="POST"
               action="exec"
-              data-bind="component: {
-                name: 'pgbb-codeform',
-                params: { doc: selectedDoc }
-              }, submit: onCodeFormSubmit"></form>
+              slot="top"
+              data-bind-component.name="'pgbb-codeform'"
+              data-bind-component.params.doc="selectedDoc"
+              data-bind-submit="onCodeFormSubmit">
+        </form>
 
         <iframe class="main__output"
                 name="output-iframe"
+                slot="bottom"
                 data-bind="outputFrame: {
                   doc: selectedDoc,
                   isDark: isDark
