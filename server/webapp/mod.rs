@@ -4,6 +4,7 @@ mod tree;
 mod definitions;
 mod tables;
 mod statres;
+mod ui;
 
 use http;
 use dbms;
@@ -39,7 +40,7 @@ impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
 
             // static resources
             ["favicon.ico"] => FAVICON_RESOURCE.handle_http_req(&[], req),
-            ["bundle-index.js"] => BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
+            ["pgblackboard.js"] => BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
             ["bundle-map.js"] => BUNDLE_MAP_RESOURCE.handle_http_req(&[], req),
 
             _ => Box::new(index::ErrorResponse {

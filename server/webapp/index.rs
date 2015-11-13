@@ -1,4 +1,4 @@
-extern crate ui;
+use super::ui;
 
 use std::io;
 use std::io::Write;

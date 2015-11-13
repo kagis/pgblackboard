@@ -3,35 +3,15 @@
 <head>
   <title></title>
 
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/jasmine-html.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.2.1/boot.js"></script>
-
-
-  <script type="text/javascript">
-  var runSpecs = window.onload;
-  window.onload = null;
-  </script>
-
-  <script src="https://cdn.rawgit.com/ModuleLoader/es6-module-loader/v0.16.6/dist/es6-module-loader.src.js"></script>
-  <script src="https://cdn.rawgit.com/systemjs/systemjs/0.16.11/dist/system.src.js"></script>
-  <script>
-  System.config({
-    paths: {
-      'knockout': 'https://cdnjs.cloudflare.com/ajax/libs/knockout/3.3.0/knockout-debug.js'
-    }
-  });
-  Promise.all([
-    System.load('src/myqueries/myqueries-spec'),
-    System.load('src/nav/nav-spec'),
-    System.load('src/tree/tree-spec'),
-    System.load('src/codeform/codeform-spec')
-  ]).then(function () {
-    runSpecs();
-  });
-  </script>
-
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.3.4/jasmine.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.3.4/jasmine.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.3.4/jasmine-html.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jasmine/2.3.4/boot.js"></script>
+  <link rel="import" href="imd.html" />
+  <link rel="import" href="spec/myqueries-spec.html" />
+  <link rel="import" href="spec/tree-spec.html" />
+  <link rel="import" href="spec/nav-spec.html" />
+  <link rel="import" href="spec/codeform-spec.html" />
 </head>
 <body>
 

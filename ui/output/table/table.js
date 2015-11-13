@@ -1,4 +1,4 @@
-var queryPlan = require('../queryplan/queryplan');
+var queryPlan = require('../queryplan/queryplan.js');
 
 module.exports = function (frameWindow, outputGlobal) {
 

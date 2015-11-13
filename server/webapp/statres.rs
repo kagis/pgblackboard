@@ -1,4 +1,4 @@
-extern crate ui;
+use super::ui;
 
 use http;
 use std::io;

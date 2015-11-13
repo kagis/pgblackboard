@@ -1,5 +1,5 @@
 var ko = require('knockout');
-var setupOutputFrameForTable = require('./table/table');
+var setupOutputFrameForTable = require('./table/table.js');
 // var setupOutputFrameForMap = require ('./map/map');
 
 module.exports = {
@@ -76,4 +76,3 @@ function setupOutputFrame(outputFrameEl, outputFrameContext, tableOrMap) {
     }
 
 }
-

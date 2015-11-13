@@ -1,4 +1,4 @@
-var d3 = require('./d3');
+var d3 = require('./d3.js');
 var ko = require('knockout');
 var queryplanTemplate = require('./queryplan-template.html');
 
