@@ -20,7 +20,7 @@ require(['knockout'], function (ko) {
       }
 
       var slotTemplateElems = ko.utils.arrayFilter(componentTemplateNodes, function (elem) {
-        return elem.nodeType == 1 && elem.getAttribute('slot') === (slotName || null);
+        return (elem.nodeType == 1 && elem.getAttribute('slot') || null) === (slotName || null);
       });
 
       var outerContext = bindingContext;
