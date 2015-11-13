@@ -3,14 +3,18 @@
 
 <link rel="stylesheet" href="../../node_modules/codemirror/lib/codemirror.css" />
 
-<script>define.amd = false;</script>
+<script>
+delete define.amd;
+</script>
 <script src="../../node_modules/codemirror/lib/codemirror.js"></script>
 <script src="../../node_modules/codemirror/addon/search/searchcursor.js"></script>
 <script src="../../node_modules/codemirror/keymap/sublime.js"></script>
 <script src="../../node_modules/codemirror/addon/edit/matchbrackets.js"></script>
 <script src="../../node_modules/codemirror/addon/edit/closebrackets.js"></script>
 <script src="../../node_modules/codemirror/mode/sql/sql.js"></script>
-<script>define.amd = {};</script>
+<script>
+define.amd = {};
+</script>
 <script>
 define('codemirror', function () {
   return window.CodeMirror;
@@ -161,35 +165,35 @@ require(['knockout', 'codemirror'], function (ko, CodeMirror) {
   };
 
   function initCodemirror(element, valueAccessor, allBindings) {
-      var codemirrorInst = CodeMirror.fromTextArea(element, {
-          'lineNumbers': true,
-          'matchBrackets': true,
-          'showCursorWhenSelecting': true,
-          'autoCloseBrackets': true,
-          'autofocus': true,
-          'mode': 'text/x-pgsql',
-          'keyMap': 'sublime',
-          'gutters': [
-              'CodeMirror-linenumbers',
-              'CodeMirror__annotations-gutter'
-          ]
-      });
+    var codemirrorInst = CodeMirror.fromTextArea(element, {
+      'lineNumbers': true,
+      'matchBrackets': true,
+      'showCursorWhenSelecting': true,
+      'autoCloseBrackets': true,
+      'autofocus': true,
+      'mode': 'text/x-pgsql',
+      'keyMap': 'sublime',
+      'gutters': [
+        'CodeMirror-linenumbers',
+        'CodeMirror__annotations-gutter'
+      ]
+    });
 
-      window.codemirrorInst = codemirrorInst;
+    window.codemirrorInst = codemirrorInst;
 
-      // add gutter shadow when scrolled horizontal
-      codemirrorInst.on('scroll', function () {
-          ko.utils.toggleDomNodeCssClass(
-              codemirrorInst.display.gutters,
-              'CodeMirror-gutters--overlaying',
-              codemirrorInst.getScrollInfo().left > 1
-          );
-      });
+    // add gutter shadow when scrolled horizontal
+    codemirrorInst.on('scroll', function () {
+      ko.utils.toggleDomNodeCssClass(
+        codemirrorInst.display.gutters,
+        'CodeMirror-gutters--overlaying',
+        codemirrorInst.getScrollInfo().left > 1
+      );
+    });
 
-      ko.computed(function () {
-          var updatedDoc = allBindings.get('value');
-          codemirrorInst.swapDoc(updatedDoc['codemirrorDoc']);
-      });
+    ko.computed(function () {
+      var updatedDoc = allBindings.get('value');
+      codemirrorInst.swapDoc(updatedDoc['codemirrorDoc']);
+    });
   }
 });
 </script>
@@ -197,79 +201,79 @@ require(['knockout', 'codemirror'], function (ko, CodeMirror) {
 <script>
 require(['knockout', 'codemirror'], function (ko, CodeMirror) {
   ko.extenders['codeEditorDoc'] = function (target) {
-      var codemirrorDoc = new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql');
+    var codemirrorDoc = new CodeMirror.Doc(target.peek() || '', 'text/x-pgsql');
 
-      // use quoted keys to prevent properties conflict
-      // after closure compiler rename
-      ko.utils.extend(target, {
-          'codemirrorDoc': codemirrorDoc,
-          'errors': ko.observableArray(),
-          'selectionRange': ko.observable()
+    // use quoted keys to prevent properties conflict
+    // after closure compiler rename
+    ko.utils.extend(target, {
+      'codemirrorDoc': codemirrorDoc,
+      'errors': ko.observableArray(),
+      'selectionRange': ko.observable()
+    });
+
+    function trackDocChange() {
+      codemirrorDoc.on('change', function () {
+        target(codemirrorDoc.getValue());
       });
+    }
 
-      function trackDocChange() {
-          codemirrorDoc.on('change', function () {
-              target(codemirrorDoc.getValue());
-          });
+    if (target() == undefined /* not ready */) {
+      var readySubscription = target.subscribe(function () {
+        readySubscription.dispose();
+        trackDocChange();
+      }, null, 'ready');
+    } else {
+      trackDocChange();
+    }
+
+    codemirrorDoc.on('beforeSelectionChange', function (_, params) {
+      var range = params['ranges'][0];
+      target['selectionRange']({
+        anchorLine: range['anchor']['line'],
+        anchorCol: range['anchor']['ch'],
+        headLine: range['head']['line'],
+        headCol: range['head']['ch']
+      });
+    });
+
+    target.subscribe(function (value) {
+      if (codemirrorDoc.getValue() !== value) {
+        codemirrorDoc.setValue(value);
+      }
+    });
+
+    target['errors'].subscribe(function (changes) {
+      changes.forEach(setError);
+    }, null, 'arrayChange');
+
+    function setError(change) {
+      if ('moved' in change) {
+        return;
       }
 
-      if (target() == undefined /* not ready */) {
-          var readySubscription = target.subscribe(function () {
-              readySubscription.dispose();
-              trackDocChange();
-          }, null, 'ready');
-      } else {
-          trackDocChange();
+      var codemirrorInst = codemirrorDoc.getEditor();
+      if (!codemirrorInst) {
+        return;
       }
 
-      codemirrorDoc.on('beforeSelectionChange', function (_, params) {
-          var range = params['ranges'][0];
-          target['selectionRange']({
-              anchorLine: range['anchor']['line'],
-              anchorCol: range['anchor']['ch'],
-              headLine: range['head']['line'],
-              headCol: range['head']['ch']
-          });
-      });
-
-      target.subscribe(function (value) {
-          if (codemirrorDoc.getValue() !== value) {
-              codemirrorDoc.setValue(value);
-          }
-      });
-
-      target['errors'].subscribe(function (changes) {
-          changes.forEach(setError);
-      }, null, 'arrayChange');
-
-      function setError(change) {
-          if ('moved' in change) {
-              return;
-          }
-
-          var codemirrorInst = codemirrorDoc.getEditor();
-          if (!codemirrorInst) {
-              return;
-          }
-
-          switch (change.status) {
-          case 'added':
-              var marker = document.createElement('div');
-              marker.className = 'CodeMirror__error-gutter-marker';
-              marker.dataset.title = change.value.message;
-              codemirrorInst.setGutterMarker(change.value['line'],
-                                             'CodeMirror__annotations-gutter',
-                                             marker);
-              break;
-          case 'deleted':
-              codemirrorInst.setGutterMarker(change.value['line'],
-                                             'CodeMirror__annotations-gutter',
-                                             null);
-              break;
-          }
+      switch (change.status) {
+      case 'added':
+        var marker = document.createElement('div');
+        marker.className = 'CodeMirror__error-gutter-marker';
+        marker.dataset.title = change.value.message;
+        codemirrorInst.setGutterMarker(change.value['line'],
+                       'CodeMirror__annotations-gutter',
+                       marker);
+        break;
+      case 'deleted':
+        codemirrorInst.setGutterMarker(change.value['line'],
+                       'CodeMirror__annotations-gutter',
+                       null);
+        break;
       }
+    }
 
-      return target;
+    return target;
   };
-})
+});
 </script>

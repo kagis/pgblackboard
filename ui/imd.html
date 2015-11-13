@@ -1,10 +1,10 @@
 <script src="https://cdn.rawgit.com/PolymerLabs/IMD/v1.0.0/imd.js"></script>
 <script>
 define('imd-global-require', ['require'], function (imdRequire) {
-    window.require = function require(modulesIds, callback) {
-        callback.apply(null, modulesIds.map(function (id) {
-            return imdRequire(id);
-        }));
-    };
+  window.require = function require(modulesIds, callback) {
+    callback.apply(null, modulesIds.map(function (id) {
+      return imdRequire(id);
+    }));
+  };
 });
 </script>

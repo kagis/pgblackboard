@@ -240,18 +240,17 @@ define('pgbb-app-viewmodel', ['knockout'], function (ko) {
    * @constructor
    */
   function Main(params) {
-      this['isDark'] =
-      this.isDark = ko.observable().extend({
-          persist: 'pgblackboard_isdark'
-      });
+    this.isDark = ko.observable().extend({
+      persist: 'pgblackboard_isdark'
+    });
 
-      this['databases'] = (params.initialData || this.initialData).databases;
+    this.databases = (params.initialData || this.initialData).databases;
 
-      var initialDoc = ko.observable(this.initialCode).extend({
-          codeEditorDoc: true
-      });
+    var initialDoc = ko.observable(this.initialCode).extend({
+      codeEditorDoc: true
+    });
 
-      this['selectedDoc'] = ko.observable(initialDoc);
+    this.selectedDoc = ko.observable(initialDoc);
   }
 
   Main.prototype.myQueriesStorage = window.localStorage;
@@ -260,15 +259,15 @@ define('pgbb-app-viewmodel', ['knockout'], function (ko) {
     databases: []
   };
 
-  Main.prototype['toggleTheme'] = function () {
-      this.isDark(!this.isDark());
+  Main.prototype.toggleTheme = function () {
+    this.isDark(!this.isDark());
   };
 
-  Main.prototype['onCodeFormSubmit'] = function () {
-      if (this['selectedDoc']()['errors']) {
-          this['selectedDoc']()['errors'].removeAll();
-      }
-      return true;
+  Main.prototype.onCodeFormSubmit = function () {
+    if (this.selectedDoc().errors) {
+      this.selectedDoc().errors.removeAll();
+    }
+    return true;
   };
 
   return Main;

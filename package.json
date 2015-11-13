@@ -7,8 +7,6 @@
   "devDependencies": {
     "serve-static": "~1.9.3",
     "connect": "~3.3.5",
-    "connect-redirection": "0.0.1",
-    "body-parser": "~1.12.4",
     "jasmine": "~2.2.1",
     "eslint": "~1.9.0",
     "eslint-plugin-html": "~1.1.0",
@@ -48,10 +46,11 @@
     "excludeFiles": [
       "node_modules/**",
       "ui/output/**",
-      "ui/build.js"
+      "ui/build.js",
+      "ui/fontello"
     ],
     "extract": [
-      "*.html"
+      "**"
     ]
   },
   "eslintConfig": {
