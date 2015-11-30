@@ -241,6 +241,7 @@ define('pgbb-app-viewmodel', ['knockout'], function (ko) {
    * @constructor
    */
   function Main(params) {
+
     this.isDark = ko.observable().extend({
       persist: 'pgblackboard_isdark'
     });
@@ -280,7 +281,14 @@ require(['knockout', 'pgbb-app-viewmodel'], function (ko, viewModel) {
   ko.components.register('pgbb-app', {
     synchronous: true,
     template: { element: 'pgbb-app-template' },
-    viewModel: viewModel
+    viewModel: {
+      createViewModel: function () {
+        var initialDataElem = document.getElementById('pgbb-initial-data');
+        var initialDataJson = initialDataElem && initialDataElem.textContent.trim();
+        var initialData = initialDataJson && JSON.parse(initialDataJson);
+        return new viewModel({ initialData: initialData });
+      }
+    }
   });
 });
 </script>

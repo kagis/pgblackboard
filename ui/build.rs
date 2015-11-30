@@ -20,6 +20,6 @@ fn main() {
                          .unwrap();
 
     if status != 0 {
-        panic!("`npm run build` failed.");
+        panic!("`npm run installdep-and-build` failed.");
     }
 }

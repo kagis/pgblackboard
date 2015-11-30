@@ -21,6 +21,9 @@ define('codemirror', function () {
 });
 </script>
 
+<script src="../codeeditor/pg-keywords.js"></script>
+<script src="../codeeditor/pg-builtins.js"></script>
+
 <style>
   .CodeMirror {
     height: 100% !important;
@@ -159,7 +162,33 @@ define('codemirror', function () {
 </style>
 
 <script>
+require(['codemirror', 'pg-keywords', 'pg-builtins'], function (CodeMirror, pgKeywords, pgBuiltins) {
+  CodeMirror.defineMIME('text/x-pgsql', {
+    name: 'sql',
+    keywords: pgKeywords,
+    builtin: pgBuiltins,
+    atoms: { 'false': 1, 'true': 1, 'null': 1 },
+    operatorChars: /^[*+\-%<>!=]/,
+    dateSQL: {
+      'date': 1,
+      'time': 1,
+      'timestamp': 1,
+      'timestamptz': 1,
+      'interval': 1
+    },
+    support: {
+      'doubleQuote': 1,
+      'binaryNumber': 1,
+      'hexNumber': 1
+    }
+  });
+});
+</script>
+
+<script>
 require(['knockout', 'codemirror'], function (ko, CodeMirror) {
+
+
   ko.bindingHandlers['codemirror'] = {
     init: initCodemirror
   };

@@ -29,16 +29,11 @@ pub fn render_home_page<TWriter, TInitData>(
     TWriter: Write,
     TInitData: Display
 {
-    let html = include_str!(concat!(
-        env!("OUT_DIR"), "/index.html"
-    ));
-
-    let html = html.replace(
-        "/*INITIAL-DATA-PLACEHOLDER*/",
-        &format!("{}", initial_data)
-    );
-
-    write!(writer, "{}", html)
+    write!(
+      writer,
+      include_str!(concat!(env!("OUT_DIR"), "/index.html")),
+      initial_data = initial_data
+    )
 }
 
 pub fn render_error_page<TWriter, TStatus, TPhrase, TMessage>(
