@@ -1,0 +1,41 @@
+<link rel="import" href="../knockout.html" />
+<link rel="import" href="../knockout-flatbind.html" />
+<link rel="import" href="../bindings/cssmod.html" />
+
+<style>
+  /*.light*/ .message--error { color: #ff4c4c; }
+  /*.light*/ .message { border-bottom-color: #eee; }
+
+  .dark .message--error { color: #ff4c4c; }
+  .dark .message { border-bottom-color: #333; }
+
+  .message {
+    padding: .3rem .5rem .3rem .5rem;
+    font-size: .8rem;
+    font-weight: bold;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+  }
+
+  .message--error {
+    white-space: pre;
+  }
+</style>
+
+<script id="pgbb-message-template" type="text/html">
+  <div class="message"
+       data-bind-text="message"
+       data-bind-cssmod.error="isError">
+  </div>
+</script>
+
+
+<script>
+require(['knockout'], function (ko) {
+  ko.components.register('pgbb-message', {
+    synchronous: true,
+    template: { element: 'pgbb-message-template' },
+    // viewModel: viewModel
+  });
+});
+</script>

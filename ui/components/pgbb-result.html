@@ -1,0 +1,77 @@
+<link rel="import" href="../knockout.html" />
+<link rel="import" href="../knockout-flatbind.html" />
+<link rel="import" href="../bindings/cssmod.html" />
+<link rel="import" href="pgbb-rowset.html" />
+<link rel="import" href="pgbb-message.html" />
+<link rel="import" href="pgbb-queryplan.html" />
+
+<template id="pgbb-result-template">
+  <div data-bind-foreach="data">
+    <div data-bind-component="$component.getItemComponent($data)">
+    </div>
+  </div>
+</template>
+
+<script>
+'use strict';
+
+define('pgbb-result', function (require, exports) {
+  var ko = require('knockout');
+
+  class ResultViewModel {
+    constructor(params) {
+      this.data = params.data;
+    }
+
+    getItemComponent(item) {
+      switch (item.type) {
+        case 'rowset': return {
+          name: 'pgbb-rowset',
+          params: {
+            fields: item.fields,
+            rows: item.rows
+          }
+        };
+
+        case 'nonquery': return {
+          name: 'pgbb-message',
+          params: {
+            message: item.text,
+            isError: false
+          }
+        };
+
+        case 'error': return {
+          name: 'pgbb-message',
+          params: {
+            message: item.text,
+            isError: true
+          }
+        };
+
+        case 'notice': return {
+          name: 'pgbb-message',
+          params: {
+            message: item.text,
+            isError: false
+          }
+        };
+
+        case 'queryplan': return {
+          name: 'pgbb-queryplan',
+          params: {
+            queryplan: item.queryplan
+          }
+        };
+      }
+    }
+  }
+
+  ko.components.register('pgbb-result', {
+    template: { element: 'pgbb-result-template' },
+    viewModel: ResultViewModel
+  });
+
+  exports.viewModel = ResultViewModel;
+});
+</script>

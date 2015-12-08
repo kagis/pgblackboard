@@ -36,7 +36,7 @@
     factory = factory || dependencies || id;
     if (!Array.isArray(dependencies)) {
       // TODO(nevir): Default dependencies should be require, exports, module.
-      dependencies = Array.isArray(id) ? id : [];
+      dependencies = Array.isArray(id) ? id : ['require', 'exports', 'module'];
     }
     var inferredId = _inferModuleId();
     if (typeof id !== 'string') {

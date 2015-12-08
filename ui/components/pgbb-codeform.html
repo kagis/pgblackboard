@@ -167,6 +167,7 @@
               type="submit"
               title="alt-m"
               accesskey="m"
+              data-bind-click="_ => ($parent.isMap(true), true)"
               >map</button>
 
       <button name="view"
@@ -175,6 +176,7 @@
               type="submit"
               title="alt-x"
               accesskey="x"
+              data-bind-click="_ => ($parent.isMap(false), true)"
               >execute</button>
     </div>
 

@@ -1,26 +1,16 @@
-use super::ui;
-
 use http;
 use std::io;
 
-
 pub const FAVICON_RESOURCE: StaticResource = StaticResource {
-    content: ui::FAVICON_ICO,
-    etag: ui::FAVICON_ICO_MD5,
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/favicon.ico")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.etag")),
     content_type: "image/vnd.microsoft.icon",
     gzipped: false
 };
 
 pub const BUNDLE_INDEX_RESOURCE: StaticResource = StaticResource {
-    content: ui::BUNDLE_INDEX,
-    etag: ui::BUNDLE_INDEX_MD5,
-    content_type: "application/javascript; charset=utf-8",
-    gzipped: true
-};
-
-pub const BUNDLE_MAP_RESOURCE: StaticResource = StaticResource {
-    content: ui::BUNDLE_MAP,
-    etag: ui::BUNDLE_MAP_MD5,
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/pgblackboard.js.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/pgblackboard.js.gz.etag")),
     content_type: "application/javascript; charset=utf-8",
     gzipped: true
 };

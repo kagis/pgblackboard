@@ -5,6 +5,8 @@
 <link rel="import" href="pgbb-splitpanel.html" />
 <link rel="import" href="pgbb-nav.html" />
 <link rel="import" href="pgbb-codeform.html" />
+<link rel="import" href="pgbb-result.html" />
+<link rel="import" href="pgbb-map.html" />
 <link rel="import" href="../fontello.html" />
 
 <style>
@@ -111,10 +113,16 @@
   .main__nav {
     overflow-x: hidden;
     overflow-y: auto;
+    transform: translateZ(0);
   }
 
   /* iframe */.main__output {
     border: none;
+  }
+
+  .main__output {
+    overflow: auto;
+    transform: translateZ(0);
   }
 
   /* .light */ .main__nav,
@@ -216,68 +224,143 @@
               data-bind-submit="onCodeFormSubmit">
         </form>
 
-        <iframe class="main__output"
-                name="output-iframe"
-                slot="bottom"
-                data-bind="outputFrame: {
-                  doc: selectedDoc,
-                  isDark: isDark
-                }"></iframe>
+
+        <div
+          class="main__output"
+          slot="bottom"
+          data-bind-component="resultComponent">
+        </div>
 
       </div>
 
-      <button id="share-action"
-              accesskey="s"
-              style="display:none"
-              ></button>
 
     </div>
   </div>
+
+  <button id="share-action"
+          accesskey="s"
+          style="display:none"
+          ></button>
+
+  <iframe hidden="hidden"
+          name="output-iframe"
+          data-bind="outputFrame: {
+            doc: selectedDoc,
+            isDark: isDark
+          }"></iframe>
 </script>
 
 <script>
-define('pgbb-app-viewmodel', ['knockout'], function (ko) {
-  /**
-   * @constructor
-   */
-  function Main(params) {
+'use strict';
 
-    this.isDark = ko.observable().extend({
-      persist: 'pgblackboard_isdark'
-    });
+define('pgbb-app', function (require, exports) {
+  var ko = require('knockout');
 
-    this.databases = (params.initialData || this.initialData).databases;
+  class AppViewModel {
+    constructor(params) {
 
-    var initialDoc = ko.observable(this.initialCode).extend({
-      codeEditorDoc: true
-    });
+      this.isDark = ko.observable().extend({
+        persist: 'pgblackboard_isdark'
+      });
 
-    this.selectedDoc = ko.observable(initialDoc);
+      this.databases = (params.initialData || this.initialData).databases;
+
+      var initialDoc = ko.observable(this.initialCode).extend({
+        codeEditorDoc: true
+      });
+
+      this.selectedDoc = ko.observable(initialDoc);
+      this.execResults = ko.observableArray();
+      this.isMap = ko.observable(true);
+      this.resultComponent = ko.pureComputed(_ => ({
+        name: this.isMap() ? 'pgbb-map' : 'pgbb-result',
+        params: {
+          data: this.execResults,
+          isDark: this.isDark
+        }
+      }));
+
+      var execResults = this.execResults;
+      var currentRowset;
+      window.pushmsg = function (message) {
+        var messageTag = message[0];
+        var messagePayload = message[1];
+        switch (messageTag) {
+          case 'rowset':
+            execResults.push({
+              type: 'rowset',
+              fields: messagePayload,
+              rows: currentRowset = ko.observableArray().extend({
+                rateLimit: {
+                  timeout: 100,
+                  method: 'notifyAtFixedRate'
+                }
+              })
+            });
+            break;
+
+          case 'r':
+            currentRowset.push(messagePayload);
+            break;
+
+          case 'non_query':
+            execResults.push({
+              type: 'nonquery',
+              commandTag: messagePayload
+            });
+            break;
+
+          case 'error':
+            execResults.push({
+              type: 'error',
+              text: messagePayload
+            });
+            break;
+
+          case 'notice':
+            execResults.push({
+              type: 'notice',
+              text: messagePayload
+            });
+            break;
+
+          case 'query_plan':
+            execResults.push({
+              type: 'queryplan',
+              queryplan: messagePayload
+            });
+            break;
+
+          default:
+            console.error('Unknown message tag ' + messageTag, messagePayload);
+            break;
+        }
+      };
+    }
+
+    toggleTheme() {
+      this.isDark(!this.isDark());
+    }
+
+    onCodeFormSubmit() {
+      this.execResults([]);
+
+      if (this.selectedDoc().errors) {
+        this.selectedDoc().errors.removeAll();
+      }
+
+      return true;
+    }
   }
 
-  Main.prototype.myQueriesStorage = window.localStorage;
-  Main.prototype.initialCode = window.location.hash || 'select \'awesome\'';
-  Main.prototype.initialData = {
-    databases: []
-  };
-
-  Main.prototype.toggleTheme = function () {
-    this.isDark(!this.isDark());
-  };
-
-  Main.prototype.onCodeFormSubmit = function () {
-    if (this.selectedDoc().errors) {
-      this.selectedDoc().errors.removeAll();
+  ko.utils.extend(AppViewModel.prototype, {
+    myQueriesStorage: window.localStorage,
+    initialCode: window.location.hash || 'select \'awesome\'',
+    initialData: {
+      databases: []
     }
-    return true;
-  };
+  });
 
-  return Main;
-});
-</script>
-
-<script>
-require(['knockout', 'pgbb-app-viewmodel'], function (ko, viewModel) {
   ko.components.register('pgbb-app', {
     synchronous: true,
     template: { element: 'pgbb-app-template' },
@@ -286,9 +369,44 @@ require(['knockout', 'pgbb-app-viewmodel'], function (ko, viewModel) {
         var initialDataElem = document.getElementById('pgbb-initial-data');
         var initialDataJson = initialDataElem && initialDataElem.textContent.trim();
         var initialData = initialDataJson && JSON.parse(initialDataJson);
-        return new viewModel({ initialData: initialData });
+        return new AppViewModel({ initialData: initialData });
       }
     }
   });
+
+  exports.viewModel = AppViewModel;
 });
 </script>
+
+<!-- <script>
+require(['knockout', 'pgbb-app-viewmodel'], function (ko, viewModel) {
+
+
+
+  var outEl = null;
+  var tableEl;
+  var tBodyEl;
+  window.pushmsg = function (message) {
+    outEl = outEl || document.querySelector('.main__output');
+
+    switch (message[0]) {
+      case "rowset":
+        tBodyEl = document.createElement('tbody');
+        tableEl = document.createElement('table');
+        tableEl.className = 'rowset';
+        tableEl.appendChild(tBodyEl);
+        outEl.appendChild(tableEl);
+        break;
+
+      case "r":
+        var rowHtml = '<tr>' + message[1].map(it => `<td>${it}</td>`).join('') + '</tr>';
+        tBodyEl.insertAdjacentHTML('beforeend', rowHtml);
+        break;
+
+      default:
+
+    }
+  };
+
+});
+</script> -->

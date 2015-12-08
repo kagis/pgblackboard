@@ -139,8 +139,8 @@ body,
     overflow-wrap: break-word;
     }
 
-/* .rowset-colheader is all TH except row number */
-.rowset-colheader {
+/* .rowset__colheader is all TH except row number */
+.rowset__colheader {
     width: 6em;
     }
 
@@ -150,7 +150,7 @@ body,
  *  ┼─────────┼─
  *  │         │
  */
-.rowset-coltype {
+.rowset__coltype {
     display: block;
     opacity: .5; /* mute color */
     font-size: .5em;
@@ -158,7 +158,7 @@ body,
     }
 
 /* row number */
-.rowset-corner::before {
+.rowset__corner::before {
     content: '#';
     }
 .rowset > tbody th {

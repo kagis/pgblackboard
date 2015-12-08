@@ -1,0 +1,296 @@
+<link rel="import" href="../knockout.html" />
+<link rel="import" href="../knockout-flatbind.html" />
+<link rel="import" href="../bindings/cssmod.html" />
+
+<script src="../../node_modules/leaflet/dist/leaflet-src.js" as="leaflet"></script>
+<link rel="stylesheet" href="../../node_modules/leaflet/dist/leaflet.css" />
+
+<style>
+  .mapctl {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /*.light*/ .leaflet-container { background: #fcfcfc; color: #555; }
+  /*.light*/ .leaflet-control-layers-expanded {  background-color: #fcfcfc; }
+  /*.light*/ .leaflet-control-layers-separator { border-color: #ccc; }
+
+  /*.light .leaflet-control-scale-line {
+    border-color: #aaa;
+    background-color: rgba(220, 220, 220, .3);
+  } */
+
+  /*.light*/ .leaflet-popup-content-wrapper,
+  /*.light*/ .leaflet-popup-tip {
+    background-color: #fcfcfc;
+  }
+
+  /*.light*/ .leaflet-popup-content-wrapper,
+  /*.light*/ .leaflet-popup-tip {
+    box-shadow: 0 0 0 .4em rgba(0,0,0,.1);
+  }
+
+
+  .dark .leaflet-container { background: #222; color: #eee; }
+
+  .dark .leaflet-control-layers-expanded {  background-color: #333; }
+  .dark .leaflet-control-layers-separator { border-color: #555; }
+  .dark .leaflet-control-scale-line:not(:first-child) { border-top-color: #222; }
+
+  .dark .leaflet-control-scale-line {
+    background-color: rgba(0, 0, 0, .3);
+    border-color: #222;
+  }
+
+  .dark .leaflet-popup-content-wrapper,
+  .dark .leaflet-popup-tip {
+    background-color: #333;
+  }
+
+  .dark .leaflet-popup-content-wrapper,
+  .dark .leaflet-popup-tip {
+    box-shadow: 0 0 0 .4em rgba(0,0,0,.2);
+  }
+
+
+
+
+
+  .leaflet-control-layers-list {
+    margin: 0;
+  }
+
+  .leaflet-bar {
+    border-radius: 0;
+    *box-shadow: none;
+    *border: 2px solid rgba(0,0,0,.2);
+  }
+
+  .leaflet-bar a,
+  .leaflet-bar a:hover {
+    border-radius: 0 !important;
+    color: inherit;
+    background-color: #333;
+    border-bottom-color: #555;
+  }
+
+  .leaflet-bar a:hover {
+    background-color: #444;
+  }
+
+  .leaflet-control-scale-line {
+    -webkit-transition: width 100ms ease;
+        transition: width 100ms ease;
+  }
+
+  .leaflet-popup-content-wrapper {
+    border-radius: .2em;
+  }
+
+
+
+
+
+  .leaflet-control-layers-expanded {
+    color: inherit;
+    border-radius: 0;
+  }
+
+
+
+  .leaflet-control-scale-line {
+    color: inherit;
+  }
+
+
+
+
+  .prop-sheet {
+    min-width: 300px;
+    font-size: inherit;
+    color: inherit;
+  }
+
+  .prop-name {
+    font-weight: bold;
+    vertical-align: top;
+  }
+</style>
+
+<template id="pgbb-map-template">
+  <div class="mapctl"></div>
+</template>
+
+<script>
+define('pgbb-map', function (require, exports) {
+  var ko = require('knockout');
+  var L = require('leaflet');
+
+  ko.components.register('pgbb-map', {
+    template: { element: 'pgbb-map-template' },
+    viewModel: { createViewModel: createViewModel }
+  });
+
+  function createViewModel(params, componentInfo) {
+    var data = params.data;
+    var isDark = params.isDark;
+
+
+    var mapEl = componentInfo.element.getElementsByClassName('mapctl')[0];
+
+    var map = L.map(mapEl, {
+      'center': [
+        20, // push antarctida down
+        0
+      ],
+      'zoom': 1,
+      'zoomControl': false,
+      'attributionControl': false
+    });
+
+    L.control.scale().addTo(map);
+
+
+    var basemap = L.tileLayer();
+
+    ko.computed(function () {
+      basemap.setUrl(ko.unwrap(isDark) ? darkBasemapUrl : lightBasemapUrl);
+    }, { disposeWhenNodeIsRemoved: mapEl });
+
+    var imagery = L.tileLayer(imageryUrl, bingOptions);
+
+    var layersControl = L.control.layers({
+      'Map': basemap,
+      'Imagery': imagery
+    }, null, {
+      'collapsed': false
+    });
+    map.addControl(layersControl);
+    map.addLayer(basemap);
+
+    var overlays = {};
+
+    var overlayOptions = {
+      'pointToLayer': function (feature, latlng) {
+        var marker = L.circleMarker(latlng);
+        marker.setRadius(4);
+        marker.feature = feature;
+        return marker;
+      },
+      'onEachFeature': function (feature, layer) {
+        layer.bindPopup(popupHtml(feature));
+      },
+      'style': function (feature) {
+        var color = feature['properties']['color'] || feature.overlay.options.color;
+        switch (feature['geometry']['type']) {
+        case 'Point':
+        case 'MultiPoint':
+          return {
+            'fillOpacity': 1,
+            'color': '#333',
+            'fillColor': color,
+          };
+        default:
+          return {
+            'weight': 2,
+            'color': color
+          };
+        }
+      }
+    };
+
+    function addOverlay(overlayKey) {
+      var overlay = L.geoJson(null, overlayOptions);
+      overlay.options.color = featureColors.pop();
+      overlay.addTo(map);
+      overlays[overlayKey] = overlay;
+      layersControl.addOverlay(overlay, 'query' + overlayKey);
+      return overlay;
+    }
+
+  }
+
+  // var pgBlackboardOutput = window['pgBlackboardOutput'];
+  //
+  // /** @expose */
+  // pgBlackboardOutput.beginFeatureCollection = function () {
+  //   latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
+  // };
+  //
+  // /** @expose */
+  // pgBlackboardOutput.addFeatures = function (featureCollection) {
+  //   featureCollection['features'].forEach(function (f) {
+  //     f.overlay = latestFeatureCollection;
+  //   });
+  //   latestFeatureCollection.addData(featureCollection);
+  // };
+
+  var darkBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.hi8gc0eh/{z}/{x}/{y}.png';
+  var lightBasemapUrl = 'https://{s}.tiles.mapbox.com/v3/exe-dealer.joap11pl/{z}/{x}/{y}.png';
+  var imageryUrl = 'http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z';
+
+  var bingOptions = {
+    'subdomains': '01234567',
+    'quadkey': function (data) {
+      var quadKey = '';
+      for (var i = data.z; i > 0; i--) {
+        var digit = 0;
+        var mask = 1 << (i - 1);
+        if ((data.x & mask) !== 0) {
+          digit++;
+        }
+        if ((data.y & mask) !== 0) {
+          digit++;
+          digit++;
+        }
+        quadKey += digit;
+      }
+        return quadKey;
+      }
+  };
+
+  var latestFeatureCollection;
+
+
+
+
+  function popupHtml(feature) {
+    var props = feature['properties'];
+    var propNames = Object.keys(props);
+    return '<table class="prop-sheet">' +
+      propNames.map(function (propName) {
+        return '<tr>' +
+          '<td class="prop-name">' + propName + ':</td>' +
+          '<td class="prop-value">' + feature['properties'][propName] + '</td>' +
+          '</tr>';
+      }).join('') + '</table>';
+  }
+
+  // http://colorbrewer2.org/
+  var featureColors = [
+    // '#ff7f00',
+    // '#1f78b4',
+    // '#e31a1c',
+    // '#33a02c',
+    // '#fb9a99',
+    // '#fdbf6f',
+    // '#b2df8a',
+    // '#a6cee3',
+
+    '#a6cee3',
+    '#1f78b4',
+    '#b2df8a',
+    '#33a02c',
+    '#fb9a99',
+    '#e31a1c',
+    '#fdbf6f',
+    '#ff7f00',
+    '#cab2d6',
+    '#6a3d9a',
+    '#ffff99',
+    '#b15928',
+  ];
+
+});
+</script>

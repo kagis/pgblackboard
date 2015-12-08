@@ -1,0 +1,157 @@
+<link rel="import" href="../imd.html" />
+<link rel="import" href="../knockout.html" />
+<link rel="import" href="../knockout-flatbind.html" />
+<link rel="import" href="../bindings/cssmod.html" />
+<link rel="import" href="../bindings/slot.html" />
+
+<style>
+  .zoompan__viewport,
+  .zoompan__pane,
+  .zoompan__center {
+    display: block;
+    height: 100%;
+    width: 100%;
+
+  }
+
+  .zoompan__viewport {
+    overflow: hidden;
+  }
+
+  .zoompan__center {
+    transform: translate(50%, 50%);
+  }
+</style>
+
+<template id="pgbb-zoompan-template">
+  <div
+    class="zoompan__viewport"
+    data-bind-event.mousedown="handleViewportMouseDown"
+    data-bind-event.wheel="handleViewportWheel">
+    <div
+      class="zoompan__pane"
+      data-bind-transform="transformation">
+      <div
+        class="zoompan__center"
+        data-bind-slot="null">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+'use strict';
+
+define('pgbb-zoompan', function (require, exports) {
+  var ko = require('knockout');
+
+  class Zoompan {
+    constructor(params) {
+      this.isEnabled = params['isEnabled'];
+      this.minZoom = -20;
+      this.maxZoom = 20;
+      this.zoomFactor = .1;
+      this.translateX = ko.observable(0);
+      this.translateY = ko.observable(0);
+      this.zoom = ko.observable(0);
+      this.transformation = ko.pureComputed(this.getTransformation, this);
+    }
+
+    getTransformation() {
+      return 'translate(' +
+        this.translateX() + 'px,' +
+        this.translateY() + 'px)' +
+        'scale(' + this.getScale() + ')';
+    }
+
+    setZoomClipped(unclippedZoom) {
+      this.zoom(Math.min(this.maxZoom, Math.max(this.minZoom, unclippedZoom)));
+    }
+
+    getScale() {
+      return Math.exp(this.zoom() * this.zoomFactor);
+    }
+
+    handleViewportMouseDown(_, e) {
+      // proceed only for left mouse button
+      if (e.button != 0) { return; }
+
+      this.isPanning = true;
+
+      var dx = e.clientX - this.translateX();
+      var dy = e.clientY - this.translateY();
+
+      var self = this;
+      function handleMouseMove(e) {
+        self.translateX(e.clientX - dx);
+        self.translateY(e.clientY - dy);
+      }
+
+      var doc = e.target.ownerDocument;
+      doc.addEventListener('mousemove', handleMouseMove);
+      doc.addEventListener('mouseup', function handleMouseUp(e) {
+        doc.removeEventListener('mouseup', handleMouseUp);
+        doc.removeEventListener('mousemove', handleMouseMove);
+        self.isPanning = false;
+      });
+    };
+
+    handleViewportWheel(_, e) {
+      // disable zoom while panning
+      if (this.isPanning) { return; }
+
+      // var oldScale = this.getScale();
+      var zoomInc = (e.deltaY < 0 ? 1 : -1);
+      this.setZoomClipped(this.zoom() + zoomInc);
+      // var newScale = this.getScale();
+      // var scaleFactor = newScale / oldScale - 1;
+      //
+      // var offsetX = e.clientX - e.target.offsetLeft;
+      // var offsetY = e.clientY - e.target.offsetTop;
+      //this.translateY = this.translateY - (offsetY - this.translateY) * scaleFactor;
+      //this.translateX = this.translateX - (offsetX - this.translateX) * scaleFactor;
+      //
+      // this.applyTransform();
+    }
+  }
+
+  ko.components.register('pgbb-zoompan', {
+    template: { element: 'pgbb-zoompan-template' },
+    viewModel: Zoompan
+  });
+
+
+  var someEl = document.createElement('div');
+  var transformProperty = [
+    'transform',
+    'webkitTransform',
+    'MozTransform',
+    'msTransform'
+  ].filter(function (prop) {
+    return prop in someEl.style;
+  })[0];
+
+  ko.bindingHandlers['transform'] = {
+    update(element, valueAccessor) {
+      element.style[transformProperty] = ko.unwrap(valueAccessor());
+      ko.utils.triggerEvent(element.ownerDocument, 'zoompan');
+    }
+  };
+});
+</script>
+
+<!--
+<pgbb-zoompan style="display: block; width: 400px; height: 400px">
+  <div style="width: 100px;
+              height: 100px;
+              background: red;
+              border-radius: 50%">
+  </div>
+</pgbb-zoompan>
+
+<script>
+require(['knockout'], function (ko) {
+  ko.applyBindings();
+});
+</script>
+-->

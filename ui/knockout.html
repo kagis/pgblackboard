@@ -31,3 +31,16 @@ require(['knockout'], function (ko) {
   });
 });
 </script>
+
+<script>
+require(['knockout'], function (ko) {
+  'use strict';
+  document.registerElement('component-debug', class extends HTMLElement {
+    createdCallback() {
+      if (document === this.ownerDocument) {
+        ko.applyBindings(null, this);
+      }
+    }
+  });
+});
+</script>

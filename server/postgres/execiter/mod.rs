@@ -10,6 +10,7 @@ use super::ConnectionExt;
 use dbms::{ self, ExecEvent, Field, Column };
 use std::ops::Range;
 use std::collections::VecDeque;
+use std::ascii::AsciiExt;
 
 
 
@@ -322,9 +323,10 @@ fn map_pgfields_to_dbmsfields(
         .zip(typ_descrs.into_iter())
         .zip(src_columns.into_iter())
         .map(|((field_descr, typ_descr), src_col)| Field {
+            is_geojson: field_descr.name.eq_ignore_ascii_case("st_asgeojson"),
             name: field_descr.name,
-            is_num: typ_descr.1,
             typ: typ_descr.0,
+            is_num: typ_descr.1,
             src_column: src_col,
         })
         .collect())

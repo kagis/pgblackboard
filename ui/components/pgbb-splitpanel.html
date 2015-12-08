@@ -4,89 +4,89 @@
 <link rel="import" href="../bindings/slot.html" />
 
 <style media="screen">
-.splitpanel-v__splitter,
-.splitpanel-v--splitting {
-  cursor: ns-resize;
-}
+  .splitpanel-v__splitter,
+  .splitpanel-v--splitting {
+    cursor: ns-resize;
+  }
 
-.splitpanel-v__splitter {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 50%;
-  height: 6px;
-}
+  .splitpanel-v__splitter {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 50%;
+    height: 6px;
+  }
 
-.splitpanel-h__splitter,
-.splitpanel-h--splitting {
-  cursor: ew-resize;
-}
+  .splitpanel-h__splitter,
+  .splitpanel-h--splitting {
+    cursor: ew-resize;
+  }
 
-.splitpanel-h__splitter {
-  position: absolute;
-  right: 70%;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-}
+  .splitpanel-h__splitter {
+    position: absolute;
+    right: 70%;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+  }
 
-.splitpanel-h,
-.splitpanel-v {
-  position: relative;
-  height: 100%;
-}
+  .splitpanel-h,
+  .splitpanel-v {
+    position: relative;
+    height: 100%;
+  }
 
-.splitpanel-h__left {
-  overflow: hidden;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 70%;
-  margin-right: 6px;
-}
+  .splitpanel-h__left {
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 70%;
+    margin-right: 6px;
+  }
 
-.splitpanel-h__right {
-  overflow: hidden;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 30%;
-}
+  .splitpanel-h__right {
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 30%;
+  }
 
-.splitpanel-v__top {
-  overflow: hidden;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 50%;
-  margin-bottom: 6px;
-}
+  .splitpanel-v__top {
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 50%;
+    margin-bottom: 6px;
+  }
 
-.splitpanel-v__bottom {
-  overflow: hidden;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  top: 50%;
-}
+  .splitpanel-v__bottom {
+    overflow: hidden;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 50%;
+  }
 
 
-.splitpanel-h--splitting,
-.splitpanel-v--splitting {
-  -webkit-user-select: none;
-   -moz-user-select: none;
-    -ms-user-select: none;
-      user-select: none;
-}
+  .splitpanel-h--splitting,
+  .splitpanel-v--splitting {
+    -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+        user-select: none;
+  }
 
-.splitpanel-h--splitting iframe,
-.splitpanel-v--splitting iframe {
-  pointer-events: none;
-}
+  .splitpanel-h--splitting iframe,
+  .splitpanel-v--splitting iframe {
+    pointer-events: none;
+  }
 </style>
 
 <script id="pgbb-splitpanel-h-template" type="text/html">

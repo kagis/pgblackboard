@@ -82,15 +82,18 @@ pub enum ExecEvent {
 
 /// Describes field of query result
 #[derive(Debug)]
+#[derive(RustcEncodable)]
 pub struct Field {
     pub name: String,
     pub typ: String,
     pub is_num: bool,
+    pub is_geojson: bool,
     pub src_column: Option<Column>,
 }
 
 /// Describes column of table
 #[derive(Debug)]
+#[derive(RustcEncodable)]
 pub struct Column {
     pub owner_database: String,
     pub owner_table: String,
@@ -114,6 +117,7 @@ pub struct QueryPlanNode {
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Debug)]
+#[derive(RustcEncodable)]
 pub struct Error {
     pub kind: ErrorKind,
     pub message: String,
@@ -141,6 +145,7 @@ impl ::std::error::Error for Error {
 }
 
 #[derive(Debug)]
+#[derive(RustcEncodable)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ErrorKind {
     InvalidCredentials,

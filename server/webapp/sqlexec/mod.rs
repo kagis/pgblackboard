@@ -15,6 +15,7 @@ use std::ops::Range;
 use std::collections::BTreeSet;
 use http;
 use dbms::{ Dbms, Field, QueryPlanNode, ExecEvent };
+use rustc_serialize::{ Encodable, json };
 
 
 pub fn handle_sqlexec_req<TDbms: Dbms>(
@@ -241,21 +242,55 @@ impl<TExecIter: Iterator<Item=ExecEvent>> http::Response for SqlExecResponse<TEx
         let mut w = try!(w.start_chunked());
         //let mut w = GzEncoder::new(w, Compression::Fast);
         //let mut w = BufWriter::new(w);
+        {
+            let mut out = JsonStreamWriter(&mut w);
 
-        try!(match map_or_table {
+            let mut current_fields = None;
 
-            MapOrTable::Table => dispatch_exec_events(
-                execiter,
-                TableView::new(&mut w),
-                &sqlscript[..],
-            ),
+            for event in execiter {
 
-            MapOrTable::Map => dispatch_exec_events(
-                execiter,
-                MapView::new(&mut w),
-                &sqlscript[..],
-            )
-        });
+                // close current rowset on not Row event
+                // if let ExecEvent::Row(_) = event {
+                // } else if current_fields.is_some() {
+                //     try!(out.write("rowset_end"));
+                //     current_fields = None;
+                // }
+
+                match event {
+                    ExecEvent::RowsetBegin(fields) => {
+                        // try!(view.render_rowset_begin(&fields));
+                        try!(out.write(("rowset", &fields)));
+                        current_fields = Some(fields);
+                    }
+
+                    ExecEvent::Row(row) => try!(out.write(
+                        ("r", row),
+
+                        // &current_fields.as_ref().expect("Row event occured before RowsetBegin event.")[..]
+                    )),
+
+                    ExecEvent::QueryPlan(ref plan) => try!(
+                        out.write(("query_plan", plan))
+                    ),
+
+                    ExecEvent::NonQuery { ref command_tag } => try!(
+                        out.write(("non_query", command_tag))
+                    ),
+
+                    ExecEvent::Error { ref message, bytepos } => try!(
+                        out.write(("error", message,
+                            bytepos.map(|pos| LineCol::end_of_str(&sqlscript[..pos]).line)))
+                    ),
+
+                    ExecEvent::Notice { ref message, bytepos } => try!(
+                        out.write(("notice", message,
+                            bytepos.map(|pos| LineCol::end_of_str(&sqlscript[..pos]).line)))
+                    ),
+                };
+            }
+        }
+
+
 
         //let mut w = try!(w.into_inner());
         //let mut w = try!(w.finish());
@@ -502,4 +537,22 @@ trait View {
         -> io::Result<()>;
 
     // fn flush(&self) -> io::Result<()>;
+}
+
+struct JsonStreamWriter<W>(W);
+
+impl<W: Write> JsonStreamWriter<W> {
+    fn write<T: Encodable>(&mut self, json_obj: T) -> io::Result<()> {
+        let inner = &mut self.0;
+        let intro = b"<script>parent.pushmsg(";
+        let outro = b")</script>";
+        try!(inner.write_all(intro));
+        try!(write!(inner, "{}", json::as_json(&json_obj)));
+        try!(inner.write_all(outro));
+        Ok(())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
 }

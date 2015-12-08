@@ -16,8 +16,8 @@ delete define.amd;
 define.amd = {};
 </script>
 <script>
-define('codemirror', function () {
-  return window.CodeMirror;
+define('codemirror', function (require, exports, module) {
+  module.exports = window.CodeMirror;
 });
 </script>
 

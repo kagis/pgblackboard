@@ -1,25 +1,6 @@
 use std::fmt::Display;
 use std::io::{self, Write};
 
-pub const FAVICON_ICO: &'static [u8] = include_bytes!(concat!(
-    env!("OUT_DIR"), "/favicon.ico"));
-
-pub const FAVICON_ICO_MD5: &'static str = include_str!(concat!(
-    env!("OUT_DIR"), "/favicon.ico.etag"));
-
-pub const BUNDLE_INDEX: &'static [u8] = include_bytes!(concat!(
-    env!("OUT_DIR"), "/pgblackboard.js.gz"));
-
-pub const BUNDLE_INDEX_MD5: &'static str = include_str!(concat!(
-    env!("OUT_DIR"), "/pgblackboard.js.gz.etag"));
-
-pub const BUNDLE_MAP: &'static [u8] = include_bytes!(concat!(
-    env!("OUT_DIR"), "/pgblackboard.js.gz"));
-
-pub const BUNDLE_MAP_MD5: &'static str = include_str!(concat!(
-    env!("OUT_DIR"), "/pgblackboard.js.gz.etag"));
-
-
 
 pub fn render_home_page<TWriter, TInitData>(
     writer: &mut TWriter,

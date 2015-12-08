@@ -3,8 +3,10 @@ mod sqlexec;
 mod tree;
 mod definitions;
 mod tables;
-mod statres;
 mod ui;
+
+#[cfg(not(debug_assertions))]
+mod statres;
 
 use http;
 use dbms;
@@ -13,12 +15,11 @@ use self::sqlexec::handle_sqlexec_req;
 use self::tree::handle_tree_req;
 use self::definitions::handle_def_req;
 use self::tables::handle_table_req;
-use self::statres::FAVICON_RESOURCE;
-use self::statres::BUNDLE_INDEX_RESOURCE;
-use self::statres::BUNDLE_MAP_RESOURCE;
 
 use rustc_serialize::{json, Encodable};
 use std::io;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 
 pub struct WebApplication<TDbms: dbms::Dbms> {
@@ -38,15 +39,23 @@ impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
             ["definitions", obj_path..] => handle_def_req(&self.dbms, obj_path, req),
             ["tables", table_path..] => handle_table_req(&self.dbms, table_path, req),
 
-            // static resources
-            ["favicon.ico"] => FAVICON_RESOURCE.handle_http_req(&[], req),
-            ["pgblackboard.js"] => BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
-            ["bundle-map.js"] => BUNDLE_MAP_RESOURCE.handle_http_req(&[], req),
+            #[cfg(not(debug_assertions))]
+            ["favicon.ico"] => statres::FAVICON_RESOURCE.handle_http_req(&[], req),
 
-            _ => Box::new(index::ErrorResponse {
-                status: http::Status::NotFound,
-                message: "The requested URL was not found."
-            })
+            #[cfg(not(debug_assertions))]
+            ["pgblackboard.js"] => statres::BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
+
+            #[cfg(debug_assertions)]
+            ["node_modules", asset_path..] => FsDirHandler("./node_modules").handle_http_req(asset_path, req),
+
+            #[cfg(debug_assertions)]
+            asset_path => FsDirHandler("./ui").handle_http_req(asset_path, req),
+
+
+            // _ => Box::new(index::ErrorResponse {
+            //     status: http::Status::NotFound,
+            //     message: "The requested URL was not found."
+            // })
         }
     }
 }
@@ -97,5 +106,65 @@ impl<T: Encodable> http::Response for JsonResponse<T> {
             try!(w.write_www_authenticate_basic("postgres"));
         }
         w.write_content(json::encode(&self.content).unwrap().as_bytes())
+    }
+}
+
+struct FsDirHandler(&'static str);
+
+impl http::Handler for FsDirHandler {
+    fn handle_http_req(
+        &self,
+        path: &[&str],
+        req: &http::Request)
+        -> Box<http::Response>
+    {
+        use std::io::Read;
+
+        let mut pathbuf = PathBuf::from(self.0);
+        pathbuf.extend(path);
+        let content_type = match pathbuf.extension().and_then(|it| it.to_str()).unwrap_or("") {
+            "ico" => "image/vnd.microsoft.icon",
+            "js" => "application/javascript; charset=utf-8",
+            "css" => "text/css; charset=utf-8",
+            "html" => "text/html; charset=utf-8",
+            _ => "application/octet-stream"
+        };
+
+        let mut content = vec![];
+        let mut file = match fs::File::open(&pathbuf) {
+            Ok(file) => file,
+            Err(ref err) => match err.kind() {
+                io::ErrorKind::NotFound => return Box::new(index::ErrorResponse {
+                    status: http::Status::NotFound,
+                    message: "The requested URL was not found."
+                }),
+                _ => return Box::new(index::ErrorResponse {
+                    status: http::Status::InternalServerError,
+                    message: format!("{}", err)
+                }),
+            }
+        };
+        file.read_to_end(&mut content).unwrap();
+
+        Box::new(GenericResponse {
+            status: http::Status::Ok,
+            content_type: content_type.to_string(),
+            content: content,
+        })
+    }
+}
+
+struct GenericResponse {
+    status: http::Status,
+    content_type: String,
+    content: Vec<u8>,
+}
+
+impl http::Response for GenericResponse {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type(&self.content_type));
+        try!(w.write_content(&self.content));
+        Ok(())
     }
 }
