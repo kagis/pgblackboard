@@ -1,0 +1,60 @@
+.execBar {
+  padding: .2em;
+  border-top-left-radius: .3em;
+  white-space: nowrap;
+}
+
+/*.light*/ .execBar {
+  background-color: #eee;
+}
+
+.dark .execBar {
+  background-color: #333;
+}
+
+/*button*/.execBar__table,
+/*button*/.execBar__map {
+  outline: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1em;
+  cursor: pointer;
+  white-space: nowrap;
+
+  border-top: 1px solid transparent; /* for simmetric align */
+  border-bottom: 1px dotted;
+  margin-left: .2em;
+  margin-right: .2em;
+  font-size: 0.8125em;
+}
+
+/*.light*/ /*button*/.execBar__table:hover,
+/*.light*/ /*button*/.execBar__map:hover {
+  color: #333;
+}
+
+.dark /*button*/.execBar__table:hover,
+.dark /*button*/.execBar__map:hover {
+  color: orange;
+}
+
+/*button*/.execBar__table {
+  font-weight: bold;
+}
+
+/*button*/.execBar__table::-webkit-focus-inner,
+/*button*/.execBar__map::-webkit-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+/*button*/.execBar__table::-moz-focus-inner,
+/*button*/.execBar__map::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}

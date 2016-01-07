@@ -245,6 +245,8 @@ impl<TExecIter: Iterator<Item=ExecEvent>> http::Response for SqlExecResponse<TEx
         {
             let mut out = JsonStreamWriter(&mut w);
 
+            try!(out.begin());
+
             let mut current_fields = None;
 
             for event in execiter {
@@ -288,6 +290,8 @@ impl<TExecIter: Iterator<Item=ExecEvent>> http::Response for SqlExecResponse<TEx
                     ),
                 };
             }
+
+            try!(out.end());
         }
 
 
@@ -542,13 +546,26 @@ trait View {
 struct JsonStreamWriter<W>(W);
 
 impl<W: Write> JsonStreamWriter<W> {
+    fn begin(&mut self) -> io::Result<()> {
+        self.0.write_all(b"[\"jsonstream\"\r\n")
+    }
+
+    fn end(&mut self) -> io::Result<()> {
+        self.0.write_all(b"]")
+    }
+
     fn write<T: Encodable>(&mut self, json_obj: T) -> io::Result<()> {
         let inner = &mut self.0;
-        let intro = b"<script>parent.pushmsg(";
-        let outro = b")</script>";
-        try!(inner.write_all(intro));
+        // let intro = b"<script>parent.pushmsg(";
+        // let outro = b")</script>";
+        // try!(inner.write_all(intro));
+        // try!(write!(inner, "{}", json::as_json(&json_obj)));
+        // try!(inner.write_all(outro));
+
+        try!(inner.write_all(b","));
         try!(write!(inner, "{}", json::as_json(&json_obj)));
-        try!(inner.write_all(outro));
+        try!(inner.write_all(b"\r\n"));
+
         Ok(())
     }
 

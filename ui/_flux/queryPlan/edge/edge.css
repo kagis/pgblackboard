@@ -1,0 +1,13 @@
+/*path*/.queryPlanEdge {
+  fill: none;
+  stroke: #555;
+  stroke-width: 2px;
+}
+
+/*.light*/ .queryPlanEdge {
+  stroke: #999;
+}
+
+.dark .queryPlanEdge {
+  stroke: #555;
+}

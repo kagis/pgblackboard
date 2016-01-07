@@ -1,6 +1,7 @@
 use http;
 use dbms;
 use super::JsonResponse;
+use super::JsonpResponse;
 use super::get_req_credentials;
 use super::error_response;
 
@@ -18,6 +19,14 @@ pub fn handle_tree_req<TDbms: dbms::Dbms>(
         &[],
         req,
     )
+}
+
+pub fn handle_tree_root_req<TDbms: dbms::Dbms>(
+    dbms: &TDbms,
+    req: &http::Request)
+    -> Box<http::Response>
+{
+    http::Handler::handle_http_req(&RootDbObjs { dbms: dbms }, &[], req)
 }
 
 struct DbObjChildren<'dbms, 'p, TDbms: dbms::Dbms + 'dbms> {
@@ -42,6 +51,34 @@ impl<'dbms, 'p, TDbms: dbms::Dbms + 'dbms> http::Resource for DbObjChildren<'dbm
             Ok(dbobj_children) => Box::new(JsonResponse {
                 status: http::Status::Ok,
                 content: dbobj_children
+            }),
+            Err(ref err) => error_response(err)
+        }
+
+    }
+}
+
+struct RootDbObjs<'dbms, TDbms: dbms::Dbms + 'dbms> {
+    dbms: &'dbms TDbms,
+}
+
+impl<'dbms, TDbms: dbms::Dbms + 'dbms> http::Resource for RootDbObjs<'dbms, TDbms> {
+    fn get(&self, req: &http::Request) -> Box<http::Response> {
+
+        let credentials = match get_req_credentials(req) {
+            Ok(credentials) => credentials,
+            Err(err_resp) => return err_resp,
+        };
+
+        let root_dbobjs_result = self.dbms.get_root_dbobjs(
+            credentials,
+        );
+
+        match root_dbobjs_result {
+            Ok(root_dbobjs) => Box::new(JsonpResponse {
+                status: http::Status::Ok,
+                content: root_dbobjs,
+                callback: "acceptRootTreeNodes".to_owned(),
             }),
             Err(ref err) => error_response(err)
         }

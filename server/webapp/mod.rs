@@ -13,6 +13,7 @@ use dbms;
 use self::index::handle_index_req;
 use self::sqlexec::handle_sqlexec_req;
 use self::tree::handle_tree_req;
+use self::tree::handle_tree_root_req;
 use self::definitions::handle_def_req;
 use self::tables::handle_table_req;
 
@@ -35,6 +36,7 @@ impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
         match path {
             [""] => handle_index_req(&self.dbms, req),
             ["exec"] => handle_sqlexec_req(&self.dbms, req),
+            ["tree"] => handle_tree_root_req(&self.dbms, req),
             ["tree", obj_path..] => handle_tree_req(&self.dbms, obj_path, req),
             ["definitions", obj_path..] => handle_def_req(&self.dbms, obj_path, req),
             ["tables", table_path..] => handle_table_req(&self.dbms, table_path, req),
@@ -109,6 +111,30 @@ impl<T: Encodable> http::Response for JsonResponse<T> {
     }
 }
 
+struct JsonpResponse<T: Encodable> {
+    status: http::Status,
+    content: T,
+    callback: String,
+}
+
+impl<T: Encodable> http::Response for JsonpResponse<T> {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type("application/javascript"));
+        if self.status == http::Status::Unauthorized {
+            try!(w.write_www_authenticate_basic("postgres"));
+        }
+
+        let response_body = format!(
+            "{callback}({arg})",
+            callback = self.callback,
+            arg = json::encode(&self.content).unwrap()
+        );
+
+        w.write_content(response_body.as_bytes())
+    }
+}
+
 struct FsDirHandler(&'static str);
 
 impl http::Handler for FsDirHandler {
@@ -124,6 +150,7 @@ impl http::Handler for FsDirHandler {
         pathbuf.extend(path);
         let content_type = match pathbuf.extension().and_then(|it| it.to_str()).unwrap_or("") {
             "ico" => "image/vnd.microsoft.icon",
+            "svg" => "image/svg+xml",
             "js" => "application/javascript; charset=utf-8",
             "css" => "text/css; charset=utf-8",
             "html" => "text/html; charset=utf-8",

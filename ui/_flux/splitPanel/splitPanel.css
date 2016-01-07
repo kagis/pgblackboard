@@ -1,0 +1,39 @@
+.splitPanel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.splitPanel--vertical.splitPanel--splitting,
+.splitPanel--vertical > .splitPanel__splitter {
+  cursor: ns-resize;
+}
+
+.splitPanel--horizontal.splitPanel--splitting,
+.splitPanel--horizontal > .splitPanel__splitter {
+  cursor: ew-resize;
+}
+
+.splitPanel__splitter {
+  position: absolute;
+}
+
+.splitPanel--horizontal > .splitPanel__splitter {
+  top: 0;
+  bottom: 0;
+}
+
+.splitPanel--vertical > .splitPanel__splitter {
+  left: 0;
+  right: 0;
+}
+
+.splitPanel__child {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}

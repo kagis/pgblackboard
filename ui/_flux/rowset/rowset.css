@@ -1,0 +1,151 @@
+.dark .rowset { border-color: #555; }
+.dark .rowset th { background-color: #444; }
+.dark .rowset-invalid-row td { background-color: #551414; }
+.dark .rowset tr:nth-child(even) {
+  color: #aaa;
+  background-color: transparent;
+}
+
+/*.light*/ .rowset { border-color: #aaa; }
+/*.light*/ .rowset th { background-color: #ddd; }
+/*.light*/ .rowset-invalid-row td { background-color: #ffd7d7; }
+/*.light*/ .rowset tr:nth-child(even) { background-color: #eee; }
+
+.rowset {
+  border-collapse: collapse;
+  white-space: nowrap;
+  padding: 0;
+  margin: 0;
+  margin-bottom: 1em;
+}
+
+.rowset--fixed {
+  position: fixed;
+  top: 0;
+}
+
+/* make firefox inherit border-color for cells */
+.rowset * {
+  border-color: inherit;
+}
+
+.rowset td,
+.rowset th {
+  border-width: 1px;
+  border-style: solid;
+  padding: .2em;
+}
+
+.rowset__cell {
+  /* truncate long cells */
+  max-width: 50em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowset__cell--num {
+  text-align: right;
+}
+
+/* expand cell content on focus */
+.rowset__cell:focus {
+  white-space: pre;
+  overflow-wrap: break-word;
+}
+
+/* .rowset__colheader is all TH except row number */
+.rowset__colheader {
+  width: 6em;
+}
+
+/*  ┬─────────┬─
+ *  │ COLNAME │
+ *  │ coltype │
+ *  ┼─────────┼─
+ *  │     │
+ */
+.rowset__coltype {
+  display: block;
+  opacity: .5; /* mute color */
+  font-size: .5em;
+  text-transform: uppercase;
+}
+
+/* row number */
+.rowset__corner::before {
+  content: '#';
+}
+.rowset__rowheader {
+  text-align: right;
+  font-weight: bold;
+}
+.rowset__rowheader::before {
+  counter-increment: rownum;
+  content: counter(rownum);
+}
+.rowset > tbody {
+  counter-reset: rownum;
+}
+.rowset-has-blankrow > tbody > tr:last-child > th::before {
+  content: '*';
+}
+
+/* empty TD are nulls */
+.rowset__cell:empty::before {
+  content: 'null';
+  color: #888;
+  font-style: italic;
+  font-size: smaller;
+}
+
+.rowset__cell--emptystr::before {
+  content: 'empty string';
+}
+
+/* make blank row semiopaque like a ghost */
+.rowset-has-blankrow > tbody > tr:last-child {
+  opacity: .5;
+}
+
+.rowset-submitting-row {
+  animation: 'move-stripes' .2s linear infinite;
+  /*-webkit-animation: 'move-stripes' .2s linear infinite;
+     -moz-animation: 'move-stripes' .2s linear infinite;
+      -ms-animation: 'move-stripes' .2s linear infinite;*/
+
+  background-size: 1em 100%;
+  background-image: linear-gradient(45deg
+                      ,rgba(0,0,0, 0)   0
+                      ,rgba(0,0,0, 0)  20%
+                      ,rgba(0,0,0,.1)  20%
+                      ,rgba(0,0,0,.1)  40%
+                      ,rgba(0,0,0, 0)  40%
+                      ,rgba(0,0,0, 0)  60%
+                      ,rgba(0,0,0,.1)  60%
+                      ,rgba(0,0,0,.1)  80%
+                      ,rgba(0,0,0, 0)  80%
+                      ,rgba(0,0,0, 0) 100%);
+
+}
+
+@keyframes move-stripes {
+    0% { background-position: 0 0; }
+  100% { background-position: 1em 0; }
+}
+
+/*
+@-webkit-keyframes move-stripes {
+    0% { background-position: 0 0; }
+  100% { background-position: 1em 0; }
+}
+
+@-moz-keyframes move-stripes {
+    0% { background-position: 0 0; }
+  100% { background-position: 1em 0; }
+}
+
+@-ms-keyframes move-stripes {
+    0% { background-position: 0 0; }
+  100% { background-position: 1em 0; }
+}
+*/

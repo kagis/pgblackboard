@@ -1,0 +1,27 @@
+.zoomPan {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.zoomPan__pane {
+  display: block;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.zoomPan__pane--animated {  
+  transition: transform 100ms linear;
+}
+
+.zoomPan__center {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+}
