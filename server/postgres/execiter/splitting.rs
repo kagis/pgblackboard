@@ -130,7 +130,7 @@ fn next_statement(script: &str) -> (&str, &str) {
 }
 
 fn eat_next_char(src: &str) -> Option<&str> {
-    src.slice_shift_char().map(|(_, tail)| tail)
+    slice_shift_char(src).map(|(_, tail)| tail)
 }
 
 fn eat_block_comment(src: &str) -> Option<&str> {
@@ -182,7 +182,7 @@ fn eat_whitespaces(src: &str) -> &str {
 
 fn eat_while<F>(src: &str, f: F) -> &str where F: Fn(char) -> bool {
     let mut tail = src;
-    while let Some(n) = tail.slice_shift_char()
+    while let Some(n) = slice_shift_char(tail)
             .and_then(|(ch, tail)| if f(ch) { Some(tail) } else { None })
     {
         tail = n;
@@ -249,9 +249,9 @@ fn eat_until_escaped<'a, 'b>(src: &'a str,
             return out_of_block;
         }
 
-        if let Some((ch, next_tail)) = tail.slice_shift_char() {
+        if let Some((ch, next_tail)) = slice_shift_char(tail) {
             tail = if ch == escape_ch {
-                next_tail.slice_shift_char()
+                slice_shift_char(next_tail)
                          .map(|(_, it)| it)
                          .unwrap_or(next_tail)
             } else {
@@ -261,6 +261,10 @@ fn eat_until_escaped<'a, 'b>(src: &'a str,
             return "";
         }
     }
+}
+
+fn slice_shift_char(src: &str) -> Option<(char, &str)> {
+    src.chars().next().map(|ch| (ch, &src[ch.len_utf8()..]))
 }
 
 #[cfg(test)]

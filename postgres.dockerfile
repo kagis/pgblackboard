@@ -3,7 +3,7 @@ FROM debian:jessie
 RUN apt-get update \
  && apt-get install -y wget tar gzip gcc make
 
-ENV SOURCEURL=https://ftp.postgresql.org/pub/source/v9.4.0/postgresql-9.4.0.tar.gz
+ENV SOURCEURL=https://ftp.postgresql.org/pub/source/v9.5.0/postgresql-9.5.0.tar.gz
 
 RUN mkdir postgresql \
  && cd postgresql \

@@ -1,4 +1,4 @@
-DOCKER_IMAGE=postgres-9.4 #pgblackboard_test_postgres
+DOCKER_IMAGE=postgres-9.5 #pgblackboard_test_postgres
 sudo docker build --tag $DOCKER_IMAGE - < postgres.dockerfile
 CONTAINERID=$(sudo docker run --publish 5432 --detach $DOCKER_IMAGE)
 

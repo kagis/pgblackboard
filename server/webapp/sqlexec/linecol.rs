@@ -39,7 +39,7 @@ impl LineCol {
         let line_bpos = lines
             .take(self.line)
             .map(|line| line.len() + 1)
-            .sum::<usize>();
+            .fold(0usize, |acc, x| acc + x);
 
         let line = match lines.next() {
             Some(line) => line,

@@ -33,26 +33,28 @@ impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
         req: &http::Request)
         -> Box<http::Response>
     {
-        match path {
-            [""] => handle_index_req(&self.dbms, req),
-            ["exec"] => handle_sqlexec_req(&self.dbms, req),
-            ["tree"] => handle_tree_root_req(&self.dbms, req),
-            ["tree", obj_path..] => handle_tree_req(&self.dbms, obj_path, req),
-            ["definitions", obj_path..] => handle_def_req(&self.dbms, obj_path, req),
-            ["tables", table_path..] => handle_table_req(&self.dbms, table_path, req),
+        let path_prefix = path[0];
+        let path_tail = &path[1..];
+
+        match path_prefix {
+            "" => handle_index_req(&self.dbms, req),
+            "exec" => handle_sqlexec_req(&self.dbms, req),
+            "treeinit" => handle_tree_root_req(&self.dbms, req),
+            "tree" => handle_tree_req(&self.dbms, path_tail, req),
+            "definitions" => handle_def_req(&self.dbms, path_tail, req),
+            "tables" => handle_table_req(&self.dbms, path_tail, req),
 
             #[cfg(not(debug_assertions))]
-            ["favicon.ico"] => statres::FAVICON_RESOURCE.handle_http_req(&[], req),
+            "favicon.ico" => statres::FAVICON_RESOURCE.handle_http_req(&[], req),
 
             #[cfg(not(debug_assertions))]
-            ["pgblackboard.js"] => statres::BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
+            "pgblackboard.js" => statres::BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
 
             #[cfg(debug_assertions)]
-            ["node_modules", asset_path..] => FsDirHandler("./node_modules").handle_http_req(asset_path, req),
+            "node_modules" => FsDirHandler("./node_modules").handle_http_req(path_tail, req),
 
             #[cfg(debug_assertions)]
-            asset_path => FsDirHandler("./ui").handle_http_req(asset_path, req),
-
+            _ => FsDirHandler("./ui").handle_http_req(path, req),
 
             // _ => Box::new(index::ErrorResponse {
             //     status: http::Status::NotFound,

@@ -363,7 +363,11 @@ fn resolve_table_oid(
 }
 
 fn unpack_table_path<'a>(table_path: &'a [&'a str]) -> Result<(&'a str, Oid), dbms::Error> {
-    if let [database, table_oid_str] = table_path {
+    // if let [database, table_oid_str] = table_path {
+    if table_path.len() == 2 {
+        let database = table_path[0];
+        let table_oid_str = table_path[1];
+
         table_oid_str.parse()
                      .map(|table_oid| (database, table_oid))
                      .map_err(|_| unexisting_path("Malformed table oid."))
@@ -373,7 +377,11 @@ fn unpack_table_path<'a>(table_path: &'a [&'a str]) -> Result<(&'a str, Oid), db
 }
 
 fn unpack_obj_path<'a>(table_path: &'a [&'a str]) -> Result<(&'a str, &'a str, &'a str), dbms::Error> {
-    if let [database, objtyp, objid] = table_path {
+    // if let [database, objtyp, objid] = table_path {
+    if table_path.len() == 3 {
+        let database = table_path[0];
+        let objtyp = table_path[1];
+        let objid = table_path[2];
         Ok((database, objtyp, objid))
     } else {
         Err(unexisting_path("3 segments expected: database/object_type/object_id."))

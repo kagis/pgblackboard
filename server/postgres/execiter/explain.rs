@@ -63,7 +63,7 @@ fn queryplan_from_json(inp: json::Json) -> Option<QueryPlanNode> {
 
         let children_cost = children.iter()
                                 .filter_map(|child| child.total_cost)
-                                .sum::<f64>();
+                                .fold(0f64, |acc, x| acc + x);
 
         let self_cost = total_cost.map(|it| it - children_cost);
 

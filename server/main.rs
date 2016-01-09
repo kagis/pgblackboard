@@ -1,7 +1,7 @@
-#![feature(slice_patterns)]
-#![feature(iter_arith)]
-#![feature(read_exact)]
-#![feature(str_char)]
+// #![feature(slice_patterns)]
+// #![feature(iter_arith)]
+// #![feature(read_exact)]
+// #![feature(str_char)]
 
 extern crate argparse;
 extern crate rustc_serialize;

@@ -233,9 +233,10 @@ fn map_pgfields_to_dbmsfields(
         .collect::<Vec<_>>();
 
     // single table selected
-    if let [table_oid] = &queried_tables_oids[..] {
-
-
+    // if let [table_oid] = &queried_tables_oids[..] {
+    if queried_tables_oids.len() == 1 {
+        let table_oid = queried_tables_oids[0];
+        
         #[derive(RustcDecodable)]
         struct ColumnDescr {
             id: i16,
