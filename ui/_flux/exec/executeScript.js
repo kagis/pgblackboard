@@ -6,8 +6,11 @@ define(function (require, exports, module) {
 
   module.exports = executeScript;
 
-  function executeScript() {
-    dispatch({ type: 'EXEC' });
+  function executeScript(useMap) {
+    dispatch({
+      type: 'EXEC',
+      useMap: Boolean(useMap),
+    });
 
     const xhr = new XMLHttpRequest();
     xhr.onload = _ => dispatch({

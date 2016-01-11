@@ -14,6 +14,16 @@ define(function (require, exports, module) {
     var message = params.treeNode.path == params.message.treeNodeId && params.message;
     var isSelected = JSON.stringify(params.treeNode.path) == JSON.stringify(params.selectedTreeNodeId);
 
+    const childrenLimit = 200;
+    const isLimited = params.treeNode.isExpanded &&
+                      !params.treeNode.showAll &&
+                      params.treeNode.childNodes.length > childrenLimit;
+
+    const childNodes = params.treeNode.isExpanded && (isLimited ?
+      params.treeNode.childNodes.slice(0, childrenLimit) :
+      params.treeNode.childNodes
+    );
+
     return el('div.treeNode'
 
       ,params.treeNode.can_have_children && el('button.treeNode__toggler'
@@ -47,13 +57,23 @@ define(function (require, exports, module) {
         )
       )
 
-      ,params.treeNode.isExpanded && el('div.treeNode__children'
-        ,params.treeNode.childNodes.map((childNode, i) => renderTreeNode({
+      ,childNodes && el('div.treeNode__children'
+        ,childNodes.map((childNode, i) => renderTreeNode({
           treeNode: childNode,
           path: params.path.concat(i),
           selectedTreeNodeId: params.selectedTreeNodeId,
           message: params.message,
         }))
+      )
+
+      ,isLimited && el('button.treeNode__showAll'
+        ,el.on('click', _ => dispatch({
+          type: 'SHOW_ALL_TREE_NODE_CHILDREN',
+          treeNodePath: params.path,
+        }))
+        ,'show all '
+        ,el('strong', String(params.treeNode.childNodes.length))
+        ,' items'
       )
     );
   }

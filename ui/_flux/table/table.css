@@ -1,17 +1,17 @@
-.dark .rowset { border-color: #555; }
-.dark .rowset th { background-color: #444; }
-.dark .rowset-invalid-row td { background-color: #551414; }
-.dark .rowset tr:nth-child(even) {
+.dark .table { border-color: #555; }
+.dark .table th { background-color: #444; }
+.dark .table-invalid-row td { background-color: #551414; }
+.dark .table tr:nth-child(even) {
   color: #aaa;
   background-color: transparent;
 }
 
-/*.light*/ .rowset { border-color: #aaa; }
-/*.light*/ .rowset th { background-color: #ddd; }
-/*.light*/ .rowset-invalid-row td { background-color: #ffd7d7; }
-/*.light*/ .rowset tr:nth-child(even) { background-color: #eee; }
+/*.light*/ .table { border-color: #aaa; }
+/*.light*/ .table th { background-color: #ddd; }
+/*.light*/ .table-invalid-row td { background-color: #ffd7d7; }
+/*.light*/ .table tr:nth-child(even) { background-color: #eee; }
 
-.rowset {
+.table {
   border-collapse: collapse;
   white-space: nowrap;
   padding: 0;
@@ -19,42 +19,42 @@
   margin-bottom: 1em;
 }
 
-.rowset--fixed {
+.table--fixed {
   position: fixed;
   top: 0;
 }
 
 /* make firefox inherit border-color for cells */
-.rowset * {
+.table * {
   border-color: inherit;
 }
 
-.rowset td,
-.rowset th {
+.table td,
+.table th {
   border-width: 1px;
   border-style: solid;
   padding: .2em;
 }
 
-.rowset__cell {
+.table__cell {
   /* truncate long cells */
   max-width: 50em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.rowset__cell--num {
+.table__cell--num {
   text-align: right;
 }
 
 /* expand cell content on focus */
-.rowset__cell:focus {
+.table__cell:focus {
   white-space: pre;
   overflow-wrap: break-word;
 }
 
-/* .rowset__colheader is all TH except row number */
-.rowset__colheader {
+/* .table__colheader is all TH except row number */
+.table__colheader {
   width: 6em;
 }
 
@@ -64,7 +64,7 @@
  *  ┼─────────┼─
  *  │     │
  */
-.rowset__coltype {
+.table__coltype {
   display: block;
   opacity: .5; /* mute color */
   font-size: .5em;
@@ -72,42 +72,42 @@
 }
 
 /* row number */
-.rowset__corner::before {
+.table__corner::before {
   content: '#';
 }
-.rowset__rowheader {
+.table__rowheader {
   text-align: right;
   font-weight: bold;
 }
-.rowset__rowheader::before {
+.table__rowheader::before {
   counter-increment: rownum;
   content: counter(rownum);
 }
-.rowset > tbody {
+.table > tbody {
   counter-reset: rownum;
 }
-.rowset-has-blankrow > tbody > tr:last-child > th::before {
+.table-has-blankrow > tbody > tr:last-child > th::before {
   content: '*';
 }
 
 /* empty TD are nulls */
-.rowset__cell:empty::before {
+.table__cell:empty::before {
   content: 'null';
   color: #888;
   font-style: italic;
   font-size: smaller;
 }
 
-.rowset__cell--emptystr::before {
+.table__cell--emptystr::before {
   content: 'empty string';
 }
 
 /* make blank row semiopaque like a ghost */
-.rowset-has-blankrow > tbody > tr:last-child {
+.table-has-blankrow > tbody > tr:last-child {
   opacity: .5;
 }
 
-.rowset-submitting-row {
+.table-submitting-row {
   animation: 'move-stripes' .2s linear infinite;
   /*-webkit-animation: 'move-stripes' .2s linear infinite;
      -moz-animation: 'move-stripes' .2s linear infinite;

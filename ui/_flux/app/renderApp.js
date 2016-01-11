@@ -7,7 +7,7 @@ define(function (require, exports, module) {
   const renderTreeNode = require('tree/renderTreeNode');
   const renderMyQuery = require('myQueries/renderMyQuery');
   const renderCodeForm = require('codeForm/renderCodeForm');
-  const renderResult = require('exec/renderResult');
+  const renderExecOutput = require('exec/renderExecOutput');
 
   module.exports = renderApp;
 
@@ -63,7 +63,7 @@ define(function (require, exports, module) {
               selectionRanges: state.selectedDocument.selectionRanges,
              }),
             bottom: el('div.main__output'
-              ,renderResult(state.result)
+              ,renderExecOutput(Object.assign({ isDark: state.isDark }, state.execOutput))
             ),
           }),
 

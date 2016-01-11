@@ -40,6 +40,11 @@ define(function (require, exports, module) {
           rootNodes: action.nodes,
         });
 
+      case 'SHOW_ALL_TREE_NODE_CHILDREN':
+        var nodeToShowAll = getTreeNode(action.treeNodePath);
+        nodeToShowAll.showAll = true;
+        return tree;
+
       default:
         return tree;
     }

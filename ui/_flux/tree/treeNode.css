@@ -161,7 +161,7 @@
   font-weight: normal;
   font-variant: normal;
   speak: none;
-  /* display: inline-block; */
+  display: inline-block;
   text-decoration: inherit;
   width: 1em;
   text-align: center;
@@ -299,42 +299,43 @@
 }
 
 .treeNode__showall-layout {
-  padding-left: 1.3em;
-  line-height: 1.4375em;
 }
 
-.treeNode__showall {
+.treeNode__showAll {
+  display: block;
   margin: 0;
   padding: 0;
+  margin-left: 1.5em;
   border: none;
   color: inherit;
   background: none;
   outline: none;
   font-family: inherit;
   font-size: smaller;
-  line-height: 1em;
+  line-height: 2em;
   cursor: pointer;
   white-space: nowrap;
   color: #888;
 }
 
-.treeNode__showall::-webkit-focus-inner {
+.treeNode__showAll::-webkit-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__showall::-moz-focus-inner {
+.treeNode__showAll::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__showall:hover {
+.treeNode__showAll:hover {
   text-decoration: underline;
 }
 
-.treeNode__showall::before {
+.treeNode__showAll::before {
   content: '…';
   margin-left: .4em;
+  margin-right: .4em;
   speak: none;
   text-decoration: none;
 }

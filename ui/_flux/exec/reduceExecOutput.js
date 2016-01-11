@@ -1,24 +1,27 @@
 'use strict';
 
 define(function (require, exports, module) {
-  module.exports = reduceResults;
+  module.exports = reduceExecOutput;
 
-  function reduceResults(results, action) {
+  function reduceExecOutput(execOutput, action) {
     switch (action.type) {
       case 'EXPAND_QUERY_PLAN':
-        results[action.resultIndex].isFullPageView = true;
-        return results;
+        execOutput.items[action.resultIndex].isFullPageView = true;
+        return execOutput;
 
       case 'COLLAPSE_QUERY_PLAN':
-        results[action.resultIndex].isFullPageView = false;
-        return results;
+        execOutput.items[action.resultIndex].isFullPageView = false;
+        return execOutput;
 
       case 'MOVE_QUERY_PLAN':
-        Object.assign(results[action.resultIndex], action.extent);
-        return results;
+        Object.assign(execOutput.items[action.resultIndex], action.extent);
+        return execOutput;
 
       case 'EXEC':
-        return [];
+        return {
+          useMap: action.useMap,
+          items: [],
+        };
 
       case 'HANDLE_EXEC_RESULT_EVENTS':
         action.events.forEach(function (m) {
@@ -26,7 +29,7 @@ define(function (require, exports, module) {
           var eventPayload = m[1];
           switch (eventTag) {
             case 'rowset':
-              results.push({
+              execOutput.items.push({
                 resultType: 'ROWSET',
                 fields: eventPayload,
                 rows: [],
@@ -34,12 +37,12 @@ define(function (require, exports, module) {
               break;
 
             case 'r':
-              results[results.length - 1].rows.push(eventPayload);
+              execOutput.items[execOutput.items.length - 1].rows.push(eventPayload);
               break;
 
             case 'non_query':
             case 'notice':
-              results.push({
+              execOutput.items.push({
                 resultType: 'MESSAGE',
                 text: eventPayload,
                 line: m[2],
@@ -48,7 +51,7 @@ define(function (require, exports, module) {
               break;
 
             case 'error':
-              results.push({
+              execOutput.items.push({
                 resultType: 'MESSAGE',
                 text: eventPayload,
                 line: m[2],
@@ -57,7 +60,7 @@ define(function (require, exports, module) {
               break;
 
             case 'query_plan':
-              results.push({
+              execOutput.items.push({
                 resultType: 'QUERY_PLAN',
                 rootQueryPlanNode: eventPayload,
                 isFullPageView: false,
@@ -71,10 +74,10 @@ define(function (require, exports, module) {
               break;
           }
         });
-        return results;
+        return execOutput;
 
       default:
-        return results;
+        return execOutput;
     }
   }
 });

@@ -10,14 +10,12 @@ define(function (require, exports, module) {
     return el('div.execBar'
 
       ,el('button.execBar__map'
-        ,el.on('click', _ => dispatch({
-          type: 'EXEC_MAP'
-        }))
+        ,el.on('click', _ => executeScript('useMap'))
         ,'map'
       )
 
       ,el('button.execBar__table'
-        ,el.on('click', executeScript)
+        ,el.on('click', _ => executeScript())
         ,'execute'
       )
 

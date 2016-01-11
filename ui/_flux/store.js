@@ -6,7 +6,7 @@ define(function (require, exports, module) {
   const reduceTree = require('tree/reduceTree');
   const reduceMyQueries = require('myQueries/reduceMyQueries');
   const myQueriesRepo = require('myQueries/myQueriesRepo');
-  const reduceResult = require('exec/reduceResult');
+  const reduceExecOutput = require('exec/reduceExecOutput');
 
   var onStoreChange = createHub();
 
@@ -18,6 +18,10 @@ define(function (require, exports, module) {
       selectedTreeNodeOrMyQuery: {},
       selectedDocument: {},
       result: [],
+      execOutput: {
+        useMap: false,
+        items: null,
+      },
       myQueries: myQueriesRepo.getAll(),
       tree: {
         rootNodes: getInitialTree(),
@@ -52,7 +56,7 @@ define(function (require, exports, module) {
       myQueries: reduceMyQueries(state.myQueries, action),
       selectedTreeNodeOrMyQuery: reduceSelectedTreeNodeOrMyQuery(state.selectedTreeNodeOrMyQuery, action),
       selectedDocument: reduceSelectedDocument(state.selectedDocument, action),
-      result: reduceResult(state.result, action),
+      execOutput: reduceExecOutput(state.execOutput, action),
     };
 
 
