@@ -1,17 +1,19 @@
+'use strict';
+
 csslink('./codeForm.css');
 
 define(function (require, exports, module) {
-  var dispatch = require('core/dispatch');
-  var el = require('core/el');
-  var renderCodeMirror = require('./codeMirror/renderCodeMirror');
-  var renderExecbar = require('./execBar/renderExecBar');
-  var renderSpinnerShield = require('./spinnerShield/renderSpinnerShield');
-  var updateMyQuery = require('myQueries/updateMyQuery');
-  var addMyQuery = require('myQueries/addMyQuery');
+  const dispatch = require('core/dispatch');
+  const el = require('core/el');
+  const renderCodeMirror = require('./codeMirror/renderCodeMirror');
+  const renderSpinnerShield = require('./spinnerShield/renderSpinnerShield');
+  const renderExecbar = require('execBar/renderExecBar');
+  const updateMyQuery = require('myQueries/updateMyQuery');
+  const addMyQuery = require('myQueries/addMyQuery');
 
-  module.exports = renderScriptEditor;
+  module.exports = renderCodeForm;
 
-  function renderScriptEditor(script) {
+  function renderCodeForm(script) {
     return el('div.codeForm'
 
       ,renderSpinnerShield({
@@ -27,7 +29,7 @@ define(function (require, exports, module) {
         onSelectionChange: handleSelectionChange,
       })
 
-      ,el('div.codeForm__execbar'
+      ,el('div.codeForm__execBar'
         ,renderExecbar()
       )
     );
@@ -47,7 +49,4 @@ define(function (require, exports, module) {
       });
     }
   }
-
-
-
 });

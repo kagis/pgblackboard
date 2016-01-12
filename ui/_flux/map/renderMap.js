@@ -5,6 +5,7 @@ csslink('./map.css');
 define(function (require, exports, module) {
   const tileCoordsToQuadKey = require('./tileCoordsToQuadKey');
   const featureColors = require('./colors');
+  const renderFeaturePopup = require('./featurePopup/renderFeaturePopup');
 
   module.exports = renderMap;
 
@@ -95,11 +96,21 @@ define(function (require, exports, module) {
           const overlayOptions = {
             style: computeFeatureStyle.bind(null, { color: color }),
             pointToLayer,
+
           };
-          const overlay = L.featureGroup(it.rows.map(row => L.geoJson(
-            JSON.parse(row[geoJsonFieldIndex]),
-            overlayOptions
-          )));
+          const overlay = L.featureGroup(it.rows.map(row => {
+            const featureLayer = L.geoJson(
+              JSON.parse(row[geoJsonFieldIndex]),
+              overlayOptions
+            );
+
+            featureLayer.bindPopup(cito.vdom.create(renderFeaturePopup(
+              row.map((value, index) => ({ name: it.fields[index].name, value }))
+                    .filter((_, index) => index != geoJsonFieldIndex)
+            )).dom);
+
+            return featureLayer;
+          }));
           map.layersControl.addOverlay(overlay, String(resultIndex + 1))
           map.overlaysLayer.addLayer(overlay);
         }

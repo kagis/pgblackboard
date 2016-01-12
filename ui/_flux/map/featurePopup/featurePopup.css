@@ -1,0 +1,35 @@
+.featurePopup {
+  min-width: 300px;
+  font-size: inherit;
+  color: inherit;
+}
+
+.featurePopup__propName {
+  font-weight: bold;
+  vertical-align: top;
+}
+
+/*.light*/ .leaflet-popup-content-wrapper,
+/*.light*/ .leaflet-popup-tip {
+  background-color: #fcfcfc;
+}
+
+/*.light*/ .leaflet-popup-content-wrapper,
+/*.light*/ .leaflet-popup-tip {
+  box-shadow: 0 0 0 .4em rgba(0,0,0,.1);
+}
+
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background-color: #333;
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  box-shadow: 0 0 0 .4em rgba(0,0,0,.2);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: .2em;
+}
