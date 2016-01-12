@@ -2,6 +2,7 @@ define.basePath = document.baseURI;
 define.modules = {};
 define.requestedPaths = {};
 define.unresolvedPaths = {};
+define.amd = {};
 
 function define(factory) {
   var definingModulePath = document.currentScript.src;

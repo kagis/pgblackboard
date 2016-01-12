@@ -1,8 +1,10 @@
 'use strict';
 
 csslink('./map.css');
+csslink('./leaflet/leaflet.css');
 
 define(function (require, exports, module) {
+  const L = require('./leaflet/leaflet-src');
   const tileCoordsToQuadKey = require('./tileCoordsToQuadKey');
   const featureColors = require('./colors');
   const renderFeaturePopup = require('./featurePopup/renderFeaturePopup');
@@ -37,6 +39,7 @@ define(function (require, exports, module) {
       zoom: 1,
       zoomControl: false,
       attributionControl: false,
+      preferCanvas: true,
     });
 
     L.control.scale().addTo(map);
@@ -104,10 +107,12 @@ define(function (require, exports, module) {
               overlayOptions
             );
 
-            featureLayer.bindPopup(cito.vdom.create(renderFeaturePopup(
-              row.map((value, index) => ({ name: it.fields[index].name, value }))
-                    .filter((_, index) => index != geoJsonFieldIndex)
-            )).dom);
+            featureLayer.bindPopup(function () {
+              return cito.vdom.create(renderFeaturePopup(
+                row.map((value, index) => ({ name: it.fields[index].name, value }))
+                      .filter((_, index) => index != geoJsonFieldIndex)
+              )).dom;
+            });
 
             return featureLayer;
           }));
@@ -143,8 +148,9 @@ define(function (require, exports, module) {
       case 'MultiPoint':
         return {
           fillOpacity: 1,
-          color: '#333',
+          color: '#555',
           fillColor: color,
+          weight: 2,
         };
 
       default:
