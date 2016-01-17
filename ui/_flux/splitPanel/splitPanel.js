@@ -7,8 +7,10 @@ define(function (require, exports, module) {
   const cito = require('core/cito');
   const onDrag = require('core/onDrag');
 
-  exports.renderHorizontalSplitpanel = renderHorizontalSplitpanel;
-  exports.renderVerticalSplitpanel = renderVerticalSplitpanel;
+  Object.assign(exports, {
+    renderHorizontalSplitpanel,
+    renderVerticalSplitpanel,
+  });
 
   const splitterSize = 6;
 
@@ -16,8 +18,8 @@ define(function (require, exports, module) {
     const ratio = Math.max(0, Math.min(1, params.ratio));
     let rootNode;
 
-    return el('div.splitPanel.splitPanel--horizontal'
-      ,el.patch(node => rootNode = node)
+    return rootNode =
+    el('div.splitPanel.splitPanel--horizontal'
       ,params.isSplitting && el.class('splitPanel--splitting')
       ,el('div.splitPanel__child'
         ,el.style('right', (1 - ratio) * 100 + '%')
@@ -46,8 +48,8 @@ define(function (require, exports, module) {
     const ratio = Math.max(0, Math.min(1, params.ratio));
     let rootNode;
 
-    return el('div.splitPanel.splitPanel--vertical'
-      ,el.patch(node => rootNode = node)
+    return rootNode =
+    el('div.splitPanel.splitPanel--vertical'
       ,params.isSplitting && el.class('splitPanel--splitting')
       ,el('div.splitPanel__child'
         ,el.style('bottom', (1 - ratio) * 100 + '%')

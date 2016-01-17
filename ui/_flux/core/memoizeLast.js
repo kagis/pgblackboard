@@ -1,10 +1,9 @@
 'use strict';
 
 define(function (require, exports, module) {
+  module.exports = memoizeLast;
 
-  module.exports = memoize;
-
-  function memoize(fn) {
+  function memoizeLast(fn) {
     let prevParams;
     let result;
     return function memoizedWrapper(params) {

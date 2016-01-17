@@ -24,7 +24,9 @@ define(function (require, exports, module) {
   const rootNode = cito.vdom.append(appContainerElem, rootNodeFn);
 
   store.subscribe(({ action, state }) => {
+    // console.profile('render');
     cito.vdom.update(rootNode, rootNodeFn);
+    // console.profileEnd('render');
 
     console.log('%o dispatched %c%s ', action, 'font-weight: bold', action.type);
   });

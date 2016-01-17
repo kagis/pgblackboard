@@ -4,6 +4,7 @@ csslink('./queryPlan.css');
 
 define(function (require, exports, module) {
   const el = require('core/el');
+  const dispatch = require('core/dispatch');
   const computeQueryPlanLayout = require('./computeQueryPlanLayout');
   const renderZoomPan = require('./zoomPan/renderZoomPan');
   const renderEdge = require('./edge/renderEdge');

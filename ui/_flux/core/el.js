@@ -4,109 +4,94 @@ define(function (require, exports, module) {
   module.exports = el;
 
   function el(selector, ...args) {
-    var captures = selector.match(/^([\w-]*)((\.[\w-]+)*)((\[[^=]+(=[^\]]*)?\])*)$/);
-    if (!captures) {
-      throw Error('Unsupported selector ' + selector);
-    }
-    var tag = captures[1];
-    var classes = captures[2].split('.').filter(Boolean);
-    var attrs = (captures[4].match(/\[[^=]+(=[^\]]*)?\]/g) || [])
-                        .map(it => it.match(/^\[([^=]+)(=([^\]]*))?\]$/))
-                        .reduce((dict, it) => (dict[it[1]] = it[3], dict), {});
+    const [tag, ...classes] = selector.split('.');
+    const node = { tag };
 
-    var node = {};
-    node.tag = tag || 'div';
     if (classes.length) {
-      (node.attrs || (node.attrs = {})).class = classes.join(' ');
-    }
-    for (var attr in attrs) {
-      (node.attrs || (node.attrs = {}))[attr] = attrs[attr];
+      node.attrs = { class: classes.join(' ') };
     }
 
     for (let arg of args) {
-      if (arg instanceof el.Patch) {
+      if (arg instanceof Patch) {
         arg.apply(node);
-      } else if (Array.isArray(arg)) {
-        if (node.children) {
-          Array.prototype.push.apply(node.children, arg);
-        } else {
-          node.children = arg;
-        }
       } else if (arg) {
-        (node.children || (node.children = [])).push(arg);
+        node.children = node.children ? [].concat(node.children, arg) : arg;
       }
     }
 
     return node;
   }
 
-  el.attr = function el_attr(name, value) {
-    return el.patch(function (node) {
-      (node.attrs || (node.attrs = {}))[name] = value;
-    });
-  };
+  Object.assign(el, {
 
-  el.on = function el_on(eventType, listener) {
-    return el.patch(function (node) {
-      el.addEventListener(node, eventType, listener);
-    });
-  };
-
-  el.class = function el_class(extraClass) {
-    return el.patch(function (node) {
-      var attrs = ensureAttrs(node);
-      attrs.class = [attrs.class, extraClass].filter(Boolean).join(' ');
-    });
-  };
-
-  el.style = function el_style(prop, value) {
-    return el.patch(function (node) {
-      el.setStyle(node, prop, value);
-    });
-  };
-
-  el.prop = function el_prop(prop, value) {
-    return el.patch(function (node) {
-      node[prop] = value;
-    });
-  };
-
-  el.createRefCollection = function el_createRefCollection() {
-    return function refCollection(name) {
-      return el.patch(node => {
-        refCollection[name] = node;
+    attr(attr, value) {
+      return el.patch(function (node) {
+        el.setAttribute(node, attr, value);
       });
-    };
-  };
+    },
 
-  el.patch = function el_patch(applyFn) {
-    return new el.Patch(applyFn);
-  };
+    on(eventType, listener) {
+      return el.patch(function (node) {
+        el.addEventListener(node, eventType, listener);
+      });
+    },
 
-  el.Patch = function el_Patch(applyFn) {
+    class(extraClass) {
+      return el.patch(function (node) {
+        el.replaceAttribute(node, 'class', function (prev) {
+          return [prev, extraClass].filter(Boolean).join(' ');
+        });
+      });
+    },
+
+    style(prop, value) {
+      return el.patch(function (node) {
+        el.setStyle(node, prop, value);
+      });
+    },
+
+    prop(prop, value) {
+      return el.patch(function (node) {
+        node[prop] = value;
+      });
+    },
+
+    patch(applyFn) {
+      return new Patch(applyFn);
+    },
+
+    addEventListener(node, eventType, listener) {
+      const eventsObj = node.events || (node.events = {});
+      const eventsArrOrFn = eventsObj[eventType];
+      if (!eventsArrOrFn) {
+        eventsObj[eventType] = listener;
+      } else if (typeof eventsArrOrFn == 'function') {
+        eventsArrOrFn[eventType] = [eventsArrOrFn, listener];
+      } else if (Array.isArray(eventsArrOrFn)) {
+        eventsArrOrFn.push(listener);
+      }
+    },
+
+    setStyle(node, prop, value) {
+      el.replaceAttribute(node, 'style', function (style = {}) {
+        style[prop] = value;
+        return style;
+      });
+    },
+
+    setAttribute(node, attr, value) {
+      el.replaceAttribute(node, attr, _ => value);
+    },
+
+    replaceAttribute(node, attr, replaceFn) {
+      const attrsObj = node.attrs || (node.attrs = {});
+      attrsObj[attr] = replaceFn(attrsObj[attr]);
+    },
+
+  });
+
+  function Patch(applyFn) {
     this.apply = applyFn;
-  };
-
-  el.addEventListener = function el_addEventListener(node, eventType, listener) {
-    var eventsObj = node.events || (node.events = {});
-    var eventsArrOrFn = eventsObj[eventType];
-    if (!eventsArrOrFn) {
-      eventsObj[eventType] = listener;
-    } else if (typeof eventsArrOrFn == 'function') {
-      eventsArrOrFn[eventType] = [eventsArrOrFn, listener];
-    } else if (Array.isArray(eventsArrOrFn)) {
-      eventsArrOrFn.push(listener);
-    }
-  };
-
-  el.setStyle = function el_setStyle(node, prop, value) {
-    var attrsObj = ensureAttrs(node);
-    var styleObj = attrsObj.style || (attrsObj.style = {});
-    styleObj[prop] = value;
-  };
-
-  function ensureAttrs(node) {
-    return node.attrs || (node.attrs = {});
   }
 
 });

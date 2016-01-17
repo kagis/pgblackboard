@@ -6,7 +6,7 @@ define(function (require, exports, module) {
   const renderTable = require('table/renderTable');
   const renderQueryPlan = require('queryPlan/renderQueryPlan');
   const renderMap = require('map/renderMap');
-  const memoize = require('core/memoize');
+  const memoizeLast = require('core/memoizeLast');
 
   module.exports = renderExecOutput;
 
@@ -28,9 +28,9 @@ define(function (require, exports, module) {
   }
 
   var resultRenderersMap = {
-    'ROWSET': memoize(p => renderTable(p.result, p.index)),
-    'MESSAGE': memoize(p => renderMessage(p.result, p.index)),
-    'QUERY_PLAN': memoize(p => renderQueryPlan(p.result, p.index)),
+    'ROWSET': memoizeLast(p => renderTable(p.result, p.index)),
+    'MESSAGE': memoizeLast(p => renderMessage(p.result, p.index)),
+    'QUERY_PLAN': memoizeLast(p => renderQueryPlan(p.result, p.index)),
   };
 
 });

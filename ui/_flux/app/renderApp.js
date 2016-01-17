@@ -8,11 +8,11 @@ define(function (require, exports, module) {
   const renderMyQuery = require('myQueries/renderMyQuery');
   const renderCodeForm = require('codeForm/renderCodeForm');
   const renderExecOutput = require('execOutput/renderExecOutput');
-  const memoize = require('core/memoize');
+  const memoizeLast = require('core/memoizeLast');
 
   module.exports = renderApp;
 
-  const renderTreeCached = memoize(renderTree);
+  const renderTreeCached = memoizeLast(renderTree);
 
   function renderApp(state) {
     return el('div.main'
