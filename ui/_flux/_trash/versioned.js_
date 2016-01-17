@@ -1,0 +1,61 @@
+'use strict';
+
+define(function (require, exports, module) {
+
+  Object.assign(exports, {
+    versionOf,
+    extend,
+    set,
+    push,
+  });
+
+  const VERSION_PROP = Symbol('version');
+
+  function set(target, path, value) {
+    return mutateFn(target, path, _ => value);
+  }
+
+  function extend(target, path, extender) {
+    const extenderFn = typeof extender === 'function' ? extender : _ => extender;
+    return mutateFn(target, path, prev => Object.assign({}, prev, extenderFn(prev)));
+  }
+
+  function extend(target, extender) {
+    y
+  }
+
+  function push(target, path, value) {
+    return mutateFn(target, path, arr => {
+      setNewVersion(arr);
+      arr.push(value);
+      return arr;
+    });
+  }
+
+  function mutateFn(target, path, valueFn) {
+    setNewVersion(target);
+    if (path.length > 1) {
+      mutateFn(target[path[0]], path.slice(1), valueFn);
+    } else {
+      target[path[0]] = valueFn(target[path[0]]);
+    }
+    return target;
+  }
+
+  function setNewVersion(obj) {
+    obj[VERSION_PROP] = Object.create(null);
+  }
+
+
+
+  // function isEqual(a, b) {
+  //   const aVersion = a[VERSION_PROP];
+  //   const bVersion = b[VERSION_PROP];
+  //   return typeof aVersion == 'object' &&
+  //          typeof bVersion == 'object' &&
+  // }
+
+  function versionOf(obj) {
+    return !(obj === null || obj === undefined) && obj[VERSION_PROP] || obj;
+  }
+});

@@ -1,75 +1,30 @@
-define(function (require, exports, module) {
-  // var immutable = require-('immutable');
+'use strict';
 
-  const dispatch = require('core/dispatch');
-  const createHub = require('core/hub');
+define(function (require, exports, module) {
+  const reduceCombined = require('core/reduceCombined');
   const reduceTree = require('tree/reduceTree');
   const reduceMyQueries = require('myQueries/reduceMyQueries');
-  const myQueriesRepo = require('myQueries/myQueriesRepo');
-  const reduceExecOutput = require('exec/reduceExecOutput');
+  const reduceExecOutput = require('execOutput/reduceExecOutput');
 
-  var onStoreChange = createHub();
+  module.exports = reduceApp;
 
-  var store = {
-    state: {
-      isDark: false,
-      horizontalRatio: 0.3,
-      verticalRatio: 0.5,
-      selectedTreeNodeOrMyQuery: {},
-      selectedDocument: {},
-      result: [],
-      execOutput: {
-        useMap: false,
-        items: null,
-      },
-      myQueries: myQueriesRepo.getAll(),
-      tree: {
-        rootNodes: getInitialTree(),
-        message: {
-          treeNodeId: null,
-          text: null,
-          isError: false,
-        },
-      }
-    },
-    subscribe: onStoreChange.subscribe,
-    hasChanged: onStoreChange
-  };
-
-  module.exports = store;
-  window.store = store;
-
-
-  dispatch.subscribe(handleAction);
-
-  function handleAction(action) {
-    store.state = reduceAction(store.state, action);
-    onStoreChange();
+  function reduceApp(state, action) {
+    return reduceCombined(state, action, {
+      isDark: reduceIsDark,
+      horizontalRatio: reduceHorizontalRatio,
+      verticalRatio: reduceVerticalRatio,
+      tree: reduceTree,
+      myQueries: reduceMyQueries,
+      selectedTreeNodeOrMyQuery: reduceSelectedTreeNodeOrMyQuery,
+      selectedDocument: reduceSelectedDocument,
+      execOutput: reduceExecOutput,
+    });
   }
 
-  function reduceAction(state, action) {
-    var nextState = {
-      isDark: reduceIsDark(state.isDark, action),
-      horizontalRatio: reduceHorizontalRatio(state.horizontalRatio, action),
-      verticalRatio: reduceVerticalRatio(state.verticalRatio, action),
-      tree: reduceTree(state.tree, action),
-      myQueries: reduceMyQueries(state.myQueries, action),
-      selectedTreeNodeOrMyQuery: reduceSelectedTreeNodeOrMyQuery(state.selectedTreeNodeOrMyQuery, action),
-      selectedDocument: reduceSelectedDocument(state.selectedDocument, action),
-      execOutput: reduceExecOutput(state.execOutput, action),
-    };
-
-
+  function reduceHorizontalRatio(prevRatio = 0.3, action) {
     switch (action.type) {
-
-
-    }
-
-    return nextState;
-  }
-
-  function reduceHorizontalRatio(prevRatio, action) {
-    switch (action.type) {
+      case 'INIT':
+        return 0.3;
       case 'SPLIT_HORIZONTAL':
         return action.ratio;
       default:
@@ -79,6 +34,8 @@ define(function (require, exports, module) {
 
   function reduceVerticalRatio(prevRatio, action) {
     switch (action.type) {
+      case 'INIT':
+        return 0.5;
       case 'SPLIT_VERTICAL':
         return action.ratio;
       default:
@@ -88,9 +45,10 @@ define(function (require, exports, module) {
 
   function reduceIsDark(isDark, action) {
     switch (action.type) {
+      case 'INIT':
+        return false;
       case 'TOGGLE_THEME':
         return !isDark;
-
       default:
         return isDark;
     }
@@ -98,15 +56,14 @@ define(function (require, exports, module) {
 
   function reduceSelectedTreeNodeOrMyQuery(state, action) {
     switch (action.type) {
+      case 'INIT':
+        return {};
       case 'TREENODE_SELECT':
         return { treeNodeId: action.treeNodeId };
-
       case 'MYQUERY_SELECT':
         return { myQueryId: action.myQueryId };
-
       case 'ADD_MYQUERY':
         return { myQueryId: action.myQuery.id };
-
       default:
         return state;
     }
@@ -114,6 +71,9 @@ define(function (require, exports, module) {
 
   function reduceSelectedDocument(selectedDocument, action) {
     switch (action.type) {
+      case 'INIT':
+        return {};
+
       case 'TREENODE_SELECT':
         return Object.assign({}, selectedDocument, {
           isLoading: true
@@ -165,12 +125,6 @@ define(function (require, exports, module) {
 
       default:
         return selectedDocument;
-
     }
   }
-
-  function getInitialTree() {
-    return [ ];
-  }
-
 });

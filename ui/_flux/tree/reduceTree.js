@@ -1,58 +1,79 @@
+'use strict';
+
 define(function (require, exports, module) {
+  const merge = require('core/merge');
+
   module.exports = reduceTree;
 
   function reduceTree(tree, action) {
     switch (action.type) {
-      case 'TREENODE_LOAD':
-        var nodeToLoad = getTreeNode(action.nodePath);
-        nodeToLoad.isBusy = true;
-        return tree;
-
-      case 'EXPAND_EMPTY_TREENODE':
-        var nodeToExpand = getTreeNode(action.nodePath);
-        nodeToExpand.childNodes = null;
-        nodeToExpand.isBusy = false;
-        nodeToExpand.isExpanded = false;
-        tree.message = {
-          treeNodeId: nodeToExpand.path,
-          text: 'There is no child items yet.',
-          isError: false,
+      case 'INIT':
+        return {
+          nodes: [],
+          message: {},
         };
-        return tree;
 
-      case 'TREENODE_EXPAND':
-        var nodeToExpand = getTreeNode(action.nodePath);
-        nodeToExpand.childNodes = action.childNodes;
-        nodeToExpand.isExpanded = true;
-        nodeToExpand.isBusy = false;
-        tree.message = {};
-        return tree;
-
-      case 'TREENODE_COLLAPSE':
-        var nodeToCollapse = getTreeNode(action.nodePath);
-        nodeToCollapse.isExpanded = false;
-        nodeToCollapse.isBusy = false;
-        nodeToCollapse.childNodes = null;
-        return tree;
-
-      case 'ACCEPT_ROOT_TREE_NODES':
-        return Object.assign({}, tree, {
-          rootNodes: action.nodes,
+      case 'LOAD_TREE':
+        return merge(tree, {
+          nodes: action.nodes
         });
 
+      case 'TREENODE_LOAD':
+        return merge(tree, nodePatch(action.nodePath, {
+          isBusy: true,
+        }));
+
+      case 'EXPAND_EMPTY_TREENODE':
+        return merge(tree, {
+          message: {
+            treeNodeId: getTreeNode(action.nodePath).path,
+            text: 'There is no child items yet.',
+            isError: false,
+          },
+          nodes: nodePatch(action.nodePath, {
+            nodes: null,
+            isBusy: false,
+            isExpanded: false,
+          }).nodes,
+        });
+
+      case 'TREENODE_EXPAND':
+        return merge(tree, {
+          message: {},
+          nodes: nodePatch(action.nodePath, {
+            nodes: action.nodes,
+            isExpanded: true,
+            isBusy: false,
+          }).nodes,
+        });
+
+      case 'TREENODE_COLLAPSE':
+        return merge(tree, nodePatch(action.nodePath, {
+          nodes: null,
+          isExpanded: false,
+          isBusy: false,
+        }));
+
       case 'SHOW_ALL_TREE_NODE_CHILDREN':
-        var nodeToShowAll = getTreeNode(action.treeNodePath);
-        nodeToShowAll.showAll = true;
-        return tree;
+        return merge(tree, nodePatch(action.nodePath, {
+          showAll: true
+        }));
 
       default:
         return tree;
     }
 
+    function nodePatch(path, patchObj) {
+      return path.reduceRight(
+        (acc, index) => ({ nodes: { [index]: acc } }),
+        patchObj
+      );
+    }
+
     function getTreeNode(indexPath) {
       return indexPath.reduce(
-        (node, i) => node.childNodes[i],
-        { childNodes: tree.rootNodes }
+        (node, i) => node.nodes[i],
+        tree
       );
     }
   }

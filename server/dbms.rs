@@ -95,8 +95,7 @@ pub struct Field {
 #[derive(Debug)]
 #[derive(RustcEncodable)]
 pub struct Column {
-    pub owner_database: String,
-    pub owner_table: String,
+    pub table_path: Vec<String>,
     pub name: String,
     pub is_key: bool,
     pub is_notnull: bool,

@@ -1,16 +1,16 @@
 define(function (require, exports, module) {
-  var dispatch = require('core/dispatch');
-  var myQueriesRepo = require('myQueries/myQueriesRepo');
+  const myQueriesRepo = require('myQueries/myQueriesRepo');
 
   module.exports = addMyQuery;
 
   function addMyQuery(content) {
-    var newMyQuery = myQueriesRepo.create(content);
+    return function (dispatch) {
+      const newMyQuery = myQueriesRepo.create(content);
 
-    dispatch({
-      type: 'ADD_MYQUERY',
-      myQuery: newMyQuery,
-    });
-
+      dispatch({
+        type: 'ADD_MYQUERY',
+        myQuery: newMyQuery,
+      });
+    };
   }
 });

@@ -236,7 +236,7 @@ fn map_pgfields_to_dbmsfields(
     // if let [table_oid] = &queried_tables_oids[..] {
     if queried_tables_oids.len() == 1 {
         let table_oid = queried_tables_oids[0];
-        
+
         #[derive(RustcDecodable)]
         struct ColumnDescr {
             id: i16,
@@ -303,8 +303,7 @@ fn map_pgfields_to_dbmsfields(
                 .iter()
                 .map(|pg_field| cols_descrs.iter().find(|col_descr| Some(col_descr.id) == pg_field.column_id))
                 .map(|maybe_col_descr| maybe_col_descr.map(|col_descr| Column {
-                    owner_database: conn.database().to_string(),
-                    owner_table: table_oid.to_string(),
+                    table_path: vec![conn.database().to_owned(), table_oid.to_string()],
                     name: col_descr.name.clone(),
                     is_key: selected_key.contains(&col_descr.id.to_string()[..]),
                     is_notnull: col_descr.is_notnull,

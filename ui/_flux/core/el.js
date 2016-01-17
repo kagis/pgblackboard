@@ -1,7 +1,9 @@
+'use strict';
+
 define(function (require, exports, module) {
   module.exports = el;
 
-  function el(selector) {
+  function el(selector, ...args) {
     var captures = selector.match(/^([\w-]*)((\.[\w-]+)*)((\[[^=]+(=[^\]]*)?\])*)$/);
     if (!captures) {
       throw Error('Unsupported selector ' + selector);
@@ -21,8 +23,7 @@ define(function (require, exports, module) {
       (node.attrs || (node.attrs = {}))[attr] = attrs[attr];
     }
 
-    for (var i = 1; i < arguments.length; i++) {
-      var arg = arguments[i];
+    for (let arg of args) {
       if (arg instanceof el.Patch) {
         arg.apply(node);
       } else if (Array.isArray(arg)) {

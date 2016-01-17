@@ -1,20 +1,34 @@
+'use strict';
+
 define(function (require, exports, module) {
+  const merge = require('core/merge');
+
   module.exports = reduceMyQueries;
 
   function reduceMyQueries(myQueries, action) {
     switch (action.type) {
+      case 'INIT':
+        return {};
+
+      case 'LOAD_MYQUERIES':
+        return action.myQueries;
+
       case 'ADD_MYQUERY':
-        return Object.assign({}, myQueries, {
-          [action.myQuery.id]: action.myQuery
+        return merge(myQueries, {
+          [action.myQuery.id]: action.myQuery,
         });
 
       case 'UPDATE_MYQUERY':
-        myQueries[action.myQueryId].content = action.content;
-        return myQueries;
+        return merge(myQueries, {
+          [action.myQueryId]: {
+            content: action.content,
+          },
+        });
 
       case 'REMOVE_MYQUERY':
-        delete myQueries[action.myQueryId];
-        return myQueries;
+        return merge(myQueries, {
+          [action.myQueryId]: undefined,
+        });
 
       default:
         return myQueries;

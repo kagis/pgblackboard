@@ -1,9 +1,9 @@
 csslink('./myQuery.css');
 
 define(function (require, exports, module) {
-  var el = require('core/el');
-  var dispatch = require('core/dispatch');
-  var removeMyQuery = require('./removeMyQuery');
+  const el = require('core/el');
+  const dispatch = require('core/dispatch');
+  const removeMyQuery = require('./removeMyQuery');
   // var on = require('on');
 
   module.exports = renderMyQuery;
@@ -21,7 +21,7 @@ define(function (require, exports, module) {
         ,el('span', getMyQueryTitle(params.myQuery.content))
       )
       ,el('button.myQuery__remove'
-        ,el.on('click', _ => removeMyQuery(params.myQuery.id))
+        ,el.on('click', _ => dispatch(removeMyQuery(params.myQuery.id)))
         ,'remove'
       )
     );

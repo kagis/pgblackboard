@@ -1,16 +1,18 @@
+'use strict';
+
 define(function (require, exports, module) {
-  var dispatch = require('core/dispatch');
-  var myQueriesRepo = require('myQueries/myQueriesRepo');
+  const myQueriesRepo = require('myQueries/myQueriesRepo');
 
   module.exports = removeMyQuery;
 
   function removeMyQuery(id) {
-    myQueriesRepo.remove(id);
+    return function (dispatch) {
+      myQueriesRepo.remove(id);
 
-    dispatch({
-      type: 'REMOVE_MYQUERY',
-      myQueryId: id,
-    });
-
+      dispatch({
+        type: 'REMOVE_MYQUERY',
+        myQueryId: id,
+      });
+    };
   }
 });

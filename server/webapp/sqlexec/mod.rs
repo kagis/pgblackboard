@@ -1,12 +1,12 @@
 // extern crate flate2;
 
 mod linecol;
-mod table;
-mod map;
+// mod table;
+// mod map;
 
 use self::linecol::LineCol;
-use self::table::TableView;
-use self::map::MapView;
+// use self::table::TableView;
+// use self::map::MapView;
 // use self::flate2::write::GzEncoder;
 // use self::flate2::Compression;
 use std::io::{self, Write, BufWriter};
@@ -202,14 +202,17 @@ impl http::Response for SqlExecErrorResponse {
             try!(w.write_www_authenticate_basic("postgres"));
         }
 
-        let mut w = try!(w.start_chunked());
-        {
-            let mut view = TableView::new(&mut w);
-            try!(view.render_intro());
-            try!(view.render_error(&self.message, None));
-            try!(view.render_outro());
-        }
-        w.end()
+        w.write_content(json::encode(&[("error", self.message)]).unwrap().as_bytes())
+
+        //
+        // let mut w = try!(w.start_chunked());
+        // {
+        //     let mut view = TableView::new(&mut w);
+        //     try!(view.render_intro());
+        //     try!(view.render_error(&self.message, None));
+        //     try!(view.render_outro());
+        // }
+        // w.end()
     }
 }
 

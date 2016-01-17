@@ -1,8 +1,0 @@
-.dark .treeNode--groupstart::before {
-  color: #888;
-  background-color: #272822;
-}
-
-.dark .treeNode--groupstart {
-  border-top-color: #444;
-}

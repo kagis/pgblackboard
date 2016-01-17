@@ -17,11 +17,11 @@ define(function (require, exports, module) {
     const childrenLimit = 200;
     const isLimited = params.treeNode.isExpanded &&
                       !params.treeNode.showAll &&
-                      params.treeNode.childNodes.length > childrenLimit;
+                      params.treeNode.nodes.length > childrenLimit;
 
     const childNodes = params.treeNode.isExpanded && (isLimited ?
-      params.treeNode.childNodes.slice(0, childrenLimit) :
-      params.treeNode.childNodes
+      params.treeNode.nodes.slice(0, childrenLimit) :
+      params.treeNode.nodes
     );
 
     return el('div.treeNode'
@@ -34,6 +34,7 @@ define(function (require, exports, module) {
         )
         ,el.attr('disabled', Boolean(params.treeNode.isBusy))
         ,el.attr('data-path', JSON.stringify(params.path))
+        ,el.attr('data-id', JSON.stringify(params.treeNode.path))
         // !params.treeNode.isBusy && el.on('click', _ => dispatch(toggle())),
       )
 
@@ -69,17 +70,20 @@ define(function (require, exports, module) {
       ,isLimited && el('button.treeNode__showAll'
         ,el.on('click', _ => dispatch({
           type: 'SHOW_ALL_TREE_NODE_CHILDREN',
-          treeNodePath: params.path,
+          nodePath: params.path,
         }))
         ,'show all '
-        ,el('strong', String(params.treeNode.childNodes.length))
+        ,el('strong', String(params.treeNode.nodes.length))
         ,' items'
       )
     );
   }
 
   on('.treeNode__toggler--expander', 'click', function (e) {
-    expandTreeNode(JSON.parse(this.dataset.path))
+    dispatch(expandTreeNode({
+      nodePath: JSON.parse(this.dataset.path),
+      nodeId: JSON.parse(this.dataset.id),
+    }));
   });
 
   on('.treeNode__toggler--collapser', 'click', function (e) {
@@ -90,7 +94,7 @@ define(function (require, exports, module) {
   });
 
   on('.treeNode__header', 'click', function (e) {
-    selectTreeNode(JSON.parse(this.dataset.id))
+    dispatch(selectTreeNode(JSON.parse(this.dataset.id)));
   });
 
 });

@@ -17,7 +17,7 @@ define(function (require, exports, module) {
     return el('div.codeForm'
 
       ,renderSpinnerShield({
-        isVisible: script.isLoading
+        isVisible: script.isLoading,
       })
 
       ,renderCodeMirror({
@@ -26,7 +26,6 @@ define(function (require, exports, module) {
         errors: script.errors,
         selectionRanges: script.selectionRanges,
         onChange: handleChange,
-        onSelectionChange: handleSelectionChange,
       })
 
       ,el('div.codeForm__execBar'
@@ -34,19 +33,20 @@ define(function (require, exports, module) {
       )
     );
 
-    function handleChange(content) {
-      if (script.myQueryId) {
-        updateMyQuery(script.myQueryId, content);
-      } else {
-        addMyQuery(content);
+    function handleChange({ value, selectionRanges, valueHasChanged }) {
+      if (valueHasChanged) {
+        if (script.myQueryId) {
+          dispatch(updateMyQuery(script.myQueryId, value));
+        } else {
+          dispatch(addMyQuery(value));
+        }
       }
-    }
 
-    function handleSelectionChange(ranges) {
       dispatch({
         type: 'SELECT_SCRIPT_FRAGMENT',
-        ranges: ranges,
+        ranges: selectionRanges,
       });
     }
+
   }
 });

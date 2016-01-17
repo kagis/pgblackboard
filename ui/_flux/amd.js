@@ -1,16 +1,21 @@
-define.basePath = document.baseURI;
-define.modules = {};
-define.requestedPaths = {};
-define.unresolvedPaths = {};
-define.amd = {};
+'use strict';
+
+Object.assign(define, {
+  basePath: document.baseURI,
+  modules: Object.create(null),
+  requestedPaths: Object.create(null),
+  unresolvedPaths: Object.create(null),
+  amd: {},
+});
 
 function define(factory) {
-  var definingModulePath = document.currentScript.src;
+  const definingModulePath = document.currentScript.src;
   if (definingModulePath in define.modules) {
     throw Error(`Module ${definingModulePath} is already defined.`);
   }
 
-  var dependenciesPaths = extractRequireCalls(factory.toString()).map(normalizeModPath);
+  const dependenciesPaths = extractRequireCalls(factory.toString())
+                              .map(normalizeModPath);
 
   define.unresolvedPaths[definingModulePath] = {
     dependenciesPaths: dependenciesPaths,
@@ -20,34 +25,40 @@ function define(factory) {
   dependenciesPaths.filter(depPath => !(depPath in define.requestedPaths))
                     .forEach(loadModule);
 
+  let someModulesWasResolved;
   do {
-    var resolvableModules = Object.keys(define.unresolvedPaths)
+    const resolvableModules = Object.keys(define.unresolvedPaths)
       .map(modPath => define.unresolvedPaths[modPath])
       .filter(mod => mod.dependenciesPaths.every(
         depPath => depPath in define.modules
       ));
 
     resolvableModules.forEach(mod => mod.resolve());
-
-  } while (resolvableModules.length);
+    someModulesWasResolved = resolvableModules.length;
+  } while (someModulesWasResolved);
 
 
   function loadModule(modPath) {
-    var scriptEl = document.createElement('script');
+    const scriptEl = document.createElement('script');
     scriptEl.src = modPath;
     scriptEl.async = 'async';
+    scriptEl.onerror = onError;
     document.head.appendChild(scriptEl);
     define.requestedPaths[modPath] = true;
+
+    function onError() {
+      console.error(`Error while loading ${modPath} required from ${definingModulePath}`);
+    }
   }
 
   function executeFactory() {
     delete define.unresolvedPaths[definingModulePath];
 
-    var moduleObj = {};
+    const moduleObj = {};
     moduleObj.exports = factory;
     if (typeof factory == 'function') {
       moduleObj.exports = {};
-      var returnValue = factory(require, moduleObj.exports, moduleObj);
+      const returnValue = factory(require, moduleObj.exports, moduleObj);
       if (typeof returnValue != 'undefined') {
         moduleObj.exports = returnValue;
       }
@@ -57,9 +68,9 @@ function define(factory) {
   }
 
   function extractRequireCalls(factorySource) {
-    var commentRegExp = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
-    var cjsRequireRegExp = /[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
-    var result = [];
+    const commentRegExp = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
+    const cjsRequireRegExp = /[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g;
+    const result = [];
     factorySource
       .replace(commentRegExp, '')
       .replace(cjsRequireRegExp, (_, dep) => result.push(dep));
@@ -74,7 +85,7 @@ function define(factory) {
   }
 
   function require(modPath) {
-    var normModPath = normalizeModPath(modPath);
+    const normModPath = normalizeModPath(modPath);
     if (normModPath in define.modules) {
       return define.modules[normModPath];
     } else {

@@ -1,3 +1,5 @@
+'use strict';
+
 csslink('./codeMirror.css');
 
 define(function (require, exports, module) {
@@ -16,13 +18,13 @@ define(function (require, exports, module) {
       'time': 1,
       'timestamp': 1,
       'timestamptz': 1,
-      'interval': 1
+      'interval': 1,
     },
     support: {
       'doubleQuote': 1,
       'binaryNumber': 1,
-      'hexNumber': 1
-    }
+      'hexNumber': 1,
+    },
   });
 
   module.exports = renderCodeMirror;
@@ -53,7 +55,7 @@ define(function (require, exports, module) {
   }
 
   function createCodeMirror(domEl, params) {
-    var codemirror = CodeMirror(domEl, {
+    const codemirror = CodeMirror(domEl, {
       value: params.doc || 'initial',
       lineNumbers: true,
       matchBrackets: true,
@@ -68,34 +70,40 @@ define(function (require, exports, module) {
       ],
     });
 
-    codemirror.on('change', function (codemirror, e) {
-      var onChange = codemirror.onChangeCallback;
-      if (e.origin != 'setValue' && typeof onChange == 'function') {
-         onChange(codemirror.getValue());
-      }
-    });
+    // codemirror.on('change', function (codemirror, e) {
+    //   var onChange = codemirror.onChangeCallback;
+    //   if (e.origin != 'setValue' && typeof onChange == 'function') {
+    //      onChange(codemirror.getValue());
+    //   }
+    // });
 
-    codemirror.on('beforeSelectionChange', function (codemirror, e) {
-      var onSelectionChange = codemirror.onSelectionChangeCallback;
-      var onChange = codemirror.onChangeCallback;
-      if (typeof onSelectionChange == 'function' && !codemirror.settingValue) {
-        onChange(codemirror.getValue());
-        onSelectionChange(e.ranges);
+    codemirror.on('beforeSelectionChange', function (codeMirror, e) {
+      const onChange = codemirror.onChangeCallback;
+      const newValue = codeMirror.getValue();
+      const oldValue = codeMirror.lastValue;
+      const valueHasChanged = oldValue != newValue;
+      codeMirror.lastValue = newValue;
+
+      if (typeof onChange == 'function' && !codeMirror.settingValue) {
+        onChange({
+          selectionRanges: e.ranges,
+          value: codeMirror.getValue(),
+          valueHasChanged,
+        });
       }
+
     });
 
     updateCodeMirror(codemirror, params);
 
     window.codemirror = codemirror;
     return codemirror;
-
   }
 
   function updateCodeMirror(codeMirror, params) {
     codeMirror.settingValue = true;
 
     codeMirror.onChangeCallback = params.onChange;
-    codeMirror.onSelectionChangeCallback = params.onSelectionChange;
 
     if (codeMirror.getValue('\n') !== CodeMirror.splitLines(params.doc || '').join('\n')) {
       codeMirror.setValue(params.doc || String(new Date()));
@@ -137,6 +145,5 @@ define(function (require, exports, module) {
 
     codeMirror.settingValue = false;
   }
-
 
 });

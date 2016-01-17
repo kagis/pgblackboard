@@ -7,9 +7,12 @@ define(function (require, exports, module) {
   const renderTreeNode = require('tree/renderTreeNode');
   const renderMyQuery = require('myQueries/renderMyQuery');
   const renderCodeForm = require('codeForm/renderCodeForm');
-  const renderExecOutput = require('exec/renderExecOutput');
+  const renderExecOutput = require('execOutput/renderExecOutput');
+  const memoize = require('core/memoize');
 
   module.exports = renderApp;
+
+  const renderTreeCached = memoize(renderTree);
 
   function renderApp(state) {
     return el('div.main'
@@ -37,14 +40,10 @@ define(function (require, exports, module) {
               }))
             )
 
-            ,el('div.main__tree'
-              ,state.tree.rootNodes.map((node, i) => renderTreeNode({
-                treeNode: node,
-                path: [i],
-                selectedTreeNodeId: state.selectedTreeNodeOrMyQuery.treeNodeId,
-                message: state.tree.message,
-              }))
-            )
+            ,renderTreeCached({
+              tree: state.tree,
+              selectedTreeNodeId: state.selectedTreeNodeOrMyQuery.treeNodeId,
+            })
 
           ), // div.main__nav
           right: splitPanel.renderVerticalSplitpanel({
@@ -85,6 +84,17 @@ define(function (require, exports, module) {
     //   }
     //   return targetDict;
     // }
+  }
+
+  function renderTree({ tree, selectedTreeNodeId }) {
+    return el('div.main__tree'
+      ,tree.nodes.map((node, i) => renderTreeNode({
+        treeNode: node,
+        path: [i],
+        selectedTreeNodeId: selectedTreeNodeId,
+        message: tree.message,
+      }))
+    );
   }
 
 
