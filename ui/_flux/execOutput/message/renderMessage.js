@@ -10,12 +10,16 @@ define(function (require, exports, module) {
 
   function renderMessage(message, resultIndex) {
     return el('div.message'
-      ,el.on('click', handleClick)
       ,message.isError && el.class('message--error')
+      ,typeof message.line == 'number' && el('a.message__sourceLink'
+        ,el.on('click', navigateToSource)
+        ,'line '
+        ,String(message.line + 1)
+      )
       ,String(message.text)
     );
 
-    function handleClick() {
+    function navigateToSource() {
       window.codemirror.focus();
       dispatch({
         type: 'NAVIGATE_TO_MESSAGE_SOURCE',

@@ -15,3 +15,10 @@
 .message--error {
   white-space: pre;
 }
+
+.message__sourceLink {
+  margin: 0 .5em;
+  cursor: pointer;
+  opacity: .8;
+  text-decoration: underline;
+}

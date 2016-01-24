@@ -47,9 +47,16 @@ impl PgExecIter {
 
         let mut conn = match conn_result {
             Ok(conn) => conn,
-            Err(err) => return PgExecIter::new_err(
-                &format!("{:#?}", err)[..]
-            )
+            Err(err) => return PgExecIter::with_event(match err {
+                connection::Error::SqlError(connection::PgErrorOrNotice { code: connection::SqlState::InvalidCatalogName, message, .. }) => ExecEvent::Error {
+                    message: message,
+                    bytepos: Some(database_and_script.database_pos),
+                },
+                other_err => ExecEvent::Error {
+                    message: format!("{:#?}", other_err),
+                    bytepos: None,
+                },
+            }),
         };
 
         let (message_bytepos_offset, sqlscript_to_execute) = match selection {
@@ -82,6 +89,21 @@ impl PgExecIter {
             message: message.to_string(),
             bytepos: None,
         });
+
+        PgExecIter {
+            next_events: next_events,
+            conn: None,
+            cursor: None,
+            maybe_explain_json: None,
+            message_bytepos_offset: 0,
+            current_stmt: "".to_string(),
+            stmts: VecDeque::new(),
+        }
+    }
+
+    fn with_event(event: ExecEvent) -> PgExecIter {
+        let mut next_events = VecDeque::new();
+        next_events.push_back(event);
 
         PgExecIter {
             next_events: next_events,
