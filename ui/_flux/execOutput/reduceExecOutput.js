@@ -145,12 +145,38 @@ define(function (require, exports, module) {
           }
         }, execOutput);
 
+      case 'ADD_ROW':
+        return merge(execOutput, {
+          items: {
+            [action.rowsetIndex]: {
+              rows: merge.push(action.values),
+            },
+          }
+        });
+
+      case 'UPDATE_ROW':
+        const fields = execOutput.items[action.rowsetIndex].fields;
+        return merge(execOutput, {
+          items: {
+            [action.rowsetIndex]: {
+              rows: {
+                [action.rowIndex]: Object.keys(action.rowDict).reduce(
+                  (acc, columnName) => (acc[fields.findIndex(it => it.src_column && it.src_column.name == columnName)] = action.rowDict[columnName], acc),
+                  { dirtyValues: null }
+                ),
+              },
+            },
+          },
+        });
+
       case 'REQUEST_UPDATE_ROW':
         return merge(execOutput, {
           items: {
             [action.rowsetIndex]: {
               rows: {
-                [action.rowIndex]: action.values,
+                [action.rowIndex]: {
+                  dirtyValues: action.values,
+                },
               },
             },
           },

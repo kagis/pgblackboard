@@ -56,11 +56,71 @@ impl dbms::Dbms for PgDbms {
 
         let full_table_name = try!(resolve_table_oid(&mut conn, table_oid));
 
-        Ok({
-            let mut result = dbms::DictRow::new();
-            result.insert("full_table_name".to_string(), Some(full_table_name));
-            result
-        })
+        let (stmt, column_names_by_values_positions) = {
+            use std::fmt::Write;
+            use std::collections::BTreeMap;
+
+            let mut stmt = String::new();
+            stmt.push_str("INSERT INTO ");
+            stmt.push_str(&full_table_name);
+            stmt.push_str("(");
+            stmt.push_str(&row.keys().map(|column_name| quote_ident(column_name).to_string()).collect::<Vec<_>>()[..].join(", "));
+            stmt.push_str(") VALUES (");
+
+            let mut column_names_by_values_positions = BTreeMap::new();
+            for (i, (column_name, value_to_set)) in row.iter().enumerate() {
+                if i > 0 {
+                    stmt.push(',');
+                }
+                let value_literal_pos = stmt.len() + 1;
+                column_names_by_values_positions.insert(value_literal_pos, column_name.clone());
+                match *value_to_set {
+                    Some(ref val) => stmt.push_str(&quote_literal(val).to_string()),
+                    None => stmt.push_str("NULL")
+                }
+            }
+            stmt.push_str(") RETURNING *");
+            (stmt, column_names_by_values_positions)
+        };
+
+        try!(conn.query::<()>("BEGIN", &[]));
+
+        println!("{}", stmt);
+
+        let modify_result = conn.parse_statement("", &stmt)
+            .and_then(|_| conn.describe_statement(""))
+            .and_then(|descr| conn.execute_statement_into_vec("", 2, &[])
+                                  .map(|it| (descr, it)));
+
+        let (descr, (rows, _cmdtag)) = try!(modify_result.map_err(|err| match err {
+            connection::Error::SqlError(sql_err) => invalid_input(
+                &sql_err.message,
+                sql_err.position
+                    .and_then(|pos| column_names_by_values_positions.get(&pos))
+                    .map(|it| it.clone()),
+            ),
+            other => dbms::Error::new(
+                dbms::ErrorKind::InternalError,
+                &format!("{:#?}", other),
+            ),
+        }));
+
+        let mut rows = rows.into_iter();
+        let returned_row = try!(rows.next().ok_or(unexisting_row()));
+        try!(rows.next().map(|_| Err(ambiguous_key())).unwrap_or(Ok(())));
+
+        try!(conn.query::<()>("COMMIT", &[]).map_err(|err| match err {
+            connection::Error::SqlError(sql_err) => invalid_input(&sql_err.message, None),
+            connection::Error::IoError(io_err) => internal_error(&io_err),
+            other => internal_error(&other),
+        }));
+
+        let dict = descr.iter()
+                        .map(|field_descr| field_descr.name.clone())
+                        .zip(returned_row)
+                        .collect::<dbms::DictRow>();
+
+        Ok(dict)
     }
 
     fn update_row(

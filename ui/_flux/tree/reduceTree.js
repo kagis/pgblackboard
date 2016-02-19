@@ -39,7 +39,9 @@ define(function (require, exports, module) {
 
       case 'TREENODE_EXPAND':
         return merge(tree, {
-          message: {},
+          message: {
+            treeNodeId: null,
+          },
           nodes: nodePatch(action.nodePath, {
             nodes: action.nodes,
             isExpanded: true,

@@ -6,6 +6,8 @@ define(function (require, exports, module) {
   const el = require('core/el');
   const on = require('core/on');
   const dispatch = require('core/dispatch');
+  const updateTable = require('./updateTable');
+  const insertRow = require('./insertRow')
 
   module.exports = renderTable;
 
@@ -26,9 +28,10 @@ define(function (require, exports, module) {
       )
       ,el('tbody'
         ,rowset.rows.map((row, rowIndex) => el('tr.table__row'
-          ,el('td.table__rowheader')
-          ,row.map((val, fieldIndex) => {
-            const field = rowset.fields[fieldIndex];
+          ,row.isInserting && el.class('table__row--inserting')
+          ,el('td.table__rowHeader')
+          ,rowset.fields.map((field, fieldIndex) => {
+            const val = row.dirtyValues ? row.dirtyValues[fieldIndex] : row[fieldIndex];
             return el('td.table__cell'
               ,el.attr('contenteditable', 'true')
               ,field['is_num'] && el.class('table__cell--num')
@@ -37,19 +40,73 @@ define(function (require, exports, module) {
             );
           })
         ))
+
+        ,el('tr.table__newRow'
+          ,el('td.table__rowHeader')
+          ,rowset.fields.map((field, fieldIndex) => el('td.table__cell'
+            ,el.attr('contenteditable', 'true')
+            ,field['is_num'] && el.class('table__cell--num')
+            ,el.on('input', e => dispatch({
+              type: 'ADD_ROW',
+              rowsetIndex: rowsetIndex,
+              values: Object.assign(rowset.fields.map(_ => null), {
+                isInserting: true,
+              }),
+              // values: rowset.fields.map((_, i) => i == fieldIndex ? e.target.textContent : null)
+            }))
+          ))
+        )
       )
     );
   }
+
+  // on('.table__cell', 'blur', function (e) {
+  //   dispatch(editTableCell({
+  //
+  //   }))
+  // })
 
   on('.table__row', 'blur', function () {
     const blurredRowEl = this;
     setTimeout(function () {
       const focusedEl = blurredRowEl.ownerDocument.activeElement;
       if (blurredRowEl !== focusedEl.parentNode/*TR*/) {
-        updateRowIfDirty(blurredRowEl);
+        if (blurredRowEl.classList.contains('table__row--inserting')) {
+          insertRowEl(blurredRowEl);
+        } else {
+          updateRowIfDirty(blurredRowEl);
+        }
       }
     }, 10);
   });
+
+  function insertRowEl(rowEl) {
+    const fields = getRowFieldsDescriptions(rowEl);
+    const currentValues = getInputtedRowValues(rowEl);
+    const changes = Object.create(null);
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      const srcColumn = field.src_column;
+      const fieldIsEditable = Boolean(srcColumn);
+      const currentValue = currentValues[i];
+      if (fieldIsEditable) {
+        changes[srcColumn.name] = currentValue;
+      }
+    }
+
+    const tablePath = fields.map(field => field.src_column)
+                            .filter(Boolean)
+                            .map(srccol => srccol.table_path)
+                            [0];
+
+    dispatch(insertRow({
+      rowsetIndex: getRowsetIndex(rowEl),
+      rowIndex: getRowIndex(rowEl),
+      values: currentValues,
+      changes,
+      tablePath,
+    }));
+  }
 
   function updateRowIfDirty(rowEl) {
     const fields = getRowFieldsDescriptions(rowEl);
@@ -114,11 +171,9 @@ define(function (require, exports, module) {
   }
 
   function getInputtedRowValues(rowEl) {
-    const result = [];
-    for (let i = 1; i < rowEl.cells.length; i++) {
-      result.push(rowEl.cells[i].textContent);
-    }
-    return result;
+    return Array.from(rowEl.cells)
+      .slice(1) // skip row header
+      .map(cellEl => cellEl.textContent);
   }
 
   function getRowOriginalValues(rowEl) {

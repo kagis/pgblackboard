@@ -47,8 +47,8 @@
   text-align: right;
 }
 
-/* expand cell content on focus */
 .table__cell:focus {
+  /* expand cell content on focus */
   white-space: pre;
   overflow-wrap: break-word;
 }
@@ -75,18 +75,18 @@
 .table__corner::before {
   content: '#';
 }
-.table__rowheader {
+.table__rowHeader {
   text-align: right;
   font-weight: bold;
 }
-.table__rowheader::before {
+.table__rowHeader::before {
   counter-increment: rownum;
   content: counter(rownum);
 }
 .table > tbody {
   counter-reset: rownum;
 }
-.table-has-blankrow > tbody > tr:last-child > th::before {
+.table__newRow > .table__rowHeader::before {
   content: '*';
 }
 

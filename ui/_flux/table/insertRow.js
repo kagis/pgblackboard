@@ -1,15 +1,14 @@
-'use strict';
-
 define(function (require, exports, module) {
-  module.exports = updateTable;
+  'use strict';
 
-  function updateTable({
+  module.exports = insertRow;
+
+  function insertRow({
     rowsetIndex,
     rowIndex,
     values,
     changes,
     tablePath,
-    key,
   }) {
     return function (dispatch) {
       dispatch({
@@ -26,15 +25,16 @@ define(function (require, exports, module) {
         rowIndex,
         rowDict: JSON.parse(xhr.responseText),
       }));
+
       xhr.open('PATCH', '/' + ['tables'].concat(tablePath)
                                   .map(encodeURIComponent)
                                   .join('/'));
 
       xhr.send(JSON.stringify({
-        action: 'Update',
-        key,
+        action: 'Insert',
+        key: {},
         changes,
       }));
     };
   }
-});
+})
