@@ -19,22 +19,22 @@ define(function (require, exports, module) {
         values,
       });
 
-      const xhr = new XMLHttpRequest();
-      xhr.addEventListener('load', _ => dispatch({
-        type: 'UPDATE_ROW',
-        rowsetIndex,
-        rowIndex,
-        rowDict: JSON.parse(xhr.responseText),
-      }));
-      xhr.open('PATCH', '/' + ['tables'].concat(tablePath)
-                                  .map(encodeURIComponent)
-                                  .join('/'));
-
-      xhr.send(JSON.stringify({
-        action: 'Update',
-        key,
-        changes,
-      }));
+      // const xhr = new XMLHttpRequest();
+      // xhr.addEventListener('load', _ => dispatch({
+      //   type: 'UPDATE_ROW',
+      //   rowsetIndex,
+      //   rowIndex,
+      //   rowDict: JSON.parse(xhr.responseText),
+      // }));
+      // xhr.open('PATCH', '/' + ['tables'].concat(tablePath)
+      //                             .map(encodeURIComponent)
+      //                             .join('/'));
+      //
+      // xhr.send(JSON.stringify({
+      //   action: 'Update',
+      //   key,
+      //   changes,
+      // }));
     };
   }
 });

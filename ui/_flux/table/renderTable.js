@@ -29,9 +29,11 @@ define(function (require, exports, module) {
       ,el('tbody'
         ,rowset.rows.map((row, rowIndex) => el('tr.table__row'
           ,row.isInserting && el.class('table__row--inserting')
-          ,el('td.table__rowHeader')
+          ,el('td.table__rowHeader'
+            ,rowset.dirtyRows[rowIndex] && '*'
+          )
           ,rowset.fields.map((field, fieldIndex) => {
-            const val = row.dirtyValues ? row.dirtyValues[fieldIndex] : row[fieldIndex];
+            const val = rowset.dirtyRows[rowIndex] ? rowset.dirtyRows[rowIndex][fieldIndex] : row[fieldIndex];
             return el('td.table__cell'
               ,el.attr('contenteditable', 'true')
               ,field['is_num'] && el.class('table__cell--num')
@@ -41,19 +43,35 @@ define(function (require, exports, module) {
           })
         ))
 
-        ,el('tr.table__newRow'
+        ,Object.keys(rowset.dirtyRows)
+          .filter(rowIndex => !(rowIndex in rowset.rows))
+          .map(rowIndex => [rowset.dirtyRows[rowIndex], rowIndex])
+          .map(([row, rowIndex]) => el('tr.table__row'
+            ,el('td.table__rowHeader'
+              ,'*'
+            )
+            ,rowset.fields.map((field, fieldIndex) => {
+              const val = row[fieldIndex];
+              return el('td.table__cell'
+                ,el.attr('contenteditable', 'true')
+                ,field['is_num'] && el.class('table__cell--num')
+                ,val === '' && el.class('table__cell--emptystr')
+                ,val
+              );
+            })
+          ))
+
+        ,el('tr.table__newRow.table__row'
           ,el('td.table__rowHeader')
           ,rowset.fields.map((field, fieldIndex) => el('td.table__cell'
             ,el.attr('contenteditable', 'true')
             ,field['is_num'] && el.class('table__cell--num')
-            ,el.on('input', e => dispatch({
-              type: 'ADD_ROW',
-              rowsetIndex: rowsetIndex,
-              values: Object.assign(rowset.fields.map(_ => null), {
-                isInserting: true,
-              }),
-              // values: rowset.fields.map((_, i) => i == fieldIndex ? e.target.textContent : null)
-            }))
+            // ,el.on('input', e => dispatch({
+            //   type: 'EDIT_ROW',
+            //   rowsetIndex: rowsetIndex,
+            //   rowIndex: Math.max(rowset.rows.length - 1, ...Object.keys(rowset.dirtyRows)) + 1,
+            //   values: Object.assign(rowset.fields.map(_ => null)),
+            // }))
           ))
         )
       )
@@ -66,47 +84,14 @@ define(function (require, exports, module) {
   //   }))
   // })
 
-  on('.table__row', 'blur', function () {
-    const blurredRowEl = this;
-    setTimeout(function () {
-      const focusedEl = blurredRowEl.ownerDocument.activeElement;
-      if (blurredRowEl !== focusedEl.parentNode/*TR*/) {
-        if (blurredRowEl.classList.contains('table__row--inserting')) {
-          insertRowEl(blurredRowEl);
-        } else {
-          updateRowIfDirty(blurredRowEl);
-        }
-      }
-    }, 10);
+  on('.table__row', 'input', function () {
+    dispatch({
+      type: 'EDIT_ROW',
+      values: getInputtedRowValues(this),
+      rowsetIndex: getRowsetIndex(this),
+      rowIndex: getRowIndex(this),
+    })
   });
-
-  function insertRowEl(rowEl) {
-    const fields = getRowFieldsDescriptions(rowEl);
-    const currentValues = getInputtedRowValues(rowEl);
-    const changes = Object.create(null);
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
-      const srcColumn = field.src_column;
-      const fieldIsEditable = Boolean(srcColumn);
-      const currentValue = currentValues[i];
-      if (fieldIsEditable) {
-        changes[srcColumn.name] = currentValue;
-      }
-    }
-
-    const tablePath = fields.map(field => field.src_column)
-                            .filter(Boolean)
-                            .map(srccol => srccol.table_path)
-                            [0];
-
-    dispatch(insertRow({
-      rowsetIndex: getRowsetIndex(rowEl),
-      rowIndex: getRowIndex(rowEl),
-      values: currentValues,
-      changes,
-      tablePath,
-    }));
-  }
 
   function updateRowIfDirty(rowEl) {
     const fields = getRowFieldsDescriptions(rowEl);

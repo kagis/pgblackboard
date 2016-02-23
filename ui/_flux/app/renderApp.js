@@ -9,12 +9,15 @@ define(function (require, exports, module) {
   const renderCodeForm = require('codeForm/renderCodeForm');
   const renderExecOutput = require('execOutput/renderExecOutput');
   const memoizeLast = require('core/memoizeLast');
+  const modificationScript = require('table/modificationScript');
 
   module.exports = renderApp;
 
   const renderTreeCached = memoizeLast(renderTree);
 
   function renderApp(state) {
+    const modifyScript = state.execOutput.items && modificationScript(state.execOutput);
+
     return el('div.main'
       ,state.isDark && el.class('dark')
       ,el('div.main__leftbar'
@@ -54,7 +57,8 @@ define(function (require, exports, module) {
             ratio: state.verticalRatio,
             top: renderCodeForm({
               myQueryId: state.selectedDocument.myQueryId,
-              content: (state.myQueries[state.selectedDocument.myQueryId] &&
+              content: modifyScript ||
+                      (state.myQueries[state.selectedDocument.myQueryId] &&
                         state.myQueries[state.selectedDocument.myQueryId].content)
                         || state.selectedDocument.content,
               isLoading: state.selectedDocument.isLoading,
@@ -96,6 +100,8 @@ define(function (require, exports, module) {
       }))
     );
   }
+
+
 
 
 });

@@ -8,6 +8,8 @@ define(function (require, exports, module) {
   function reduceExecOutput(execOutput, action) {
     switch (action.type) {
       case 'INIT':
+      case 'TREENODE_DEFINITION_LOADED':
+      case 'MYQUERY_SELECT':
         return {
           useMap: false,
           items: null,
@@ -64,6 +66,7 @@ define(function (require, exports, module) {
                   resultType: 'ROWSET',
                   fields: eventPayload,
                   rows: [],
+                  dirtyRows: {},
                 }),
               });
               // versioned.push(execOutput, ['items'], {
@@ -149,10 +152,32 @@ define(function (require, exports, module) {
         return merge(execOutput, {
           items: {
             [action.rowsetIndex]: {
-              rows: merge.push(action.values),
+              newRows: {
+                [action.rowIndex]: action.values,
+              },
             },
           }
         });
+
+
+      case 'EDIT_ROW':
+        const oldValues = execOutput
+          .items[action.rowsetIndex]
+          .rows[action.rowIndex];
+
+        const hasChanges = !oldValues || oldValues.some(
+          (oldValue, index) => oldValue != action.values[index]
+        )
+
+        return merge(execOutput, {
+          items: {
+            [action.rowsetIndex]: {
+              dirtyRows: {
+                [action.rowIndex]: hasChanges ? action.values : undefined,
+              },
+            },
+          },
+        })
 
       case 'UPDATE_ROW':
         const fields = execOutput.items[action.rowsetIndex].fields;

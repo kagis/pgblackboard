@@ -1,6 +1,8 @@
 'use strict';
 
 define(function (require, exports, module) {
+  const modificationScript = require('table/modificationScript');
+
   module.exports = executeScript;
 
   function executeScript({ useMap }) {
@@ -31,9 +33,10 @@ define(function (require, exports, module) {
       function getScript() {
         const selectedDocument = app.selectedDocument;
         const myQueries = app.myQueries;
-        return myQueries[selectedDocument.myQueryId] ?
+        return modificationScript(app.execOutput) ||
+          (myQueries[selectedDocument.myQueryId] ?
           myQueries[selectedDocument.myQueryId].content :
-          selectedDocument.content;
+          selectedDocument.content);
       }
 
       function getScriptSelection() {

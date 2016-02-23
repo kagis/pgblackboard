@@ -28,7 +28,7 @@ define(function (require, exports, module) {
     cito.vdom.update(rootNode, rootNodeFn);
     // console.profileEnd('render');
 
-    console.log('%o dispatched %c%s ', action, 'font-weight: bold', action.type);
+    console.log('%o dispatched %c%s %o', action, 'font-weight: bold', action.type, state); 
   });
 
   function rootNodeFn() {
