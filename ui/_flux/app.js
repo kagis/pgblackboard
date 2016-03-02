@@ -28,7 +28,7 @@ define(function (require, exports, module) {
     cito.vdom.update(rootNode, rootNodeFn);
     // console.profileEnd('render');
 
-    console.log('%o dispatched %c%s %o', action, 'font-weight: bold', action.type, state); 
+    console.log('%o dispatched %c%s %o', action, 'font-weight: bold', action.type, state);
   });
 
   function rootNodeFn() {
@@ -47,6 +47,10 @@ define(function (require, exports, module) {
     type: 'LOAD_MYQUERIES',
     myQueries: myQueriesRepo.getAll(),
   });
+
+  window.pgbb = {
+    sqlexec: require('sqlexec'),
+  }
 
 });
 
