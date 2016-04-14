@@ -5,7 +5,7 @@ define(function (require, exports, module) {
   const renderApp = require('app/renderApp');
   const reduceApp = require('app/reduceApp');
   const myQueriesRepo = require('myQueries/myQueriesRepo');
-
+  const sqlQuery = require('webapi/sqlQuery')
 
   // dispatch.subscribe(action => {
   //   console.log('%o dispatched %c%s ', action, 'font-weight: bold', action.type);
@@ -39,23 +39,41 @@ define(function (require, exports, module) {
   window.codemirror.refresh();
 
   dispatch({
-    type: 'LOAD_TREE',
-    nodes: window['pgBlackboard'].rootTreeNodes,
-  });
-
-  dispatch({
     type: 'LOAD_MYQUERIES',
     myQueries: myQueriesRepo.getAll(),
   });
 
-  window.pgbb = {
-    sqlexec: require('sqlexec'),
-  }
+  sqlQuery({
+    database: 'postgres', // 'postgres',
+    user: 'postgres',
+    password: 'postgres',
+    fields: [
+      'datname',
+      'comment',
+    ],
+    statement: `
+      SELECT      datname
+                , shobj_description(oid, 'pg_database')
+      FROM      pg_database
+      WHERE     NOT datistemplate
+      ORDER BY  datname
+    `,
+  }).then(nodes => dispatch({
+      type: 'LOAD_TREE',
+      nodes: nodes.map(it => ({
+        typ: 'database',
+        name: it.datname,
+        can_have_children: true,
+        path: [it.datname, 'database', it.datname],
+        comment: it.comment,
+        group: 0,
+      })),
+  }))
 
 });
 
-window['acceptRootTreeNodes'] = function (rootTreeNodes) {
-  window['pgBlackboard'] = {
-    rootTreeNodes: rootTreeNodes,
-  };
-};
+// window['acceptRootTreeNodes'] = function (rootTreeNodes) {
+//   window['pgBlackboard'] = {
+//     rootTreeNodes: rootTreeNodes,
+//   };
+// };

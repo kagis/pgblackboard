@@ -28,12 +28,19 @@ define(function (require, exports, module) {
       )
       ,el('tbody'
         ,rowset.rows.map((row, rowIndex) => el('tr.table__row'
-          ,row.isInserting && el.class('table__row--inserting')
           ,el('td.table__rowHeader'
-            ,rowset.dirtyRows[rowIndex] && '*'
+            ,rowIndex in rowset.dirtyRows && '*'
+            ,el('input.table__removeRowToggler'
+              ,el.attr('type', 'checkbox')
+              ,el.attr('checked', rowset.dirtyRows[rowIndex] == 'delete')
+            )
           )
           ,rowset.fields.map((field, fieldIndex) => {
-            const val = rowset.dirtyRows[rowIndex] ? rowset.dirtyRows[rowIndex][fieldIndex] : row[fieldIndex];
+
+            const val = rowset.dirtyRows[rowIndex] && rowset.dirtyRows[rowIndex] != 'delete' ?
+              rowset.dirtyRows[rowIndex][fieldIndex] :
+              row[fieldIndex]
+
             return el('td.table__cell'
               ,el.attr('contenteditable', 'true')
               ,field['is_num'] && el.class('table__cell--num')
@@ -91,7 +98,24 @@ define(function (require, exports, module) {
       rowsetIndex: getRowsetIndex(this),
       rowIndex: getRowIndex(this),
     })
-  });
+  })
+
+  on('.table__removeRowToggler', 'change', function (e) {
+    const rowEl = this.closest('.table__row')
+    if (this.checked) {
+      dispatch({
+        type: 'DELETE_ROW',
+        rowsetIndex: getRowsetIndex(rowEl),
+        rowIndex: getRowIndex(rowEl),
+      })
+    } else {
+      dispatch({
+        type: 'UNDELETE_ROW',
+        rowsetIndex: getRowsetIndex(rowEl),
+        rowIndex: getRowIndex(rowEl),
+      })
+    }
+  })
 
   function updateRowIfDirty(rowEl) {
     const fields = getRowFieldsDescriptions(rowEl);

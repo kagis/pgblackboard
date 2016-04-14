@@ -1,4 +1,4 @@
-mod connection;
+pub mod connection;
 mod decoder;
 mod objchildren;
 mod objdef;

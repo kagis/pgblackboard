@@ -6,33 +6,88 @@ define(function (require, exports, module) {
   function modificationScript({ items }) {
     if (items && items.length) {
       const script = items
-        .filter(it => it.resultType == 'ROWSET')
-        .filter(rowset => Object.keys(rowset.dirtyRows).length)
-        .map(rowset => tableModificationScript(Object.assign({
-          tableName: 'public.tab', // rowset.fields.map(f => f.src_column).filter(Boolean).map(col => col.table_path.join('.'))[0],
-        }, rowset)))
+        .filter(stmtResult => Object.keys(stmtResult.dirtyRows).length)
+        .map(stmtResult => tableModificationScript(stmtResult))
         .join('\n\n')
 
-      return script && '\\connect postgres\n\nBEGIN;\n\n' + script + '\n\nCOMMIT;\n';
+      return script;
     }
   }
 
-  function tableModificationScript({ rows, dirtyRows, fields, tableName }) {
-    return Object.keys(dirtyRows)
-      .map(rowIndex => rowIndex in rows ?
-        rowUpdateStatement({
-          oldValues: rows[rowIndex],
-          newValues: dirtyRows[rowIndex],
-          fields,
-          tableName,
-        }) :
-        rowInsertStatement({
-          values: dirtyRows[rowIndex],
-          fields,
-          tableName,
-        })
-      )
-      .join('\n');
+  function tableModificationScript({ rows, dirtyRows, fields, sourceTable }) {
+
+    const fullTableName =
+      quoteIdent(sourceTable.schemaName) + '.' +
+      quoteIdent(sourceTable.tableName)
+
+    const insertingRows =
+      Object.keys(dirtyRows)
+        .filter(rowIndex => !(rowIndex in rows))
+        .map(rowIndex => dirtyRows[rowIndex])
+
+    const updatingRowsIndexes =
+      Object.keys(dirtyRows)
+        .filter(rowIndex => rowIndex in rows &&
+                            dirtyRows[rowIndex] != 'delete')
+
+    const deletingRows =
+      Object.keys(dirtyRows)
+        .filter(rowIndex => rowIndex in rows &&
+                            dirtyRows[rowIndex] == 'delete')
+        .map(rowIndex => rows[rowIndex])
+
+    let script = ''
+
+    if (deletingRows.length) {
+      const keyColumns = sourceTable.columns.filter(col => col.isKey)
+      script +=
+        'DELETE FROM ' + fullTableName +
+        ' WHERE (' + keyColumns.map(col => col.name).map(quoteIdent).join(', ') +
+        ') IN (' +
+        deletingRows.map(row => '(' +
+          keyColumns.map(col => row[col.fieldIndex])
+                    .map(quoteLiteral)
+                    .join(', ') +
+          ')')
+        .join(', ') + ');'
+    }
+
+    if (insertingRows.length) {
+      script +=
+        'INSERT INTO ' + fullTableName +
+
+        '\n(' + sourceTable.columns.map(col => col.name).map(quoteIdent).join(', ') + ')' +
+        ' VALUES \n' + insertingRows.map(
+          insertingRow => '(' + sourceTable.columns
+            .map(col => insertingRow[col.fieldIndex])
+            .map(quoteLiteral)
+            .join(', ') + ')'
+        ).join(',\n') + ';\n\n'
+    }
+
+    if (updatingRowsIndexes.length) {
+      script +=
+        updatingRowsIndexes.map(function (updatingRowIndex) {
+          const newValues = dirtyRows[updatingRowIndex]
+          const oldValues = rows[updatingRowIndex]
+          return 'UPDATE ' + fullTableName +
+            ' SET ' +
+            sourceTable.columns
+              .filter(col => newValues[col.fieldIndex] != oldValues[col.fieldIndex])
+              .map(col => quoteIdent(col.name) + ' = ' + quoteLiteral(newValues[col.fieldIndex]))
+              .join(', ') +
+            ' WHERE ' +
+            sourceTable.columns
+              .filter(col => col.isKey)
+              .map(col => quoteIdent(col.name) + ' = ' + quoteLiteral(oldValues[col.fieldIndex]))
+              .join(' AND ') +
+            ';'
+        }).join('\n\n')
+    }
+
+
+
+    return script
   }
 
   function rowUpdateStatement({ oldValues, newValues, fields, tableName }) {
@@ -85,5 +140,9 @@ define(function (require, exports, module) {
   function quoteLiteral(value) {
     return (value === null || typeof value == 'undefined') ?
       'NULL' : '\'' + String(value).replace(/'/g, '\'') + '\'';
+  }
+
+  function quoteIdent(ident) {
+    return '"' + ident.replace(/"/g, '""') + '"'
   }
 })

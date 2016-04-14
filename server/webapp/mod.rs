@@ -8,6 +8,8 @@ mod ui;
 #[cfg(not(debug_assertions))]
 mod statres;
 
+mod sqlexec_;
+
 use http;
 use dbms;
 use self::index::handle_index_req;
@@ -24,12 +26,14 @@ use std::path::{Path, PathBuf};
 
 
 pub struct WebApplication<TDbms: dbms::Dbms> {
-    pub dbms: TDbms
+    pub dbms: TDbms,
+    pub pgaddr: String,
 }
 
 impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
     fn handle_http_req(
-        &self, path: &[&str],
+        &self,
+        path: &[&str],
         req: &http::Request)
         -> Box<http::Response>
     {
@@ -39,6 +43,11 @@ impl<TDbms: dbms::Dbms> http::Handler for WebApplication<TDbms> {
         match path_prefix {
             "" => handle_index_req(&self.dbms, req),
             "exec" => handle_sqlexec_req(&self.dbms, req),
+            "exec_" => http::Handler::handle_http_req(
+                &self::sqlexec_::SqlExecEndpoint { pgaddr: self.pgaddr.clone() },
+                path_tail,
+                req
+            ),
             "treeinit" => handle_tree_root_req(&self.dbms, req),
             "tree" => handle_tree_req(&self.dbms, path_tail, req),
             "definitions" => handle_def_req(&self.dbms, path_tail, req),

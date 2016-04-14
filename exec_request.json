@@ -1,0 +1,12 @@
+{
+  "user": "postgres",
+  "password": "postgres",
+  "database": "postgres",
+  "describe": true,
+  "statements": [
+    "SELECT 'hello'::text",
+    "SELECT 2 + 2",
+    "SELECT * FROM pg_class LIMIT 10"
+    "SELECT * FROM pg_attribute LIMIT 10"
+  ]
+}

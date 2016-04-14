@@ -40,11 +40,12 @@ fn main() {
     }
 
     let dbms = PgDbms {
-        addr: pgaddr
+        addr: pgaddr.clone(),
     };
 
     let webapp = WebApplication {
-        dbms: dbms
+        dbms: dbms,
+        pgaddr: pgaddr.clone(),
     };
 
     http::serve_forever(&httpaddr, webapp).unwrap();

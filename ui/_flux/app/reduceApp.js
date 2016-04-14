@@ -18,6 +18,7 @@ define(function (require, exports, module) {
       selectedTreeNodeOrMyQuery: reduceSelectedTreeNodeOrMyQuery,
       selectedDocument: reduceSelectedDocument,
       execOutput: reduceExecOutput,
+      credentials: reduceCredentials,
     });
   }
 
@@ -125,6 +126,21 @@ define(function (require, exports, module) {
 
       default:
         return selectedDocument;
+    }
+  }
+
+  function reduceCredentials(credentials, action) {
+    switch (action.type) {
+      case 'INIT':
+        return null
+      case 'USE_CREDENTIALS':
+        return {
+          username: action.username,
+          password: action.password,
+        }
+      default:
+        return credentials
+
     }
   }
 });

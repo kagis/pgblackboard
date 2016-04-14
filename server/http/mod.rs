@@ -28,7 +28,15 @@ use std::sync::{Arc};
 
 
 pub trait Response {
-    fn write_to(self: Box<Self>, ResponseStarter) -> io::Result<()>;
+    fn write_to(self: Box<Self>, resp: ResponseStarter) -> io::Result<()>;/* {
+        let resp = try!(resp.start(self.get_status()));
+        try!(self.write_headers(&resp));
+        let w =
+    }
+
+    fn get_status(&self) -> Status { Status::Ok }
+    fn write_headers(&self, ) -> io::Result<()> {}
+    fn write_content(&self, )*/
 }
 
 // impl Response for Status {

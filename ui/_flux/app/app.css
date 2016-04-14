@@ -122,8 +122,8 @@
 }
 
 .main__output {
-  overflow: auto;
-  transform: translateZ(0);
+  /* overflow: auto; */
+  /* transform: translateZ(0); */
 }
 
 /* .light */ .main__nav,

@@ -53,117 +53,65 @@ define(function (require, exports, module) {
         });
         // return versioned.extend(execOutput, ['items', action.resultIndex], action.extent);
 
+      case 'STATEMENT_EXECUTING':
+        return merge(execOutput, {
+          items: merge.push({
+            rows: [],
+            notices: [],
+            dirtyRows: {},
+          }),
+        })
 
-
-      case 'HANDLE_EXEC_RESULT_EVENTS':
-        return action.events.reduce(function (execOutput, m) {
-          var eventTag = m[0];
-          var eventPayload = m[1];
-          switch (eventTag) {
-            case 'rowset':
-              return merge(execOutput, {
-                items: merge.push({
-                  resultType: 'ROWSET',
-                  fields: eventPayload,
-                  rows: [],
-                  dirtyRows: {},
-                }),
-              });
-              // versioned.push(execOutput, ['items'], {
-              //   resultType: 'ROWSET',
-              //   fields: eventPayload,
-              //   rows: [],
-              // });
-              // break;
-
-            case 'r':
-              return merge(execOutput, {
-                items: {
-                  [execOutput.items.length - 1]: {
-                    rows: merge.push(eventPayload),
-                  },
-                },
-              });
-              // versioned.push(execOutput, ['items', lastItemIndex, 'rows'], eventPayload);
-              // break;
-
-            case 'non_query':
-            case 'notice':
-              return merge(execOutput, {
-                items: merge.push({
-                  resultType: 'MESSAGE',
-                  text: eventPayload,
-                  line: m[2],
-                  isError: false,
-                }),
-              });
-              // versioned.push(execOutput, ['items'], {
-              //   resultType: 'MESSAGE',
-              //   text: eventPayload,
-              //   line: m[2],
-              //   isError: false,
-              // });
-              // break;
-
-            case 'error':
-              return merge(execOutput, {
-                items: merge.push({
-                  resultType: 'MESSAGE',
-                  text: eventPayload,
-                  line: m[2],
-                  isError: true,
-                }),
-              });
-              // versioned.push(execOutput, ['items'], {
-              //   resultType: 'MESSAGE',
-              //   text: eventPayload,
-              //   line: m[2],
-              //   isError: true,
-              // });
-              // break;
-
-            case 'query_plan':
-              return merge(execOutput, {
-                items: merge.push({
-                  resultType: 'QUERY_PLAN',
-                  rootQueryPlanNode: eventPayload,
-                  isFullPageView: false,
-                  offsetX: 0,
-                  offsetY: 0,
-                  zoom: 0,
-                }),
-              });
-              // versioned.push(execOutput, ['items'], {
-              //   resultType: 'QUERY_PLAN',
-              //   rootQueryPlanNode: eventPayload,
-              //   isFullPageView: false,
-              //   offsetX: 0,
-              //   offsetY: 0,
-              //   zoom: 0,
-              // });
-              // break;
-
-            default:
-              return execOutput;
-          }
-        }, execOutput);
-
-      case 'ADD_ROW':
+      case 'STATEMENT_COMPLETE':
         return merge(execOutput, {
           items: {
-            [action.rowsetIndex]: {
-              newRows: {
-                [action.rowIndex]: action.values,
-              },
+            [execOutput.items.length - 1]: {
+              commandTag: action.commandTag,
             },
-          }
-        });
+          },
+        })
 
+      case 'STATEMENT_ERROR':
+        return merge(execOutput, {
+          items: {
+            [execOutput.items.length - 1]: {
+              errorMessage: action.errorMessage,
+            },
+          },
+        })
+
+      case 'STATEMENT_NOTICE':
+        return merge(execOutput, {
+          items: {
+            [execOutput.items.length - 1]: {
+              notices: merge.push(action.notice),
+            },
+          },
+        })
+
+      case 'STATEMENT_DESCRIBE':
+        return merge(execOutput, {
+          items: {
+            [execOutput.items.length - 1]: action.description,
+          },
+        })
+
+      case 'STATEMENT_ROWS':
+        return merge(execOutput, {
+          items: {
+            [execOutput.items.length - 1]: {
+              rows: execOutput
+                .items[execOutput.items.length - 1]
+                .rows
+                .concat(action.rows)
+            },
+          },
+        })
 
       case 'EDIT_ROW':
         const oldValues = execOutput
           .items[action.rowsetIndex]
-          .rows[action.rowIndex];
+          .rows[action.rowIndex]
 
         const hasChanges = !oldValues || oldValues.some(
           (oldValue, index) => oldValue != action.values[index]
@@ -174,6 +122,28 @@ define(function (require, exports, module) {
             [action.rowsetIndex]: {
               dirtyRows: {
                 [action.rowIndex]: hasChanges ? action.values : undefined,
+              },
+            },
+          },
+        })
+
+      case 'DELETE_ROW':
+        return merge(execOutput, {
+          items: {
+            [action.rowsetIndex]: {
+              dirtyRows: {
+                [action.rowIndex]: 'delete',
+              },
+            },
+          },
+        })
+
+      case 'UNDELETE_ROW':
+        return merge(execOutput, {
+          items: {
+            [action.rowsetIndex]: {
+              dirtyRows: {
+                [action.rowIndex]: undefined,
               },
             },
           },
