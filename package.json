@@ -28,7 +28,7 @@
   },
   "scripts": {
     "installdep-and-build": "npm install --production && npm run build",
-    "build": "nodejs ui/build.js",
+    "build": "node ui/build.js",
     "test": "JASMINE_CONFIG_PATH=ui/jasmine.json jasmine",
     "start": "nodejs ui/server.js",
     "lint": "npm run eslint && npm run jscs",

@@ -16,10 +16,11 @@ define(function (require, exports, module) {
       let result = []
 
       const stream = sqlStream({
-        script: '\\connect ' + database + '\n' + statement,
-        describe: false,
+        database,
         user,
-        password, 
+        password,
+        statements: [statement],
+        describe: false,
       })
 
       stream.on('finish', function onFinish() {
@@ -27,9 +28,10 @@ define(function (require, exports, module) {
       })
 
       stream.on('messages', function onMessages(messages) {
+        const fieldNames = Object.keys(fields)
         const rows = messages
           .filter(Array.isArray)
-          .map(row => zipObject(fields, row))
+          .map(row => zipObject(fieldNames, row))
 
         result = result.concat(rows)
       })

@@ -6,13 +6,20 @@
 extern crate argparse;
 extern crate rustc_serialize;
 
+
 mod http;
-mod dbms;
-mod webapp;
+
+#[cfg(not(debug_assertions))]
+mod statres;
+
+mod sqlexec;
 mod postgres;
 
-use self::postgres::PgDbms;
-use self::webapp::WebApplication;
+use rustc_serialize::{json, Encodable};
+use std::io;
+use std::fs;
+use std::path::{Path, PathBuf};
+
 
 
 fn main() {
@@ -38,15 +45,134 @@ fn main() {
 
         ap.parse_args_or_exit();
     }
-
-    let dbms = PgDbms {
-        addr: pgaddr.clone(),
-    };
-
+    
     let webapp = WebApplication {
-        dbms: dbms,
-        pgaddr: pgaddr.clone(),
+        pgaddr: pgaddr,
     };
 
     http::serve_forever(&httpaddr, webapp).unwrap();
+}
+
+
+
+
+
+
+pub struct WebApplication {
+    pub pgaddr: String,
+}
+
+impl http::Handler for WebApplication {
+    fn handle_http_req(
+        &self,
+        path: &[&str],
+        req: &http::Request)
+        -> Box<http::Response>
+    {
+        let path_prefix = path[0];
+        let path_tail = &path[1..];
+
+        match path_prefix {
+            #[cfg(not(debug_assertions))]
+            "" => handle_index_req(&self.dbms, req),
+
+            "exec" => http::Handler::handle_http_req(
+                &self::sqlexec::SqlExecEndpoint { pgaddr: self.pgaddr.clone() },
+                path_tail,
+                req
+            ),
+           
+            #[cfg(not(debug_assertions))]
+            "favicon.ico" => statres::FAVICON_RESOURCE.handle_http_req(&[], req),
+
+            #[cfg(not(debug_assertions))]
+            "pgblackboard.js" => statres::BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
+
+            #[cfg(debug_assertions)]
+            "node_modules" => FsDirHandler("./node_modules").handle_http_req(path_tail, req),
+
+            #[cfg(debug_assertions)]
+            _ => FsDirHandler("./ui").handle_http_req(path, req),
+
+            // _ => Box::new(index::ErrorResponse {
+            //     status: http::Status::NotFound,
+            //     message: "The requested URL was not found."
+            // })
+        }
+    }
+}
+ 
+
+struct JsonResponse<T: Encodable> {
+    status: http::Status,
+    content: T,
+}
+
+impl<T: Encodable> http::Response for JsonResponse<T> {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type("application/json"));
+        w.write_content(json::encode(&self.content).unwrap().as_bytes())
+    }
+}
+ 
+struct FsDirHandler(&'static str);
+
+impl http::Handler for FsDirHandler {
+    fn handle_http_req(
+        &self,
+        path: &[&str],
+        req: &http::Request)
+        -> Box<http::Response>
+    {
+        use std::io::Read;
+
+        let mut pathbuf = PathBuf::from(self.0);
+        pathbuf.extend(path);
+        let content_type = match pathbuf.extension().and_then(|it| it.to_str()).unwrap_or("") {
+            "ico" => "image/vnd.microsoft.icon",
+            "svg" => "image/svg+xml",
+            "js" => "application/javascript; charset=utf-8",
+            "css" => "text/css; charset=utf-8",
+            "html" => "text/html; charset=utf-8",
+            _ => "application/octet-stream"
+        };
+
+        let mut content = vec![];
+        let mut file = match fs::File::open(&pathbuf) {
+            Ok(file) => file,
+            Err(ref err) => match err.kind() {
+                io::ErrorKind::NotFound => return Box::new(JsonResponse {
+                    status: http::Status::NotFound,
+                    content: "The requested URL was not found."
+                }),
+                _ => return Box::new(JsonResponse {
+                    status: http::Status::InternalServerError,
+                    content: format!("{}", err)
+                }),
+            }
+        };
+        file.read_to_end(&mut content).unwrap();
+
+        Box::new(GenericResponse {
+            status: http::Status::Ok,
+            content_type: content_type.to_string(),
+            content: content,
+        })
+    }
+}
+
+struct GenericResponse {
+    status: http::Status,
+    content_type: String,
+    content: Vec<u8>,
+}
+
+impl http::Response for GenericResponse {
+    fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
+        let mut w = try!(w.start(self.status));
+        try!(w.write_content_type(&self.content_type));
+        try!(w.write_content(&self.content));
+        Ok(())
+    }
 }

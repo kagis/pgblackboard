@@ -5,25 +5,15 @@ define(function (require, exports, module) {
 
   module.exports = sqlStream
 
-  function sqlStream({
-    script,
-    user,
-    password,
-    describe,
-  }) {
+  function sqlStream(options) {
 
     let offset = 0;
     const ee = createEventEmitter()
     const xhr = new XMLHttpRequest()
     xhr.addEventListener('load', onComplete)
     xhr.addEventListener('readystatechange', onReadyStateChange)
-    xhr.open('POST', '/exec_')
-    xhr.send(JSON.stringify({
-      script,
-      user,
-      password,
-      describe,
-    }))
+    xhr.open('POST', '/exec')
+    xhr.send(JSON.stringify(options))
     return ee
 
     function onReadyStateChange(e) {

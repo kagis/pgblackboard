@@ -1,10 +1,7 @@
-mod pg;
-mod splitting;
-
 use rustc_serialize::{ Encodable, json };
 use http;
 use std::io::{ self, Write };
-use self::splitting::{ extract_connect_metacmd, split_statements, SqlScriptAndDbName };
+use postgres as pg;
 
 
 pub struct SqlExecEndpoint {
@@ -19,7 +16,8 @@ impl http::Resource for SqlExecEndpoint {
             user: String,
             password: String,
             describe: bool,
-            script: String,
+            database: String,
+            statements: Vec<String>,
         }
 
         let content = match req.content.as_ref() {
@@ -46,14 +44,13 @@ impl http::Resource for SqlExecEndpoint {
             }),
         };
 
-
-
         Box::new(SqlExecResponse {
             pgaddr: self.pgaddr.clone(),
             user: form.user,
             password: form.password,
             describe: form.describe,
-            script: form.script,
+            database: form.database,
+            statements: form.statements,
         })
     }
 }
@@ -80,7 +77,8 @@ struct SqlExecResponse {
     user: String,
     password: String,
     describe: bool,
-    script: String,
+    database: String,
+    statements: Vec<String>,
 }
 
 impl http::Response for SqlExecResponse {
@@ -91,16 +89,10 @@ impl http::Response for SqlExecResponse {
         try!(w.write_content_type("application/json"));
         let mut chunk_writer = try!(w.start_chunked());
 
-        let SqlScriptAndDbName {
-            database,
-            database_pos,
-            sqlscript,
-            sqlscript_pos,
-        } = extract_connect_metacmd(&self.script).expect("\\connect metacommand is missing.");
 
         let mut conn = pg::connect(
             &self.pgaddr[..],
-            &database,
+            &self.database,
             (&self.user, &self.password),
         ).unwrap();
 
@@ -109,7 +101,7 @@ impl http::Response for SqlExecResponse {
 
         //|/\*let SqlExecResponse { mut conn, statements, describe } = { *self };*/
 
-        for stmt in split_statements(sqlscript) {
+        for stmt in self.statements.iter() {
 
             try!(w.write_message("executing", &json::Json::Null));
 
