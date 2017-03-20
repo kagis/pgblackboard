@@ -80,7 +80,7 @@ function define(factory) {
   function normalizeModPath(modPath) {
     return String(new URL(
       modPath + '.js',
-      modPath[0] == '.' ? definingModulePath : define.basePath
+      modPath[0] == '.' && definingModulePath || define.basePath
     ));
   }
 

@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>pgBlackboard</title>
+  <meta charset="utf-8">
+  <title></title>
+
   <style>
     /* http://tobiasahlin.com/spinkit/ */
 
-    .loading-indicator {
+    .loadingIndicator {
       position: fixed;
       top: 0;
       bottom: 0;
@@ -14,15 +15,15 @@
       left: 0;
     }
 
-    /*.light*/.loading-indicator {
+    /*.light*/.loadingIndicator {
       background-color: #fcfcfc;
     }
 
-    .dark.loading-indicator {
+    .dark.loadingIndicator {
       background-color: #333;
     }
 
-    .loading-indicator__inner {
+    .loadingIndicator__inner {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -33,9 +34,9 @@
       font-size: 25px;
     }
 
-    .loading-indicator__bounce1,
-    .loading-indicator__bounce2,
-    .loading-indicator__bounce3 {
+    .loadingIndicator__bounce1,
+    .loadingIndicator__bounce2,
+    .loadingIndicator__bounce3 {
       width: 1em;
       height: 1em;
       margin: .1em;
@@ -49,24 +50,24 @@
       animation-fill-mode: both;
     }
 
-    /*.light*/ .loading-indicator__bounce1,
-    /*.light*/ .loading-indicator__bounce2,
-    /*.light*/ .loading-indicator__bounce3 {
+    /*.light*/ .loadingIndicator__bounce1,
+    /*.light*/ .loadingIndicator__bounce2,
+    /*.light*/ .loadingIndicator__bounce3 {
       background-color: #888;
     }
 
-    .dark .loading-indicator__bounce1,
-    .dark .loading-indicator__bounce2,
-    .dark .loading-indicator__bounce3 {
+    .dark .loadingIndicator__bounce1,
+    .dark .loadingIndicator__bounce2,
+    .dark .loadingIndicator__bounce3 {
       background-color: #ccc;
     }
 
-    .loading-indicator__bounce1 {
+    .loadingIndicator__bounce1 {
       -webkit-animation-delay: -0.32s;
       animation-delay: -0.32s;
     }
 
-    .loading-indicator__bounce2 {
+    .loadingIndicator__bounce2 {
       -webkit-animation-delay: -0.16s;
       animation-delay: -0.16s;
     }
@@ -87,28 +88,47 @@
       }
     }
   </style>
+
+  <link rel="stylesheet" href="fontello/css/fontello.css" />
+
+  <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css" />
+  <script src="../node_modules/codemirror/lib/codemirror.js"></script>
+  <script src="../node_modules/codemirror/addon/search/searchcursor.js"></script>
+  <script src="../node_modules/codemirror/keymap/sublime.js"></script>
+  <script src="../node_modules/codemirror/addon/edit/matchbrackets.js"></script>
+  <script src="../node_modules/codemirror/addon/edit/closebrackets.js"></script>
+  <script src="../node_modules/codemirror/mode/sql/sql.js"></script>
+
+
+  <!-- <link rel="stylesheet" href="../node_modules/leaflet/dist/leaflet.css" /> -->
+
+
+  <script src="amd.js" charset="utf-8"></script>
+  <script src="csslink.js" charset="utf-8"></script>
+
 </head>
 <body>
-  <pgbb-app>
-    <div class="loading-indicator" id="loading-indicator">
-      <div class="loading-indicator__inner">
-        <div class="loading-indicator__bounce1">
-        </div><div class="loading-indicator__bounce2">
-        </div><div class="loading-indicator__bounce3"></div>
+
+  <div id="pgblackboardApp">
+    <div class="loadingIndicator" id="loadingIndicator">
+      <div class="loadingIndicator__inner">
+        <div class="loadingIndicator__bounce1">
+        </div><div class="loadingIndicator__bounce2">
+        </div><div class="loadingIndicator__bounce3"></div>
       </div>
     </div>
     <script>
     if (localStorage.getItem('pgblackboard_isdark') == 'true') {
-      document.getElementById('loading-indicator').className += ' dark';
+      document.getElementById('loadingIndicator').className += ' dark';
     }
     </script>
-  </pgbb-app>
+  </div>
 
-  <script id="pgbb-initial-data"
-          type="text/json"
-          data-placeholder="initial_data">
-  </script>
 
-  <script src="pgblackboard.js"></script>
+
+  <!-- <script src="../node_modules/leaflet/dist/leaflet-src.js"></script> -->
+
+  <script src="app.js" charset="utf-8"></script>
+  <!-- <script src="/treeinit?callback=acceptRootTreeNodes"></script> -->
 </body>
 </html>
