@@ -67,7 +67,7 @@ class DatabaseApp:
                 yield x.encode()
             return
 
-
+        conn.set_client_encoding('utf8')
 
         try:
             conn.autocommit = True
