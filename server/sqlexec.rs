@@ -43,13 +43,28 @@ impl http::Resource for SqlExecEndpoint {
                 content: "Failed to decode form",
             }),
         };
+        
+        let maybe_conn = pg::connect(
+            &self.pgaddr,
+            &form.database,
+            (&form.user, &form.password),
+        );
+        
+        let conn = match maybe_conn {
+            Ok(conn) => conn,
+            Err(pg::Error::SqlError(pg::PgErrorOrNotice { code: pg::SqlState::InvalidPassword, .. })) => return Box::new(JsonResponse {
+                status: http::Status::BadRequest,
+                content: "Invalid username or password",
+            }),
+            Err(err) => return Box::new(JsonResponse {
+                status: http::Status::InternalServerError,
+                content: "Failed to connect PostgreSQL server",
+            }),
+        };
 
         Box::new(SqlExecResponse {
-            pgaddr: self.pgaddr.clone(),
-            user: form.user,
-            password: form.password,
+            pgconn: conn,
             describe: form.describe,
-            database: form.database,
             statements: form.statements,
         })
     }
@@ -73,11 +88,8 @@ impl<T: Encodable> http::Response for JsonResponse<T> {
 }
 
 struct SqlExecResponse {
-    pgaddr: String,
-    user: String,
-    password: String,
+    pgconn: pg::Connection,
     describe: bool,
-    database: String,
     statements: Vec<String>,
 }
 
@@ -90,29 +102,25 @@ impl http::Response for SqlExecResponse {
         let mut chunk_writer = try!(w.start_chunked());
 
 
-        let mut conn = pg::connect(
-            &self.pgaddr[..],
-            &self.database,
-            (&self.user, &self.password),
-        ).unwrap();
+        let SqlExecResponse { mut pgconn, statements, describe, .. } = { *self };
 
         let mut w = try!(JsonStream::begin(chunk_writer));
 
 
         //|/\*let SqlExecResponse { mut conn, statements, describe } = { *self };*/
 
-        for stmt in self.statements.iter() {
+        for stmt in statements.iter() {
 
             try!(w.write_message("executing", &json::Json::Null));
 
 
-            if let Err(err) = conn.parse_statement("", stmt) {
+            if let Err(err) = pgconn.parse_statement("", stmt) {
                 try!(w.write_message("error", &format!("{:#?}", err)));
                 break;
             }
 
-            if self.describe {
-                match describe_statement(&mut conn) {
+            if describe {
+                match describe_statement(&mut pgconn) {
                     Ok(ref stmt_descr) => {
                         try!(w.write_message("description", stmt_descr));
                     }
@@ -124,22 +132,22 @@ impl http::Response for SqlExecResponse {
                 };
             }
 
-            if let Err(ref err) = conn.execute_statement("", 0, &[]) {
+            if let Err(ref err) = pgconn.execute_statement("", 0, &[]) {
                 try!(w.write_message("error", &format!("{:#?}", err)));
                 break;
             }
 
-            while let Some(ref row) = conn.fetch_row() {
+            while let Some(ref row) = pgconn.fetch_row() {
                 try!(w.write_raw(row));
             }
 
-            match *conn.get_last_execution_result() {
+            match *pgconn.get_last_execution_result() {
                 Some(Ok(ref cmd_tag)) => try!(w.write_message("complete", cmd_tag)),
                 Some(Err(ref err)) => try!(w.write_message("error", &format!("{:#?}", err))),
                 None => try!(w.write_message("complete", &json::Json::Null)),
             }
         }
-        conn.close();
+        pgconn.close();
 
         let mut chunk_writer = try!(w.end());
         chunk_writer.end()
@@ -345,7 +353,7 @@ fn describe_statement(conn: &mut pg::Connection) -> pg::Result<StatementDescript
                     .iter()
                     .map(|col_descr| Column {
                         name: col_descr.name.clone(),
-                        isKey: selected_key.contains(&col_descr.id.to_string()[..]),
+                        isKey: selected_key.contains(&col_descr.id.to_string()),
                         isNotNull: col_descr.is_notnull,
                         hasDefault: col_descr.has_default,
                         fieldIndex: pg_fields.iter().position(|pg_field| Some(col_descr.id) == pg_field.column_id)
