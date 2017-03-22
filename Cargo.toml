@@ -2,7 +2,7 @@
 name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
-#build = "ui/build.rs"
+#build = "ui/build.rs" 
 
 [dependencies]
 argparse = "0.2"
