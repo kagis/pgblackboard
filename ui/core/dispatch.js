@@ -1,6 +1,5 @@
-'use strict';
-
 define(function (require, exports, module) {
+  'use strict';
   const createEventEmitter = require('core/eventEmitter');
 
   module.exports = dispatch;

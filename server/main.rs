@@ -5,7 +5,7 @@
 
 extern crate argparse;
 extern crate rustc_serialize;
-
+// extern crate regex;
 
 mod http;
 
@@ -14,6 +14,7 @@ mod statres;
 
 mod sqlexec;
 mod postgres;
+// mod sql;
 
 use rustc_serialize::{json, Encodable};
 use std::io;

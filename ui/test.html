@@ -11,7 +11,9 @@
     <script>
       mocha.setup('bdd')
       define(function (require, module, exports) {
-        require('./drafts/draftsRepo.spec')
+        require('./drafts/drafts_repo.spec');
+        require('./sql/linecol.spec');
+        require('./sql/next_statement.spec');
         mocha.run()
       }) 
     </script>

@@ -6,6 +6,7 @@ macro_rules! sql_state {
         /// http://postgresql.org/docs/9.4/static/errcodes-appendix.html
         #[derive(Debug)]
         #[derive(PartialEq)]
+        #[derive(RustcEncodable)]
         pub enum SqlState {
             $(
                 $class_name,
@@ -380,10 +381,14 @@ sql_state! {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::SqlState;
 
-fn main() {
-    let sqlstate = SqlState::from_code("28P01");
-
-    println!("{:?} - class {:?}", sqlstate, sqlstate.class());
-
+    #[test]
+    fn test_from_code() {
+        let sqlstate = SqlState::from_code("28P01");
+        assert_eq!(sqlstate, SqlState::InvalidPassword);
+        assert_eq!(sqlstate.class(), SqlState::InvalidAuthorizationSpecification);
+    }
 }

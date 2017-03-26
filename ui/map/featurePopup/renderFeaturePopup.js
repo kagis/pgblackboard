@@ -1,8 +1,8 @@
-'use strict';
 
-csslink('./featurePopup.css')
+// csslink('./featurePopup.css')
 
 define(function (require, exports, module) {
+  'use strict';
   const el = require('core/el');
 
   module.exports = renderPopup;

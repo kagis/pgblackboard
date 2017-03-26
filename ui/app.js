@@ -1,11 +1,12 @@
 define(function (require, exports, module) {
   const cito = require('core/cito');
-  const createStore = require('core/store');
+  const create_store = require('core/store');
   const dispatch = require('core/dispatch');
-  const renderApp = require('app/renderApp');
-  const reduceApp = require('app/reduceApp');
-  const myQueriesRepo = require('myQueries/myQueriesRepo');
-  const sqlQuery = require('webapi/sqlQuery')
+  const bus = require('./core/bus');
+  const render_app = require('./views/app');
+  const reduce_app = require('./reducers/app');
+  const login = require('./actions/login');
+  const drafts_load = require('./actions/drafts_load');
 
   // dispatch.subscribe(action => {
   //   console.log('%o dispatched %c%s ', action, 'font-weight: bold', action.type);
@@ -20,55 +21,31 @@ define(function (require, exports, module) {
   const appContainerElem = document.getElementById('pgblackboardApp');
   appContainerElem.innerHTML = '';
 
-  const store = createStore(reduceApp);
+  const store = create_store(reduce_app);
   const rootNode = cito.vdom.append(appContainerElem, rootNodeFn);
 
   store.subscribe(({ action, state }) => {
     // console.profile('render');
     cito.vdom.update(rootNode, rootNodeFn);
+    bus.emit('rendered:' + action.type, action);
     // console.profileEnd('render');
 
     console.log('%o dispatched %c%s %o', action, 'font-weight: bold', action.type, state);
   });
 
   function rootNodeFn() {
-    return renderApp(store.state);
+    return render_app(store.state);
   }
 
 
-  window.codemirror.refresh();
+  // window.codemirror.refresh();
 
-  dispatch({
-    type: 'LOAD_MYQUERIES',
-    myQueries: myQueriesRepo.getAll(),
-  });
+  dispatch(drafts_load());
+  
+  
 
-  sqlQuery({
-    database: 'postgres', // 'postgres',
-    user: 'postgres',
-    password: 'postgres',
-    fields: [
-      'datname',
-      'comment',
-    ],
-    statement: `
-      SELECT      datname
-                , shobj_description(oid, 'pg_database')
-      FROM      pg_database
-      WHERE     NOT datistemplate
-      ORDER BY  datname
-    `,
-  }).then(nodes => dispatch({
-      type: 'LOAD_TREE',
-      nodes: nodes.map(it => ({
-        typ: 'database',
-        name: it.datname,
-        can_have_children: true,
-        path: [it.datname, 'database', it.datname],
-        comment: it.comment,
-        group: 0,
-      })),
-  }))
+  //dispatch(login({ user: 'exed', password: 'passpass123' }));
+  
 
 });
 

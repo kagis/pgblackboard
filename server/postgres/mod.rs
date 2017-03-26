@@ -44,37 +44,10 @@ use std::net::{ TcpStream, ToSocketAddrs };
 use std::collections::VecDeque;
 
 
-#[derive(Debug)]
-pub enum Error {
-    SqlError(PgErrorOrNotice),
-    IoError(io::Error),
-    OtherError(Box<::std::error::Error>),
-}
 
-impl ::std::error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::SqlError(ref err) => &err.message,
-            Error::IoError(ref err) => err.description(),
-            Error::OtherError(ref err) => err.description(),
-        }
-    }
-}
-
-impl ::std::fmt::Display for Error {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{:#?}", self)
-    }
-}
-
-impl ::std::convert::From<io::Error> for Error {
-    fn from(err: io::Error) -> Error {
-        Error::IoError(err)
-    }
-}
-
+type Error = PgErrorOrNotice;
 type InternalStream = TcpStream;
-pub type Result<T> = ::std::result::Result<T, Error>;
+pub type Result<T> = ::std::result::Result<T, PgErrorOrNotice>;
 
 pub struct Connection {
     database: String,
@@ -154,7 +127,7 @@ impl Connection {
                 BackendMessage::AuthenticationSSPI
                 | BackendMessage::AuthenticationSCMCredential
                 | BackendMessage::AuthenticationGSS => return Err(
-                    Error::IoError(io::Error::new(
+                    Error::from(io::Error::new(
                         io::ErrorKind::Other,
                         "Unsupported authentication method.",
                     ))
@@ -166,9 +139,7 @@ impl Connection {
                     // }
                 }
 
-                BackendMessage::ErrorResponse(e) => return Err(
-                    Error::SqlError(e)
-                ),
+                BackendMessage::ErrorResponse(e) => return Err(e),
 
                 BackendMessage::BackendKeyData { .. } => {}
 
@@ -199,7 +170,7 @@ impl Connection {
                 Ok(message) => message,
                 Err(err) => {
                     self.is_desynchronized = true;
-                    return Err(Error::IoError(err));
+                    return Err(PgErrorOrNotice::from(err));
                 }
             };
 
@@ -221,13 +192,13 @@ impl Connection {
     fn write_message<T: FrontendMessage>(&mut self, msg: T) -> Result<()> {
         frontend::write_message(&mut self.stream, msg).map_err(|err| {
             self.is_desynchronized = true;
-            Error::IoError(err)
+            Error::from(err)
         })
     }
 
     fn bad_response(&mut self, msg: &BackendMessage) -> Error {
         self.is_desynchronized = true;
-        Error::IoError(io::Error::new(
+        Error::from(io::Error::new(
             io::ErrorKind::Other,
             format!("Unexpected message from postgres: {:#?}", msg)
         ))
@@ -262,7 +233,7 @@ impl Connection {
             }
             BackendMessage::ErrorResponse(sql_err) => {
                 try!(self.wait_for_ready());
-                Err(Error::SqlError(sql_err))
+                Err(sql_err)
             }
             ref unexpected => Err(self.bad_response(unexpected))
         }
@@ -285,7 +256,7 @@ impl Connection {
             }
             BackendMessage::ErrorResponse(sql_err) => {
                 try!(self.wait_for_ready());
-                return Err(Error::SqlError(sql_err))
+                return Err(sql_err)
             }
             ref unexpected => return Err(self.bad_response(unexpected))
         }
@@ -301,7 +272,7 @@ impl Connection {
             }
             BackendMessage::ErrorResponse(sql_err) => {
                 try!(self.wait_for_ready());
-                Err(Error::SqlError(sql_err))
+                Err(sql_err)
             }
             ref unexpected => Err(self.bad_response(unexpected))
         }
@@ -325,7 +296,7 @@ impl Connection {
             }
             BackendMessage::ErrorResponse(err) => {
                 try!(self.wait_for_ready());
-                Err(Error::SqlError(err))
+                Err(err)
             }
             ref unexpected => Err(self.bad_response(unexpected))
         }
@@ -363,7 +334,7 @@ impl Connection {
             },
             BackendMessage::ErrorResponse(err) => {
                 try!(self.wait_for_ready());
-                Err(Error::SqlError(err))
+                Err(err)
             }
             ref unexpected => Err(self.bad_response(unexpected))
         }
@@ -391,7 +362,7 @@ impl Connection {
                 self.wait_for_ready().and(Ok("".to_string()))
             }
             BackendMessage::ErrorResponse(sql_err) => {
-                self.wait_for_ready().and(Err(Error::SqlError(sql_err)))
+                self.wait_for_ready().and(Err(sql_err))
             }
             BackendMessage::PortalSuspended => {
                 self.wait_for_ready().and(Ok("".to_string()))

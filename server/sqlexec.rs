@@ -52,7 +52,7 @@ impl http::Resource for SqlExecEndpoint {
         
         let conn = match maybe_conn {
             Ok(conn) => conn,
-            Err(pg::Error::SqlError(pg::PgErrorOrNotice { code: pg::SqlState::InvalidPassword, .. })) => return Box::new(JsonResponse {
+            Err(pg::PgErrorOrNotice { code: pg::SqlState::InvalidPassword, .. }) => return Box::new(JsonResponse {
                 status: http::Status::BadRequest,
                 content: "Invalid username or password",
             }),
@@ -114,8 +114,8 @@ impl http::Response for SqlExecResponse {
             try!(w.write_message("executing", &json::Json::Null));
 
 
-            if let Err(err) = pgconn.parse_statement("", stmt) {
-                try!(w.write_message("error", &format!("{:#?}", err)));
+            if let Err(ref err) = pgconn.parse_statement("", stmt) {
+                try!(w.write_message("error", err));
                 break;
             }
 
@@ -126,14 +126,14 @@ impl http::Response for SqlExecResponse {
                     }
 
                     Err(ref err) => {
-                        try!(w.write_message("error", &format!("{:#?}", err)));
+                        try!(w.write_message("error", err));
                         break;
                     }
                 };
             }
 
             if let Err(ref err) = pgconn.execute_statement("", 0, &[]) {
-                try!(w.write_message("error", &format!("{:#?}", err)));
+                w.write_message("error", err)?;
                 break;
             }
 
@@ -143,7 +143,7 @@ impl http::Response for SqlExecResponse {
 
             match *pgconn.get_last_execution_result() {
                 Some(Ok(ref cmd_tag)) => try!(w.write_message("complete", cmd_tag)),
-                Some(Err(ref err)) => try!(w.write_message("error", &format!("{:#?}", err))),
+                Some(Err(ref err)) => try!(w.write_message("error", err)),
                 None => try!(w.write_message("complete", &json::Json::Null)),
             }
         }

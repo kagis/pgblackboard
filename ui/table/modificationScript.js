@@ -4,43 +4,42 @@ define(function (require, exports, module) {
   module.exports = modificationScript;
 
   function modificationScript({ items }) {
-    if (items && items.length) {
-      const script = items
-        .filter(stmtResult => Object.keys(stmtResult.dirtyRows).length)
-        .map(stmtResult => tableModificationScript(stmtResult))
-        .join('\n\n')
-
-      return script;
+    if (!(items && items.length)) {
+      return null;
     }
+    return items
+      .filter(stmtResult => Object.keys(stmtResult.dirtyRows).length)
+      .map(stmtResult => tableModificationScript(stmtResult))
+      .reduce((a, b) => a.concat(b));
   }
 
-  function tableModificationScript({ rows, dirtyRows, fields, sourceTable }) {
+  function tableModificationScript({
+    rows,
+    dirtyRows: changes,
+    sourceTable: { schemaName, tableName, columns },
+  }) {
 
-    const fullTableName =
-      quoteIdent(sourceTable.schemaName) + '.' +
-      quoteIdent(sourceTable.tableName)
+    const fullTableName = quoteIdent(schemaName) + '.' + quoteIdent(tableName);
 
     const insertingRows =
-      Object.keys(dirtyRows)
+      Object.keys(changes)
         .filter(rowIndex => !(rowIndex in rows))
-        .map(rowIndex => dirtyRows[rowIndex])
+        .map(rowIndex => changes[rowIndex])
 
     const updatingRowsIndexes =
-      Object.keys(dirtyRows)
-        .filter(rowIndex => rowIndex in rows &&
-                            dirtyRows[rowIndex] != 'delete')
+      Object.keys(changes)
+        .filter(rowIndex => rowIndex in rows && changes[rowIndex] != 'delete')
 
     const deletingRows =
-      Object.keys(dirtyRows)
-        .filter(rowIndex => rowIndex in rows &&
-                            dirtyRows[rowIndex] == 'delete')
+      Object.keys(changes)
+        .filter(rowIndex => rowIndex in rows && changes[rowIndex] == 'delete')
         .map(rowIndex => rows[rowIndex])
 
-    let script = ''
+    let script = [];
 
     if (deletingRows.length) {
-      const keyColumns = sourceTable.columns.filter(col => col.isKey)
-      script +=
+      const keyColumns = columns.filter(col => col.isKey)
+      script.push(
         'DELETE FROM ' + fullTableName +
         ' WHERE (' + keyColumns.map(col => col.name).map(quoteIdent).join(', ') +
         ') IN (' +
@@ -49,43 +48,43 @@ define(function (require, exports, module) {
                     .map(quoteLiteral)
                     .join(', ') +
           ')')
-        .join(', ') + ');'
+        .join(', ') + ')'
+      );
     }
 
     if (insertingRows.length) {
-      script +=
+      script.push(
         'INSERT INTO ' + fullTableName +
 
-        '\n(' + sourceTable.columns.map(col => col.name).map(quoteIdent).join(', ') + ')' +
+        '\n(' + columns.map(col => col.name).map(quoteIdent).join(', ') + ')' +
         ' VALUES \n' + insertingRows.map(
-          insertingRow => '(' + sourceTable.columns
+          insertingRow => '(' + columns
             .map(col => insertingRow[col.fieldIndex])
             .map(quoteLiteral)
             .join(', ') + ')'
-        ).join(',\n') + ';\n\n'
+        ).join(',\n') + ';'
+      );
     }
 
     if (updatingRowsIndexes.length) {
-      script +=
+      script = script.concat(
         updatingRowsIndexes.map(function (updatingRowIndex) {
-          const newValues = dirtyRows[updatingRowIndex]
+          const newValues = changes[updatingRowIndex]
           const oldValues = rows[updatingRowIndex]
           return 'UPDATE ' + fullTableName +
             ' SET ' +
-            sourceTable.columns
+            columns
               .filter(col => newValues[col.fieldIndex] != oldValues[col.fieldIndex])
               .map(col => quoteIdent(col.name) + ' = ' + quoteLiteral(newValues[col.fieldIndex]))
               .join(', ') +
             ' WHERE ' +
-            sourceTable.columns
+            columns
               .filter(col => col.isKey)
               .map(col => quoteIdent(col.name) + ' = ' + quoteLiteral(oldValues[col.fieldIndex]))
-              .join(' AND ') +
-            ';'
-        }).join('\n\n')
+              .join(' AND ')
+        })
+      );
     }
-
-
 
     return script
   }

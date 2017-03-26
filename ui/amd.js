@@ -93,3 +93,10 @@ function define(factory) {
     }
   }
 }
+
+window.loadfile = path => {
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', new URL(path, document.currentScript.src), false);
+  xhr.send();
+  return xhr.responseText;
+};

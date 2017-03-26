@@ -185,6 +185,7 @@ pub enum TransactionStatus {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(RustcEncodable)]
 pub struct PgErrorOrNotice {
 
     /// The field contents are ERROR, FATAL, or PANIC (in an error message),
@@ -278,6 +279,30 @@ impl error::Error for PgErrorOrNotice {
 impl fmt::Display for PgErrorOrNotice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.message)
+    }
+}
+
+impl ::std::convert::From<io::Error> for PgErrorOrNotice {
+    fn from(err: io::Error) -> PgErrorOrNotice {
+        PgErrorOrNotice {
+            severity: "ERROR".to_owned(),
+            code: SqlState::IoError,
+            message: format!("{}", err), // .description().to_owned(),
+            detail: None,
+            hint: None,
+            position: None,
+            internal_position: None,
+            internal_query: None,
+            where_: None,
+            file: None,
+            line: None,
+            routine: None,
+            schema_name: None,
+            table_name: None,
+            column_name: None,
+            datatype_name: None,
+            constraint_name: None,
+        }
     }
 }
 

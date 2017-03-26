@@ -1,9 +1,9 @@
-'use strict';
 
-csslink('./map.css');
-csslink('./leaflet/leaflet.css');
+// csslink('./map.css');
+// csslink('./leaflet/leaflet.css');
 
 define(function (require, exports, module) {
+  'use strict';
   const L = require('./leaflet/leaflet-src');
   const tileCoordsToQuadKey = require('./tileCoordsToQuadKey');
   const featureColors = require('./colors');
