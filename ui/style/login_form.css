@@ -1,0 +1,39 @@
+.login_form {
+  width: 200px;
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  margin-left: -100px;
+}
+
+.login_form__password,
+.login_form__user {
+  display: block;
+  width: 100%;
+  line-height: 2;
+  padding: 0 .5em;
+  margin: .5em 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #888;
+}
+
+.login_form__password:focus,
+.login_form__user:focus {
+  outline: none;
+}
+
+.login_form__submit {
+  display: block;
+  margin: 0 auto;
+  /*background: transparent;*/
+  /*font-family: inherit;*/
+  /*border: none;*/
+  /*padding: 0;*/
+  /*text-decoration: dotted;*/
+}
+
+.login_form__error {
+  color: red;
+  margin: 1em;
+}

@@ -5,8 +5,8 @@ define(function (require, exports, module) {
   const sql_query = require('../api/sql_query')
 
   module.exports = () => (dispatch, state) => {
-    const { execOutput, credentials } = state;
-    const script = modificationScript(execOutput);
+    const { output, credentials } = state;
+    const script = modificationScript(output);
     console.log(script)
     if (script.length) {
       sql_query({

@@ -10,18 +10,21 @@ define(function (require, exports, module) {
   const memoizeLast = require('core/memoizeLast');
   const login_form = require('views/login_form');
 
-  module.exports = renderApp;
+  module.exports = render_app;
 
   const renderTreeCached = memoizeLast(renderTree);
-
-  function renderApp(state) {
-    
-    if (!state.credentials.is_authenticated) {
-      return login_form();
-    }
-
+  
+  function render_app(state) {
     return el('div.main'
       ,state.is_dark && el.class('dark')
+      ,state.credentials.is_authenticated
+        ? render_authenticated(state)
+        : login_form(state.credentials)
+    );
+  }
+
+  function render_authenticated(state) {
+    return el('div'
       ,el('div.main__leftbar'
         ,el('button.main__theme-toggler'
           ,el.on('click', _ => dispatch({
@@ -49,6 +52,10 @@ define(function (require, exports, module) {
               tree: state.tree,
               selectedTreeNodeId: state.selected_treenode_or_draft.treenode_id,
             })
+            
+            // ,!state.credentials.is_authenticated && (
+            //   login_form()
+            // )
 
           ), // div.main__nav
           right: vertical_splitpanel({

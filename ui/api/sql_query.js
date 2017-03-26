@@ -15,7 +15,7 @@ define(function (require, exports, module) {
     xhr.addEventListener('load', () => {
       const json_response = JSON.parse(xhr.responseText);
       if (xhr.status != 200) {
-        return reject(json_response);
+        return reject({ message: json_response });
       }
       const messages = json_response.slice(1);
       const error = messages.filter(({ messageType }) => messageType == 'error')

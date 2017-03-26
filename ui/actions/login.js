@@ -37,6 +37,9 @@ define(function (require, exports, module) {
         })),
       });
       window.codemirror.refresh();
-    })
+    }).catch(({ message }) => dispatch({
+      type: 'LOGIN_FAIL',
+      error: message,
+    }));
 }; 
 });

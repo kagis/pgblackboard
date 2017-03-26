@@ -4,24 +4,41 @@ define(function (require, exports, module) {
   const dispatch = require('core/dispatch');
   const login = require('actions/login');
   
-  module.exports = () => {
+  module.exports = ({ error, is_processing }) => {
     let user_input, password_input;
     
     return (
-      el('div.loginForm'
-        ,user_input = el('input.loginForm__user'
+      el('form.login_form'
+        ,el.on('submit', onsubmit)
+        ,user_input
+        = el('input.login_form__user'
+          ,el.attr('placeholder', 'user')
+          ,el.attr('type', 'text')
         )
-        ,password_input = el('input.loginForm__password'
+        ,password_input
+        = el('input.login_form__password'
+          ,el.attr('placeholder', 'password')
+          ,el.attr('type', 'password')
         )
-        ,el('button'
+        ,el('button.login_form__submit'
           ,el.attr('type', 'submit')
-          ,el.on('click', () => dispatch(login({
-            user: user_input.dom.value,
-            password: password_input.dom.value,
-          })))
           ,'login'
+          ,is_processing && '...'
+        )
+        ,error && (
+          el('div.login_form__error'
+            ,error
+          )
         )
       )
     );
+    
+    function onsubmit(e) {
+      dispatch(login({
+        user: user_input.dom.value,
+        password: password_input.dom.value,
+      }));
+      e.preventDefault();
+    }
   }
 })
