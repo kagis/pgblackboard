@@ -209,15 +209,15 @@ struct JsonMessage<T> {
 #[derive(RustcEncodable)]
 struct StatementDescription {
     fields: Vec<Field>,
-    foreignKeys: Vec<ForeignKey>,
-    sourceTable: Option<SourceTable>,
+    foreign_keys: Vec<ForeignKey>,
+    source_table: Option<Source_table>,
 }
 
 #[derive(Debug)]
 #[derive(RustcEncodable)]
-struct SourceTable {
-    tableName: String,
-    schemaName: String,
+struct Source_table {
+    table_name: String,
+    schema_name: String,
     dbName: String,
     columns: Vec<Column>,
 }
@@ -235,8 +235,8 @@ struct ForeignKey {
 pub struct Field {
     pub name: String,
     pub typ: String,
-    pub isNum: bool,
-    pub isGeoJson: bool,
+    pub is_num: bool,
+    pub is_geojson: bool,
 }
 
 /// Describes column of table
@@ -244,10 +244,10 @@ pub struct Field {
 #[derive(RustcEncodable)]
 pub struct Column {
     pub name: String,
-    pub isKey: bool,
-    pub isNotNull: bool,
-    pub hasDefault: bool,
-    pub fieldIndex: Option<usize>,
+    pub is_key: bool,
+    pub is_notnull: bool,
+    pub has_default: bool,
+    pub field_index: Option<usize>,
 }
 
 
@@ -345,18 +345,18 @@ fn describe_statement(conn: &mut pg::Connection) -> pg::Result<StatementDescript
         let rowset_is_insertable = mandatory_cols_ids.is_subset(&selected_cols_ids);
 
         if rowset_is_updatable_and_deletable || rowset_is_insertable {
-            source_table = Some(SourceTable {
+            source_table = Some(Source_table {
                 dbName: conn.database().to_owned(),
-                schemaName: schema_name,
-                tableName: table_name,
+                schema_name: schema_name,
+                table_name: table_name,
                 columns: cols_descrs
                     .iter()
                     .map(|col_descr| Column {
                         name: col_descr.name.clone(),
-                        isKey: selected_key.contains(&col_descr.id.to_string()),
-                        isNotNull: col_descr.is_notnull,
-                        hasDefault: col_descr.has_default,
-                        fieldIndex: pg_fields.iter().position(|pg_field| Some(col_descr.id) == pg_field.column_id)
+                        is_key: selected_key.contains(&col_descr.id.to_string()),
+                        is_notnull: col_descr.is_notnull,
+                        has_default: col_descr.has_default,
+                        field_index: pg_fields.iter().position(|pg_field| Some(col_descr.id) == pg_field.column_id)
                     })
                     .collect()
             });
@@ -383,16 +383,16 @@ fn describe_statement(conn: &mut pg::Connection) -> pg::Result<StatementDescript
 
 
     Ok(StatementDescription {
-        foreignKeys: vec![],
-        sourceTable: source_table,
+        foreign_keys: vec![],
+        source_table: source_table,
         fields: pg_fields
             .into_iter()
             .zip(typ_descrs)
             .map(|(pg_field, (fmttyp, is_num))| Field {
                 name: pg_field.name,
                 typ: fmttyp,
-                isGeoJson: false,
-                isNum: is_num,
+                is_geojson: false,
+                is_num: is_num,
             })
             .collect(),
     })

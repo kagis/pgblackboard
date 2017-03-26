@@ -6,38 +6,49 @@ define(function (require, exports, module) {
 
   module.exports = renderTable;
 
-  function renderTable(rowset, rowsetIndex) {
+  function renderTable({
+    fields,
+    rows,
+    changes,
+    rowset_index,
+    can_update_and_delete,
+    can_insert
+  }) {
+    
     return el('table.table'
-      ,el.prop('rowset', rowset)
-      ,el.prop('rowsetIndex', rowsetIndex)
+      ,el.prop('rowset_index', rowset_index)
       ,el.on('$created', e => e.target.virtualNode = e.virtualNode)
 
       ,el('thead'
         ,el('tr'
           ,el('th.table__corner')
-          ,rowset.fields.map(field => el('th.table__colheader'
+          ,fields.map(field => el('th.table__colheader'
             ,el('div', field.name)
             ,el('div.table__coltype', field.typ)
           ))
         )
       )
       ,el('tbody'
-        ,rowset.rows.map((row, rowIndex) => el('tr.table__row'
+        ,rows.map((row, row_index) => el('tr.table__row'
           ,el('td.table__rowHeader'
-            ,rowIndex in rowset.dirtyRows && '*'
-            ,el('input.table__removeRowToggler'
-              ,el.attr('type', 'checkbox')
-              ,el.attr('checked', rowset.dirtyRows[rowIndex] == 'delete')
+            ,row_index in changes && '*'
+            ,can_update_and_delete && (
+              el('input.table__removeRowToggler'
+                ,el.attr('type', 'checkbox')
+                ,el.attr('checked', changes[row_index] == 'delete')
+              )
             )
           )
-          ,rowset.fields.map((field, fieldIndex) => {
+          ,fields.map((field, field_index) => {
 
-            const val = rowset.dirtyRows[rowIndex] && rowset.dirtyRows[rowIndex] != 'delete' ?
-              rowset.dirtyRows[rowIndex][fieldIndex] :
-              row[fieldIndex]
+            const val = changes[row_index] && changes[row_index] != 'delete' ?
+              changes[row_index][field_index] :
+              row[field_index]
 
             return el('td.table__cell'
-              ,el.attr('contenteditable', 'true')
+              ,can_update_and_delete && (
+                el.attr('contenteditable', 'true')
+              )
               ,field['is_num'] && el.class('table__cell--num')
               ,val === '' && el.class('table__cell--emptystr')
               ,val
@@ -45,15 +56,15 @@ define(function (require, exports, module) {
           })
         ))
 
-        ,Object.keys(rowset.dirtyRows)
-          .filter(rowIndex => !(rowIndex in rowset.rows))
-          .map(rowIndex => [rowset.dirtyRows[rowIndex], rowIndex])
-          .map(([row, rowIndex]) => el('tr.table__row'
+        ,Object.keys(changes)
+          .filter(row_index => !(row_index in rows))
+          .map(row_index => [changes[row_index], row_index])
+          .map(([row, row_index]) => el('tr.table__row'
             ,el('td.table__rowHeader'
               ,'*'
             )
-            ,rowset.fields.map((field, fieldIndex) => {
-              const val = row[fieldIndex];
+            ,fields.map((field, field_index) => {
+              const val = row[field_index];
               return el('td.table__cell'
                 ,el.attr('contenteditable', 'true')
                 ,field['is_num'] && el.class('table__cell--num')
@@ -63,18 +74,20 @@ define(function (require, exports, module) {
             })
           ))
 
-        ,el('tr.table__newRow.table__row'
-          ,el('td.table__rowHeader')
-          ,rowset.fields.map((field, fieldIndex) => el('td.table__cell'
-            ,el.attr('contenteditable', 'true')
-            ,field['is_num'] && el.class('table__cell--num')
-            // ,el.on('input', e => dispatch({
-            //   type: 'EDIT_ROW',
-            //   rowsetIndex: rowsetIndex,
-            //   rowIndex: Math.max(rowset.rows.length - 1, ...Object.keys(rowset.dirtyRows)) + 1,
-            //   values: Object.assign(rowset.fields.map(_ => null)),
-            // }))
-          ))
+        ,can_insert && (
+          el('tr.table__newRow.table__row'
+            ,el('td.table__rowHeader')
+            ,fields.map((field, field_index) => el('td.table__cell'
+              ,el.attr('contenteditable', 'true')
+              ,field['is_num'] && el.class('table__cell--num')
+              // ,el.on('input', e => dispatch({
+              //   type: 'EDIT_ROW',
+              //   rowset_index: rowset_index,
+              //   row_index: Math.max(rows.length - 1, ...Object.keys(changes)) + 1,
+              //   values: Object.assign(fields.map(_ => null)),
+              // }))
+            ))
+          )
         )
       )
     );
@@ -89,43 +102,35 @@ define(function (require, exports, module) {
   on('.table__row', 'input', function () {
     dispatch({
       type: 'EDIT_ROW',
-      values: getInputtedRowValues(this),
-      rowsetIndex: getRowsetIndex(this),
-      rowIndex: getRowIndex(this),
+      values: get_inputted_row_values(this),
+      rowset_index: get_rowset_index_by_el(this),
+      row_index: get_row_index_by_el(this),
     })
   })
 
   on('.table__removeRowToggler', 'change', function (e) {
-    const rowEl = this.closest('.table__row')
-    if (this.checked) {
-      dispatch({
-        type: 'DELETE_ROW',
-        rowsetIndex: getRowsetIndex(rowEl),
-        rowIndex: getRowIndex(rowEl),
-      })
-    } else {
-      dispatch({
-        type: 'UNDELETE_ROW',
-        rowsetIndex: getRowsetIndex(rowEl),
-        rowIndex: getRowIndex(rowEl),
-      })
-    }
+    const row_el = this.closest('.table__row')
+    dispatch({
+      type: this.checked ? 'DELETE_ROW' : 'UNDELETE_ROW',
+      rowset_index: get_rowset_index_by_el(row_el),
+      row_index: get_row_index_by_el(row_el),
+    })
   })
 
-  function getRowIndex(rowEl) {
-    return Array.prototype.indexOf.call(rowEl.parentNode.childNodes, rowEl)
+  function get_row_index_by_el(row_el) {
+    return Array.prototype.indexOf.call(row_el.parentNode.childNodes, row_el)
   }
 
-  function getRowsetIndex(rowEl) {
-    const tableEl = rowEl.parentNode.parentNode
-    return tableEl.virtualNode['rowsetIndex'];
+  function get_rowset_index_by_el(row_el) {
+    const table_el = row_el.parentNode.parentNode
+    return table_el.virtualNode['rowset_index'];
   }
 
 
-  function getInputtedRowValues(rowEl) {
-    return Array.from(rowEl.cells)
+  function get_inputted_row_values(row_el) {
+    return Array.from(row_el.cells)
       .slice(1) // skip row header
-      .map(cellEl => cellEl.textContent);
+      .map(cell_el => cell_el.textContent);
   }
 
 });

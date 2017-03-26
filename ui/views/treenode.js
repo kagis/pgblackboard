@@ -1,8 +1,8 @@
 define(function (require, exports, module) {
   'use strict';
-  const el = require('core/el');
-  const on = require('core/on');
-  const dispatch = require('core/dispatch');
+  const el = require('../core/el');
+  const on = require('../core/on');
+  const dispatch = require('../core/dispatch');
   const tree_expand = require('../actions/tree_expand');
   const tree_select = require('../actions/tree_select');
 
@@ -11,15 +11,15 @@ define(function (require, exports, module) {
   function render_treenode(params) {
 
     var message = params.treeNode.path == params.message.treeNodeId && params.message;
-    var isSelected = JSON.stringify(params.treeNode.path) == JSON.stringify(params.selectedTreeNodeId);
+    var is_selected = JSON.stringify(params.treeNode.path) == JSON.stringify(params.selected_treenode_id);
 
-    const childrenLimit = 200;
-    const isLimited = params.treeNode.isExpanded &&
+    const children_limit = 200;
+    const is_limited = params.treeNode.isExpanded &&
                       !params.treeNode.showAll &&
-                      params.treeNode.nodes.length > childrenLimit;
+                      params.treeNode.nodes.length > children_limit;
 
-    const childNodes = params.treeNode.isExpanded && (isLimited ?
-      params.treeNode.nodes.slice(0, childrenLimit) :
+    const childNodes = params.treeNode.isExpanded && (is_limited ?
+      params.treeNode.nodes.slice(0, children_limit) :
       params.treeNode.nodes
     );
 
@@ -39,7 +39,7 @@ define(function (require, exports, module) {
 
       ,el('a.treeNode__header'
         ,el.attr('data-id', JSON.stringify(params.treeNode.path))
-        ,isSelected && el.class('treeNode__header--selected')
+        ,is_selected && el.class('treeNode__header--selected')
         ,el('i.treeNode__icon'
           ,el.class('treeNode__icon--' + params.treeNode.typ)
         )
@@ -61,12 +61,12 @@ define(function (require, exports, module) {
         ,childNodes.map((childNode, i) => render_treenode({
           treeNode: childNode,
           path: params.path.concat(i),
-          selectedTreeNodeId: params.selectedTreeNodeId,
+          selected_treenode_id: params.selected_treenode_id,
           message: params.message,
         }))
       )
 
-      ,isLimited && el('button.treeNode__showAll'
+      ,is_limited && el('button.treeNode__showAll'
         ,el.on('click', _ => dispatch({
           type: 'SHOW_ALL_TREE_NODE_CHILDREN',
           nodePath: params.path,

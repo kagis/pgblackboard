@@ -41,7 +41,17 @@ define(function (require, exports, module) {
       ,result.error && el('div.message.message--error'
         ,result.error.message
       )
-      ,result.fields && result.fields.length && renderTable(result, index)
+      ,result.fields && result.fields.length && renderTable({
+        rows: result.rows,
+        fields: result.fields,
+        changes: result.changes,
+        rowset_index: index,
+        can_update_and_delete: result.source_table &&
+          result.source_table.columns.some(col => col.is_key),
+        can_insert: result.source_table && result.source_table.columns.every(
+          col => col.has_default || !col.is_notnull || Number.isFinite(col.field_index)
+        ),
+      })
       ,result.commandTag && el('div.message'
         ,result.commandTag
       )

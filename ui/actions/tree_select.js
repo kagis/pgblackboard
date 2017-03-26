@@ -6,7 +6,7 @@ define(function (require, exports, module) {
   module.exports = treenode_id => (dispatch, state) => {
     dispatch({
       type: 'TREENODE_SELECT',
-      treeNodeId: treenode_id
+      treenode_id,
     });
     
     treenode_definition({

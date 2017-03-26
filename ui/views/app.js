@@ -50,7 +50,7 @@ define(function (require, exports, module) {
 
             ,renderTreeCached({
               tree: state.tree,
-              selectedTreeNodeId: state.selected_treenode_or_draft.treenode_id,
+              selected_treenode_id: state.selected_treenode_or_draft.treenode_id,
             })
             
             // ,!state.credentials.is_authenticated && (
@@ -97,18 +97,15 @@ define(function (require, exports, module) {
     // }
   }
 
-  function renderTree({ tree, selectedTreeNodeId }) {
+  function renderTree({ tree, selected_treenode_id }) {
     return el('div.main__tree'
       ,tree.nodes.map((node, i) => render_treenode({
         treeNode: node,
         path: [i],
-        selectedTreeNodeId: selectedTreeNodeId,
+        selected_treenode_id,
         message: tree.message,
       }))
     );
   }
-
-
-
 
 });
