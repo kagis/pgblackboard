@@ -56,7 +56,7 @@ define(function (require, exports, module) {
               case 'complete':
                 dispatch({
                   type: 'STATEMENT_COMPLETE',
-                  commandTag: m.payload,
+                  command_tag: m.payload,
                 })
                 break
 

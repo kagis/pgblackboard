@@ -1,16 +1,16 @@
 define(function (require, exports, module) {
   'use strict';
-  const createEventEmitter = require('core/eventEmitter');
+  const create_event_emitter = require('core/event_emitter');
 
   module.exports = dispatch;
 
-  const eventEmitter = createEventEmitter();
+  const event_emitter = create_event_emitter();
 
   function dispatch(action) {
-    eventEmitter.emit('action', action);
+    event_emitter.emit('action', action);
   }
 
   dispatch.subscribe = function (listener) {
-    eventEmitter.on('action', listener);
+    event_emitter.on('action', listener);
   };
 });

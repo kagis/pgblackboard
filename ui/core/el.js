@@ -1,6 +1,5 @@
-'use strict';
-
 define(function (require, exports, module) {
+  'use strict';
   module.exports = el;
 
   function el(selector, ...args) {
@@ -87,11 +86,34 @@ define(function (require, exports, module) {
       const attrsObj = node.attrs || (node.attrs = {});
       attrsObj[attr] = replaceFn(attrsObj[attr]);
     },
+    
+    _memoized_arg: Symbol('memoized_arg'),
+    memoize(render, arg) {
+      return function render_memoized(old_node) {
+        if (old_node && obj_shallow_eq(old_node[el._memoized_arg], arg)) {
+          return;
+        }
+        return Object.assign(render(arg), {
+          [el._memoized_arg]: arg,
+        });
+      };
+    },
 
   });
 
   function Patch(applyFn) {
     this.apply = applyFn;
+  }
+  
+  function obj_shallow_eq(a, b) {
+    if (a !== b) {
+      for (let key in a) {
+        if (a[key] !== b[key]) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
 });

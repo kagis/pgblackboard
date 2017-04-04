@@ -1,7 +1,12 @@
 define(function (require, exports, module) {
   'use strict';
 
-  module.exports =  ({ statements, user, password, database }) => new Promise((resolve, reject) => {
+  module.exports =  ({
+    statements,
+    credentials: { user, password },
+    database,
+    describe = false
+  }) => new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/exec');
     xhr.send(JSON.stringify({
@@ -9,7 +14,7 @@ define(function (require, exports, module) {
       statements,
       user,
       password,
-      describe: false,
+      describe,
     }));
     
     xhr.addEventListener('load', () => {
@@ -29,7 +34,10 @@ define(function (require, exports, module) {
           latest.rows.push(msg);
         } else if (msg.messageType == 'executing') {
           acc.push({ rows: [] });
-        };
+        } else if (msg.messageType == 'description') {
+          const [latest] = acc.slice(-1);
+          Object.assign(latest, msg.payload);
+        }
         return acc;
       }, []));
     });

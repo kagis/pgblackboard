@@ -1,6 +1,8 @@
-use rustc_serialize::{ Encodable, json };
+use serde_json;
+use serde;
 use http;
 use std::io::{ self, Write };
+use std::collections::{ BTreeMap, BTreeSet };
 use postgres as pg;
 
 
@@ -11,7 +13,7 @@ pub struct SqlExecEndpoint {
 impl http::Resource for SqlExecEndpoint {
     fn post(&self, req: &http::Request) -> Box<http::Response> {
 
-        #[derive(RustcDecodable)]
+        #[derive(Deserialize)]
         struct Form {
             user: String,
             password: String,
@@ -36,7 +38,7 @@ impl http::Resource for SqlExecEndpoint {
             }),
         };
 
-        let form = match json::decode::<Form>(utf8_content) {
+        let form = match serde_json::from_str::<Form>(utf8_content) {
             Ok(form) => form,
             Err(err) => return Box::new(JsonResponse {
                 status: http::Status::BadRequest,
@@ -71,19 +73,19 @@ impl http::Resource for SqlExecEndpoint {
 }
 
 
-struct JsonResponse<T: Encodable> {
+struct JsonResponse<T: serde::Serialize> {
     status: http::Status,
     content: T,
 }
 
-impl<T: Encodable> http::Response for JsonResponse<T> {
+impl<T: serde::Serialize> http::Response for JsonResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("application/json"));
         if self.status == http::Status::Unauthorized {
             try!(w.write_www_authenticate_basic("postgres"));
         }
-        w.write_content(json::encode(&self.content).unwrap().as_bytes())
+        w.write_content(serde_json::to_string(&self.content).unwrap().as_bytes())
     }
 }
 
@@ -111,7 +113,7 @@ impl http::Response for SqlExecResponse {
 
         for stmt in statements.iter() {
 
-            try!(w.write_message("executing", &json::Json::Null));
+            try!(w.write_message("executing", &serde_json::Value::Null));
 
 
             if let Err(ref err) = pgconn.parse_statement("", stmt) {
@@ -144,7 +146,7 @@ impl http::Response for SqlExecResponse {
             match *pgconn.get_last_execution_result() {
                 Some(Ok(ref cmd_tag)) => try!(w.write_message("complete", cmd_tag)),
                 Some(Err(ref err)) => try!(w.write_message("error", err)),
-                None => try!(w.write_message("complete", &json::Json::Null)),
+                None => try!(w.write_message("complete", &serde_json::Value::Null)),
             }
         }
         pgconn.close();
@@ -164,7 +166,7 @@ impl<W: Write> JsonStream<W> {
         Ok(JsonStream { inner: w })
     }
 
-    fn write_message<P: Encodable>(
+    fn write_message<P: serde::Serialize>(
         &mut self,
         messageType: &str,
         payload: &P)
@@ -174,20 +176,23 @@ impl<W: Write> JsonStream<W> {
             &mut self.inner,
             ",{{\"messageType\":\"{}\",\"payload\":{}}}\r\n",
             messageType,
-            json::as_json(payload)
+            serde_json::to_string(payload).map_err(|err| io::Error::new(
+                io::ErrorKind::InvalidData, err
+            ))?
         )
     }
 
-    fn write_raw<P: Encodable>(
+    fn write_raw<P: serde::Serialize>(
         &mut self,
         raw: &P)
         -> io::Result<()>
     {
-        write!(
-            &mut self.inner,
-            ",{}\r\n",
-            json::as_json(raw),
-        )
+        self.inner.write(b",")?;
+        serde_json::to_writer(&mut self.inner, raw).map_err(|err| {
+            io::Error::new(io::ErrorKind::InvalidData, err)
+        })?;
+        self.inner.write(b"\r\n")?;
+        Ok(())
     }
 
     fn end(mut self) -> io::Result<W> {
@@ -205,195 +210,197 @@ struct JsonMessage<T> {
 }
 */
 
-#[derive(Debug)]
-#[derive(RustcEncodable)]
-struct StatementDescription {
-    fields: Vec<Field>,
-    foreign_keys: Vec<ForeignKey>,
-    source_table: Option<Source_table>,
-}
+// #[derive(Debug)]
+// #[derive(RustcEncodable)]
+// struct StatementDescription {
+//     fields: Vec<Field>,
+//     foreign_keys: Vec<ForeignKey>,
+//     source_table: Option<SourceTable>,
+// }
 
-#[derive(Debug)]
-#[derive(RustcEncodable)]
-struct Source_table {
-    table_name: String,
-    schema_name: String,
-    dbName: String,
-    columns: Vec<Column>,
-}
+// #[derive(Debug)]
+// #[derive(RustcEncodable)]
+// struct SourceTable {
+//     table_name: String,
+//     schema_name: String,
+//     database: String,
+//     columns: BTreeMap<String, Column>,
+//     key: Vec<String>,
+// }
 
-#[derive(Debug)]
-#[derive(RustcEncodable)]
-struct ForeignKey {
-    fields: Vec<u32>,
-    related_table: String,
-    related_columns: Vec<String>,
-}
+// #[derive(Debug)]
+// #[derive(RustcEncodable)]
+// struct ForeignKey {
+//     fields: Vec<u32>,
+//     related_table: String,
+//     related_columns: Vec<String>,
+// }
 
-#[derive(Debug)]
-#[derive(RustcEncodable)]
-pub struct Field {
-    pub name: String,
-    pub typ: String,
-    pub is_num: bool,
-    pub is_geojson: bool,
-}
+// #[derive(Debug)]
+// #[derive(RustcEncodable)]
+// pub struct Field {
+//     pub name: String,
+//     pub typ: String,
+//     pub is_num: bool,
+//     pub is_geojson: bool,
+//     pub src_column: Option<String>,
+// }
 
-/// Describes column of table
-#[derive(Debug)]
-#[derive(RustcEncodable)]
-pub struct Column {
-    pub name: String,
-    pub is_key: bool,
-    pub is_notnull: bool,
-    pub has_default: bool,
-    pub field_index: Option<usize>,
-}
-
-
-fn describe_statement(conn: &mut pg::Connection) -> pg::Result<StatementDescription> {
-    use std::collections::BTreeSet;
-
-    let pg_fields = try!(conn.describe_statement(""));
+// /// Describes column of table
+// #[derive(Debug)]
+// #[derive(RustcEncodable)]
+// pub struct Column {
+//     pub is_notnull: bool,
+//     pub has_default: bool,
+// }
 
 
+fn describe_statement(conn: &mut pg::Connection) -> pg::Result<serde_json::Value> {
+    
 
-    let mut source_table = None;
+    let fields = conn.describe_statement("")?;
+    
+    if fields.is_empty() {
+        return Ok(serde_json::Value::Null);
+    }
+    
+    let (columns_names, source_table_json) = describe_source_table(conn, &fields)?;
+  
+    let typ_descrs = pg::query::<(String, bool)>(conn, &format!(
+        stringify!(
+              SELECT format_type(param.typoid, param.typmod)
+                    ,pg_type.typcategory = 'N'
+                FROM (VALUES {}) AS param(ord, typoid, typmod)
+                JOIN pg_type ON pg_type.oid = param.typoid
+            ORDER BY param.ord
+        ),
+        fields.iter()
+                 .enumerate()
+                 .map(|(i, f)| format!(
+                    "({},{},{})",
+                    i, f.typ_oid, f.typ_modifier
+                 ))
+                 .collect::<Vec<_>>()
+                 .join(",")
+    ))?;
 
-    let queried_tables_oids = pg_fields
-        .iter()
-        .filter_map(|it| it.table_oid)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
+    let fields_json = fields.into_iter().zip(typ_descrs)
+        .map(|(field, (fmttyp, is_num))| json!({
+            "name": field.name,
+            "typ": fmttyp,
+            "is_geojson": false,
+            "is_num": is_num,
+            "src_column": field.table_oid
+                .and_then(|table_oid| field.column_id.map(|column_id| (table_oid, column_id)))
+                .and_then(|it| columns_names.get(&it)),
+        }))
         .collect::<Vec<_>>();
+    
+    Ok(json!({
+        "fields": fields_json,
+        "src_table": source_table_json,
+    }))
+}
 
-    // single table selected
-    // if let [table_oid] = &queried_tables_oids[..] {
-    if queried_tables_oids.len() == 1 {
-        let table_oid = queried_tables_oids[0];
 
-        let (_cmdtag, mut res) = try!(pg::query::<(String, String)>(conn, &format!(
-            "select relname, nspname
-            from pg_class join pg_namespace on relnamespace = pg_namespace.oid
-            where pg_class.oid = {}",
-                table_oid
-        )));
+fn describe_source_table(
+    conn: &mut pg::Connection,
+    fields: &[pg::FieldDescription])
+    -> pg::Result<(BTreeMap<(pg::Oid, i16), String>, serde_json::Value)>
+{
+    let tables_oids = fields.iter()
+                               .filter_map(|it| it.table_oid)
+                               .collect::<BTreeSet<_>>();
 
-        let (table_name, schema_name) = res.pop()
-            .expect("failed to resolve source table name");
-
-        #[derive(RustcDecodable)]
-        struct ColumnDescr {
-            id: i16,
-            name: String,
-            is_notnull: bool,
-            has_default: bool,
-        }
-
-        let (_cmdtag, cols_descrs) = try!(pg::query::<ColumnDescr>(conn, &format!(
-            "SELECT attnum
-                   ,attname
-                   ,attnotnull
-                   ,atthasdef
-               FROM pg_attribute
-              WHERE attnum > 0
-                AND NOT attisdropped
-                AND attrelid = {}",
-                table_oid
-        )));
-
-        let (_cmdtag, keys) = try!(pg::query::<(String,)>(conn, &format!(
-            "SELECT indkey
-               FROM pg_index
-              WHERE indisunique
-                AND indexprs IS NULL
-                AND indrelid = {}
-           ORDER BY indisprimary DESC",
-           table_oid
-        )));
-
-        let keys = keys
-            .into_iter()
-            .map(|(key_col_ids_space_separated,)| {
-                key_col_ids_space_separated
-                        .split(' ')
-                        .map(|it| it.to_string())
-                        .collect::<BTreeSet<_>>()
-            })
-            .collect::<Vec<_>>();
-
-        let selected_cols_ids = pg_fields
-            .iter()
-            .filter(|field| field.table_oid == Some(table_oid))
-            .filter_map(|field| field.column_id)
-            .map(|column_id| column_id.to_string())
-            .collect::<BTreeSet<_>>();
-
-        let empty_set = BTreeSet::new();
-        let selected_key = keys
-            .iter()
-            .find(|key| key.is_subset(&selected_cols_ids))
-            .unwrap_or(&empty_set);
-
-        let mandatory_cols_ids = cols_descrs
-            .iter()
-            .filter(|col| col.is_notnull && !col.has_default)
-            .map(|col| col.id.to_string())
-            .collect::<BTreeSet<_>>();
-
-        let rowset_is_updatable_and_deletable = !selected_key.is_empty();
-        let rowset_is_insertable = mandatory_cols_ids.is_subset(&selected_cols_ids);
-
-        if rowset_is_updatable_and_deletable || rowset_is_insertable {
-            source_table = Some(Source_table {
-                dbName: conn.database().to_owned(),
-                schema_name: schema_name,
-                table_name: table_name,
-                columns: cols_descrs
-                    .iter()
-                    .map(|col_descr| Column {
-                        name: col_descr.name.clone(),
-                        is_key: selected_key.contains(&col_descr.id.to_string()),
-                        is_notnull: col_descr.is_notnull,
-                        has_default: col_descr.has_default,
-                        field_index: pg_fields.iter().position(|pg_field| Some(col_descr.id) == pg_field.column_id)
-                    })
-                    .collect()
-            });
-        }
+    if tables_oids.is_empty() {
+        return Ok((BTreeMap::new(), serde_json::Value::Null));
+    }
+    
+    let tables_oids_csv = tables_oids.iter()
+                                     .map(|it| it.to_string())
+                                     .collect::<Vec<_>>()
+                                     .join(",");
+            
+    let res
+        = pg::query::<(pg::Oid, String,)>(conn, &format!(
+            stringify!(
+                  SELECT indrelid, indkey
+                    FROM pg_index
+                   WHERE indisunique
+                     AND indexprs IS NULL
+                     AND indrelid IN ({})
+                ORDER BY indisprimary DESC
+            ),
+            tables_oids_csv
+        ))?
+        .into_iter()
+        .map(|(table_oid, key_col_ids_space_separated)| (
+            table_oid,
+            fields.iter()
+                     .filter(|it| it.table_oid == Some(table_oid))
+                     .filter_map(|it| it.column_id)
+                     .collect(),
+            key_col_ids_space_separated.split(' ')
+                                       .map(|it| it.parse().unwrap_or(-1))
+                                       .collect::<BTreeSet<_>>()
+        ))
+        .find(|&(table_oid, ref selected_col_ids, ref key_col_ids)| {
+            key_col_ids.is_subset(selected_col_ids)
+        });
+        
+    let (table_oid, _, key_columns_ids) = match res {
+        Some(it) => it,
+        None => return Ok((BTreeMap::new(), serde_json::Value::Null)),
+    }; 
+    
+    #[derive(RustcDecodable)]
+    struct ColumnDescr {
+        table_oid: pg::Oid,
+        table_fullname: String,
+        column_id: i16,
+        name: String,
+        is_notnull: bool,
+        has_default: bool,
     }
 
-    let typ_descrs = if pg_fields.is_empty() {
-        vec![]
-    } else {
-        let (_, typ_descrs) = try!(pg::query::<(String, bool)>(conn, &format!(
-            "SELECT format_type(param.typoid, param.typmod), pg_type.typcategory = 'N' \
-            FROM (VALUES {}) AS param(ord, typoid, typmod) \
-            JOIN pg_type ON pg_type.oid = param.typoid \
-            ORDER BY param.ord",
-            pg_fields.iter()
-            .enumerate()
-            .map(|(i, f)| format!("({},{},{})", i, f.typ_oid, f.typ_modifier))
-            .collect::<Vec<_>>()
-            .join(",")
-        )));
-        typ_descrs
-    };
+    let cols_descrs = pg::query::<ColumnDescr>(conn, &format!(
+        stringify!(
+            SELECT attrelid
+                  ,quote_ident(nspname) || '.' || quote_ident(relname)
+                  ,attnum
+                  ,attname
+                  ,attnotnull
+                  ,atthasdef
+              FROM pg_attribute
+              JOIN pg_class ON pg_class.oid = attrelid
+              JOIN pg_namespace ON relnamespace = pg_namespace.oid
+             WHERE attnum > 0
+               AND NOT attisdropped
+               AND attrelid = {}
+        ),
+        table_oid
+    ))?;
+    
+    let colnames = cols_descrs.iter().map(|it| (
+        (it.table_oid, it.column_id),
+        it.name.clone(),
+    )).collect::<BTreeMap<_, _>>();
+    
+    let source_table_json = json!({
+        "table_name": cols_descrs.iter()
+                               .map(|it| it.table_fullname.clone())
+                               .nth(0),
+        "columns": cols_descrs.iter()
+                              .filter(|it| it.table_oid == table_oid)
+                              .map(|it| (it.name.clone(), json!({
+                                  "has_default": it.has_default,
+                                  "is_notnull": it.is_notnull,
+                              })))
+                              .collect::<serde_json::Map<_, _>>(),
+        "key_columns": key_columns_ids.into_iter()
+                                  .map(|column_id| colnames.get(&(table_oid, column_id)))
+                                  .collect::<Vec<_>>(),
+    });
 
-
-
-    Ok(StatementDescription {
-        foreign_keys: vec![],
-        source_table: source_table,
-        fields: pg_fields
-            .into_iter()
-            .zip(typ_descrs)
-            .map(|(pg_field, (fmttyp, is_num))| Field {
-                name: pg_field.name,
-                typ: fmttyp,
-                is_geojson: false,
-                is_num: is_num,
-            })
-            .collect(),
-    })
+    Ok((colnames, source_table_json))
 }

@@ -14,6 +14,7 @@ define(function (require, exports, module) {
     )
 
     ,el('button.execBar__execute'
+      ,el.attr('accesskey', 'e')
       ,el.on('click', _ => dispatch(execute_script({
         use_map: false,
       })))

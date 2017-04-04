@@ -2,14 +2,14 @@
 
 define(function (require, exports, module) {
   const dispatch = require('core/dispatch');
-  const createEventEmitter = require('core/eventEmitter');
+  const create_event_emitter = require('core/event_emitter');
 
   module.exports = createStore;
 
   class Store {
     constructor(reducer) {
       this._reducer = reducer;
-      this._eventEmitter = createEventEmitter();
+      this._eventEmitter = create_event_emitter();
       this.state = reducer(undefined, {
         type: 'INIT',
       });

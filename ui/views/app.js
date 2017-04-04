@@ -7,12 +7,9 @@ define(function (require, exports, module) {
   const render_draft = require('./draft');
   const renderCodeForm = require('./codeform');
   const renderExecOutput = require('./output');
-  const memoizeLast = require('core/memoizeLast');
   const login_form = require('views/login_form');
 
   module.exports = render_app;
-
-  const renderTreeCached = memoizeLast(renderTree);
   
   function render_app(state) {
     return el('div.main'
@@ -48,7 +45,7 @@ define(function (require, exports, module) {
               }))
             )
 
-            ,renderTreeCached({
+            ,el.memoize(render_tree, {
               tree: state.tree,
               selected_treenode_id: state.selected_treenode_or_draft.treenode_id,
             })
@@ -73,7 +70,12 @@ define(function (require, exports, module) {
               selection_ranges: state.selected_document.selection_ranges,
              }),
             bottom: el('div.main__output'
-              ,renderExecOutput(Object.assign({ is_dark: state.is_dark }, state.output))
+              ,el.memoize(renderExecOutput, {
+                is_dark: state.is_dark,
+                stmt_results: state.stmt_results,
+                edits: state.edits,
+                errors: state.errors,
+              })
             ),
           }),
 
@@ -97,7 +99,7 @@ define(function (require, exports, module) {
     // }
   }
 
-  function renderTree({ tree, selected_treenode_id }) {
+  function render_tree({ tree, selected_treenode_id }) {
     return el('div.main__tree'
       ,tree.nodes.map((node, i) => render_treenode({
         treeNode: node,

@@ -5,16 +5,14 @@ define(function (require, exports, module) {
   
   module.exports = ({
     treenode_id: [database, dbobj_type, dbobj_id],
-    user,
-    password,
+    credentials
   }) => sql_query({
       statements: [
         queries[dbobj_type]
           .replace(/\$1/g, `'${dbobj_id}'`)
           .replace(/\$2/g, `'${dbobj_type}'`),
       ],
-      user,
-      password,
+      credentials,
       database,
     }).then(([{ rows }]) => rows.map(([
       database,

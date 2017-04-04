@@ -5,21 +5,56 @@ define(function (require, exports, module) {
   const dispatch = require('core/dispatch');
 
   module.exports = renderTable;
+  
+  // const contenteditable = el.patch(node => {
+  //   el.setAttribute(node, 'contenteditable', true);
+  //   // Object.defineProperty(node, 'children', {
+  //   //   get() { return this.dom.textContent; }
+  //   // });
+  //   //el.addEventListener(node, 'input', contenteditable_oninput);
+  // });
+  
+  // function contenteditable_oninput(e) {
+  //   if (!e.target.firstChild) {
+  //     e.target.appendChild(document.createTextElement(''));
+  //   }
+  //   e.target.virtualNode.children = e.target.textContent;
+  // }
 
   function renderTable({
     fields,
     rows,
-    changes,
+    edits,
+    src_table,
     rowset_index,
     can_update_and_delete,
     can_insert
   }) {
     
+    const {
+      deletes = {},
+      inserts = [],
+      updates = {}
+    } = edits || {};
+    
+    const {
+      key_columns = [],
+      table_name
+    } = src_table || {};
+    
+    const key_field_indexes = key_columns.map(
+      key_column => fields.findIndex(
+        ({ src_column }) => src_column == key_column
+      )
+    );
+
     return el('table.table'
       ,el.prop('rowset_index', rowset_index)
+      ,el.prop('src_table_name', table_name)
+      // ,el.prop('fields', fields)
       ,el.on('$created', e => e.target.virtualNode = e.virtualNode)
 
-      ,el('thead'
+      ,el('thead.table__header'
         ,el('tr'
           ,el('th.table__corner')
           ,fields.map(field => el('th.table__colheader'
@@ -29,63 +64,75 @@ define(function (require, exports, module) {
         )
       )
       ,el('tbody'
-        ,rows.map((row, row_index) => el('tr.table__row'
-          ,el('td.table__rowHeader'
-            ,row_index in changes && '*'
-            ,can_update_and_delete && (
-              el('input.table__removeRowToggler'
-                ,el.attr('type', 'checkbox')
-                ,el.attr('checked', changes[row_index] == 'delete')
+        ,rows.map((row, row_index) => {
+          const row_key = JSON.stringify(key_field_indexes
+            .map(i => [key_columns[i], row[i]]));
+          const row_updates = updates[row_key] || {};
+          const is_deleted = deletes[row_key];
+          return el('tr.table-row'
+            ,is_deleted && el.class('table-row--deleted')
+            ,el.attr('data-key', row_key)
+            ,el('td.table__rowHeader'
+              ,can_update_and_delete && (
+                el('button.table-delete_row'
+                  ,el.class(is_deleted
+                    ? 'table-delete_row--on'
+                    : 'table-delete_row--off'
+                  )
+                )
               )
+            )
+            ,fields.map((field, field_index) => {
+              const is_updatable = can_update_and_delete && field.src_column;
+              const original_value = row[field_index];
+              const updated_value = row_updates[field.src_column];
+              const is_updated = updated_value !== undefined;
+              const display_value = is_updated ? updated_value : original_value;
+  
+              return el('td.table__cell'
+                // ,el.prop('table', table_name)
+                ,is_updated && el.attr('data-original-value', JSON.stringify(original_value))
+                ,el.attr('data-column', field.src_column)
+                ,is_updatable && el.class('table__cell--updatable')
+                ,is_updatable && el.attr('contenteditable', true)
+                ,field.is_num && el.class('table__cell--num')
+                ,display_value === '' && el.class('table__cell--emptystr')
+                ,display_value
+              );
+            })
+          );
+        })
+
+        ,inserts.map((dict, index) => el('tr.table-row'
+          ,el.attr('data-index', index)
+          ,el('td.table__rowHeader'
+            ,'*'
+            ,el('button.table-insert_cancel'
+              ,'x'
             )
           )
           ,fields.map((field, field_index) => {
-
-            const val = changes[row_index] && changes[row_index] != 'delete' ?
-              changes[row_index][field_index] :
-              row[field_index]
-
-            return el('td.table__cell'
-              ,can_update_and_delete && (
-                el.attr('contenteditable', 'true')
-              )
-              ,field['is_num'] && el.class('table__cell--num')
+            const val = dict[field.src_column];
+            return el('td.table__cell.table__cell--inserted'
+              ,el.attr('data-column', field.src_column)
+              ,field.src_column && el.attr('contenteditable', 'true')
+              ,field.is_num && el.class('table__cell--num')
               ,val === '' && el.class('table__cell--emptystr')
               ,val
             );
           })
         ))
 
-        ,Object.keys(changes)
-          .filter(row_index => !(row_index in rows))
-          .map(row_index => [changes[row_index], row_index])
-          .map(([row, row_index]) => el('tr.table__row'
-            ,el('td.table__rowHeader'
-              ,'*'
-            )
-            ,fields.map((field, field_index) => {
-              const val = row[field_index];
-              return el('td.table__cell'
-                ,el.attr('contenteditable', 'true')
-                ,field['is_num'] && el.class('table__cell--num')
-                ,val === '' && el.class('table__cell--emptystr')
-                ,val
-              );
-            })
-          ))
-
         ,can_insert && (
-          el('tr.table__newRow.table__row'
+          el('tr.table__newRow.table-row'
+            ,el.attr('data-index', inserts.length)
             ,el('td.table__rowHeader')
-            ,fields.map((field, field_index) => el('td.table__cell'
-              ,el.attr('contenteditable', 'true')
-              ,field['is_num'] && el.class('table__cell--num')
-              // ,el.on('input', e => dispatch({
-              //   type: 'EDIT_ROW',
-              //   rowset_index: rowset_index,
-              //   row_index: Math.max(rows.length - 1, ...Object.keys(changes)) + 1,
-              //   values: Object.assign(fields.map(_ => null)),
-              // }))
+            ,fields.map((field, field_index) => (
+              el('td.table__cell.table__cell--inserted'
+                ,el.attr('data-column', field.src_column)
+                ,field.src_column && el.attr('contenteditable', 'true')
+                ,field.is_num && el.class('table__cell--num')
+              )
             ))
           )
         )
@@ -99,23 +146,67 @@ define(function (require, exports, module) {
   //   }))
   // })
 
-  on('.table__row', 'input', function () {
+  on('.table__cell--updatable', 'input', function () {
+    const td_el = this;
+    const new_value = td_el.textContent;
+    // td_el.virtualNode.children = new_value;
+    const original_value = td_el.hasAttribute('data-original-value')
+      ? JSON.parse(td_el.getAttribute('data-original-value'))
+      : NaN;
+    // if (!td_el.firstChild) {
+    //   td_el.appendChild(document.createTextNode(''));
+    // }
     dispatch({
-      type: 'EDIT_ROW',
-      values: get_inputted_row_values(this),
-      rowset_index: get_rowset_index_by_el(this),
-      row_index: get_row_index_by_el(this),
-    })
-  })
+      type: 'TABLE_UPDATE',
+      table: this.closest('.table').virtualNode.src_table_name,
+      key: this.closest('.table-row').dataset.key,
+      column: this.dataset.column,
+      value: original_value === new_value ? undefined : new_value,
+    });
+  });
+  
+  on('.table__cell--inserted', 'input', function () {
+    const td_el = this;
+    const value = td_el.textContent || undefined;
+    if (!td_el.firstChild) {
+      td_el.appendChild(document.createTextNode(''));
+    }
+    dispatch({
+      type: 'TABLE_INSERT',
+      table: this.closest('.table').virtualNode.src_table_name,
+      index: this.closest('.table-row').dataset.index,
+      column: this.dataset.column,
+      value,
+    });
+  });
 
-  on('.table__removeRowToggler', 'change', function (e) {
-    const row_el = this.closest('.table__row')
+  on('.table-delete_row--on', 'click', function (e) {
+    e.stopImmediatePropagation();
     dispatch({
-      type: this.checked ? 'DELETE_ROW' : 'UNDELETE_ROW',
-      rowset_index: get_rowset_index_by_el(row_el),
-      row_index: get_row_index_by_el(row_el),
-    })
-  })
+      type: 'TABLE_DELETE',
+      table: this.closest('.table').virtualNode.src_table_name,
+      key: this.closest('.table-row').dataset.key,
+      should_delete: false,
+    });
+  });
+  
+  on('.table-delete_row--off', 'click', function (e) {
+    e.stopImmediatePropagation();
+    dispatch({
+      type: 'TABLE_DELETE',
+      table: this.closest('.table').virtualNode.src_table_name,
+      key: this.closest('.table-row').dataset.key,
+      should_delete: true,
+    });
+  });
+  
+  on('.table-insert_cancel', 'click', function () {
+    dispatch({
+      type: 'TABLE_INSERT_CANCEL',
+      table: this.closest('.table').virtualNode.src_table_name,
+      index: +this.closest('.table-row').dataset.index,
+    });
+  });
 
   function get_row_index_by_el(row_el) {
     return Array.prototype.indexOf.call(row_el.parentNode.childNodes, row_el)

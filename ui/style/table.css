@@ -19,6 +19,11 @@
   margin-bottom: 1em;
 }
 
+.table__header {
+  position: sticky;
+  top: 0px;
+}
+
 .table--fixed {
   position: fixed;
   top: 0;
@@ -93,9 +98,9 @@
 /* empty TD are nulls */
 .table__cell:empty::before {
   content: 'null';
-  color: #888;
   font-style: italic;
   font-size: smaller;
+  opacity: .5;
 }
 
 .table__cell--emptystr::before {
@@ -149,3 +154,70 @@
   100% { background-position: 1em 0; }
 }
 */
+
+.table-delete_row {
+  /*border: none;*/
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 100%;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  width: 1em;
+  height: 1em;
+  position: relative;
+  margin: 0 .2em;
+}
+
+.table-delete_row::before {
+  content: '\e815';
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1.2;
+  visibility: hidden;
+  font-size: 80%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.table-delete_row:focus {
+  outline: none;
+}
+
+.table-delete_row--on {
+  color: red;
+}
+
+.table-delete_row--on::before {
+  visibility: visible;
+  /*content: '\e815';*/
+}
+
+.table-delete_row--off {
+  color: #aaa;
+}
+
+.table-delete_row--off:hover {
+  color: #888;
+}
+
+.table-delete_row--off::before {
+  /*content: '\f096';*/
+}
+
+.table-row--deleted {
+  color: #aaa;
+  text-decoration: line-through;
+}

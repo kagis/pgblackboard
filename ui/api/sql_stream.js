@@ -1,41 +1,46 @@
 define(function (require, exports, module) {
   'use strict';
+  const create_event_emitter = require('core/event_emitter')
 
-  const createEventEmitter = require('core/eventEmitter')
+  module.exports = sql_stream
 
-  module.exports = sqlStream
-
-  function sqlStream(options) {
-
+  function sql_stream(options) {
     let offset = 0;
-    const ee = createEventEmitter()
-    const xhr = new XMLHttpRequest()
-    xhr.addEventListener('load', onComplete)
-    xhr.addEventListener('readystatechange', onReadyStateChange)
-    xhr.open('POST', '/exec')
-    xhr.send(JSON.stringify(options))
-    return ee
+    const ee = create_event_emitter();
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', onload);
+    xhr.addEventListener('error', onerror);
+    xhr.addEventListener('readystatechange', onreadystatechange);
+    xhr.open('POST', '/exec');
+    xhr.send(JSON.stringify(options));
+    return ee;
 
-    function onReadyStateChange(e) {
-      const chunkEndIndex = xhr.responseText.lastIndexOf('\r\n')
-      if (chunkEndIndex > offset) {
-        const chunk = xhr.responseText.substring(offset, chunkEndIndex)
-        const validJsonChunk = wrapChunk(chunk)
-        const parsedChunk = JSON.parse(validJsonChunk)
-        ee.emit('messages', parsedChunk)
-        offset = chunkEndIndex + 2
+    function onreadystatechange(e) {
+      if (xhr.status != 200) {
+        return;
+      }
+      const chunk_end_index = xhr.responseText.lastIndexOf('\r\n');
+      if (chunk_end_index > offset) {
+        const chunk = xhr.responseText.slice(offset, chunk_end_index);
+        const valid_json_chunk
+          = chunk[0] == ','
+            ? '[' + chunk.slice(1) + ']'
+            : chunk + ']';
+        const parsed_chunk = JSON.parse(valid_json_chunk);
+        ee.emit('messages', parsed_chunk);
+        offset = chunk_end_index + 2;
       }
     }
 
-    function onComplete() {
-      ee.emit('finish')
+    function onload() {
+      if (xhr.status != 200) {
+        ee.emit('error', JSON.parse(xhr.responseText));
+      }
+      ee.emit('finish');
+    }
+    
+    function onerror(e) {
+      ee.emit('error', e);
     }
   }
-
-  function wrapChunk(chunk) {
-    if (chunk[0] == ',') {
-      return '[' + chunk.slice(1) + ']'
-    }
-    return chunk + ']'
-  }
-})
+});

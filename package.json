@@ -34,7 +34,8 @@
     "lint": "npm run eslint && npm run jscs",
     "eslint": "eslint ui --ext .html",
     "jscs": "jscs ui --verbose",
-    "clean": "jake clean"
+    "clean": "jake clean",
+    "fontello-up": "fontello-cli --config ui/style/fontello/config.json --css ui/style/fontello/css --font ui/style/fontello/font install"
   },
   "jscsConfig": {
     "preset": "yandex",

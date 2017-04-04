@@ -16,6 +16,10 @@
 @import url(./zoompan.css);
 @import url(./fontello/css/fontello.css);
 
+body {
+  overflow: hidden; /* disable bouncing scroll in macos */
+}
+
 .main {
   position: absolute;
   top: 0;

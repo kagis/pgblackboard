@@ -41,7 +41,7 @@ define(function (require, exports, module) {
   // window.codemirror.refresh();
 
   dispatch(drafts_load());
-  
+  dispatch(login({ user: 'exed', password: 'passpass123' }));
   
 
   //dispatch(login({ user: 'exed', password: 'passpass123' }));

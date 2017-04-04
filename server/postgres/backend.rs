@@ -185,7 +185,7 @@ pub enum TransactionStatus {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 pub struct PgErrorOrNotice {
 
     /// The field contents are ERROR, FATAL, or PANIC (in an error message),

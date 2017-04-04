@@ -17,7 +17,7 @@ define(function (require, exports, module) {
     const database_and_script = extract_connect_metacmd(full_script);
     if (!database_and_script) {
       return dispatch({
-        type: 'STATEMENT_ERROR',
+        type: 'EXEC_ERROR',
         message: '\\connect missed on first line',
       });
     }
@@ -71,7 +71,7 @@ define(function (require, exports, module) {
             case 'complete':
               dispatch({
                 type: 'STATEMENT_COMPLETE',
-                commandTag: m.payload,
+                command_tag: m.payload,
               });
               break;
 
@@ -87,7 +87,12 @@ define(function (require, exports, module) {
           }
         }
       }
-    })
+    });
+    
+    stream.on('error', e => dispatch({
+      type: 'EXEC_ERROR',
+      message: String(e),
+    }));
 
     function getScript() {
       const selected_document = state.selected_document;

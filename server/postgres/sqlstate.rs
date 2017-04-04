@@ -6,7 +6,7 @@ macro_rules! sql_state {
         /// http://postgresql.org/docs/9.4/static/errcodes-appendix.html
         #[derive(Debug)]
         #[derive(PartialEq)]
-        #[derive(RustcEncodable)]
+        #[derive(Serialize)]
         pub enum SqlState {
             $(
                 $class_name,

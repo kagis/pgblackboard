@@ -5,6 +5,11 @@
 
 extern crate argparse;
 extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_json;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 // extern crate regex;
 
 mod http;

@@ -16,3 +16,9 @@
 .fontello-triangle-right:before { content: '\e80e'; } /* '' */
 .fontello-index:before { content: '\e80f'; } /* '' */
 .fontello-table:before { content: '\e810'; } /* '' */
+.fontello-trash-empty:before { content: '\e811'; } /* '' */
+.fontello-cancel-alt-filled:before { content: '\e812'; } /* '' */
+.fontello-cancel-alt:before { content: '\e813'; } /* '' */
+.fontello-cancel-squared:before { content: '\e814'; } /* '' */
+.fontello-cancel:before { content: '\e815'; } /* '' */
+.fontello-check-empty:before { content: '\f096'; } /* '' */

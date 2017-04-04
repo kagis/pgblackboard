@@ -32,15 +32,15 @@
 }
 
 .CodeMirror-matchingbracket {
-  text-decoracodeeditortion: underline;
+  text-decoration: underline;
 }
 
 
 
 
 .CodeMirror {
-  font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
-  font-size: 20px;
+  font-family: Menlo, Monaco, "Ubuntu Mono", Consolas, source-code-pro, monospace;
+  font-size: 16px;
   height: 100%;
 }
 

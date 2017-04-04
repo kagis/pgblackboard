@@ -1,20 +1,22 @@
 define(function (require, exports, module) {
   'use strict';
-  
   const sql_query = require('../api/sql_query');
+  const md5 = require('../md5');
   
   module.exports = ({ user, password }) => dispatch => {
     
+    const md5password = md5(password + user);
+    
     dispatch({
       type: 'LOGIN_START',
-      user,
-      password,
     });
     
     sql_query({
       database: 'postgres', // 'postgres',
-      user,
-      password,
+      credentials: {
+        user,
+        password: md5password,
+      },
       statements: [`
         SELECT      datname
                   , shobj_description(oid, 'pg_database')
@@ -26,7 +28,7 @@ define(function (require, exports, module) {
       dispatch({
         type: 'LOGIN_SUCCESS',
         user,
-        password,
+        password: md5password,
         treenodes: nodes.map(([datname, comment]) => ({
           typ: 'database',
           name: datname,

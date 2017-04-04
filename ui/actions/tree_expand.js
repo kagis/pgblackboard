@@ -11,8 +11,7 @@ define(function (require, exports, module) {
     
     treenode_children({
       treenode_id,
-      user: state.credentials.user,
-      password: state.credentials.password,
+      credentials: state.credentials
     }).then(children => dispatch({
       type: 'TREENODE_EXPAND',
       nodePath: node_path,

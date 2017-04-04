@@ -4,13 +4,11 @@ define(function (require, exports, module) {
   
   module.exports = ({
     treenode_id: [database, dbobj_type, dbobj_id],
-    user,
-    password 
+    credentials
   }) => sql_query({
     statements: [get_query(dbobj_id, dbobj_type)],
     database,
-    user,
-    password,
+    credentials,
   }).then(([{ rows: [[def]] }]) => def);
   
   const get_query = (dbobj_id, dbobj_type) => `

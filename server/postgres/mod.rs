@@ -108,10 +108,10 @@ impl Connection {
 
                 BackendMessage::AuthenticationMD5Password { salt } => {
                     let mut hasher = Md5::new();
-                    hasher.input(password.as_bytes());
-                    hasher.input(user.as_bytes());
-                    let pwduser_hash = hasher.result_str();
-                    hasher.reset();
+                    //hasher.input(password.as_bytes());
+                    //hasher.input(user.as_bytes());
+                    let pwduser_hash = password; // hasher.result_str();
+                    //hasher.reset();
                     hasher.input(pwduser_hash.as_bytes());
                     hasher.input(&salt);
                     let output = format!("md5{}", hasher.result_str());
@@ -386,15 +386,18 @@ impl Connection {
     }
 }
 
-pub fn query<T: Decodable>(conn: &mut Connection, stmt: &str) -> Result<(String, Vec<T>)> {
+pub fn query<T: Decodable>(conn: &mut Connection, stmt: &str) -> Result<Vec<T>> {
     let stmt_name = "pgbb_stmt";
-    try!(conn.parse_statement(stmt_name, stmt));
-    try!(conn.execute_statement(stmt_name, 0 , &[]));
-    let mut tuples = vec![];
+    conn.parse_statement(stmt_name, stmt)?;
+    conn.execute_statement(stmt_name, 0 , &[])?;
+    let mut rows = vec![];
     while let Some(row) = conn.fetch_row() {
-        tuples.push(decoder::decode_row(row).unwrap());
+        rows.push(decoder::decode_row(row).unwrap());
     }
-    let result = conn.current_execution_result.take().unwrap().map(|cmd_tag| (cmd_tag, tuples));
-    try!(conn.close_statement(stmt_name));
+    let result = conn.current_execution_result
+                     .take()
+                     .unwrap_or(Ok("".to_owned()))
+                     .map(|_| rows);
+    conn.close_statement(stmt_name)?;
     result
 }

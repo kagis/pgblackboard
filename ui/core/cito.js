@@ -869,6 +869,13 @@ var cito = window.cito || {};
         if (children === oldChildren) {
             return;
         }
+        
+        if (
+            domElement.contentEditable &&
+            (domElement.textContent || null) === (children || null)
+        ) {
+            return;
+        }
 
         var oldChildrenType = getChildrenType(oldChildren);
         if (oldChildrenType === 0) {

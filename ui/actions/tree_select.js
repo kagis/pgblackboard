@@ -11,8 +11,7 @@ define(function (require, exports, module) {
     
     treenode_definition({
       treenode_id,
-      user: state.credentials.user,
-      password: state.credentials.password,
+      credentials: state.credentials,
     }).then(content => dispatch({
       type: 'TREENODE_DEFINITION_LOADED',
       content,
