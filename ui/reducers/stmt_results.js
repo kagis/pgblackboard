@@ -48,9 +48,14 @@ define(function (require, exports, module) {
         
       case 'TABLE_SAVED': {
         const patches = state
-          .map((it, i) => [it, i, 
-            it.src_table && action.edits[it.src_table.table_name]]
-          )
+          .map((it, i) => [
+            it,
+            i, 
+            it.src_table && action.edits[JSON.stringify([
+              it.src_table.database,
+              it.src_table.table_name,
+            ])]
+          ])
           .filter(([_, __, table_edits]) => table_edits)
           .map(([stmt_result, stmt_index, { inserts = [], updates = {}, deletes = {} }]) => {
             const { src_table, fields } = stmt_result;
@@ -70,7 +75,7 @@ define(function (require, exports, module) {
                   return row;
                 }
                 return row.map((value, i) => [
-                  value, 
+                  value,
                   fields[i].src_column
                 ]).map(([value, column]) => column in row_update
                   ? row_update[column] : value

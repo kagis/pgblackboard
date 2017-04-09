@@ -59,7 +59,10 @@ define(function (require, exports, module) {
       ,fields && fields.length && el.memoize(render_table, {
         rows,
         fields,
-        edits: src_table && edits[src_table.table_name],
+        edits: src_table && edits[JSON.stringify([
+          src_table.database,
+          src_table.table_name,
+        ])],
         src_table,
         stmt_index,
         can_update_and_delete: src_table &&  src_table.key_columns.length,

@@ -18,8 +18,8 @@ define(function (require, exports, module) {
       case 'TABLE_DELETE':
       case 'TABLE_SAVE_ERROR':
         return Object.assign({}, state, {
-          [action.table]: reduce_edits_inner(
-            state[action.table],
+          [action.database_and_table]: reduce_edits_inner(
+            state[action.database_and_table],
             action
           ),
         });

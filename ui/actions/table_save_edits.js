@@ -3,13 +3,15 @@ define(function (require, exports, module) {
   const sql_query = require('../api/sql_query');
 
   module.exports = () => (dispatch, state) => {
-    const { edits, credentials, database } = state;
+    const { edits, credentials } = state;
     const script = modification_script(edits);
     if (!script.length) {
       return;
     }
     
-    script.shift({
+    const database = script[0].database;
+    
+    script.unshift({
       statement: 'BEGIN',
     });
     script.push({
@@ -26,14 +28,14 @@ define(function (require, exports, module) {
       edits: it
         .map((stmt_result, i) => [stmt_result, script[i]])
         .filter(([_, { type }]) => type)
-        .map(([{ rows: [row], fields }, { type, table_name, key }]) => ({
+        .map(([{ rows: [row], fields }, { type, database_and_table, key }]) => ({
           type,
-          table_name,
+          database_and_table,
           key,
           values: fields.map(({ src_column }, i) => ({ [src_column]: row[i] }))
                         .reduce((a, b) => Object.assign(a, b), {}),
-        })).reduce((acc, { table_name, type, key, values }) => {
-          const table_edits = acc[table_name] || (acc[table_name] = {
+        })).reduce((acc, { database_and_table, type, key, values }) => {
+          const table_edits = acc[database_and_table] || (acc[database_and_table] = {
             deletes: {},
             updates: {},
             inserts: [],
@@ -55,10 +57,10 @@ define(function (require, exports, module) {
       if (typeof err.stmt_index != 'number') {
         return alert(err.message);
       }
-      const { table_name, key } = script[err.stmt_index];
+      const { database_and_table, key } = script[err.stmt_index];
       dispatch({
         type: 'TABLE_SAVE_ERROR',
-        table: table_name,
+        database_and_table,
         key,
         message: err.message, 
       });
@@ -71,32 +73,37 @@ define(function (require, exports, module) {
       return [];
     }
     return Object.entries(edits)
-      .map(([table_name, edits]) => table_modification_script({ table_name, edits }))
+      .map(([database_and_table, edits]) => table_modification_script({
+        database_and_table,
+        edits,
+      }))
       .reduce((a, b) => a.concat(b));
   }
 
   function table_modification_script({
     edits: { inserts, updates, deletes },
-    table_name
+    database_and_table
   }) {
-
+    const [database, table] = JSON.parse(database_and_table);
     return [
       ...Object.keys(deletes).map(key => ({
         type: 'delete',
-        table_name,
+        database,
+        database_and_table,
         key,
         statement: 
-          'DELETE FROM ' + table_name + ' WHERE '
+          'DELETE FROM ' + table + ' WHERE '
           + JSON.parse(key).map(column_eq_value).join(' AND ')
           + ' RETURNING *'
       })),
       
       ...Object.entries(updates).map(([key, dict]) => ({
         type: 'update',
-        table_name,
+        database,
+        database_and_table,
         key,
         statement:
-          'UPDATE ' + table_name + ' SET ' 
+          'UPDATE ' + table + ' SET ' 
           + Object.entries(dict).map(column_eq_value).join(', ')
           + ' WHERE '
           + JSON.parse(key).map(column_eq_value).join(' AND ')
@@ -106,9 +113,10 @@ define(function (require, exports, module) {
       // FIXME: do Object.keys and Object.values garantee the same order?
       ...inserts.map(dict => ({
         type: 'insert',
-        table_name,
+        database,
+        database_and_table,
         statement:
-          'INSERT INTO ' + table_name + '('
+          'INSERT INTO ' + table + '('
           + Object.keys(dict).map(quote_ident).join(', ') 
           + ') VALUES ('
           + Object.values(dict).map(quote_literal).join(', ')

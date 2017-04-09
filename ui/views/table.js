@@ -26,7 +26,8 @@ define(function (require, exports, module) {
     
     const {
       key_columns = [],
-      table_name
+      table_name,
+      database
     } = src_table || {};
     
     const key_field_indexes = key_columns.map(
@@ -37,8 +38,10 @@ define(function (require, exports, module) {
 
     return el('table.table'
       ,el.prop('rowset_index', rowset_index)
-      ,el.prop('src_table_name', table_name)
-      // ,el.prop('fields', fields)
+      ,el.attr(
+        'data-database_and_table',
+        JSON.stringify([database, table_name])
+      )
       ,el.on('$created', e => e.target.virtualNode = e.virtualNode)
 
       ,el('thead.table__header'
@@ -136,12 +139,6 @@ define(function (require, exports, module) {
     );
   }
 
-  // on('.table__cell', 'blur', function (e) {
-  //   dispatch(editTableCell({
-  //
-  //   }))
-  // })
-
   on('.table__cell--updatable', 'input', function () {
     const td_el = this;
     const new_value = td_el.textContent;
@@ -150,7 +147,7 @@ define(function (require, exports, module) {
       : NaN;
     dispatch({
       type: 'TABLE_UPDATE',
-      table: this.closest('.table').virtualNode.src_table_name,
+      database_and_table: this.closest('.table').dataset.database_and_table,
       key: this.closest('.table-row').dataset.key,
       column: this.dataset.column,
       value: original_value === new_value ? undefined : new_value,
@@ -162,7 +159,7 @@ define(function (require, exports, module) {
     const value = td_el.textContent || undefined;
     dispatch({
       type: 'TABLE_INSERT',
-      table: this.closest('.table').virtualNode.src_table_name,
+      database_and_table: this.closest('.table').dataset.database_and_table,
       index: this.closest('.table-row').dataset.index,
       column: this.dataset.column,
       value,
@@ -173,7 +170,7 @@ define(function (require, exports, module) {
     e.stopImmediatePropagation();
     dispatch({
       type: 'TABLE_DELETE',
-      table: this.closest('.table').virtualNode.src_table_name,
+      database_and_table: this.closest('.table').dataset.database_and_table,
       key: this.closest('.table-row').dataset.key,
       should_delete: false,
     });
@@ -183,7 +180,7 @@ define(function (require, exports, module) {
     e.stopImmediatePropagation();
     dispatch({
       type: 'TABLE_DELETE',
-      table: this.closest('.table').virtualNode.src_table_name,
+      database_and_table: this.closest('.table').dataset.database_and_table,
       key: this.closest('.table-row').dataset.key,
       should_delete: true,
     });
@@ -192,25 +189,9 @@ define(function (require, exports, module) {
   on('.table-insert_cancel', 'click', function () {
     dispatch({
       type: 'TABLE_INSERT_CANCEL',
-      table: this.closest('.table').virtualNode.src_table_name,
+      database_and_table: this.closest('.table').dataset.database_and_table,
       index: +this.closest('.table-row').dataset.index,
     });
   });
-
-  function get_row_index_by_el(row_el) {
-    return Array.prototype.indexOf.call(row_el.parentNode.childNodes, row_el)
-  }
-
-  function get_rowset_index_by_el(row_el) {
-    const table_el = row_el.parentNode.parentNode
-    return table_el.virtualNode['rowset_index'];
-  }
-
-
-  function get_inputted_row_values(row_el) {
-    return Array.from(row_el.cells)
-      .slice(1) // skip row header
-      .map(cell_el => cell_el.textContent);
-  }
 
 });

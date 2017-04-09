@@ -9,7 +9,7 @@ define(function (require) {
         [{
           rows: [['1', 'hello'], ['2', 'world']],
           fields: [{ src_column: 'id' }, { src_column: 'body' }],
-          src_table: { table_name: 'public.items', key_columns: ['id'] },
+          src_table: { database: 'postgres', table_name: 'public.items', key_columns: ['id'] },
         }], {
           type: 'TABLE_SAVED',
           // updates: {
@@ -18,7 +18,7 @@ define(function (require) {
           //   },
           // },
           edits: {
-            'public.items': {
+            '["postgres","public.items"]': {
               updates: {
                 '[["id","1"]]': { body: 'bye' }, 
               },
@@ -35,11 +35,11 @@ define(function (require) {
         [{
           rows: [['1', 'hello'], ['2', 'world']],
           fields: [{ src_column: 'id' }, { src_column: 'body' }],
-          src_table: { table_name: 'public.items', key_columns: ['id'] },
+          src_table: { database: 'postgres', table_name: 'public.items', key_columns: ['id'] },
         }], {
           type: 'TABLE_SAVED',
           edits: {
-            'public.items': {
+            '["postgres","public.items"]': {
               deletes: {
                 '[["id","1"]]': true, 
               },
@@ -56,11 +56,11 @@ define(function (require) {
         [{
           rows: [['1', 'hello'], ['2', 'world']],
           fields: [{ src_column: 'id' }, { src_column: 'body' }],
-          src_table: { table_name: 'public.items', key_columns: ['id'] },
+          src_table: { database: 'postgres', table_name: 'public.items', key_columns: ['id'] },
         }], {
           type: 'TABLE_SAVED',
           edits: {
-            'public.items': {
+            '["postgres","public.items"]': {
               inserts: [
                 { id: '3', body: 'three' }
               ],
