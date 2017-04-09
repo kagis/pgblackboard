@@ -1,4 +1,6 @@
-with params_cte as (
+-- NaN; define((_r, _e, module) => { module.exports = `
+
+WITH params_cte as (
     select split_part($1, '_', 1)::oid as attrelid
           ,split_part($1, '_', 2)::int as attnum
 ),
@@ -62,3 +64,5 @@ select concat_ws(e'\n'
     ,''
 ) as def
 from common_cte
+
+-- `.trim().slice(0, -2); });

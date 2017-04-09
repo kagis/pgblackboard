@@ -1,158 +1,137 @@
-var Vulcanize = require('vulcanize');
-var htmlMinifier = require('html-minifier');
-var HTMLPostCSS = require('html-postcss');
-var postcssUrl = require('postcss-url');
-var autoprefixer = require('autoprefixer');
-var dom5 = require('dom5');
-var crypto = require('crypto');
-var zlib = require('zlib');
-var stream = require('stream');
-var path = require('path');
-var fs = require('fs');
-var Promise = global.Promise || require('es6-promise');
+'use strict';
+const path = require('path');
+const zlib = require('zlib');
+const crypto = require('crypto');
+const rollup = require('rollup');
+const rollup_commonjs = require('rollup-plugin-commonjs');
+const rollup_buble = require('rollup-plugin-buble');
+const fsp = require('fs-promise');
+const postcss = require('postcss');
+const postcss_cssnext = require('postcss-cssnext');
+const postcss_csso = require('postcss-csso');
+const postcss_import = require('postcss-import');
+const esprima = require('esprima');
 
+const out_dir = process.env['OUT_DIR'] || 'target/ui';
+
+const js_bundle_without_libs
+  = rollup.rollup({
+    entry: 'ui/app.js',
+    plugins: [
+      rollup_amd2cjs(),
+      rollup_commonjs(),
+      rollup_buble({
+        transforms: {
+          dangerousForOf: true,
+        },
+      }),
+    ],
+  })
+  .then(bundle => bundle.generate({
+    format: 'iife',
+    moduleName: '__APP',
+  }).code);
+
+const js_libs_bundle
+  = Promise.all([
+    'ui/lib/codemirror/5.25.0/codemirror.js',
+    'ui/lib/codemirror/5.25.0/addon/search/searchcursor.js',
+    'ui/lib/codemirror/5.25.0/keymap/sublime.js',
+    'ui/lib/codemirror/5.25.0/addon/edit/matchbrackets.js',
+    'ui/lib/codemirror/5.25.0/addon/edit/closebrackets.js',
+    'ui/lib/codemirror/5.25.0/mode/sql/sql.js',
+    'ui/lib/leaflet/1.0.3/leaflet-src.js',
+    'ui/lib/cito.js',
+  ].map(filename => fsp.readFile(filename, 'utf-8')))
+  .then(it => it.join('\n'));
+
+const js_bundle
+  = Promise.all([js_libs_bundle, js_bundle_without_libs])
+  .then(it => it.join('\n'));
+
+const postcss_processor = postcss([
+  postcss_cssnext, 
+  postcss_import,
+  //postcss_csso,
+]);
+
+const css_entry = 'ui/style/app.css';
+
+const css_bundle
+  = fsp.readFile(css_entry, 'utf-8')
+  .then(css => postcss_processor.process(css, {
+    from: css_entry,
+  }))
+  .then(({ css }) => css);
+
+const html_bundle
+  = Promise.all([
+    fsp.readFile('ui/index.html', 'utf-8'),
+    js_bundle,
+    css_bundle,
+  ]).then(([index_html, js_bundle_code, css_bundle_code]) => index_html
+    .replace(
+      '<script src="./pgblackboard.js"></script>',
+      '<script>' + js_bundle_code.replace(/\$/g, '$$$$') + '</script>'
+    )
+    .replace(
+      '<link href="./style/app.css" rel="stylesheet" />',
+      '<style>' + css_bundle_code.replace(/\$/g, '$$$$') + '</style>'
+    )
+  );
+  
 Promise.all([
-  buildIndexHtml(dist('index.html')),
-  buildErrorHtml(dist('error.html')),
-  buildGzippedAppBundle(dist('pgblackboard.js.gz')).then(
-    buildEtagFor.bind(null, dist('pgblackboard.js.gz'))
-  ),
-  copy('ui/favicon.ico', dist('favicon.ico')).then(
-    buildEtagFor.bind(null, dist('favicon.ico'))
-  )
-]).catch(function (err) {
+  
+  html_bundle.then(gzip).then(data => Promise.all([
+    fsp.writeFile(path.join(out_dir, 'index.html.gz'), data),
+    fsp.writeFile(path.join(out_dir, 'index.html.gz.md5'), md5(data)),
+  ])),
+    
+  fsp.readFile('ui/favicon.ico').then(data => Promise.all([
+    fsp.writeFile(path.join(out_dir, 'favicon.ico'), data),
+    fsp.writeFile(path.join(out_dir, 'favicon.ico.md5'), md5(data)),
+  ])),
+    
+]).catch(err => {
   console.error(err);
-  console.error(err.stack);
   process.exit(1);
 });
 
-function buildIndexHtml(targetIndexHtmlFile) {
-  return Promise.resolve('ui/index.html')
-    .then(vulcanize.bind(null, {
-      exclude: ['pgblackboard.js']
-    }))
-    .then(processCssInHtml)
-    .then(minifyHtml)
-    .then(makeRustTemplate)
-    .then(fs.writeFileSync.bind(fs, targetIndexHtmlFile));
-}
 
-function buildErrorHtml(targetErrorHtmlFile) {
-  return Promise.resolve('ui/error.html')
-    .then(vulcanize.bind(null, null))
-    .then(processCssInHtml)
-    .then(makeRustTemplate)
-    .then(fs.writeFileSync.bind(fs, targetErrorHtmlFile));
-}
 
-function buildGzippedAppBundle(targetFile) {
-  return Promise.resolve('ui/bootstrap.html')
-    .then(vulcanize.bind(null, null))
-    .then(processCssInHtml)
-    .then(minifyHtml)
-    .then(retainStylesAndScripts)
-    .then(documentWrite)
-    .then(writeGzipped.bind(null, targetFile));
-}
-
-function buildEtagFor(file) {
-  var content = fs.readFileSync(file);
-  var hash = crypto.createHash('md5').update(content).digest('hex');
-  fs.writeFileSync(file + '.etag', hash);
-}
-
-function vulcanize(options, htmlFile) {
-  var vulcan = new Vulcanize(options || {
-    inlineScripts: true,
-    inlineCss: true
-  });
-
-  return new Promise(function (resolve, reject) {
-    vulcan.process(htmlFile, function (err, inlinedHtml) {
-      if (err) {
-        return reject(err);
-      } else {
-        return resolve(inlinedHtml);
-      }
-    });
-  });
-}
-
-function processCssInHtml(html) {
-  var htmlPostcss = new HTMLPostCSS([
-    autoprefixer,
-    postcssUrl({ url: 'inline', basePath: 'ui' })
-  ]);
-
-  return htmlPostcss.process(html);
-}
-
-function minifyHtml(html) {
-  return htmlMinifier.minify(html, {
-    minifyJS: true,
-    minifyCSS: true,
-    collapseWhitespace: true,
-    conservativeCollapse: true,
-    canCollapseWhitespace: function (tag, attrs) {
-      return tag == 'script' && attrs.some(function (attr) {
-        return attr.name == 'type' && attr.value == "text/html";
+function rollup_amd2cjs() {
+  return {
+    name: 'amd2cjs',
+    transform(code, id) {
+      const ast = esprima.parse(code, {
+        range: true,
+        ecmaVersion: 6,
+        sourceType: 'module',
       });
-    }
-  });
+      return ast.body.filter(it => 
+          it.type == 'ExpressionStatement' && 
+          it.expression.type == 'CallExpression' &&
+          it.expression.callee.type == 'Identifier' && 
+          it.expression.callee.name == 'define' &&
+          it.expression.arguments.length == 1 &&
+          it.expression.arguments[0].type in {
+            'FunctionExpression': true,
+            'ArrowFunctionExpression': true,
+          }
+        ).map(it => it.expression.arguments[0].body.range)
+        .map(range => code.slice(range[0] + 1, range[1] - 1))
+        .concat([code])[0];
+    },
+  };
 }
 
-function makeRustTemplate(html) {
-  html = html.replace(/\{/g, '{{').replace(/\}/g, '}}');
-  var htmlDoc = dom5.parse(html);
-  dom5.queryAll(htmlDoc, dom5.predicates.hasAttr('data-placeholder'))
-    .forEach(function (node) {
-      var placeholderName = dom5.getAttribute(node, 'data-placeholder');
-      dom5.removeAttribute(node, 'data-placeholder');
-      dom5.setTextContent(node, '{' + placeholderName + '}');
-    });
-  return dom5.serialize(htmlDoc);
+function gzip(data) {
+  return new Promise((resolve, reject) => zlib.gzip(
+    data,
+    (err, result) => err ? reject(err) : resolve(result)
+  ));
 }
 
-function retainStylesAndScripts(html) {
-  var htmlDoc = dom5.parse(html);
-  var resultFragment = dom5.constructors.fragment();
-  dom5.queryAll(htmlDoc, dom5.predicates.OR(
-    dom5.predicates.hasTagName('style'),
-    dom5.predicates.hasTagName('script')
-  )).forEach(dom5.append.bind(dom5, resultFragment));
-
-  return dom5.serialize(resultFragment);
-}
-
-function writeGzipped(file, content) {
-  var contentStream = new stream.Readable();
-  contentStream._read = function noop() {};
-  contentStream.push(content);
-  contentStream.push(null);
-
-  return new Promise(function (resolve, reject) {
-    contentStream.pipe(zlib.createGzip())
-                 .pipe(fs.createWriteStream(file))
-                 .on('finish', resolve)
-                 .on('error', reject);
-  });
-}
-
-function documentWrite(html) {
-  return 'document.write(' +
-    JSON.stringify(html) +
-    ');\n';
-}
-
-function dist(file) {
-  return path.join(process.env.OUT_DIR || 'target/ui', file);
-}
-
-function copy(sourceFile, targetFile) {
-  return new Promise(function (resolve, reject) {
-    fs.createReadStream(sourceFile)
-      .pipe(fs.createWriteStream(targetFile))
-      .on('finish', resolve)
-      .on('error', reject);
-  });
+function md5(data) {
+  return crypto.createHash('md5').update(data).digest('hex');
 }

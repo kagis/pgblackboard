@@ -3,23 +3,23 @@ use std::io;
 
 pub const FAVICON_RESOURCE: StaticResource = StaticResource {
     content: include_bytes!(concat!(env!("OUT_DIR"), "/favicon.ico")),
-    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.etag")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.md5")),
     content_type: "image/vnd.microsoft.icon",
-    gzipped: false
+    gzipped: false,
 };
 
-pub const BUNDLE_INDEX_RESOURCE: StaticResource = StaticResource {
-    content: include_bytes!(concat!(env!("OUT_DIR"), "/pgblackboard.js.gz")),
-    etag: include_str!(concat!(env!("OUT_DIR"), "/pgblackboard.js.gz.etag")),
-    content_type: "application/javascript; charset=utf-8",
-    gzipped: true
+pub const INDEX_HTML_RESOURCE: StaticResource = StaticResource {
+    content: include_bytes!(concat!(env!("OUT_DIR"), "/index.html.gz")),
+    etag: include_str!(concat!(env!("OUT_DIR"), "/index.html.gz.md5")),
+    content_type: "text/html; charset=utf-8",
+    gzipped: true,
 };
 
 pub struct StaticResource {
     pub content: &'static [u8],
     pub content_type: &'static str,
     pub etag: &'static str,
-    pub gzipped: bool
+    pub gzipped: bool,
 }
 
 impl http::Resource for StaticResource {
@@ -28,14 +28,14 @@ impl http::Resource for StaticResource {
             Some(req_etag) if req_etag == self.etag => {
                 Box::new(NotModifiedResponse {
                     etag: self.etag,
-                    content_type: self.content_type
+                    content_type: self.content_type,
                 })
             }
             _ => Box::new(StaticResponse {
                 content: self.content,
                 content_type: self.content_type,
                 etag: self.etag,
-                gzipped: self.gzipped
+                gzipped: self.gzipped,
             })
         }
     }
@@ -45,7 +45,7 @@ struct StaticResponse {
     content: &'static [u8],
     content_type: &'static str,
     etag: &'static str,
-    gzipped: bool
+    gzipped: bool,
 }
 
 impl http::Response for StaticResponse {

@@ -5,24 +5,17 @@
   "private": true,
   "version": "0.0.0",
   "devDependencies": {
-    "serve-static": "~1.9.3",
-    "connect": "~3.3.5",
-    "jasmine": "~2.2.1",
-    "eslint": "~1.9.0",
-    "eslint-plugin-html": "~1.1.0",
-    "jscs": "~2.5.1"
+    "esprima": "^3.1.3",
+    "fs-promise": "^2.0.2",
+    "postcss": "^5.2.16",
+    "postcss-cssnext": "^2.10.0",
+    "postcss-csso": "^2.0.0",
+    "postcss-import": "^9.1.0",
+    "rollup": "^0.41.6",
+    "rollup-plugin-buble": "^0.15.0",
+    "rollup-plugin-commonjs": "^8.0.2"
   },
-  "dependencies": {
-    "autoprefixer": "~6.1.0",
-    "codemirror": "~5.8.0",
-    "dom5": "^1.3.1",
-    "html-minifier": "~1.0.0",
-    "html-postcss": "~0.1.1",
-    "knockout": "~3.3.0",
-    "leaflet": "~0.7.3",
-    "postcss-url": "~5.0.2",
-    "vulcanize": "~1.14.0"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=0.10.0"
   },

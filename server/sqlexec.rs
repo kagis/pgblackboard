@@ -387,6 +387,7 @@ fn describe_source_table(
     )).collect::<BTreeMap<_, _>>();
     
     let source_table_json = json!({
+        "database": conn.database(),
         "table_name": cols_descrs.iter()
                                .map(|it| it.table_fullname.clone())
                                .nth(0),

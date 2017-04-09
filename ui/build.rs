@@ -1,6 +1,7 @@
 //use std::env;
 //use std::path::Path;
 use std::process::Command;
+use std::env;
 
 fn main() {
 
@@ -9,7 +10,10 @@ fn main() {
     //
     // let projdir = Path::new(&manifest_dir).parent()
     //     .expect("Cannot navigate to parent dir");
-
+    if env::var("CARGO_FEATURE_UIBUILD").is_err() {
+        return;
+    }
+    
     let status = Command::new("npm")
                          .arg("run")
                          .arg("installdep-and-build")

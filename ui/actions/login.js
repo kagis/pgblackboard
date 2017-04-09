@@ -1,7 +1,7 @@
 define(function (require, exports, module) {
   'use strict';
   const sql_query = require('../api/sql_query');
-  const md5 = require('../md5');
+  const md5 = require('../lib/md5');
   
   module.exports = ({ user, password }) => dispatch => {
     

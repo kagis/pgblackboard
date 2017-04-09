@@ -1,3 +1,5 @@
+-- NaN; define((_r, _e, module) => { module.exports = `
+
   SELECT current_database()                   AS "database"
         ,oid                                  AS "id"
         ,'schema'                             AS "type"
@@ -10,3 +12,5 @@
      AND nspname NOT LIKE 'pg\_toast\_temp\_%'
      AND nspname != 'pg_toast'
 ORDER BY name
+
+-- `; });

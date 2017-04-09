@@ -14,7 +14,7 @@ extern crate serde_derive;
 
 mod http;
 
-#[cfg(not(debug_assertions))]
+#[cfg(feature = "uibuild")]
 mod statres;
 
 mod sqlexec;
@@ -77,33 +77,30 @@ impl http::Handler for WebApplication {
     {
         let path_prefix = path[0];
         let path_tail = &path[1..];
-
-        match path_prefix {
-            #[cfg(not(debug_assertions))]
-            "" => handle_index_req(&self.dbms, req),
-
-            "exec" => http::Handler::handle_http_req(
+        
+        if path_prefix == "exec" {
+            return http::Handler::handle_http_req(
                 &self::sqlexec::SqlExecEndpoint { pgaddr: self.pgaddr.clone() },
                 path_tail,
                 req
-            ),
-           
-            #[cfg(not(debug_assertions))]
+            );
+        }
+
+        #[cfg(feature = "uibuild")]
+        match path_prefix {
+            "" => statres::INDEX_HTML_RESOURCE.handle_http_req(&[], req),
             "favicon.ico" => statres::FAVICON_RESOURCE.handle_http_req(&[], req),
-
-            #[cfg(not(debug_assertions))]
-            "pgblackboard.js" => statres::BUNDLE_INDEX_RESOURCE.handle_http_req(&[], req),
-
-            #[cfg(debug_assertions)]
-            "node_modules" => FsDirHandler("./node_modules").handle_http_req(path_tail, req),
-
-            #[cfg(debug_assertions)]
+            _ => Box::new(GenericResponse {
+                status: http::Status::NotFound,
+                content_type: "text/html".to_owned(),
+                content: b"not found".to_vec(),
+            })
+        }
+        
+        #[cfg(not(feature = "uibuild"))]
+        match path_prefix {
+            "" => FsDirHandler("./ui").handle_http_req(&["index.html"], req),
             _ => FsDirHandler("./ui").handle_http_req(path, req),
-
-            // _ => Box::new(index::ErrorResponse {
-            //     status: http::Status::NotFound,
-            //     message: "The requested URL was not found."
-            // })
         }
     }
 }

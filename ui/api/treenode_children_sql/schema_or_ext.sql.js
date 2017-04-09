@@ -1,4 +1,6 @@
-with parent_cte AS (
+-- NaN; define((_r, _e, module) => { module.exports = `
+
+WITH parent_cte AS (
   with params_cte AS (
       SELECT $1::oid    AS parent_oid
             ,$2::text   AS parent_type
@@ -61,3 +63,5 @@ with parent_cte AS (
         OR refobjid = ext_oid
   ORDER BY name
 )
+
+-- `.trim().slice(0, -2); });

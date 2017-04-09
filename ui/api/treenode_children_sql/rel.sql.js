@@ -1,4 +1,6 @@
-with param_cte AS (
+-- NaN; define((_r, _e, module) => { module.exports = `
+
+WITH param_cte AS (
   SELECT $1::oid AS param_oid,
          $2::text
 )
@@ -71,3 +73,5 @@ WHERE tgrelid = param_oid
     AND tgconstraint = 0
 
 )
+
+-- `.trim().slice(0, -2); });

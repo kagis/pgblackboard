@@ -85,8 +85,8 @@
   font-weight: bold;
 }
 .table__rowHeader::before {
-  counter-increment: rownum;
-  content: counter(rownum);
+  /*counter-increment: rownum;*/
+  /*content: counter(rownum);*/
 }
 .table > tbody {
   counter-reset: rownum;
@@ -156,22 +156,15 @@
 */
 
 .table-delete_row {
-  /*border: none;*/
+  border: none;
   padding: 0;
   margin: 0;
   background: transparent;
   cursor: pointer;
   font-size: 100%;
-  border: 1px solid #ccc;
-  border-radius: 2px;
-  width: 1em;
-  height: 1em;
-  position: relative;
-  margin: 0 .2em;
 }
 
 .table-delete_row::before {
-  content: '\e815';
   font-family: 'fontello';
   font-style: normal;
   font-weight: normal;
@@ -182,42 +175,92 @@
   text-align: center;
   font-variant: normal;
   text-transform: none;
-  line-height: 1.2;
-  visibility: hidden;
-  font-size: 80%;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  line-height: 1;
 }
 
 .table-delete_row:focus {
   outline: none;
 }
 
-.table-delete_row--on {
+.table-delete_row--on::before {
+  visibility: visible;
+  content: '\e814';
   color: red;
 }
 
-.table-delete_row--on::before {
-  visibility: visible;
-  /*content: '\e815';*/
-}
-
-.table-delete_row--off {
-  color: #aaa;
-}
-
-.table-delete_row--off:hover {
-  color: #888;
+.table-delete_row--off:hover::before {
+  content: '\e814';
 }
 
 .table-delete_row--off::before {
-  /*content: '\f096';*/
+  color: #aaa;
+  content: '\f096';
+}
+
+.table-insert_cancel {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 100%;
+  color: #aaa;
+}
+
+.table-insert_cancel:hover {
+  color: #888;
+}
+
+.table-insert_cancel::before {
+  content: '\e814';
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+}
+
+.table-error_icon::before {
+  content: '\e804';
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  color: red;
+}
+
+.table-error_icon:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    background-color: #555;
+    font-style: normal;
+    font-weight: normal;
+    color: #ddd;
+    line-height: 1.4;
+    padding: 0 .5em;
+    border-radius: 3px;
+    box-shadow: 0 0 0.3em black;
+    margin-top: 1.5em;
 }
 
 .table-row--deleted {
   color: #aaa;
   text-decoration: line-through;
+}
+
+.table-row--invalid {
+  -background-color: red !important;
 }

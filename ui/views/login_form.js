@@ -1,8 +1,8 @@
 define(function (require, exports, module) {
   'use strict'
-  const el = require('core/el');
-  const dispatch = require('core/dispatch');
-  const login = require('actions/login');
+  const el = require('../core/el');
+  const dispatch = require('../core/dispatch');
+  const login = require('../actions/login');
   
   module.exports = ({ error, is_processing }) => {
     let user_input, password_input;

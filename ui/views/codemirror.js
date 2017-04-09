@@ -3,6 +3,7 @@ define(function (require, exports, module) {
   const pg_builtins = require('./pg_builtins');
   const pg_keywords = require('./pg_keywords');
   const bus = require('../core/bus');
+  const CodeMirror = window.CodeMirror;
 
   CodeMirror.defineMIME('text/x-pgsql', {
     name: 'sql',

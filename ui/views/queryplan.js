@@ -1,7 +1,7 @@
 define(function (require, exports, module) {
   'use strict';
-  const el = require('core/el');
-  const dispatch = require('core/dispatch');
+  const el = require('../core/el');
+  const dispatch = require('../core/dispatch');
   const computeQueryPlanLayout = require('./queryplan_layout');
   const renderZoomPan = require('./zoompan');
   const renderEdge = require('./queryplan_edge');

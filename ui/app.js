@@ -1,7 +1,7 @@
 define(function (require, exports, module) {
-  const cito = require('core/cito');
-  const create_store = require('core/store');
-  const dispatch = require('core/dispatch');
+  const cito = require('./core/cito');
+  const create_store = require('./core/store');
+  const dispatch = require('./core/dispatch');
   const bus = require('./core/bus');
   const render_app = require('./views/app');
   const reduce_app = require('./reducers/app');

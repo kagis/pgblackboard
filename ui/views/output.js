@@ -4,7 +4,7 @@ define(function (require, exports, module) {
   const dispatch = require('../core/dispatch')
   const render_table = require('./table')
   const render_queryplan = require('./queryplan')
-  const render_map = require('map/renderMap')
+  const render_map = require('../map/renderMap')
   const table_save_edits = require('../actions/table_save_edits');
 
   module.exports = renderExecOutput;

@@ -1,7 +1,7 @@
 define(function (require, exports, module) {
   'use strict';
 
-  module.exports =  ({
+  module.exports = ({
     statements,
     credentials: { user, password },
     database,
@@ -18,28 +18,44 @@ define(function (require, exports, module) {
     }));
     
     xhr.addEventListener('load', () => {
-      const json_response = JSON.parse(xhr.responseText);
+      let json_response;
+      try {
+        json_response = JSON.parse(xhr.responseText);
+      }
+      catch (e) {
+        return reject({
+          message: 'Invalid json response',
+          body: xhr.responseText,
+        });
+      }
       if (xhr.status != 200) {
         return reject({ message: json_response });
       }
       const messages = json_response.slice(1);
-      const error = messages.filter(({ messageType }) => messageType == 'error')
-        .map(({ payload }) => payload)[0];
-      if (error) {
-        return reject(error);
-      }
-      resolve(messages.reduce((acc, msg) => {
+      const success_result = [];
+      let last_stmt_result;
+      for (let msg of messages) {
         if (Array.isArray(msg)) {
-          const [latest] = acc.slice(-1);
-          latest.rows.push(msg);
-        } else if (msg.messageType == 'executing') {
-          acc.push({ rows: [] });
-        } else if (msg.messageType == 'description') {
-          const [latest] = acc.slice(-1);
-          Object.assign(latest, msg.payload);
+          last_stmt_result.rows.push(msg);
+          continue;
         }
-        return acc;
-      }, []));
+        switch(msg.messageType) {
+          case 'executing':
+            success_result.push(last_stmt_result = {
+              rows: [],
+            });
+            continue;
+          case 'description':
+            Object.assign(last_stmt_result, msg.payload);
+            continue;
+          case 'error':
+            return reject(Object.assign(
+              { stmt_index: success_result.length - 1 },
+              msg.payload
+            ));
+        }
+      }
+      resolve(success_result);
     });
   });
   

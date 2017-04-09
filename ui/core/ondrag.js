@@ -1,6 +1,6 @@
 define(function (require, exports, module) {
   'use strict';
-  const el = require('core/el');
+  const el = require('./el');
 
   module.exports = ondrag;
 

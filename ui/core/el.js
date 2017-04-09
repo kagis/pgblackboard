@@ -4,10 +4,14 @@ define(function (require, exports, module) {
 
   function el(selector, ...args) {
     const [tag, ...classes] = selector.split('.');
-    const node = { tag };
+    const node = {
+      tag,
+      attrs: {},
+      children: null,
+    };
 
     if (classes.length) {
-      node.attrs = { class: classes.join(' ') };
+      node.attrs['class'] = classes.join(' ');
     }
 
     for (let arg of args) {

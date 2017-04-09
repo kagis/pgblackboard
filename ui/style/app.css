@@ -1,4 +1,5 @@
 @import url(./codeform.css);
+@import url(../lib/codemirror/5.25.0/codemirror.css);
 @import url(./codemirror.css);
 @import url(./draft.css);
 @import url(./execbar.css);
@@ -14,7 +15,7 @@
 @import url(./table.css);
 @import url(./treenode.css);
 @import url(./zoompan.css);
-@import url(./fontello/css/fontello.css);
+@import url(./fontello/css/fontello-embedded.css);
 
 body {
   overflow: hidden; /* disable bouncing scroll in macos */

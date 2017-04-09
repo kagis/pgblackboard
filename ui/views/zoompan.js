@@ -1,8 +1,8 @@
 define(function (require, exports, module) {
   'use strict';
-  const el = require('core/el');
-  const cito = require('core/cito');
-  const ondrag = require('core/ondrag');
+  const el = require('../core/el');
+  const cito = require('../core/cito');
+  const ondrag = require('../core/ondrag');
 
   module.exports = renderZoomPan;
 

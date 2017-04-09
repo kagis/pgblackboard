@@ -2,6 +2,15 @@ define(function (require, exports, module) {
   'use strict';
   
   const sql_query = require('./sql_query');
+  const queries = {
+    'database': require('./treenode_children_sql/database.sql'),
+    'schema': require('./treenode_children_sql/schema_or_ext.sql'),
+    'extension': require('./treenode_children_sql/schema_or_ext.sql'),
+    'table': require('./treenode_children_sql/rel.sql'),
+    'view': require('./treenode_children_sql/rel.sql'),
+    'matview': require('./treenode_children_sql/rel.sql'),
+    'foreigntable': require('./treenode_children_sql/rel.sql'),
+  };
   
   module.exports = ({
     treenode_id: [database, dbobj_type, dbobj_id],
@@ -31,16 +40,4 @@ define(function (require, exports, module) {
       can_have_children: can_have_children == 't',
       group,
     })));
-    
-  const queries = {};
-  
-  queries['database'] = loadfile('./treenode_children_sql/database.sql');
-  
-  queries['schema'] =
-  queries['extension'] = loadfile('./treenode_children_sql/schema_or_ext.sql');
-  
-  queries['table'] =
-  queries['view'] = 
-  queries['matview'] = 
-  queries['foreigntable'] = loadfile('./treenode_children_sql/rel.sql');
 })

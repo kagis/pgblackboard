@@ -1,3 +1,5 @@
+-- NaN; define((_r, _e, module) => { module.exports = `
+
 select concat_ws(e'\n'
     ,'/*'
     ,'DROP FUNCTION ' || oid::regproc || '('
@@ -9,3 +11,5 @@ select concat_ws(e'\n'
 ) as def
 from pg_proc as p
 where oid = $1
+
+-- `.trim().slice(0, -2); });

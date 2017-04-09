@@ -23,7 +23,9 @@ function define(factory) {
   };
 
   dependenciesPaths.filter(depPath => !(depPath in define.requestedPaths))
-                    .forEach(loadModule);
+                   .filter(depPath => !(depPath in define.modules))
+                   .filter((it, i, arr) => i == arr.indexOf(it)) // unique
+                   .forEach(loadModule);
 
   let someModulesWasResolved;
   do {
@@ -93,10 +95,3 @@ function define(factory) {
     }
   }
 }
-
-window.loadfile = path => {
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', new URL(path, document.currentScript.src), false);
-  xhr.send();
-  return xhr.responseText;
-};

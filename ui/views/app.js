@@ -7,7 +7,7 @@ define(function (require, exports, module) {
   const render_draft = require('./draft');
   const renderCodeForm = require('./codeform');
   const renderExecOutput = require('./output');
-  const login_form = require('views/login_form');
+  const login_form = require('./login_form');
 
   module.exports = render_app;
   

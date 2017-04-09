@@ -1,8 +1,8 @@
 'use strict';
 
 define(function (require, exports, module) {
-  const dispatch = require('core/dispatch');
-  const create_event_emitter = require('core/event_emitter');
+  const dispatch = require('./dispatch');
+  const create_event_emitter = require('./event_emitter');
 
   module.exports = createStore;
 

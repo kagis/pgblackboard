@@ -4,7 +4,7 @@
 
 define(function (require, exports, module) {
   'use strict';
-  const L = require('./leaflet/leaflet-src');
+  const L = window.L;
   const tileCoordsToQuadKey = require('./tileCoordsToQuadKey');
   const featureColors = require('./colors');
   const renderFeaturePopup = require('./featurePopup/renderFeaturePopup');

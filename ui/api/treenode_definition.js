@@ -1,6 +1,25 @@
 define(function (require, exports, module) {
   'use strict';
   const sql_query = require('./sql_query');
+  const queries = {
+    'database': require('./treenode_definition_sql/database.sql'),
+    'schema': require('./treenode_definition_sql/schema.sql'),
+    'extension': require('./treenode_definition_sql/extension.sql'),
+    'table': require('./treenode_definition_sql/rel.sql'),
+    'view': require('./treenode_definition_sql/rel.sql'),
+    'matview': require('./treenode_definition_sql/rel.sql'),
+    'foreigntable': require('./treenode_definition_sql/rel.sql'),
+    'agg': require('./treenode_definition_sql/agg.sql'),
+    'func': require('./treenode_definition_sql/func.sql'),
+    'column': require('./treenode_definition_sql/column.sql'),
+    'pkcolumn': require('./treenode_definition_sql/column.sql'),
+    'fkcolumn': require('./treenode_definition_sql/column.sql'),
+    'index': require('./treenode_definition_sql/index.sql'),
+    'trigger': require('./treenode_definition_sql/trigger.sql'),
+    'foreignkey': require('./treenode_definition_sql/constraint.sql'),
+    'check': require('./treenode_definition_sql/constraint.sql'),
+    'unique': require('./treenode_definition_sql/constraint.sql'),
+  };
   
   module.exports = ({
     treenode_id: [database, dbobj_type, dbobj_id],
@@ -19,30 +38,5 @@ define(function (require, exports, module) {
     FROM (${queries[dbobj_type]}) AS a
   `.replace(/\$1/g, `'${dbobj_id}'`)
     .replace(/\$2/g, `'${dbobj_type}'`);
-    
-  const queries = {};
-  
-  queries['database'] = loadfile('./treenode_definition_sql/database.sql');
-  queries['schema'] = loadfile('./treenode_definition_sql/schema.sql');
-  queries['extension'] = loadfile('./treenode_definition_sql/extension.sql');
-  
-  queries['table'] =
-  queries['view'] = 
-  queries['matview'] =
-  queries['foreigntable'] = loadfile('./treenode_definition_sql/rel.sql');
-  
-  queries['agg'] = loadfile('./treenode_definition_sql/agg.sql');
-  queries['func'] = loadfile('./treenode_definition_sql/func.sql');
-  
-  queries['column'] =
-  queries['pkcolumn'] =
-  queries['fkcolumn'] = loadfile('./treenode_definition_sql/column.sql');
-  
-  queries['index'] = loadfile('./treenode_definition_sql/index.sql');
-  queries['trigger'] = loadfile('./treenode_definition_sql/trigger.sql');
-  
-  queries['foreignkey'] = 
-  queries['check'] = 
-  queries['unique'] = loadfile('./treenode_definition_sql/constraint.sql');
 
 });

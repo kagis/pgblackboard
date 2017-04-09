@@ -1,10 +1,12 @@
 define(function (require, exports, module) {
   'use strict';
   
-  module.exports = (credentials, action) => {
+  module.exports = reduce_credentials;
+  
+  function reduce_credentials(credentials, action) {
     switch (action.type) {
       case 'INIT':
-        return { 
+        return {
           is_authenticated: false,
           is_processing: false,
           error: null,
@@ -37,5 +39,4 @@ define(function (require, exports, module) {
         return credentials;
     }
   };
-  
 });

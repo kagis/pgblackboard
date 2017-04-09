@@ -1,4 +1,6 @@
-with agg_cte as (
+-- NaN; define((_r, _e, module) => { module.exports = `
+
+WITH agg_cte as (
     select *
     from pg_proc join pg_aggregate on oid = aggfnoid
     where aggfnoid = $1
@@ -20,3 +22,6 @@ select concat_ws(e'\n'
     ,''
 ) as def
 from agg_cte
+
+-- `.trim().slice(0, -2); });
+

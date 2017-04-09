@@ -12,7 +12,7 @@ define(function (require, exports, module) {
         };
 
       case 'LOGIN_SUCCESS':
-        return merge(tree, {
+        return Object.assign({}, tree, {
           nodes: action.treenodes
         });
 

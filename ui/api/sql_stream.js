@@ -1,6 +1,6 @@
 define(function (require, exports, module) {
   'use strict';
-  const create_event_emitter = require('core/event_emitter')
+  const create_event_emitter = require('../core/event_emitter')
 
   module.exports = sql_stream
 
@@ -34,7 +34,11 @@ define(function (require, exports, module) {
 
     function onload() {
       if (xhr.status != 200) {
-        ee.emit('error', JSON.parse(xhr.responseText));
+        let resp = xhr.responseText;
+        try {
+          resp = JSON.parse(resp);
+        } catch (e) {}
+        ee.emit('error', resp);
       }
       ee.emit('finish');
     }
