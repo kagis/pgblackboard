@@ -54,7 +54,9 @@ impl http::Resource for SqlExecEndpoint {
         
         let conn = match maybe_conn {
             Ok(conn) => conn,
-            Err(pg::PgErrorOrNotice { code: pg::SqlState::InvalidPassword, .. }) => return Box::new(JsonResponse {
+            Err(pg::Error { code: pg::SqlState::InvalidPassword, .. }) |
+            Err(pg::Error { code: pg::SqlState::InvalidAuthorizationSpecification, .. })
+            => return Box::new(JsonResponse {
                 status: http::Status::BadRequest,
                 content: "Invalid username or password",
             }),

@@ -33,7 +33,7 @@ define(function (require, exports, module) {
           typ: 'database',
           name: datname,
           can_have_children: true,
-          path: [datname, 'database', datname],
+          treenode_id: [datname, 'database', datname],
           comment: comment,
           group: 0,
         })),

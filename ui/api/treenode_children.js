@@ -25,14 +25,14 @@ define(function (require, exports, module) {
       database,
     }).then(([{ rows }]) => rows.map(([
       database,
-      id,
+      dbobj_id,
       typ,
       name,
       comment,
       can_have_children,
       group
     ]) => ({
-      path: [database, typ, id],
+      treenode_id: [database, typ, dbobj_id],
       database,
       typ,
       name,

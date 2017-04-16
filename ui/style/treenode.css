@@ -1,20 +1,20 @@
-.treeNode {
+.treenode {
   /* for toggler absolute pos */
   position: relative;
 }
 
-.treeNode__children {
+.treenode-children {
   padding-left: 1.3em;
 }
 
-.treeNode--groupstart {
+.treenode--groupstart {
   border-top-width: 1px;
   border-top-style: dotted;
   padding-top: .5em;
   margin-top: .5em;
 }
 
-.treeNode--groupstart::before {
+.treenode--groupstart::before {
   content: attr(data-group);
   position: absolute;
   top: -.5em;
@@ -25,25 +25,25 @@
   padding-right: .5em;
 }
 
-/*.light*/ .treeNode--groupstart::before {
+/*.light*/ .treenode--groupstart::before {
   color: #888;
   background-color: #FCFCFC;
 }
 
-.dark .treeNode--groupstart::before {
+.dark .treenode--groupstart::before {
   color: #888;
   background-color: #272822;
 }
 
-/*.light*/ .treeNode--groupstart {
+/*.light*/ .treenode--groupstart {
   border-top-color: #ccc;
 }
 
-.dark .treeNode--groupstart {
+.dark .treenode--groupstart {
   border-top-color: #444;
 }
 
-.treeNode__header {
+.treenode-header {
   padding-left: .2em;
   display: block;
   line-height: 1.4375;
@@ -53,27 +53,27 @@
   text-overflow: ellipsis;
 }
 
-/*.light*/ .treeNode__header--selected,
-/*.light*/ .treeNode__header:hover {
+/*.light*/ .treenode-header--selected,
+/*.light*/ .treenode-header:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/*.light*/ .treeNode__header--selected {
+/*.light*/ .treenode-header--selected {
   color: black;
   -box-shadow: 4px 0 0 -2px #8f908a inset;
 }
 
-.dark .treeNode__header--selected,
-.dark .treeNode__header:hover {
+.dark .treenode-header--selected,
+.dark .treenode-header:hover {
   background-color: rgba(255, 255, 255, .1);
 }
 
-.dark .treeNode__header--selected {
+.dark .treenode-header--selected {
   color: white;
   -box-shadow: 4px 0 0 -2px #333 inset;
 }
 
-.treeNode__toggler {
+.treenode-toggler {
   position: absolute;
   left: -1.1em;
   top: .1875em;
@@ -94,26 +94,26 @@
   white-space: nowrap;
 }
 
-.treeNode__toggler:hover {
+.treenode-toggler:hover {
   opacity: 1;
 }
 
-.treeNode__toggler::-webkit-focus-inner {
+.treenode-toggler::-webkit-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__toggler::-moz-focus-inner {
+.treenode-toggler::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__toggler-icon {
+.treenode-toggler-icon {
   display: block;
 }
 
-.treeNode__toggler--expander::before,
-.treeNode__toggler--collapser::before {
+.treenode-toggler--expander::before,
+.treenode-toggler--collapser::before {
   content: '\e80e';
   font-family: 'fontello';
   font-style: normal;
@@ -129,15 +129,15 @@
   transition: transform .2s ease;
 }
 
-.treeNode__toggler--expander::before {
+.treenode-toggler--expander::before {
   transform: rotate(0deg);
 }
 
-.treeNode__toggler--collapser::before {
+.treenode-toggler--collapser::before {
   transform: rotate(90deg);
 }
 
-.treeNode__toggler--loading {
+.treenode-toggler--loading {
   width: 1em;
   height: 1em;
   border: .2em solid;
@@ -150,12 +150,12 @@
   transition: transform 1000s linear;
 }
 
-.treeNode__icon {
+.treenode-icon {
   /* subicons */
 }
 
-.treeNode__icon::before,
-.treeNode__icon::after {
+.treenode-icon::before,
+.treenode-icon::after {
   font-family: 'fontello';
   font-style: normal;
   font-weight: normal;
@@ -169,63 +169,63 @@
   line-height: 1em;
 }
 
-.treeNode__icon--database::before {
+.treenode-icon--database::before {
   content: '\e801';
 }
 
-.treeNode__icon--schema::before {
+.treenode-icon--schema::before {
   content: '\e806';
 }
 
-.treeNode__icon--extension::before {
+.treenode-icon--extension::before {
   content: '\e808';
 }
 
-.treeNode__icon--func::before,
-.treeNode__icon--agg::before {
+.treenode-icon--func::before,
+.treenode-icon--agg::before {
   content: '\e80b';
 }
 
-.treeNode__icon--table::before,
-.treeNode__icon--view::before,
-.treeNode__icon--matview::before,
-.treeNode__icon--foreigntable::before {
+.treenode-icon--table::before,
+.treenode-icon--view::before,
+.treenode-icon--matview::before,
+.treenode-icon--foreigntable::before {
   content: '\e810';
 }
 
-.treeNode__icon--column::before {
+.treenode-icon--column::before {
   content: '\e80d';
 }
 
-.treeNode__icon--pkcolumn::before {
+.treenode-icon--pkcolumn::before {
   content: '\e80a';
 }
 
-.treeNode__icon--fkcolumn::before {
+.treenode-icon--fkcolumn::before {
   content: '\e80d';
 }
 
-.treeNode__icon--index::before {
+.treenode-icon--index::before {
   content: '\e80f';
 }
 
-.treeNode__icon--trigger::before {
+.treenode-icon--trigger::before {
   content: '\e805';
 }
 
-.treeNode__icon--foreignkey::before {
+.treenode-icon--foreignkey::before {
   content: '\e80c';
 }
 
-.treeNode__icon--unique::before {
+.treenode-icon--unique::before {
   content: '\e80a';
 }
 
-.treeNode__icon--check::before {
+.treenode-icon--check::before {
   content: '\e807';
 }
 
-.treeNode__icon::after {
+.treenode-icon::after {
   border-radius: 50%;
   font-size: .75em;
   margin-left: -1em;
@@ -235,73 +235,73 @@
   background-color: #eee;
 }
 
-/*.light*/ .treeNode__icon::after {
+/*.light*/ .treenode-icon::after {
   color: white;
 }
 
 
-.treeNode__icon--view::after {
+.treenode-icon--view::after {
   content: '\e80b';
 }
 
-/*.light*/ .treeNode__icon--view::after {
+/*.light*/ .treenode-icon--view::after {
   background-color: red;
 }
 
-.dark .treeNode__icon--view::after {
+.dark .treenode-icon--view::after {
   background-color: #a20000;
 }
 
-.treeNode__icon--matview::after {
+.treenode-icon--matview::after {
   content: '\e80b';
 }
 
-/*.light*/ .treeNode__icon--matview::after {
+/*.light*/ .treenode-icon--matview::after {
   background-color: green;
 }
 
-.dark .treeNode__icon--matview::after {
+.dark .treenode-icon--matview::after {
   background-color: green;
 }
 
-.treeNode__icon--foreigntable::after {
+.treenode-icon--foreigntable::after {
   content: '\e809';
 }
 
-/*.light*/ .treeNode__icon--foreigntable::after {
+/*.light*/ .treenode-icon--foreigntable::after {
   background-color: purple;
 }
 
-.dark .treeNode__icon--foreigntable::after {
+.dark .treenode-icon--foreigntable::after {
   background-color: purple;
 }
 
-.treeNode__icon--fkcolumn::after {
+.treenode-icon--fkcolumn::after {
   content: '\e803';
 }
 
-/*.light*/ .treeNode__icon--fkcolumn::after {
+/*.light*/ .treenode-icon--fkcolumn::after {
   background-color: #ddd;
   color: inherit;
 }
 
-.dark .treeNode__icon--fkcolumn::after {
+.dark .treenode-icon--fkcolumn::after {
   background-color: #272822;
   color: inherit;
 }
 
-.treeNode__name {
+.treenode-name {
   margin: 0 .3em;
 }
 
-.treeNode__comment {
+.treenode-comment {
   opacity: .7;
 }
 
-.treeNode__showall-layout {
+.treenode-showall_layout {
 }
 
-.treeNode__showAll {
+.treenode-showall {
   display: block;
   margin: 0;
   padding: 0;
@@ -318,21 +318,21 @@
   color: #888;
 }
 
-.treeNode__showAll::-webkit-focus-inner {
+.treenode-showall::-webkit-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__showAll::-moz-focus-inner {
+.treenode-showall::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
 
-.treeNode__showAll:hover {
+.treenode-showall:hover {
   text-decoration: underline;
 }
 
-.treeNode__showAll::before {
+.treenode-showall::before {
   content: '…';
   margin-left: .4em;
   margin-right: .4em;
@@ -340,19 +340,19 @@
   text-decoration: none;
 }
 
-.treeNode__message-layout {
+.treenode-message_layout {
   display: inline-block;
   margin-top: .5em;
   margin-bottom: .4em;
 }
 
-.treeNode__message {
+.treenode-message {
   white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.treeNode__message::before {
+.treenode-message::before {
   font-family: 'fontello';
   font-style: normal;
   font-weight: normal;
@@ -367,23 +367,23 @@
   margin-right: .3em;
 }
 
-/*.light*/.treeNode__message--info {
+/*.light*/.treenode-message--info {
   color: #888;
 }
 
-.dark .treeNode__message--info {
+.dark .treenode-message--info {
   color: #aaa;
 }
 
-.treeNode__message--info::before {
+.treenode-message--info::before {
   content: '\e804';
 }
 
-.treeNode__message--error {
+.treenode-message--error {
   color: #D65151;
 }
 
-.treeNode__message--error::before {
+.treenode-message--error::before {
   content: '\e802';
 }
 

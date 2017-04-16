@@ -45,7 +45,7 @@ use std::collections::VecDeque;
 
 
 
-type Error = PgErrorOrNotice;
+pub type Error = PgErrorOrNotice;
 type InternalStream = TcpStream;
 pub type Result<T> = ::std::result::Result<T, PgErrorOrNotice>;
 

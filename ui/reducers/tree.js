@@ -2,65 +2,36 @@ define(function (require, exports, module) {
   'use strict';
   
   const merge = require('../core/merge');
+  const reduce_combined = require('../core/reduce_combined');
 
-  module.exports = (tree, action) => {
+  module.exports = reduce_tree;
+
+  function reduce_tree(state, action) {
+    return reduce_combined(state, action, {
+      nodes: reduce_nodes,
+      message: reduce_message,
+    });
+  }
+  
+  function reduce_nodes(state = [], action) {
     switch (action.type) {
-      case 'INIT':
-        return {
-          nodes: [],
-          message: {},
-        };
-
       case 'LOGIN_SUCCESS':
-        return Object.assign({}, tree, {
-          nodes: action.treenodes
+        return action.treenodes;
+
+      case 'TREENODE_EXPAND_START':
+      case 'TREENODE_EXPAND_COMPLETE':
+      case 'TREENODE_EXPAND_ALL':
+      case 'TREENODE_COLLAPSE': {
+        const [treenode_idx] = action.treenode_path;
+        return Object.assign([], state, {
+          [treenode_idx]: Object.assign(reduce_treenode(state[treenode_idx], Object.assign({}, action, {
+            treenode_path: action.treenode_path.slice(1),
+          }))),
         });
-
-      case 'TREENODE_LOAD':
-        return merge(tree, nodePatch(action.nodePath, {
-          isBusy: true,
-        }));
-
-      case 'EXPAND_EMPTY_TREENODE':
-        return merge(tree, {
-          message: {
-            treeNodeId: getTreeNode(action.nodePath).path,
-            text: 'There is no child items yet.',
-            isError: false,
-          },
-          nodes: nodePatch(action.nodePath, {
-            nodes: null,
-            isBusy: false,
-            isExpanded: false,
-          }).nodes,
-        });
-
-      case 'TREENODE_EXPAND':
-        return merge(tree, {
-          message: {
-            treeNodeId: null,
-          },
-          nodes: nodePatch(action.nodePath, {
-            nodes: action.children,
-            isExpanded: true,
-            isBusy: false,
-          }).nodes,
-        });
-
-      case 'TREENODE_COLLAPSE':
-        return merge(tree, nodePatch(action.nodePath, {
-          nodes: null,
-          isExpanded: false,
-          isBusy: false,
-        }));
-
-      case 'SHOW_ALL_TREE_NODE_CHILDREN':
-        return merge(tree, nodePatch(action.nodePath, {
-          showAll: true
-        }));
+      }
 
       default:
-        return tree;
+        return state;
     }
 
     function nodePatch(path, patchObj) {
@@ -77,5 +48,65 @@ define(function (require, exports, module) {
       );
     }
   };
+
+  function reduce_treenode(state = { children: [] }, action) {
+    if (action.treenode_path.length) {
+      const [treenode_idx] = action.treenode_path;
+      return Object.assign({}, state, {
+        children: Object.assign([], state.children, {
+          [treenode_idx]: reduce_treenode(
+            state.children[treenode_idx],
+            Object.assign({}, action, {
+              treenode_path: action.treenode_path.slice(1),
+            })
+          ),
+        }),
+      });
+    }
+    switch (action.type) {
+      case 'TREENODE_EXPAND_START':
+        return Object.assign({}, state, {
+          is_busy: true,
+        });
+
+      case 'TREENODE_EXPAND_COMPLETE':
+        return Object.assign({}, state, {
+          children: action.children,
+          is_busy: false,
+          is_expanded: Boolean(action.children.length),
+        });
+
+      case 'TREENODE_COLLAPSE':
+        return Object.assign({}, state, {
+          children: [],
+          is_expanded: false,
+          is_busy: false,
+        });
+
+      case 'TREENODE_EXPAND_ALL':
+        return Object.assign({}, state, {
+          show_all: true
+        });
+
+      default:
+        return state;
+    }
+  }
   
+  function reduce_message(state = {}, action) {
+    switch (action.type) {
+      case 'TREENODE_EXPAND_COMPLETE':
+        if (action.children.length) {
+          return {};
+        }
+        return {
+          treenode_id: action.treenode_id,
+          text: 'There is no child items yet.',
+          is_error: false,
+        };
+      default:
+        return state;
+    }
+  }
+
 });

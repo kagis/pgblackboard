@@ -5,9 +5,9 @@ define(function (require, exports, module) {
   const { horizontal_splitpanel, vertical_splitpanel } = require('./splitpanel');
   const render_treenode = require('./treenode');
   const render_draft = require('./draft');
-  const renderCodeForm = require('./codeform');
-  const renderExecOutput = require('./output');
-  const login_form = require('./login_form');
+  const render_codeform = require('./codeform');
+  const render_output = require('./output');
+  const render_loginform = require('./loginform');
 
   module.exports = render_app;
   
@@ -16,7 +16,7 @@ define(function (require, exports, module) {
       ,state.is_dark && el.class('dark')
       ,state.credentials.is_authenticated
         ? render_authenticated(state)
-        : login_form(state.credentials)
+        : render_loginform(state.credentials)
     );
   }
 
@@ -51,7 +51,7 @@ define(function (require, exports, module) {
             })
             
             // ,!state.credentials.is_authenticated && (
-            //   login_form()
+            //   render_loginform()
             // )
 
           ), // div.main__nav
@@ -61,7 +61,7 @@ define(function (require, exports, module) {
               ratio: ratio
             }),
             ratio: state.ratio_vertical,
-            top: renderCodeForm({
+            top: render_codeform({
               draft_id: state.selected_document.draft_id,
               content: (state.drafts[state.selected_document.draft_id] ||
                 state.selected_document).content,
@@ -70,7 +70,7 @@ define(function (require, exports, module) {
               selection_ranges: state.selected_document.selection_ranges,
              }),
             bottom: el('div.main__output'
-              ,el.memoize(renderExecOutput, {
+              ,el.memoize(render_output, {
                 is_dark: state.is_dark,
                 stmt_results: state.stmt_results,
                 edits: state.edits,
@@ -82,31 +82,15 @@ define(function (require, exports, module) {
         })
       )
     );
-
-
-
-
-
-    // function getFlatTree(arr, targetDict) {
-    //   arr = arr || state.tree;
-    //   targetDict = targetDict || {};
-    //   for (var i = 0; i < arr.length; i++) {
-    //     var node = arr[i];
-    //     targetDict[node.path] = node;
-    //     getFlatTree(node.childNodes || [], targetDict)
-    //   }
-    //   return targetDict;
-    // }
   }
 
   function render_tree({ tree, selected_treenode_id }) {
     return el('div.main__tree'
-      ,tree.nodes.map((node, i) => render_treenode({
-        treeNode: node,
-        path: [i],
+      ,tree.nodes.map((node, i) => render_treenode(Object.assign({
         selected_treenode_id,
         message: tree.message,
-      }))
+        treenode_path: [i],
+      }, node)))
     );
   }
 

@@ -8,91 +8,95 @@ define(function (require, exports, module) {
 
   module.exports = render_treenode;
 
-  function render_treenode(params) {
-
-    var message = params.treeNode.path == params.message.treeNodeId && params.message;
-    var is_selected = JSON.stringify(params.treeNode.path) == JSON.stringify(params.selected_treenode_id);
-
+  function render_treenode({
+    treenode_path,
+    treenode_id,
+    is_expanded,
+    is_busy,
+    children,
+    show_all,
+    can_have_children,
+    typ,
+    name,
+    comment,
+    selected_treenode_id,
+    message
+  }) {
+    const show_message = JSON.stringify(treenode_id) == JSON.stringify(message.treenode_id);
+    const is_selected = JSON.stringify(treenode_id) == JSON.stringify(selected_treenode_id);
     const children_limit = 200;
-    const is_limited = params.treeNode.isExpanded &&
-                      !params.treeNode.showAll &&
-                      params.treeNode.nodes.length > children_limit;
-
-    const childNodes = params.treeNode.isExpanded && (is_limited ?
-      params.treeNode.nodes.slice(0, children_limit) :
-      params.treeNode.nodes
+    const is_limited = is_expanded && !show_all && children.length > children_limit;
+    const limited_children = is_expanded && (is_limited
+      ? children.slice(0, children_limit)
+      : children
     );
 
-    return el('div.treeNode'
+    return el('div.treenode'
 
-      ,params.treeNode.can_have_children && el('button.treeNode__toggler'
-        ,el.class(
-          params.treeNode.isBusy     ? 'treeNode__toggler--loading'   :
-          params.treeNode.isExpanded ? 'treeNode__toggler--collapser' :
-                                       'treeNode__toggler--expander'
-        )
-        ,el.attr('disabled', Boolean(params.treeNode.isBusy))
-        ,el.attr('data-path', JSON.stringify(params.path))
-        ,el.attr('data-id', JSON.stringify(params.treeNode.path))
-        // !params.treeNode.isBusy && el.on('click', _ => dispatch(toggle())),
+      ,can_have_children && el('button.treenode-toggler'
+        ,is_busy && el.class('treenode-toggler--loading')
+        ,is_expanded && el.class('treenode-toggler--collapser')
+        ,!(is_busy || is_expanded) && el.class('treenode-toggler--expander')
+        ,el.attr('disabled', Boolean(is_busy))
+        ,el.attr('data-path', JSON.stringify(treenode_path))
+        ,el.attr('data-id', JSON.stringify(treenode_id))
       )
 
-      ,el('a.treeNode__header'
-        ,el.attr('data-id', JSON.stringify(params.treeNode.path))
-        ,is_selected && el.class('treeNode__header--selected')
-        ,el('i.treeNode__icon'
-          ,el.class('treeNode__icon--' + params.treeNode.typ)
+      ,el('a.treenode-header'
+        ,el.attr('data-id', JSON.stringify(treenode_id))
+        ,is_selected && el.class('treenode-header--selected')
+        ,el('i.treenode-icon'
+          ,el.class('treenode-icon--' + typ)
         )
-        ,el('span.treeNode__name', params.treeNode.name)
-        ,el('span.treeNode__comment', params.treeNode.comment)
+        ,el('span.treenode-name', name)
+        ,el('span.treenode-comment', comment)
       )
 
-      ,message && el('div.treeNode__message-layout'
+      ,show_message && el('div.treenode-message_layout'
         ,el('div.baloon'
-          ,el('div.treeNode__message'
-            ,message.isError && el.class('treeNode__message--error')
-            ,!message.isError && el.class('treeNode__message--info')
+          ,el('div.treenode-message'
+            ,message.is_error && el.class('treenode-message--error')
+            ,!message.is_error && el.class('treenode-message--info')
             ,message.text
           )
         )
       )
 
-      ,childNodes && el('div.treeNode__children'
-        ,childNodes.map((childNode, i) => render_treenode({
-          treeNode: childNode,
-          path: params.path.concat(i),
-          selected_treenode_id: params.selected_treenode_id,
-          message: params.message,
-        }))
+      ,limited_children && el('div.treenode-children'
+        ,limited_children.map((child, i) => render_treenode(Object.assign({
+          treenode_path: treenode_path.concat(i),
+          selected_treenode_id,
+          message,
+        }, child)))
       )
 
-      ,is_limited && el('button.treeNode__showAll'
+      ,is_limited && el('button.treenode-showall'
         ,el.on('click', _ => dispatch({
-          type: 'SHOW_ALL_TREE_NODE_CHILDREN',
-          nodePath: params.path,
+          type: 'TREENODE_EXPAND_ALL',
+          treenode_path,
         }))
         ,'show all '
-        ,el('strong', String(params.treeNode.nodes.length))
+        ,el('strong', String(children.length))
         ,' items'
       )
     );
   }
 
-  on('.treeNode__toggler--expander', 'click', function (e) {
+  on('.treenode-toggler--expander', 'click', function (e) {
     dispatch(tree_expand({
-      node_path: JSON.parse(this.dataset.path),
+      treenode_path: JSON.parse(this.dataset.path),
       treenode_id: JSON.parse(this.dataset.id),
     }));
   });
 
-  on('.treeNode__toggler--collapser', 'click', function (e) {
+  on('.treenode-toggler--collapser', 'click', function (e) {
     dispatch({
       type: 'TREENODE_COLLAPSE',
-      nodePath: JSON.parse(this.dataset.path)
+      treenode_path: JSON.parse(this.dataset.path)
     });
   });
 
-  on('.treeNode__header', 'click', function (e) {
+  on('.treenode-header', 'click', function (e) {
     dispatch(tree_select(JSON.parse(this.dataset.id)));
   });
 
