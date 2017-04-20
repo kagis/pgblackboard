@@ -17,7 +17,7 @@ define(function (require, exports, module) {
     is_loading,
     draft_id
   }) {
-    return el('div.codeForm'
+    return el('div.codeform'
 
       ,render_spinner_shield({
         is_visible: is_loading,
@@ -31,7 +31,7 @@ define(function (require, exports, module) {
         on_change: handle_change,
       })
 
-      ,el('div.codeForm__execBar'
+      ,el('div.codeform-execbar'
         ,render_execbar()
       )
     );

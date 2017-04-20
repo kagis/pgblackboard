@@ -1,12 +1,32 @@
 
-// csslink('./map.css');
-// csslink('./leaflet/leaflet.css');
-
 define(function (require, exports, module) {
   'use strict';
   const L = window.L;
-  const tileCoordsToQuadKey = require('./tileCoordsToQuadKey');
-  const featureColors = require('./colors');
+  
+  const featureColors = [
+    // '#ff7f00',
+    // '#1f78b4',
+    // '#e31a1c',
+    // '#33a02c',
+    // '#fb9a99',
+    // '#fdbf6f',
+    // '#b2df8a',
+    // '#a6cee3',
+
+    '#b15928',
+    '#ffff99',
+    '#6a3d9a',
+    '#cab2d6',
+    '#ff7f00',
+    '#fdbf6f',
+    '#e31a1c',
+    '#fb9a99',
+    '#33a02c',
+    '#b2df8a',
+    '#1f78b4',
+    '#a6cee3',
+  ];
+
   const renderFeaturePopup = require('./featurePopup/renderFeaturePopup');
 
   module.exports = renderMap;
@@ -198,6 +218,14 @@ define(function (require, exports, module) {
   }
 
 
+  function quadkey({ x, y, z }) {
+    let result = '';
+    for (let i = z; i > 0; i--) {
+      const mask = 1 << (i - 1);
+      result += (x & mask ? 1 : 0) + (y & mask ? 2 : 0);
+    }
+    return quadKey;
+  }
 
 // var pgBlackboardOutput = window['pgBlackboardOutput'];
 //

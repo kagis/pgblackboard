@@ -242,7 +242,6 @@ impl Request {
         }
 
         let content = if content_length > 0 {
-            println!("content-length={}", content_length);
             let mut buf = Vec::with_capacity(content_length);
             buf.extend((0..content_length).map(|_| 0));
             try!(reader.read_all(&mut buf));
@@ -512,20 +511,15 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
         match stream_result {
             Err(e) => { println!("{}", e); }
             Ok(mut stream) => pool.execute(move || {
-                println!("new connection");
-
                 let req = {
                     let mut bufread = BufReader::with_capacity(1024, &mut stream);
                     Request::read_from(&mut bufread).unwrap()
                 };
 
 
-                println!("{user} {method} {path:?}",
+                println!("{method} {path:?}",
                          method=req.method,
-                         path=req.path,
-                         user="user" /*req.credentials
-                                 .as_ref()
-                                 .map_or("", |x| &x.0)*/);
+                         path=req.path);
 
                 let path_vec = req.path.clone();
                 let path_slices_vec = path_vec
@@ -538,8 +532,6 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
                 if let Err(e) = resp_result {
                     println!("error while sending response {}", e);
                 }
-
-                println!("close connection");
             })
         }
     }

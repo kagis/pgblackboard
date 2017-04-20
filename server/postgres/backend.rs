@@ -114,11 +114,6 @@ pub fn read_message<T: Read>(reader: &mut T) -> io::Result<BackendMessage> {
         },
     };
 
-    match &ret {
-        // &BackendMessage::DataRow(..) => {},
-        other => println!("-> {:#?}", other)
-    };
-
     Ok(ret)
 }
 

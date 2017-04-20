@@ -350,6 +350,7 @@
   white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 0 .1em;
 }
 
 .treenode-message::before {

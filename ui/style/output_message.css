@@ -1,19 +1,13 @@
-/*.light*/ .message--error { color: #ff4c4c; }
-/*.light*/ .message { border-bottom-color: #eee; }
-
-.dark .message--error { color: #ff4c4c; }
-.dark .message { border-bottom-color: #333; }
-
 .message {
   padding: .3rem .5rem .3rem .5rem;
   font-size: .8rem;
   font-weight: bold;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
+  border-bottom-width: 1px solid var(--bg);
 }
 
 .message--error {
   white-space: pre;
+  color: var(--danger-color);
 }
 
 .message__sourceLink {

@@ -11,7 +11,7 @@ define(function (require, exports, module) {
     xhr.addEventListener('load', onload);
     xhr.addEventListener('error', onerror);
     xhr.addEventListener('readystatechange', onreadystatechange);
-    xhr.open('POST', '/exec');
+    xhr.open('POST', 'exec');
     xhr.send(JSON.stringify(options));
     return ee;
 

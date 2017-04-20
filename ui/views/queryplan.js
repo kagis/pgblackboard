@@ -2,112 +2,65 @@ define(function (require, exports, module) {
   'use strict';
   const el = require('../core/el');
   const dispatch = require('../core/dispatch');
-  const computeQueryPlanLayout = require('./queryplan_layout');
-  const renderZoomPan = require('./zoompan');
-  const renderEdge = require('./queryplan_edge');
-  const renderNode = require('./queryplan_node');
 
-  module.exports = renderQueryPlan;
+  module.exports = render_queryplan;
 
-  function renderQueryPlan(queryPlan, index) {
+  function render_queryplan(node) {
+    const flat = (function flatten(node) {
+      return [node].concat(...node.children.map(child => flatten(child)));
+    })(node);
 
+    const max_cost = flat.map(node => node.cost)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
+    const max_duration = flat.map(node => node.duration)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
 
-
-    return el('div.queryPlanContainer'
-
-      ,queryPlan.isFullPageView && el.class('queryPlanContainer--fullPage')
-      ,!queryPlan.isFullPageView && el.class('queryPlanContainer--preview')
-
-      ,!queryPlan.isFullPageView && el.on('click', _ => dispatch({
-        type: 'EXPAND_QUERY_PLAN',
-        resultIndex: index,
-      }))
-
-      ,el('div.queryPlanContainer__zoomPan'
-        ,renderZoomPan({
-          offsetX: queryPlan.offsetX,
-          offsetY: queryPlan.offsetY,
-          zoom: queryPlan.zoom,
-          isEnabled: queryPlan.isFullPageView,
-          onChange: extent => dispatch({
-            type: 'MOVE_QUERY_PLAN',
-            extent: extent,
-            resultIndex: index,
-          }),
-          content: queryPlan.isFullPageView ?
-            renderQueryPlanHtml(queryPlan.rootQueryPlanNode) :
-            renderQueryPlanSvg(queryPlan.rootQueryPlanNode)
-        })
-      )
-
-      ,queryPlan.isFullPageView && el('button.queryPlanContainer__close'
-        ,el.on('click', e => {
-          dispatch({
-            type: 'COLLAPSE_QUERY_PLAN',
-            resultIndex: index,
-          });
-          e.stopPropagation();
-        })
-        ,'×' // &times;
-      )
+    return el('div.queryplan'
+      ,render_queryplan_tree(Object.assign({
+        max_cost,
+        max_duration,
+        queryplan_path: [],
+      }, node))
     );
   }
 
-
-  function renderQueryPlanSvg(rootQueryPlanNode) {
-    const layout = computeQueryPlanLayout(rootQueryPlanNode);
-    return el('svg.queryPlan'
-      ,el.attr('viewBox', layout.viewBox.join(' '))
-      ,el.attr('height', layout.height + 'px')
-      ,el.attr('width', layout.width + 'px')
-      ,layout.edges.map(renderEdge)
-      ,layout.nodes.map(renderNode)
-    );
-  }
-
-  function renderQueryPlanHtml(rootQueryPlanNode) {
-    const layout = computeQueryPlanLayout(rootQueryPlanNode);
-    return el('div.queryPlan'
-      ,layout.nodes.map(node => el('div.queryPlanNode'
-        ,el.style('left', node.x - layout.viewBox[0] + 'px')
-        ,el.style('top', node.y - layout.viewBox[1] + 'px')
-        ,el.style('background-color', node.fill)
-
-        ,el('div.queryPlanNode__text', node.name)
-
-        ,el('div.queryPlanNode__popup'
-          ,el('div.queryPlanPopup'
-            ,el('table.queryPlanProperties'
-              ,el('tbody'
-                ,node.properties.map(prop => el('tr'
-                  ,el('td', String(prop.name))
-                  ,el('td', String(prop.value))
-                ))
-              )
-            )
-          )
-
+  function render_queryplan_tree({
+    props,
+    children,
+    cost,
+    duration,
+    max_cost,
+    max_duration,
+    queryplan_path
+  }) {
+    return el('div.queryplan-tree'
+      ,el('div.queryplan-node'
+        ,el.on('click', _ => dispatch({
+          type: 'QUERYPLAN_NODE_TOGGLE',
+          queryplan_path,
+        }))
+        ,el('div.queryplan-node_type'
+          ,props['Node Type']
         )
-      ))
-      ,el('svg.queryPlan'
-        ,el.attr('viewBox', layout.viewBox.join(' '))
-        ,el.attr('height', layout.height + 'px')
-        ,el.attr('width', layout.width + 'px')
-        ,layout.edges.map(renderEdge)
+        ,props['Relation Name'] && el('div.queryplan-relation_name'
+          ,'on '
+          ,props['Relation Name']
+        )
+        ,max_cost == cost && el('div.queryplan-badge'
+          ,'costiest'
+        )
+        ,max_duration == duration && el('div.queryplan-badge'
+          ,'slowest'
+        )
+      )
+      ,children.length && el('div.queryplan-children'
+        ,children.map((child, i) => render_queryplan_tree(Object.assign({
+          max_cost,
+          max_duration,
+          queryplan_path: [...queryplan_path, i],
+        }, child)))
       )
     );
-    // return el('svg.queryPlan'
-    //   ,el.attr('viewBox', layout.viewBox.join(' '))
-    //   ,el.attr('height', layout.height + 'px')
-    //   ,el.attr('width', layout.width + 'px')
-    //   ,layout.edges.map(renderEdge)
-    //   ,layout.nodes.map(renderNode)
-    // );
   }
-
-
-
-
-
-
+  
 });

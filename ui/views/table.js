@@ -44,7 +44,7 @@ define(function (require, exports, module) {
       )
       ,el.on('$created', e => e.target.virtualNode = e.virtualNode)
 
-      ,el('thead.table__header'
+      ,el('thead.table-header'
         ,el('tr'
           ,el('th.table__corner')
           ,fields.map(field => el('th.table__colheader'
@@ -89,6 +89,7 @@ define(function (require, exports, module) {
               const display_value = is_updated ? updated_value : original_value;
   
               return el('td.table__cell'
+                ,el.attr('tabindex', '0')
                 // ,el.prop('table', table_name)
                 ,is_updated && el.attr(
                   'data-original-value',
@@ -113,6 +114,7 @@ define(function (require, exports, module) {
           ,fields.map(field => {
             const val = dict[field.src_column];
             return el('td.table__cell.table__cell--inserted'
+              ,el.attr('tabindex', '0')
               ,el.attr('data-column', field.src_column)
               ,field.src_column && el.attr('contenteditable', 'true')
               ,field.is_num && el.class('table__cell--num')
@@ -128,6 +130,7 @@ define(function (require, exports, module) {
             ,el('td.table__rowHeader')
             ,fields.map((field, field_index) => (
               el('td.table__cell.table__cell--inserted'
+                ,el.attr('tabindex', '0')
                 ,el.attr('data-column', field.src_column)
                 ,field.src_column && el.attr('contenteditable', 'true')
                 ,field.is_num && el.class('table__cell--num')

@@ -1,11 +1,10 @@
 define(function (require, exports, module) {
   'use strict';
   
-  module.exports = (state, action) => {
+  module.exports = reduce_drafts;
+  
+  function reduce_drafts(state = {}, action) {
     switch (action.type) {
-      case 'INIT':
-        return {};
-
       case 'DRAFTS_LOAD':
         return action.drafts;
 

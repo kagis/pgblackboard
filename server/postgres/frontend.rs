@@ -60,8 +60,6 @@ pub fn write_message<W: Write, M: FrontendMessage>(
     out: &mut W, msg: M)
     -> io::Result<()>
 {
-    println!("<- {:#?}", &msg);
-
     let payload_len = {
         struct CountWriter { count: usize }
 

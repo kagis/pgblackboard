@@ -4,12 +4,12 @@ define(function (require, exports, module) {
   const dispatch = require('../core/dispatch')
   const render_table = require('./table')
   const render_queryplan = require('./queryplan')
-  const render_map = require('../map/renderMap')
+  const render_map = require('./map')
   const table_save_edits = require('../actions/table_save_edits');
 
-  module.exports = renderExecOutput;
+  module.exports = render_output;
 
-  function renderExecOutput({ use_map, edits, stmt_results, errors }) {
+  function render_output({ use_map, edits, stmt_results, errors }) {
     if (!stmt_results) {
       return null;
     }
@@ -23,8 +23,8 @@ define(function (require, exports, module) {
   }
 
   function render_tables({ edits, stmt_results, errors }) {
-    return el('div.execOutput'
-      ,el('div.execOutput__scrollContainer'
+    return el('div.output'
+      ,el('div.output-scroll_container'
         ,stmt_results.map((stmt_result, stmt_index) => render_stmt_result({
           stmt_result,
           stmt_index,
@@ -37,8 +37,8 @@ define(function (require, exports, module) {
         ))
       )
 
-      ,el('div.execOutput__cornerBar'
-        ,el('button.execOutput__saveChanges'
+      ,el('div.output-cornerbar'
+        ,el('button.output-save_changes'
           ,el.on('click', _ => dispatch(table_save_edits()))
           ,'save changes'
         )
@@ -49,10 +49,17 @@ define(function (require, exports, module) {
 
   function render_stmt_result({
     edits,
-    stmt_result: { src_table, fields, rows, error, command_tag },
+    stmt_result: {
+      src_table,
+      fields,
+      rows,
+      error,
+      command_tag,
+      queryplan
+    },
     stmt_index
   }) {
-    return el('div.statementResult'
+    return el('div.stmt_result'
       ,error && el('div.message.message--error'
         ,error.message
       )
@@ -74,9 +81,8 @@ define(function (require, exports, module) {
       ,command_tag && el('div.message'
         ,command_tag
       )
+      ,queryplan && render_queryplan(queryplan)
     )
   }
-
-
 
 });

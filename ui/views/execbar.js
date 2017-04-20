@@ -4,16 +4,16 @@ define(function (require, exports, module) {
   const dispatch = require('../core/dispatch');
   const execute_script = require('../actions/execute_script');
 
-  module.exports = () => el('div.execBar'
+  module.exports = () => el('div.execbar'
 
-    ,el('button.execBar__executeMap'
+    ,el('button.execbar-execute_map'
       ,el.on('click', _ => dispatch(execute_script({
         use_map: true,
       })))
       ,'map'
     )
 
-    ,el('button.execBar__execute'
+    ,el('button.execbar-execute'
       ,el.attr('accesskey', 'e')
       ,el.on('click', _ => dispatch(execute_script({
         use_map: false,

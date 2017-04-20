@@ -1,9 +1,9 @@
-.codeForm {
+.codeform {
   position: relative;
   height: 100%;
 }
 
-.codeForm__textarea {
+.codeform-textarea {
   width: 100%;
   height: 100%;
   border: none;
@@ -11,7 +11,7 @@
   padding: 0;
 }
 
-.codeForm__execBar {
+.codeform-execbar {
   position: absolute;
   bottom: 0;
   right: 0;

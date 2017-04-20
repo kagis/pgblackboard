@@ -1,4 +1,4 @@
-.spinnerShield {
+.spinner_shield {
   visibility: hidden;
   overflow: hidden;
   z-index: 1000;
@@ -13,12 +13,12 @@
   transition: opacity .5s ease;
 }
 
-.spinnerShield--visible {
+.spinner_shield--visible {
   visibility: visible;
   opacity: 1;
 }
 
-.spinnerShield::before {
+.spinner_shield::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -39,6 +39,6 @@
   transition: transform 1000s linear;
 }
 
-.spinnerShield--visible::before {
+.spinner_shield--visible::before {
   transform: rotate(700000deg);
 }

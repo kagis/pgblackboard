@@ -1,4 +1,4 @@
-.execOutput {
+.output {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -6,34 +6,33 @@
   right: 0;
 }
 
-.execOutput__cornerBar {
+.output-cornerbar {
   position: absolute;
   bottom: 0;
   right: 0;
   padding: .2em;
-  background-color: #333;
+  background-color: var(--bg);
   border-top-left-radius: .2em;
 }
 
-.execOutput__saveChanges {
+.output-save_changes {
   background: transparent;
   border: none;
   color: inherit;
+  font-size: 0.8125em;
+  font-family: inherit;
   border-bottom: 1px dotted;
   line-height: 1;
   padding: 0;
   margin: .2em;
   cursor: pointer;
-  /*font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;*/
 }
 
-.execOutput__saveChanges:focus {
+.output-save_changes:focus {
   outline: none;
 }
 
-.execOutput__scrollContainer {
+.output-scroll_container {
   position: absolute;
   top: 0;
   bottom: 0;

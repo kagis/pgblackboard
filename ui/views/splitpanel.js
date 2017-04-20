@@ -18,12 +18,12 @@ define(function (require, exports, module) {
     return root_node =
     el('div.splitpanel.splitpanel--horizontal'
       ,params.is_splitting && el.class('splitpanel--splitting')
-      ,el('div.splitpanel__child'
+      ,el('div.splitpanel-child'
         ,el.style('right', (1 - ratio) * 100 + '%')
         ,el.style('margin-right', splitter_size + 'px')
         ,params.left
       )
-      ,el('div.splitpanel__splitter'
+      ,el('div.splitpanel-splitter'
         ,el.style('left', ratio > 0 ? '' : '0')
         ,el.style('right', ratio > 0 ? (1 - ratio) * 100 + '%' : '')
         ,el.style('width', splitter_size + 'px')
@@ -34,7 +34,7 @@ define(function (require, exports, module) {
           render: horizontal_splitpanel,
         }))
       )
-      ,el('div.splitpanel__child'
+      ,el('div.splitpanel-child'
         ,el.style('left', ratio > 0 ? ratio * 100 + '%' : splitter_size + 'px')
         ,params.right
       )
@@ -48,12 +48,12 @@ define(function (require, exports, module) {
     return root_node =
     el('div.splitpanel.splitpanel--vertical'
       ,params.is_splitting && el.class('splitpanel--splitting')
-      ,el('div.splitpanel__child'
+      ,el('div.splitpanel-child'
         ,el.style('bottom', (1 - ratio) * 100 + '%')
         ,el.style('margin-bottom', splitter_size + 'px')
         ,params.top
       )
-      ,el('div.splitpanel__splitter'
+      ,el('div.splitpanel-splitter'
         ,el.style('top', ratio > 0 ? '' : '0')
         ,el.style('bottom', ratio > 0 ? (1 - ratio) * 100 + '%' : '')
         ,el.style('height', splitter_size + 'px')
@@ -64,7 +64,7 @@ define(function (require, exports, module) {
           render: vertical_splitpanel,
         }))
       )
-      ,el('div.splitpanel__child'
+      ,el('div.splitpanel-child'
         ,el.style('top', ratio > 0 ? ratio * 100 + '%' : splitter_size + 'px')
         ,params.bottom
       )

@@ -8,7 +8,7 @@ define(function (require, exports, module) {
     describe = false
   }) => new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/exec');
+    xhr.open('POST', 'exec');
     xhr.send(JSON.stringify({
       database,
       statements,

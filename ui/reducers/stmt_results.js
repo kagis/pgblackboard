@@ -105,6 +105,10 @@ define(function (require, exports, module) {
       case 'STATEMENT_COMPLETE':
         return Object.assign({}, state, {
           command_tag: action.command_tag,
+          queryplan: action.command_tag == 'EXPLAIN'
+            && state.fields.length == 1
+            && state.fields[0].typ == 'json'
+            && queryplan_json(JSON.parse(state.rows[0][0])[0]['Plan'])
         });
 
       case 'STATEMENT_ERROR':
@@ -132,4 +136,18 @@ define(function (require, exports, module) {
         return state;
     }
   }
+
+  function queryplan_json(jsonplan) {
+    const children = (jsonplan['Plans'] || []).map(queryplan_json);
+    const untotal = prop => jsonplan[prop]
+      - children.map(child => child.props[prop])
+                .reduce((a, b) => a + b, 0);
+    return {
+      props: Object.assign({}, jsonplan, { 'Plans': null }),
+      duration: untotal('Actual Total Time') * jsonplan['Actual Loops'],
+      cost: untotal('Total Cost'),
+      children,
+    };
+  }
+  
 });

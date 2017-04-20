@@ -6,30 +6,30 @@
 }
 
 .splitpanel--vertical.splitpanel--splitting,
-.splitpanel--vertical > .splitpanel__splitter {
+.splitpanel--vertical > .splitpanel-splitter {
   cursor: ns-resize;
 }
 
 .splitpanel--horizontal.splitpanel--splitting,
-.splitpanel--horizontal > .splitpanel__splitter {
+.splitpanel--horizontal > .splitpanel-splitter {
   cursor: ew-resize;
 }
 
-.splitpanel__splitter {
+.splitpanel-splitter {
   position: absolute;
 }
 
-.splitpanel--horizontal > .splitpanel__splitter {
+.splitpanel--horizontal > .splitpanel-splitter {
   top: 0;
   bottom: 0;
 }
 
-.splitpanel--vertical > .splitpanel__splitter {
+.splitpanel--vertical > .splitpanel-splitter {
   left: 0;
   right: 0;
 }
 
-.splitpanel__child {
+.splitpanel-child {
   overflow: hidden;
   position: absolute;
   top: 0;

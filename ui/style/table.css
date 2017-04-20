@@ -6,27 +6,23 @@
   background-color: transparent;
 }
 
-/*.light*/ .table { border-color: #aaa; }
-/*.light*/ .table th { background-color: #ddd; }
-/*.light*/ .table-invalid-row td { background-color: #ffd7d7; }
-/*.light*/ .table tr:nth-child(even) { background-color: #eee; }
-
 .table {
   border-collapse: collapse;
   white-space: nowrap;
   padding: 0;
   margin: 0;
   margin-bottom: 1em;
+  border-color: var(--table-border-color);
 }
 
-.table__header {
+.table-row:nth-child(even) {
+  background-color: var(--table-row-bg-color);
+}
+
+.table-header {
   position: sticky;
   top: 0px;
-}
-
-.table--fixed {
-  position: fixed;
-  top: 0;
+  background-color: var(--table-head-bg-color);
 }
 
 /* make firefox inherit border-color for cells */
@@ -46,6 +42,7 @@
   max-width: 50em;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: pre;
 }
 
 .table__cell--num {

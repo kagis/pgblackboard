@@ -7,8 +7,7 @@ define(function (require, exports, module) {
   function reduce_app(state, action) {
     return reduce_combined(state, action, {
       is_dark: require('./is_dark'),
-      ratio_horizontal: require('./ratio_horizontal'),
-      ratio_vertical: require('./ratio_vertical'),
+      split: require('./split'),
       tree: require('./tree'),
       drafts: require('./drafts'),
       selected_treenode_or_draft: require('./selected_treenode_or_draft'),

@@ -1,0 +1,20 @@
+:root {
+  --fg: #555;
+  --bg: #eee;
+  --execbar-bg: #eee;
+  --execbar-fg: #333;
+  --leftbar-shadow-color: #ccc;
+  --panel-bg: #fcfcfc;
+  --queryplan-edge-color: #888;
+  --table-border-color: #aaa;
+  --table-head-bg-color: #ddd;
+  --table-row-bg-color: #eee;
+  --danger-color: #ff4c4c;
+}
+
+.dark:root {
+  --fg: #ddd;
+  --bg: #333;
+  --leftbar-shadow-color: #151515;
+  --panel-bg: #272822;
+}

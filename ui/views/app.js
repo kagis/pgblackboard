@@ -22,26 +22,26 @@ define(function (require, exports, module) {
 
   function render_authenticated(state) {
     return el('div'
-      ,el('div.main__leftbar'
-        ,el('button.main__theme-toggler'
-          ,el.on('click', _ => dispatch({
-            type: 'TOGGLE_THEME'
-          }))
-        )
-      )
-      ,el('div.main__splitpanel-h'
+      // ,el('div.main-leftbar'
+      //   ,el('button.main-theme_toggler'
+      //     ,el.on('click', _ => dispatch({
+      //       type: 'TOGGLE_THEME'
+      //     }))
+      //   )
+      // )
+      ,el('div.main-splitpanel_h'
         ,horizontal_splitpanel({
           on_ratio_change: ratio => dispatch({
             type: 'SPLIT_HORIZONTAL',
             ratio: ratio
           }),
-          ratio: state.ratio_horizontal,
-          left: el('div.main__nav'
+          ratio: state.split.horizontal,
+          left: el('div.main-nav'
 
-            ,el('div.main__drafts'
+            ,el('div.main-drafts'
               ,Object.keys(state.drafts).map(draft_id => render_draft({
                 draft: state.drafts[draft_id],
-                isSelected: draft_id == state.selected_treenode_or_draft.draft_id,
+                is_selected: draft_id == state.selected_treenode_or_draft.draft_id,
               }))
             )
 
@@ -58,9 +58,9 @@ define(function (require, exports, module) {
           right: vertical_splitpanel({
             on_ratio_change: ratio => dispatch({
               type: 'SPLIT_VERTICAL',
-              ratio: ratio
+              ratio,
             }),
-            ratio: state.ratio_vertical,
+            ratio: state.split.vertical,
             top: render_codeform({
               draft_id: state.selected_document.draft_id,
               content: (state.drafts[state.selected_document.draft_id] ||
@@ -69,7 +69,7 @@ define(function (require, exports, module) {
               errors: state.selected_document.errors,
               selection_ranges: state.selected_document.selection_ranges,
              }),
-            bottom: el('div.main__output'
+            bottom: el('div.main-output'
               ,el.memoize(render_output, {
                 is_dark: state.is_dark,
                 stmt_results: state.stmt_results,
@@ -85,7 +85,7 @@ define(function (require, exports, module) {
   }
 
   function render_tree({ tree, selected_treenode_id }) {
-    return el('div.main__tree'
+    return el('div.main-tree'
       ,tree.nodes.map((node, i) => render_treenode(Object.assign({
         selected_treenode_id,
         message: tree.message,
