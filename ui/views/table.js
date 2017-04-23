@@ -46,10 +46,10 @@ define(function (require, exports, module) {
 
       ,el('thead.table-header'
         ,el('tr'
-          ,el('th.table__corner')
-          ,fields.map(field => el('th.table__colheader'
+          ,el('th.table-corner')
+          ,fields.map(field => el('th.table-colheader'
             ,el('div', field.name)
-            ,el('div.table__coltype', field.typ)
+            ,el('div.table-coltype', field.typ)
           ))
         )
       )
@@ -65,7 +65,7 @@ define(function (require, exports, module) {
             ,error && el.attr('title', error)
             ,error && el.class('table-row--invalid')
             ,el.attr('data-key', row_key)
-            ,el('td.table__rowHeader'
+            ,el('td.table-rowheader'
               ,error && el('i.table-error_icon'
                 ,el.attr('data-tooltip', error)
               )
@@ -88,7 +88,7 @@ define(function (require, exports, module) {
               const is_updated = updated_value !== undefined;
               const display_value = is_updated ? updated_value : original_value;
   
-              return el('td.table__cell'
+              return el('td.table-cell'
                 ,el.attr('tabindex', '0')
                 // ,el.prop('table', table_name)
                 ,is_updated && el.attr(
@@ -96,10 +96,10 @@ define(function (require, exports, module) {
                   JSON.stringify(original_value)
                 )
                 ,el.attr('data-column', field.src_column)
-                ,is_updatable && el.class('table__cell--updatable')
+                ,is_updatable && el.class('table-cell--updatable')
                 ,is_updatable && el.attr('contenteditable', 'true')
-                ,field.is_num && el.class('table__cell--num')
-                ,display_value === '' && el.class('table__cell--emptystr')
+                ,field.is_num && el.class('table-cell--num')
+                ,display_value === '' && el.class('table-cell--emptystr')
                 ,display_value
               );
             })
@@ -108,32 +108,32 @@ define(function (require, exports, module) {
 
         ,inserts.map((dict, index) => el('tr.table-row'
           ,el.attr('data-index', index)
-          ,el('td.table__rowHeader'
+          ,el('td.table-rowheader'
             ,el('button.table-insert_cancel')
           )
           ,fields.map(field => {
             const val = dict[field.src_column];
-            return el('td.table__cell.table__cell--inserted'
+            return el('td.table-cell.table-cell--inserted'
               ,el.attr('tabindex', '0')
               ,el.attr('data-column', field.src_column)
               ,field.src_column && el.attr('contenteditable', 'true')
-              ,field.is_num && el.class('table__cell--num')
-              ,val === '' && el.class('table__cell--emptystr')
+              ,field.is_num && el.class('table-cell--num')
+              ,val === '' && el.class('table-cell--emptystr')
               ,val
             );
           })
         ))
 
         ,can_insert && (
-          el('tr.table__newRow.table-row'
+          el('tr.table-newrow.table-row'
             ,el.attr('data-index', inserts.length)
-            ,el('td.table__rowHeader')
+            ,el('td.table-rowheader')
             ,fields.map((field, field_index) => (
-              el('td.table__cell.table__cell--inserted'
+              el('td.table-cell.table-cell--inserted'
                 ,el.attr('tabindex', '0')
                 ,el.attr('data-column', field.src_column)
                 ,field.src_column && el.attr('contenteditable', 'true')
-                ,field.is_num && el.class('table__cell--num')
+                ,field.is_num && el.class('table-cell--num')
               )
             ))
           )
@@ -142,7 +142,7 @@ define(function (require, exports, module) {
     );
   }
 
-  on('.table__cell--updatable', 'input', function () {
+  on('.table-cell--updatable', 'input', function () {
     const td_el = this;
     const new_value = td_el.textContent;
     const original_value = td_el.hasAttribute('data-original-value')
@@ -157,7 +157,7 @@ define(function (require, exports, module) {
     });
   });
   
-  on('.table__cell--inserted', 'input', function () {
+  on('.table-cell--inserted', 'input', function () {
     const td_el = this;
     const value = td_el.textContent || undefined;
     dispatch({

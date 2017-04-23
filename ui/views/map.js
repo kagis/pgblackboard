@@ -1,9 +1,8 @@
-
 define(function (require, exports, module) {
   'use strict';
   const L = window.L;
   
-  const featureColors = [
+  const feature_colors = [
     // '#ff7f00',
     // '#1f78b4',
     // '#e31a1c',
@@ -27,141 +26,126 @@ define(function (require, exports, module) {
     '#a6cee3',
   ];
 
-  const renderFeaturePopup = require('./featurePopup/renderFeaturePopup');
+  const render_map_popup = require('./map_popup');
 
-  module.exports = renderMap;
+  const baselayers_conf = [{
+    name: 'Map',
+    url_tmpl: 'https://{s}.tiles.mapbox.com/v3/exe-dealer.{theme}/{z}/{x}/{y}.png',
+    theme_map: { dark: 'hi8gc0eh', light: 'joap11pl' },
+  }, {
+    name: 'Imagery',
+    url_tmpl: 'http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z',
+    subdomains: '01234567',
+  }];
 
-  function renderMap(params) {
-    return function createOrUpdateMapNode(oldNode) {
-      if (oldNode && oldNode.map) {
-        updateMap(oldNode.map, params);
-      } else {
-        return {
-          tag: 'map',
-          attrs: {
-            class: 'mapContainer'
-          },
-          events: {
-            $created: function (e) {
-              const map = createMap(e.target);
-              updateMap(map, params);
-              e.virtualNode.map = map;
-            }
-          }
-        };
-      }
+  module.exports = render_map;
+
+  function render_map(params) {
+    return node => create_or_update_map(node, params);
+  }
+
+  function create_or_update_map(node, params) {
+    if (node && node.map) {
+      return void update_map(node.map, params);
+    }
+    return {
+      tag: 'map',
+      attrs: { class: 'map_container' },
+      events: {
+        $created({ target, virtualNode }) {
+          const map = create_map(target);
+          update_map(map, params);
+          virtualNode.map = map;
+        },
+      },
     };
   }
 
-  function createMap(containerEl) {
-    const map = L.map(containerEl, {
+  function create_map(container_el) {
+    const map = L.map(container_el, {
       center: [20 /* push antarctida down */, 0],
       zoom: 1,
       zoomControl: false,
       attributionControl: false,
       preferCanvas: true,
-    });
+    }).addControl(L.control.scale());
 
-    L.control.scale().addTo(map);
+    const baselayers = baselayers_conf.map(conf => L.tileLayer(
+      conf.url_tmpl, 
+      Object.assign({}, conf, {
+        quadkey,
+        detectRetina: true,
+        theme: _ => conf.theme_map.light,
+      })
+    ));
 
-    const baseLayers = [
-      withOptions(createMapBoxLayer(), { name: 'Map' }),
-      withOptions(createBingLayer(), { name: 'Imagery' })
-    ];
-
-    const layersControl = L.control.layers(null, null, {
+    const layers_ctl = L.control.layers(null, null, {
       collapsed: false
     });
+    for (let it of baselayers) {
+      layers_ctl.addBaseLayer(it, it.options.name);
+    }
+    map.addControl(layers_ctl);
+    map.addLayer(baselayers[0]);
 
-    baseLayers.forEach(it => {
-      layersControl.addBaseLayer(it, it.options.name);
-    });
-
-    map.addControl(layersControl);
-
-    map.addLayer(baseLayers[0]);
-
-    const overlaysLayer = L.featureGroup();
-    map.addLayer(overlaysLayer);
-
-    Object.assign(map, {
-      overlaysLayer,
-      layersControl,
-      baseLayers,
-    });
+    const overlays_group = L.layerGroup().addTo(map);
 
     window.map = map;
-    return map;
+    
+    return {
+      map,
+      baselayers,
+      overlays_group,
+      layers_ctl,
+    };
   }
 
-  function updateMap(map, params) {
-    map.baseLayers
-      .filter(it => it.options.isDark !== params.isDark)
-      .forEach(it => {
-        L.setOptions(it, { isDark: params.isDark });
-        it.redraw();
-      });
+  function update_map({ overlays_group, layers_ctl }, { stmt_results, is_dark }) {
+    // map.baseLayers
+    //   .filter(it => it.options.isDark !== is_dark)
+    //   .forEach(it => {
+    //     L.setOptions(it, { isDark: is_dark });
+    //     it.redraw();
+    //   });
 
-    map.overlaysLayer.eachLayer(layer => {
-      map.layersControl.removeLayer(layer);
-    });
+    overlays_group.eachLayer(layer => layers_ctl.removeLayer(layer));
+    overlays_group.clearLayers();
 
-    map.overlaysLayer.clearLayers();
+    for (let [stmt_index, { fields, rows, src_table }] of stmt_results.entries()) {
+      if (!fields || !rows) {
+        return;
+      }
+      const geom_field_idx
+        = fields
+        .map(({ name }) => name)
+        .indexOf('st_asgeojson');
 
-    params.items
-      .filter(it => it.resultType == 'ROWSET')
-      .forEach((it, resultIndex) => {
-        const geoJsonFieldIndex = it.fields.findIndex(
-          field => field.is_geojson
-        );
-        if (!(geoJsonFieldIndex < 0)) {
-          const color = featureColors[resultIndex];
-          const overlayOptions = {
-            style: computeFeatureStyle.bind(null, { color: color }),
-            pointToLayer,
+      if (geom_field_idx < 0) {
+        continue;
+      }
+      const color = feature_colors[stmt_index];
+      const overlay_options = {
+        style: compute_feature_style.bind(null, { color: color }),
+        pointToLayer,
 
-          };
-          const overlay = L.featureGroup(it.rows.map(row => {
-            const featureLayer = L.geoJson(
-              JSON.parse(row[geoJsonFieldIndex]),
-              overlayOptions
-            );
+      };
+      const overlay = L.featureGroup(rows.map(row => L.geoJson({
+        type: 'Feature',
+        geometry: JSON.parse(row[geom_field_idx]),
+        properties: { row },
+      }, overlay_options)));
 
-            featureLayer.bindPopup(function () {
-              return cito.vdom.create(renderFeaturePopup(
-                row.map((value, index) => ({ name: it.fields[index].name, value }))
-                      .filter((_, index) => index != geoJsonFieldIndex)
-              )).dom;
-            });
+      overlay.bindPopup(({ feature: { properties: { row }}}) => cito.vdom.create(render_map_popup(
+        row.map((value, index) => ({ name: fields[index].name, value }))
+              .filter((_, index) => index != geom_field_idx)
+      )).dom);
 
-            return featureLayer;
-          }));
-          map.layersControl.addOverlay(overlay, String(resultIndex + 1))
-          map.overlaysLayer.addLayer(overlay);
-        }
-      });
-
+      layers_ctl.addOverlay(overlay, src_table && src_table.table_name || String(stmt_index + 1))
+      overlays_group.addLayer(overlay);
+    }
   }
 
-  function createBingLayer() {
-    return L.tileLayer('http://ak.dynamic.t{s}.tiles.virtualearth.net/comp/ch/{quadkey}?mkt=en-us&it=A,G,L&shading=hill&og=23&n=z', {
-      subdomains: '01234567',
-      'quadkey': tileCoordsToQuadKey
-    });
-  }
-
-  function createMapBoxLayer() {
-    return L.tileLayer('https://{s}.tiles.mapbox.com/v3/exe-dealer.{id}/{z}/{x}/{y}.png', {
-      darkId: 'hi8gc0eh',
-      lightId: 'joap11pl',
-      isDark: false,
-      id(data) { return data.isDark ? data.darkId : data.lightId; }
-    });
-  }
-
-  var overlays = {};
-
-  function computeFeatureStyle(options, feature) {
+  function compute_feature_style(options, feature) {
     const color = feature['properties']['color'] || options.color;
     switch (feature['geometry']['type']) {
       case 'Point':
@@ -176,7 +160,7 @@ define(function (require, exports, module) {
       default:
         return {
           weight: 2,
-          color: color,
+          color,
         };
     }
   }
@@ -184,69 +168,13 @@ define(function (require, exports, module) {
   function pointToLayer(feature, latlng) {
     return L.circleMarker(latlng, {
       radius: 4,
-      feature: feature,
+      feature,
     });
   }
 
-  // var overlayCommonOptions = {
-  //   pointToLayer(feature, latlng) {
-  //     return L.circleMarker(latlng, {
-  //       radius: 4,
-  //       feature: feature,
-  //     });
-  //   },
-  //   onEachFeaturefunction(feature, layer) {
-  //     // layer.bindPopup(popupHtml(feature));
-  //   },
-  //   style(feature) {
-  //
-  //   }
-  // };
-
-  function addOverlay(overlayKey) {
-    var overlay = L.geoJson(null, overlayOptions);
-    overlay.options.color = featureColors.pop();
-    overlay.addTo(map);
-    overlays[overlayKey] = overlay;
-    layersControl.addOverlay(overlay, 'query' + overlayKey);
-    return overlay;
-  }
-
-  function withOptions(obj, options) {
-    L.setOptions(obj, options);
-    return obj;
-  }
-
-
-  function quadkey({ x, y, z }) {
-    let result = '';
-    for (let i = z; i > 0; i--) {
-      const mask = 1 << (i - 1);
-      result += (x & mask ? 1 : 0) + (y & mask ? 2 : 0);
-    }
-    return quadKey;
-  }
-
-// var pgBlackboardOutput = window['pgBlackboardOutput'];
-//
-// /** @expose */
-// pgBlackboardOutput.beginFeatureCollection = function () {
-//   latestFeatureCollection = addOverlay(Object.keys(overlays).length + 1);
-// };
-//
-// /** @expose */
-// pgBlackboardOutput.addFeatures = function (featureCollection) {
-//   featureCollection['features'].forEach(function (f) {
-//     f.overlay = latestFeatureCollection;
-//   });
-//   latestFeatureCollection.addData(featureCollection);
-// };
-
-var latestFeatureCollection;
-
-
-
-
-
+  const quadkey = ({ x, y, z }) => [...Array(z)]
+    .map((_, i) => (x >> i & 1) + (y >> i & 1) * 2)
+    .reverse()
+    .join('');
 
 });

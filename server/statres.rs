@@ -2,15 +2,15 @@ use http;
 use std::io;
 
 pub const FAVICON_RESOURCE: StaticResource = StaticResource {
-    content: include_bytes!(concat!(env!("OUT_DIR"), "/favicon.ico")),
-    etag: include_str!(concat!(env!("OUT_DIR"), "/favicon.ico.md5")),
+    content: include_bytes!("../ui/_dist/favicon.ico"),
+    etag: include_str!("../ui/_dist/favicon.ico.md5"),
     content_type: "image/vnd.microsoft.icon",
     gzipped: false,
 };
 
 pub const INDEX_HTML_RESOURCE: StaticResource = StaticResource {
-    content: include_bytes!(concat!(env!("OUT_DIR"), "/index.html.gz")),
-    etag: include_str!(concat!(env!("OUT_DIR"), "/index.html.gz.md5")),
+    content: include_bytes!("../ui/_dist/index.html.gz"),
+    etag: include_str!("../ui/_dist/index.html.gz.md5"),
     content_type: "text/html; charset=utf-8",
     gzipped: true,
 };

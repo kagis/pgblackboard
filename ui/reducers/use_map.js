@@ -3,7 +3,7 @@ define(function (require, exports, module) {
 
   module.exports = use_map;
   
-  function use_map(state, action) {
+  function use_map(state = false, action) {
     switch (action.type) {
       case 'INIT':
       case 'TREENODE_DEFINITION_LOADED':

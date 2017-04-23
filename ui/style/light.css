@@ -1,8 +1,6 @@
 :root {
   --fg: #555;
   --bg: #eee;
-  --execbar-bg: #eee;
-  --execbar-fg: #333;
   --leftbar-shadow-color: #ccc;
   --panel-bg: #fcfcfc;
   --queryplan-edge-color: #888;
@@ -10,6 +8,7 @@
   --table-head-bg-color: #ddd;
   --table-row-bg-color: #eee;
   --danger-color: #ff4c4c;
+  --border-color: #ccc;
 }
 
 .dark:root {

@@ -91,7 +91,7 @@ define(function (require, exports, module) {
     
     stream.on('error', e => dispatch({
       type: 'EXEC_ERROR',
-      message: String(e),
+      message: e && e.message || String(e),
     }));
 
     function getScript() {

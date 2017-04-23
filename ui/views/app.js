@@ -71,6 +71,7 @@ define(function (require, exports, module) {
              }),
             bottom: el('div.main-output'
               ,el.memoize(render_output, {
+                use_map: state.use_map,
                 is_dark: state.is_dark,
                 stmt_results: state.stmt_results,
                 edits: state.edits,

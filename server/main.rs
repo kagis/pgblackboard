@@ -24,14 +24,13 @@ mod postgres;
 use rustc_serialize::{json, Encodable};
 use std::io;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 
 
 fn main() {
     let mut pgaddr = "127.0.0.1:5432".to_string();
     let mut httpaddr = "0.0.0.0:7890".to_string();
-    let mut postgres_log = false;
 
     {
         let mut ap = argparse::ArgumentParser::new();
@@ -52,18 +51,11 @@ fn main() {
              Default is 127.0.0.1:5432"
         );
 
-        ap.refer(&mut postgres_log).add_option(
-            &["--postgres-log"],
-            argparse::StoreTrue,
-            "Print PostgreSQL protocol messages for debug",
-        );
-
         ap.parse_args_or_exit();
     }
-    
+
     let webapp = WebApplication {
         pgaddr: pgaddr,
-        pglog: postgres_log,
     };
 
     http::serve_forever(&httpaddr, webapp).unwrap();
@@ -73,7 +65,6 @@ fn main() {
 
 pub struct WebApplication {
     pub pgaddr: String,
-    pub pglog: bool,
 }
 
 impl http::Handler for WebApplication {
@@ -90,7 +81,6 @@ impl http::Handler for WebApplication {
             return http::Handler::handle_http_req(
                 &self::sqlexec::SqlExecEndpoint {
                     pgaddr: self.pgaddr.clone(),
-                    pglog: self.pglog,
                 },
                 path_tail,
                 req

@@ -8,7 +8,6 @@ use postgres as pg;
 
 pub struct SqlExecEndpoint {
     pub pgaddr: String,
-    pub pglog: bool,
 }
 
 impl http::Resource for SqlExecEndpoint {
@@ -53,21 +52,19 @@ impl http::Resource for SqlExecEndpoint {
             (&form.user, &form.password),
         );
         
-        let mut conn = match maybe_conn {
+        let conn = match maybe_conn {
             Ok(conn) => conn,
-            Err(pg::Error { code: pg::SqlState::InvalidPassword, .. }) |
-            Err(pg::Error { code: pg::SqlState::InvalidAuthorizationSpecification, .. })
-            => return Box::new(JsonResponse {
-                status: http::Status::BadRequest,
-                content: "Invalid username or password",
-            }),
+            // Err(pg::Error { code: pg::SqlState::InvalidPassword, .. }) |
+            // Err(pg::Error { code: pg::SqlState::InvalidAuthorizationSpecification, .. })
+            // => return Box::new(JsonResponse {
+            //     status: http::Status::BadRequest,
+            //     content: "Invalid username or password",
+            // }),
             Err(err) => return Box::new(JsonResponse {
                 status: http::Status::InternalServerError,
-                content: "Failed to connect PostgreSQL server",
+                content: err,
             }),
         };
-
-        conn.print_messages = self.pglog;
 
         Box::new(SqlExecResponse {
             pgconn: conn,

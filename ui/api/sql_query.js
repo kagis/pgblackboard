@@ -29,7 +29,7 @@ define(function (require, exports, module) {
         });
       }
       if (xhr.status != 200) {
-        return reject({ message: json_response });
+        return reject(json_response);
       }
       const messages = json_response.slice(1);
       const success_result = [];

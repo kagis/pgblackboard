@@ -1,8 +1,8 @@
-[project]
+[package]
 name = "pgblackboard"
 version = "0.2.0"
 authors = ["exe-dealer <exe-dealer@yandex.ru>"]
-build = "ui/build.rs" 
+repository = "https://github.com/exe-dealer/pgblackboard"
 
 [dependencies]
 argparse = "0.2"

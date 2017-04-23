@@ -1,6 +1,9 @@
-@import url(./codeform.css);
-@import url(../lib/codemirror/5.25.0/codemirror.css);
 @import url(./codemirror.css);
+@import url(./leaflet.css);
+@import url(./fontello/css/fontello-embedded.css);
+
+@import url(./light.css);
+@import url(./codeform.css);
 @import url(./draft.css);
 @import url(./execbar.css);
 @import url(./loginform.css);
@@ -11,8 +14,9 @@
 @import url(./splitpanel.css);
 @import url(./table.css);
 @import url(./treenode.css);
-@import url(./fontello/css/fontello-embedded.css);
-@import url(./light.css);
+@import url(./map.css);
+@import url(./map_popup.css);
+
 
 body {
   overflow: hidden; /* disable bouncing scroll in macos */
@@ -86,7 +90,7 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
-  left: 1.3125em;
+  left: 0; /*1.3125em;*/
 }
 
 .main-splitpanel_v,
@@ -117,13 +121,9 @@ body {
   margin: .5em;
 }
 
-/* iframe */.main-output {
-  border: none;
-}
-
-/* .light */ .main-nav,
-/* .light */ .main-codeform,
-/* .light */ .main-output {
+.main-nav,
+.main-codeform,
+.main-output {
   background-color: var(--panel-bg);
 }
 

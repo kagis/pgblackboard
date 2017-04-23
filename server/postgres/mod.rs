@@ -57,7 +57,6 @@ pub struct Connection {
     is_desynchronized: bool,
     current_execution_result: Option<Result<String>>,
     is_executing: bool,
-    pub print_messages: bool,
 }
 
 pub fn connect<T>(
@@ -96,7 +95,6 @@ impl Connection {
             is_desynchronized: false,
             current_execution_result: None,
             is_executing: false,
-            print_messages: false,
         };
 
         try!(conn.write_message(StartupMessage {
@@ -176,7 +174,7 @@ impl Connection {
                 }
             };
 
-            if self.print_messages {
+            if cfg!(debug_assertions) {
                 println!("-> {:#?}", message);
             }
 
@@ -196,7 +194,7 @@ impl Connection {
     }
 
     fn write_message<T: FrontendMessage>(&mut self, msg: T) -> Result<()> {
-        if self.print_messages {
+        if cfg!(debug_assertions) {
             println!("<- {:#?}", &msg);
         }
         frontend::write_message(&mut self.stream, msg).map_err(|err| {

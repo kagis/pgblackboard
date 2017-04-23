@@ -1,0 +1,20 @@
+.map_popup {
+  min-width: 300px;
+  font-size: inherit;
+  color: inherit;
+}
+
+.map_popup-prop_name {
+  font-weight: bold;
+  vertical-align: top;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background-color: var(--panel-bg);
+  box-shadow: 0 0 0 .4em rgba(0, 0, 0, .1);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: .2em;
+}

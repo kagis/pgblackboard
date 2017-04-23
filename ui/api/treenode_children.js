@@ -40,4 +40,4 @@ define(function (require, exports, module) {
       can_have_children: can_have_children == 't',
       group,
     })));
-})
+});
