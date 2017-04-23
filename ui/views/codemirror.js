@@ -53,26 +53,18 @@ define(function (require, exports, module) {
       keyMap: 'sublime',
       gutters: [
         'CodeMirror-linenumbers',
-        'CodeMirror__annotations-gutter'
+        'CodeMirror-annotations_gutter'
       ],
     });
+
+    const state = Object.assign({ codemirror }, params);
     
-    codemirror._pgbb = {};
-
-    // codemirror.on('change', function (codemirror, e) {
-    //   var onChange = codemirror.onChangeCallback;
-    //   if (e.origin != 'setValue' && typeof onChange == 'function') {
-    //      onChange(codemirror.getValue());
-    //   }
-    // });
-
     codemirror.on('beforeSelectionChange', function (codemirror, e) {
       const value = codemirror.getValue('\n');
-      const value_has_changed = codemirror._pgbb.latest_value != value;
-      codemirror._pgbb.latest_value = value;
+      const value_has_changed = state.value != value;
 
-      if (typeof codemirror._pgbb.on_change == 'function') {
-        codemirror._pgbb.on_change({
+      if (typeof state.on_change == 'function') {
+        state.on_change({
           selection_ranges: e.ranges,
           value,
           value_has_changed,
@@ -80,30 +72,33 @@ define(function (require, exports, module) {
       }
     });
 
-    update_codemirror_if_changed(codemirror, params);
+    update_codemirror_if_changed(state, params);
     
     bus.on('rendered:SPLIT_HORIZONTAL', () => codemirror.refresh());
     bus.on('rendered:SPLIT_VERTICAL', () => codemirror.refresh());
     
-
     window.codemirror = codemirror;
-    return codemirror;
+    return state;
   }
 
   function update_codemirror_if_changed(
-    codemirror,
+    state,
     { value, selection_ranges, errors, on_change }
   ) {
-    codemirror._pgbb.on_change = null;
-    update_value_if_changed(codemirror, value);
-    update_selection_if_changed(codemirror, selection_ranges);
-    update_annotations_if_changed(codemirror, errors);
-    codemirror._pgbb.on_change = on_change;
+    value = (value || '').replace(/\r\n/g, '\n');    
+    state.on_change = null;
+    update_value_if_changed(state.codemirror, value);
+    update_selection_if_changed(state.codemirror, selection_ranges);
+    update_annotations_if_changed(state.codemirror, state.errors, errors);
+    Object.assign(state, {
+      value,
+      selection_ranges,
+      errors,
+      on_change,
+    });
   }
   
   function update_value_if_changed(codemirror, value) {
-    value = (value || '').replace(/\r\n/g, '\n');
-    codemirror._pgbb.latest_value = value;
     if (codemirror.getValue('\n') != value) {
       codemirror.setValue(value);
     }
@@ -111,13 +106,13 @@ define(function (require, exports, module) {
   
   function update_selection_if_changed(codemirror, selection_ranges) {
     if (
-      equatableSelectionRanges(codemirror.listSelections()) !==
-      equatableSelectionRanges(selection_ranges || [])
+      equatable_selection_ranges(codemirror.listSelections()) !==
+      equatable_selection_ranges(selection_ranges || [])
     ) {
       codemirror.setSelections(selection_ranges || []);
     }
 
-    function equatableSelectionRanges(arr) {
+    function equatable_selection_ranges(arr) {
       return JSON.stringify(arr.map(it => [
         it.head.line,
         it.head.ch,
@@ -127,23 +122,22 @@ define(function (require, exports, module) {
     }
   }
   
-  function update_annotations_if_changed(codemirror, annotations) {
-    annotations = annotations || [];
-    if (JSON.stringify(codemirror._pgbb.annotations) == JSON.stringify(annotations)) {
+  function update_annotations_if_changed(codemirror, old_annotations, new_annotations) {
+    new_annotations = new_annotations || [];
+    if (JSON.stringify(old_annotations) == JSON.stringify(new_annotations)) {
       return;
     }
-    codemirror._pgbb.annotations = annotations;
-    codemirror.clearGutter('CodeMirror__annotations-gutter');
-    for (let anno of annotations) {
+    codemirror.clearGutter('CodeMirror-annotations_gutter');
+    for (let anno of new_annotations) {
       if (!anno.linecol) {
         break;
       }
       const marker = document.createElement('div');
-      marker.className = 'CodeMirror__error-gutter-marker';
+      marker.className = 'CodeMirror-error_gutter_marker';
       marker.dataset.title = anno.text;
       codemirror.setGutterMarker(
         anno.linecol.line,
-        'CodeMirror__annotations-gutter',
+        'CodeMirror-annotations_gutter',
         marker
       );
     }

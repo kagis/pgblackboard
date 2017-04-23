@@ -45,15 +45,11 @@
   height: 100%;
 }
 
-.CodeMirror__annotations-gutter {
+.CodeMirror-annotations_gutter {
   width: 1em;
 }
 
-
-
-
-
-.CodeMirror__error-gutter-marker::before {
+.CodeMirror-error_gutter_marker::before {
   width: 1em;
   line-height: 1.2em;
   font-size: .8em;
@@ -70,7 +66,7 @@
   text-transform: none;
 }
 
-.CodeMirror__error-gutter-marker:hover::after {
+.CodeMirror-error_gutter_marker:hover::after {
   content: attr(data-title);
   display: block;
   position: absolute;
@@ -81,13 +77,13 @@
   left: 2em;
 }
 
-/*.light*/ .CodeMirror__error-gutter-marker:hover::after {
+/*.light*/ .CodeMirror-error_gutter_marker:hover::after {
   background-color: #555;
   color: #ddd;
   box-shadow: 0 0 .5em #999;
 }
 
-.dark .CodeMirror__error-gutter-marker:hover::after {
+.dark .CodeMirror-error_gutter_marker:hover::after {
   background-color: #151515;
   color: #c2c2c2;
   box-shadow: 0 0 .5em #111;
