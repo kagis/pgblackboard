@@ -36,6 +36,7 @@ cargo:
 PGBB_VERSION := 0.2.0
 DEB_PACKAGE_DIR := target/release/pgblackboard_$(PGBB_VERSION)-1_amd64
 
+.PHONY: deb
 deb: all
 	mkdir -p $(DEB_PACKAGE_DIR)/DEBIAN \
 		$(DEB_PACKAGE_DIR)/usr/bin
@@ -47,3 +48,7 @@ deb: all
 		debian:8 \
 		dpkg-deb --build $(DEB_PACKAGE_DIR)
 	rm -r $(DEB_PACKAGE_DIR)
+
+.PHONY: clean
+clean:
+	rm -r target ui/_dist node_modules
