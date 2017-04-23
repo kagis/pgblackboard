@@ -21,8 +21,17 @@ run:
 	docker run -it --rm \
 		--volume $$PWD:/source \
 		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
+		--publish 7890:7890 \
 		jimmycuadra/rust \
 		sh -c "cargo run -- $(args)"
+
+.PHONY: cargo
+cargo:
+	docker run -it --rm \
+		--volume $$PWD:/source \
+		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
+		jimmycuadra/rust \
+		sh -c "cargo $(args)"
 
 PGBB_VERSION := 0.2.0
 DEB_PACKAGE_DIR := target/release/pgblackboard_$(PGBB_VERSION)-1_amd64

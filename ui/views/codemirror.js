@@ -102,8 +102,9 @@ define(function (require, exports, module) {
   }
   
   function update_value_if_changed(codemirror, value) {
-    value = value || '';
-    if (codemirror.getValue('\n') != value.replace(/\r\n/g, '\n')) {
+    value = (value || '').replace(/\r\n/g, '\n');
+    codemirror._pgbb.latest_value = value;
+    if (codemirror.getValue('\n') != value) {
       codemirror.setValue(value);
     }
   }
