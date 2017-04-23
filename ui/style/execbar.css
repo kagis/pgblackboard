@@ -5,8 +5,7 @@
   background-color: var(--bg);
 }
 
-/*button*/.execbar-execute,
-/*button*/.execbar-execute_map {
+/*button*/.execbar-execute {
   outline: none;
   margin: 0;
   padding: 0;
@@ -24,18 +23,16 @@
   color: var(--fg);
 }
 
-/*button*/.execbar-execute {
+/*button*/.execbar-execute--table {
   font-weight: bold;
 }
 
-/*button*/.execbar-execute::-webkit-focus-inner,
-/*button*/.execbar-execute_map::-webkit-focus-inner {
+/*button*/.execbar-execute::-webkit-focus-inner {
   border: 0;
   padding: 0;
 }
 
-/*button*/.execbar-execute::-moz-focus-inner,
-/*button*/.execbar-execute_map::-moz-focus-inner {
+/*button*/.execbar-execute::-moz-focus-inner {
   border: 0;
   padding: 0;
 }
