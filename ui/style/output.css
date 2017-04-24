@@ -1,9 +1,11 @@
 .output {
   position: absolute;
-  top: 0;
+  top: 0px;
   bottom: 0;
   left: 0;
   right: 0;
+  overflow: auto;
+  transform: translateZ(0);
 }
 
 .output-cornerbar {
@@ -15,7 +17,7 @@
   border-top-left-radius: .2em;
 }
 
-.output-save_changes {
+.output-save_edits {
   background: transparent;
   border: none;
   color: inherit;
@@ -28,16 +30,6 @@
   cursor: pointer;
 }
 
-.output-save_changes:focus {
+.output-save_edits:focus {
   outline: none;
-}
-
-.output-scroll_container {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  overflow: auto;
-  transform: translateZ(0);
 }

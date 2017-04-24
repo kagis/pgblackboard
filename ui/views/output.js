@@ -24,28 +24,26 @@ define(function (require, exports, module) {
 
   function render_tables({ edits, stmt_results, errors }) {
     return el('div.output'
-      ,el('div.output-scroll_container'
-        ,stmt_results.map((stmt_result, stmt_index) => render_stmt_result({
-          stmt_result,
-          stmt_index,
-          edits,
-        }))
-        ,errors.map(({ message }) => (
-          el('div.message.message--error'
-            ,message
-          )
-        ))
-      )
-
+    
       ,Object.keys(edits).length && (
         el('div.output-cornerbar'
-          ,el('button.output-save_changes'
+          ,el('button.output-save_edits'
             ,el.on('click', _ => dispatch(table_save_edits()))
-            ,'save changes'
+            ,'save edits'
           )
         )
       )
 
+      ,stmt_results.map((stmt_result, stmt_index) => render_stmt_result({
+        stmt_result,
+        stmt_index,
+        edits,
+      }))
+      ,errors.map(({ message }) => (
+        el('div.message.message--error'
+          ,message
+        )
+      ))
     );
   }
 
