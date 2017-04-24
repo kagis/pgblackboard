@@ -37,10 +37,12 @@ define(function (require, exports, module) {
         ))
       )
 
-      ,el('div.output-cornerbar'
-        ,el('button.output-save_changes'
-          ,el.on('click', _ => dispatch(table_save_edits()))
-          ,'save changes'
+      ,Object.keys(edits).length && (
+        el('div.output-cornerbar'
+          ,el('button.output-save_changes'
+            ,el.on('click', _ => dispatch(table_save_edits()))
+            ,'save changes'
+          )
         )
       )
 
