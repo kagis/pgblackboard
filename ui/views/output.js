@@ -27,6 +27,7 @@ define(function (require, exports, module) {
     
       ,Object.keys(edits).length && (
         el('div.output-cornerbar'
+          ,el.prop('key', 'cornerbar')
           ,el('button.output-save_edits'
             ,el.on('click', _ => dispatch(table_save_edits()))
             ,'save edits'

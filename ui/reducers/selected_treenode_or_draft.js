@@ -6,7 +6,7 @@ define(function (require, exports, module) {
       case 'INIT':
         return {};
         
-      case 'TREENODE_SELECT':
+      case 'TREENODE_SELECT_START':
         return { treenode_id: action.treenode_id };
         
       case 'DRAFTS_SELECT':

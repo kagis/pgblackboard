@@ -16,6 +16,10 @@ define(function (require, exports, module) {
       password,
       describe,
     }));
+
+    xhr.addEventListener('error', _ => reject({
+      message: 'Network error',
+    }));
     
     xhr.addEventListener('load', () => {
       let json_response;

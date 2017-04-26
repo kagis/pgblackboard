@@ -14,8 +14,12 @@
 .table-header {
   position: sticky;
   top: 0;
+  bottom: 1em;
+  /* border: none; */
+  /* border-width: 0; */
   background-color: var(--table-head-bg-color);
-  outline: 1px solid var(--table-border-color);  
+  /* box-shadow: 1px 1px 0 var(--table-border-color); */
+  outline: 1px solid var(--table-border-color);
 }
 
 .table-corner {

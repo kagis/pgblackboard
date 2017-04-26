@@ -15,52 +15,24 @@
     "rollup-plugin-buble": "^0.15.0",
     "rollup-plugin-commonjs": "^8.0.2"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^3.19.0"
+  },
   "engines": {
     "node": ">=0.10.0"
   },
   "scripts": {
-    "installdep-and-build": "npm install --production && npm run build",
     "build": "node ui/build.js",
-    "test": "JASMINE_CONFIG_PATH=ui/jasmine.json jasmine",
-    "start": "nodejs ui/server.js",
-    "lint": "npm run eslint && npm run jscs",
-    "eslint": "eslint ui --ext .html",
-    "jscs": "jscs ui --verbose",
-    "clean": "jake clean",
+    "lint": "eslint ui",
     "fontello-up": "fontello-cli --config ui/style/fontello/config.json --css ui/style/fontello/css --font ui/style/fontello/font install"
-  },
-  "jscsConfig": {
-    "preset": "yandex",
-    "esnext": true,
-    "requireDotNotation": null,
-    "disallowSpacesInsideObjectBrackets": null,
-    "disallowQuotedKeysInObjects": null,
-    "disallowMultipleVarDecl": "exceptUndefined",
-    "validateIndentation": 2,
-    "excludeFiles": [
-      "node_modules/**",
-      "ui/output/**",
-      "ui/build.js",
-      "ui/fontello"
-    ],
-    "extract": [
-      "**"
-    ]
   },
   "eslintConfig": {
     "extends": "eslint:recommended",
     "env": {
       "browser": true,
-      "amd": true
+      "amd": true,
+      "es6": true
     },
-    "ecmaFeatures": {
-      "blockBindings": true,
-      "templateStrings": true
-    },
-    "plugins": [
-      "html"
-    ],
     "rules": {
       "no-unused-vars": [
         2,

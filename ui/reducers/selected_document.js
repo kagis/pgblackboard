@@ -8,15 +8,21 @@ define(function (require, exports, module) {
           content: '\\connect postgres\n\nSELECT \'hello \' || current_user;',
         };
 
-      case 'TREENODE_SELECT':
+      case 'TREENODE_SELECT_START':
         return Object.assign({}, state, {
           is_loading: true
         });
 
-      case 'TREENODE_DEFINITION_LOADED':
+      case 'TREENODE_SELECT_SUCCESS':
         return {
           is_loading: false,
           content: action.content
+        };
+
+      case 'TREENODE_SELECT_ERROR':
+        return {
+          is_loading: false,
+          content: `/* ${action.message} */`,
         };
 
       case 'DRAFTS_SELECT':

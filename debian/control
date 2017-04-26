@@ -6,3 +6,4 @@ Section: admin
 Description: Minimalistic GIS enabled interface for PostgreSQL
 Recommends: postgresql
 Origin: https://github.com/exe-dealer/pgblackboard
+Build-Depends: dh-systemd
