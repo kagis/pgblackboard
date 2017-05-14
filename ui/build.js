@@ -36,6 +36,7 @@ const js_libs_bundle
   = Promise.all([
     'ui/lib/codemirror/5.25.0/codemirror.js',
     'ui/lib/codemirror/5.25.0/addon/search/searchcursor.js',
+    'ui/lib/codemirror/5.25.0/addon/comment/comment.js',
     'ui/lib/codemirror/5.25.0/keymap/sublime.js',
     'ui/lib/codemirror/5.25.0/addon/edit/matchbrackets.js',
     'ui/lib/codemirror/5.25.0/addon/edit/closebrackets.js',

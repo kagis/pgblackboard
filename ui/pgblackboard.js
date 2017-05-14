@@ -2,6 +2,7 @@
   ...[
     'codemirror.js',
     'addon/search/searchcursor.js',
+    'addon/comment/comment.js',
     'keymap/sublime.js',
     'addon/edit/matchbrackets.js',
     'addon/edit/closebrackets.js',

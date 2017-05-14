@@ -14,4 +14,6 @@ wget --cut-dirs 3 --force-directories --no-host-directories \
   $DIR/addon/edit/closebrackets.min.js \
   $DIR/mode/sql/sql.js \
   $DIR/mode/sql/sql.min.js \
+  $DIR/addon/comment/comment.js \
+  $DIR/addon/comment/comment.min.js \
 ;
