@@ -81,7 +81,7 @@ define(function (require, exports, module) {
                 message: m.payload.message,
                 linecol: linecol(full_script.slice(0,
                   statements[latest_stmt_idx].position_offset +
-                    m.payload.position)),
+                    (m.payload.position || stmt_start_pos(statements[latest_stmt_idx].code)))),
               });
               break;
           }
@@ -89,6 +89,10 @@ define(function (require, exports, module) {
       }
     });
     
+    function stmt_start_pos(stmt) {
+      return stmt.length - strip_comments_on_start(stmt).length;
+    }
+
     stream.on('error', e => dispatch({
       type: 'EXEC_ERROR',
       message: e && e.message || String(e),
