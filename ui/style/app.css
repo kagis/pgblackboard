@@ -122,8 +122,7 @@ body {
 }
 
 .main-nav,
-.main-codeform,
-.main-output {
+.main-codeform {
   background-color: var(--panel-bg);
 }
 

@@ -20,6 +20,7 @@
   background-color: var(--table-head-bg-color);
   /* box-shadow: 1px 1px 0 var(--table-border-color); */
   outline: 1px solid var(--table-border-color);
+  z-index: 1;
 }
 
 .table-corner {
@@ -46,17 +47,17 @@
   max-width: 50em;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: pre;
 }
 
 .table-cell--num {
   text-align: right;
 }
 
-.table-cell:focus {
+.table-row--highlighted .table-cell {
   /* expand cell content on focus */
   white-space: pre;
   overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 /* .table-colheader is all TH except row number */
@@ -95,7 +96,7 @@
   content: 'null';
   font-style: italic;
   font-size: smaller;
-  opacity: .5;
+  color: var(--fg-mute);
 }
 
 .table-cell--emptystr::before {
@@ -211,4 +212,9 @@
 .table-row--deleted {
   color: #aaa;
   text-decoration: line-through;
+}
+
+.table-row--highlighted {
+  background: #1d75b3 !important;
+  color: #eee;
 }

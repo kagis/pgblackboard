@@ -14,6 +14,12 @@ define(function (require, exports, module) {
       ).push(listener);
     }
 
+    off(event_type, listener) {
+      this._listeners_by_event_type[event_type]
+        = (this._listeners_by_event_type[event_type] || [])
+        .filter(it => it != listener);
+    }
+
     emit(event_type, arg) {
       for (let listener of this._listeners_by_event_type[event_type] || []) {
         listener(arg);

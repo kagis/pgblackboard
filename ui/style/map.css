@@ -1,5 +1,12 @@
 .map_container {
-  display: block;
-  width: 100%;
-  height: 100%;
+  /* stretch container with position absolutre rather
+     then width/height 100% beacuse of layout bug in chrome macos.
+     - close map
+     - execute script with some geoobjects
+     - open map: map is not rendering */
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }

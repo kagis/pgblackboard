@@ -16,6 +16,35 @@ run:
 	$(DOCKER_RUN) --publish 7890:7890 jimmycuadra/rust \
 		sh -c "cargo run -- $(args)"
 
+.PHONY: build_dev
+build_dev:
+	docker run -it --rm \
+		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
+		--volume $$PWD:/source \
+		--workdir /source \
+		jimmycuadra/rust \
+		cargo build
+
+.PHONY: start
+start: build_dev
+	-make stop
+	docker run --detach \
+		--name pgblackboard_dev_server \
+		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
+		--volume $$PWD:/source \
+		--workdir /source \
+		--publish 7890:7890 \
+		jimmycuadra/rust \
+		cargo run -- $(args)
+
+.PHONY: stop
+stop:
+	docker rm --force pgblackboard_dev_server
+
+.PHONY: log
+log:
+	docker logs pgblackboard_dev_server
+	
 .PHONY: lint
 lint:
 	$(DOCKER_RUN) node:7 sh -c "npm run lint"

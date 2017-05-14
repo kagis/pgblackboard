@@ -3,6 +3,7 @@ define(function (require, exports, module) {
   const el = require('../core/el');
   const on = require('../core/on');
   const dispatch = require('../core/dispatch');
+  const bus = require('../core/bus');
 
   module.exports = render_table;
   
@@ -11,9 +12,10 @@ define(function (require, exports, module) {
     rows,
     edits,
     src_table,
-    rowset_index,
+    stmt_index,
     can_update_and_delete,
-    can_insert
+    can_insert,
+    highlighted_row_index,
   }) {
     
     const {
@@ -37,7 +39,7 @@ define(function (require, exports, module) {
     );
 
     return el('table.table'
-      ,el.prop('rowset_index', rowset_index)
+      ,el.attr('data-stmt_index', stmt_index)
       ,el.attr(
         'data-database_and_table',
         JSON.stringify([database, table_name])
@@ -61,6 +63,8 @@ define(function (require, exports, module) {
           const error = updates_errors[row_key];
           const is_deleted = deletes[row_key];
           return el('tr.table-row'
+            ,highlighted_row_index == row_index && el.class('table-row--highlighted')
+            ,el.attr('id', `table-row--${stmt_index}_${row_index}`)
             ,is_deleted && el.class('table-row--deleted')
             ,error && el.attr('title', error)
             ,error && el.class('table-row--invalid')
@@ -90,7 +94,6 @@ define(function (require, exports, module) {
   
               return el('td.table-cell'
                 ,el.attr('tabindex', '0')
-                // ,el.prop('table', table_name)
                 ,is_updated && el.attr(
                   'data-original-value',
                   JSON.stringify(original_value)
@@ -195,6 +198,23 @@ define(function (require, exports, module) {
       database_and_table: this.closest('.table').dataset.database_and_table,
       index: +this.closest('.table-row').dataset.index,
     });
+  });
+
+  on('.table-cell', 'focus', function () {
+    dispatch({
+      type: 'ROW_FOCUS',
+      stmt_index: +this.closest('.table').dataset.stmt_index,
+      row_index: this.closest('.table-row').rowIndex - 1,
+      should_map_move: true,
+    });
+  });
+
+  bus.on('rendered:ROW_FOCUS', ({ stmt_index, row_index, should_table_scroll }) => {
+    if (should_table_scroll) {
+      (document.getElementById(`table-row--${stmt_index}_${row_index + 1}`) ||
+      document.getElementById(`table-row--${stmt_index}_${row_index}`))
+        .scrollIntoView(false /* bottom */);
+    }
   });
 
 });

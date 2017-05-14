@@ -6,12 +6,12 @@ define(function (require, exports, module) {
 
   module.exports = () => el('div.execbar'
 
-    ,el('button.execbar-execute.execbar-execute--map'
-      ,el.on('click', _ => dispatch(execute_script({
-        use_map: true,
-      })))
-      ,'map'
-    )
+    // ,el('button.execbar-execute.execbar-execute--map'
+    //   ,el.on('click', _ => dispatch(execute_script({
+    //     use_map: true,
+    //   })))
+    //   ,'map'
+    // )
 
     ,el('button.execbar-execute.execbar-execute--table'
       ,el.attr('accesskey', 'e')

@@ -68,7 +68,7 @@ define(function (require, exports, module) {
               is_loading: state.selected_document.is_loading,
               errors: state.selected_document.errors,
               selection_ranges: state.selected_document.selection_ranges,
-             }),
+            }),
             bottom: el('div.main-output'
               ,el.memoize(render_output, {
                 use_map: state.use_map,
@@ -76,6 +76,8 @@ define(function (require, exports, module) {
                 stmt_results: state.stmt_results,
                 edits: state.edits,
                 errors: state.errors,
+                focused_row: state.focused_row,
+                split: state.split.output,
               })
             ),
           }),

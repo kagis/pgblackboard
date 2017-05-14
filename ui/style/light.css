@@ -1,5 +1,6 @@
 :root {
   --fg: #555;
+  --fg-mute: #ccc;
   --bg: #eee;
   --leftbar-shadow-color: #ccc;
   --panel-bg: #fcfcfc;

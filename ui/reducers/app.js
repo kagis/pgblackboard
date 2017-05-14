@@ -17,6 +17,7 @@ define(function (require, exports, module) {
       errors: require('./errors'),
       edits: require('./edits'),
       credentials: require('./credentials'),
+      focused_row: require('./focused_row'),
     });
   }
 });

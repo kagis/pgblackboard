@@ -4,8 +4,14 @@
   bottom: 0;
   left: 0;
   right: 0;
+  background-color: var(--panel-bg);
+}
+
+.output-scrollbox {
   overflow: auto;
   transform: translateZ(0);
+  width: 100%;
+  height: 100%;
 }
 
 .output-cornerbar {
@@ -17,7 +23,7 @@
   border-top-left-radius: .2em;
 }
 
-.output-save_edits {
+.output-show_map {
   background: transparent;
   border: none;
   color: inherit;
@@ -30,6 +36,28 @@
   cursor: pointer;
 }
 
-.output-save_edits:focus {
+.output-show_map:focus {
   outline: none;
+}
+
+.output-show_map::before {
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+}
+
+.output-show_map--on::before {
+  -content: '\e807';
+}
+
+.output-show_map--off::before {
+  -content: '\f096';
 }

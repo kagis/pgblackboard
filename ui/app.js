@@ -17,7 +17,7 @@ define(function (require, exports, module) {
   store.subscribe(({ action, state }) => {
     // console.profile('render');
     cito.vdom.update(rootNode, rootNodeFn);
-    bus.emit('rendered:' + action.type, action);
+    bus.emit('rendered:' + action.type, action, state);
     // console.profileEnd('render');
     console.log('%o dispatched %c%s %o', action, 'font-weight: bold', action.type, state);
   });
@@ -27,4 +27,13 @@ define(function (require, exports, module) {
   }
 
   dispatch(drafts_load());
+
+  const stored_credentials = window.localStorage.getItem('pgblackboard_credentials');
+  if (stored_credentials) {
+    dispatch(login(JSON.parse(stored_credentials)));
+  }
+
+  window.addEventListener('beforeunload', e => {
+    return e.returnValue = 'Do you want to exit pgBlackboard?';
+  });
 });
