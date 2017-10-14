@@ -12,7 +12,7 @@ const postcss_csso = require('postcss-csso');
 const postcss_import = require('postcss-import');
 const esprima = require('esprima');
 
-const out_dir = process.env['OUT_DIR'] || 'target/ui';
+const out_dir = process.env['OUT_DIR'] || 'ui/_dist';
 
 const js_bundle_without_libs
   = rollup.rollup({
@@ -51,7 +51,7 @@ const js_bundle
   .then(it => it.join('\n'));
 
 const postcss_processor = postcss([
-  postcss_cssnext, 
+  postcss_cssnext,
   postcss_import,
   //postcss_csso,
 ]);
@@ -80,19 +80,19 @@ const html_bundle
       '<style>' + css_bundle_code.replace(/\$/g, '$$$$') + '</style>'
     )
   );
-  
+
 Promise.all([
-  
+
   html_bundle.then(gzip).then(data => Promise.all([
     fsp.writeFile(path.join(out_dir, 'index.html.gz'), data),
     fsp.writeFile(path.join(out_dir, 'index.html.gz.md5'), md5(data)),
   ])),
-    
+
   fsp.readFile('ui/favicon.ico').then(data => Promise.all([
     fsp.writeFile(path.join(out_dir, 'favicon.ico'), data),
     fsp.writeFile(path.join(out_dir, 'favicon.ico.md5'), md5(data)),
   ])),
-    
+
 ]).catch(err => {
   console.error(err);
   process.exit(1);
@@ -109,10 +109,10 @@ function rollup_amd2cjs() {
         ecmaVersion: 6,
         sourceType: 'module',
       });
-      return ast.body.filter(it => 
-          it.type == 'ExpressionStatement' && 
+      return ast.body.filter(it =>
+          it.type == 'ExpressionStatement' &&
           it.expression.type == 'CallExpression' &&
-          it.expression.callee.type == 'Identifier' && 
+          it.expression.callee.type == 'Identifier' &&
           it.expression.callee.name == 'define' &&
           it.expression.arguments.length == 1 &&
           it.expression.arguments[0].type in {

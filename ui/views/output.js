@@ -21,7 +21,7 @@ define(function (require, exports, module) {
     if (!stmt_results) {
       return null;
     }
-    
+
     const show_map = split < 1;
 
     return splitpanel.vertical_splitpanel({
@@ -36,7 +36,7 @@ define(function (require, exports, module) {
             stmt_result,
             stmt_index,
             edits,
-            highlighted_row_index: focused_row
+            focused_row_index: focused_row
               && focused_row.stmt_index == stmt_index
               && focused_row.row_index,
           }))
@@ -75,7 +75,7 @@ define(function (require, exports, module) {
       queryplan
     },
     stmt_index,
-    highlighted_row_index,
+    focused_row_index,
   }) {
     return el('div.stmt_result'
       ,error && el('div.message.message--error'
@@ -92,10 +92,10 @@ define(function (require, exports, module) {
         stmt_index,
         can_update_and_delete: src_table &&  src_table.key_columns.length,
         can_insert: src_table && Object.entries(src_table.columns).every(
-          ([col, { has_default, is_notnull }]) => has_default || !is_notnull || 
+          ([col, { has_default, is_notnull }]) => has_default || !is_notnull ||
             fields.some(({ src_column }) => src_column == col)
         ),
-        highlighted_row_index,
+        focused_row_index,
       })
       ,command_tag && el('div.message'
         ,command_tag

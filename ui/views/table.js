@@ -6,7 +6,7 @@ define(function (require, exports, module) {
   const bus = require('../core/bus');
 
   module.exports = render_table;
-  
+
   function render_table({
     fields,
     rows,
@@ -15,9 +15,9 @@ define(function (require, exports, module) {
     stmt_index,
     can_update_and_delete,
     can_insert,
-    highlighted_row_index,
+    focused_row_index,
   }) {
-    
+
     const {
       deletes = {},
       inserts = [],
@@ -25,13 +25,13 @@ define(function (require, exports, module) {
       updates_errors = {},
       inserts_errors = [],
     } = edits || {};
-    
+
     const {
       key_columns = [],
       table_name,
       database
     } = src_table || {};
-    
+
     const key_field_indexes = key_columns.map(
       key_column => fields.findIndex(
         ({ src_column }) => src_column == key_column
@@ -63,7 +63,7 @@ define(function (require, exports, module) {
           const error = updates_errors[row_key];
           const is_deleted = deletes[row_key];
           return el('tr.table-row'
-            ,highlighted_row_index == row_index && el.class('table-row--highlighted')
+            ,focused_row_index === row_index && el.class('table-row--highlighted')
             ,el.attr('id', `table-row--${stmt_index}_${row_index}`)
             ,is_deleted && el.class('table-row--deleted')
             ,error && el.attr('title', error)
@@ -91,7 +91,7 @@ define(function (require, exports, module) {
               const updated_value = row_updates[field.src_column];
               const is_updated = updated_value !== undefined;
               const display_value = is_updated ? updated_value : original_value;
-  
+
               return el('td.table-cell'
                 ,el.attr('tabindex', '0')
                 ,is_updated && el.attr(
@@ -159,7 +159,7 @@ define(function (require, exports, module) {
       value: original_value === new_value ? undefined : new_value,
     });
   });
-  
+
   on('.table-cell--inserted', 'input', function () {
     const td_el = this;
     const value = td_el.textContent || undefined;
@@ -181,7 +181,7 @@ define(function (require, exports, module) {
       should_delete: false,
     });
   });
-  
+
   on('.table-delete_row--off', 'click', function (e) {
     e.stopImmediatePropagation();
     dispatch({
@@ -191,7 +191,7 @@ define(function (require, exports, module) {
       should_delete: true,
     });
   });
-  
+
   on('.table-insert_cancel', 'click', function () {
     dispatch({
       type: 'TABLE_INSERT_CANCEL',

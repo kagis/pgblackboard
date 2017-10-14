@@ -1,19 +1,19 @@
+RUST_IMAGE := rust:1.21
+
 .PHONY: all _all
 all: ui
-	$(DOCKER_RUN) jimmycuadra/rust sh -c "make _all"
+	$(DOCKER_RUN) $(RUST_IMAGE) sh -c "make _all"
 _all:
 	cargo build --release --features uibuild
 
-.PHONY: ui _ui
+.PHONY: ui
 ui:
-	$(DOCKER_RUN) node:7 sh -c "make _ui"
-_ui: node_modules
 	mkdir -p ui/_dist
-	OUT_DIR=ui/_dist npm run build
+	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run build"
 
 .PHONY: run
 run:
-	$(DOCKER_RUN) --publish 7890:7890 jimmycuadra/rust \
+	$(DOCKER_RUN) --publish 7890:7890 $(RUST_IMAGE) \
 		sh -c "cargo run -- $(args)"
 
 .PHONY: build_dev
@@ -22,7 +22,7 @@ build_dev:
 		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
 		--volume $$PWD:/source \
 		--workdir /source \
-		jimmycuadra/rust \
+		$(RUST_IMAGE) \
 		cargo build
 
 .PHONY: start
@@ -34,7 +34,7 @@ start: build_dev
 		--volume $$PWD:/source \
 		--workdir /source \
 		--publish 7890:7890 \
-		jimmycuadra/rust \
+		$(RUST_IMAGE) \
 		cargo run -- $(args)
 
 .PHONY: stop
@@ -44,14 +44,14 @@ stop:
 .PHONY: log
 log:
 	docker logs pgblackboard_dev_server
-	
+
 .PHONY: lint
 lint:
-	$(DOCKER_RUN) node:7 sh -c "npm run lint"
+	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run lint"
 
 .PHONY: rust_shell
 rust_shell:
-	$(DOCKER_RUN) jimmycuadra/rust bash
+	$(DOCKER_RUN) $(RUST_IMAGE) bash
 
 PGBB_VERSION := 0.2.0
 DEB_PACKAGE_DIR := target/release/pgblackboard_$(PGBB_VERSION)-1_amd64
