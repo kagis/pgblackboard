@@ -98,7 +98,7 @@ define(function (require, exports, module) {
                   'data-original-value',
                   JSON.stringify(original_value)
                 )
-                ,el.attr('data-column', field.src_column)
+                ,field.src_column && el.attr('data-column', field.src_column)
                 ,is_updatable && el.class('table-cell--updatable')
                 ,is_updatable && el.attr('contenteditable', 'true')
                 ,field.is_num && el.class('table-cell--num')

@@ -99,7 +99,7 @@
   color: var(--fg-mute);
 }
 
-.table-cell--emptystr::before {
+.table-cell--emptystr:empty::before {
   content: 'empty string';
 }
 
