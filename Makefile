@@ -1,10 +1,8 @@
 RUST_IMAGE := rust:1.21
 
-.PHONY: all _all
+.PHONY: all
 all: ui
-	$(DOCKER_RUN) $(RUST_IMAGE) sh -c "make _all"
-_all:
-	cargo build --release --features uibuild
+	$(DOCKER_RUN) $(RUST_IMAGE) sh -c "cargo build --release --features uibuild"
 
 .PHONY: ui
 ui:
@@ -18,32 +16,7 @@ run:
 
 .PHONY: build_dev
 build_dev:
-	docker run -it --rm \
-		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
-		--volume $$PWD:/source \
-		--workdir /source \
-		$(RUST_IMAGE) \
-		cargo build
-
-.PHONY: start
-start: build_dev
-	-make stop
-	docker run --detach \
-		--name pgblackboard_dev_server \
-		--volume pgblackboard_cargo_reg:/root/.cargo/registry \
-		--volume $$PWD:/source \
-		--workdir /source \
-		--publish 7890:7890 \
-		$(RUST_IMAGE) \
-		cargo run -- $(args)
-
-.PHONY: stop
-stop:
-	docker rm --force pgblackboard_dev_server
-
-.PHONY: log
-log:
-	docker logs pgblackboard_dev_server
+	$(DOCKER_RUN) $(RUST_IMAGE) sh -c "cargo build"
 
 .PHONY: lint
 lint:
@@ -74,6 +47,6 @@ clean:
 	rm -r target ui/_dist node_modules
 
 DOCKER_RUN := docker run -it --rm \
-	--volume pgblackboard_cargo_reg:/root/.cargo/registry \
+	--volume $$PWD/.cargo_registry:/usr/local/cargo/registry \
 	--volume $$PWD:/source \
 	--workdir /source

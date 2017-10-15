@@ -1,5 +1,4 @@
 extern crate threadpool;
-extern crate rustc_serialize;
 
 mod readall;
 mod method;
@@ -7,14 +6,13 @@ mod reqerror;
 mod status;
 mod grammar;
 mod response;
-pub mod form;
 
 pub use self::method::Method;
 pub use self::status::Status;
 pub use self::response::{ ResponseStarter, ResponseWriter, ChunkedWriter } ;
 
-use self::rustc_serialize::base64::FromBase64;
-use self::rustc_serialize::{json, Decodable};
+// use self::rustc_serialize::base64::FromBase64;
+// use self::rustc_serialize::{json, Decodable};
 use self::threadpool::ThreadPool;
 use self::readall::{ReadAll};
 
@@ -161,11 +159,11 @@ pub enum RequestCredentials {
 
 impl Request {
 
-    pub fn decode_urlencoded_form<T: Decodable>(&self) -> form::DecodeResult<T> {
-        let content = self.content.as_ref().unwrap();
-        let form = parse_qs(content);
-        form::decode_form(form)
-    }
+    // pub fn decode_urlencoded_form<T: Decodable>(&self) -> form::DecodeResult<T> {
+    //     let content = self.content.as_ref().unwrap();
+    //     let form = parse_qs(content);
+    //     form::decode_form(form)
+    // }
 
     fn read_from<T: BufRead>(reader: &mut T) -> io::Result<Request> {
         let req_line = try!(reader.read_crlf_line());
@@ -225,9 +223,9 @@ impl Request {
                     is_urlenc_content = header_value == "application/x-www-form-urlencoded";
                     //content_type = Some(header_value.to_string());
                 }
-                "authorization" => {
-                    credentials = Some(try!(parse_authorization(header_value)));
-                },
+                // "authorization" => {
+                //     credentials = Some(try!(parse_authorization(header_value)));
+                // },
                 "if-none-match" => {
                     if_non_match = Some(header_value.to_string());
                 }
@@ -262,47 +260,47 @@ impl Request {
 }
 
 
-fn parse_authorization(header_value: &str) -> io::Result<RequestCredentials> {
+// fn parse_authorization(header_value: &str) -> io::Result<RequestCredentials> {
 
 
-    let colon_pos = try!(header_value.find(' ').ok_or(io::Error::new(
-        io::ErrorKind::Other,
-        "Missing space between auth scheme and credentials."
-    )));
+//     let colon_pos = try!(header_value.find(' ').ok_or(io::Error::new(
+//         io::ErrorKind::Other,
+//         "Missing space between auth scheme and credentials."
+//     )));
 
-    let auth_scheme = &header_value[0..colon_pos];
-    if auth_scheme != "Basic" {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Unsupported authorization scheme",
-            // Some(format!("{}", auth_scheme)),
-        ));
-    }
+//     let auth_scheme = &header_value[0..colon_pos];
+//     if auth_scheme != "Basic" {
+//         return Err(io::Error::new(
+//             io::ErrorKind::Other,
+//             "Unsupported authorization scheme",
+//             // Some(format!("{}", auth_scheme)),
+//         ));
+//     }
 
-    let cred_b64 = &header_value[(colon_pos + 1)..];
-    let cred_bytes = try!(cred_b64.from_base64().map_err(|_| io::Error::new(
-        io::ErrorKind::Other,
-        "Malformed Authorization header: Invalid base64."
-    )));
-    let cred = try!(String::from_utf8(cred_bytes).map_err(|_| io::Error::new(
-        io::ErrorKind::Other,
-        "Malformed Authorization header: Invalid utf-8 credentials."
-    )));
+//     let cred_b64 = &header_value[(colon_pos + 1)..];
+//     let cred_bytes = try!(cred_b64.from_base64().map_err(|_| io::Error::new(
+//         io::ErrorKind::Other,
+//         "Malformed Authorization header: Invalid base64."
+//     )));
+//     let cred = try!(String::from_utf8(cred_bytes).map_err(|_| io::Error::new(
+//         io::ErrorKind::Other,
+//         "Malformed Authorization header: Invalid utf-8 credentials."
+//     )));
 
-    Ok({
-        let colon_pos = try!(cred.find(':').ok_or(io::Error::new(
-            io::ErrorKind::Other,
-            "Missing colon between username and password."
-        )));
+//     Ok({
+//         let colon_pos = try!(cred.find(':').ok_or(io::Error::new(
+//             io::ErrorKind::Other,
+//             "Missing colon between username and password."
+//         )));
 
-        let user = cred[..colon_pos].to_string();
-        let password = cred[(colon_pos + 1)..].to_string();
-        RequestCredentials::Basic {
-            user: user,
-            passwd: password
-        }
-    })
-}
+//         let user = cred[..colon_pos].to_string();
+//         let password = cred[(colon_pos + 1)..].to_string();
+//         RequestCredentials::Basic {
+//             user: user,
+//             passwd: password
+//         }
+//     })
+// }
 
 
 trait CRLFLineReader {

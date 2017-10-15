@@ -2,7 +2,7 @@ use serde_json;
 use serde;
 use http;
 use std::io::{ self, Write };
-use std::collections::{ BTreeMap, BTreeSet };
+use std::collections::{ BTreeMap, BTreeSet, VecDeque };
 use postgres as pg;
 
 
@@ -45,13 +45,13 @@ impl http::Resource for SqlExecEndpoint {
                 content: "Failed to decode form",
             }),
         };
-        
+
         let maybe_conn = pg::connect(
             &self.pgaddr,
             &form.database,
             (&form.user, &form.password),
         );
-        
+
         let conn = match maybe_conn {
             Ok(conn) => conn,
             // Err(pg::Error { code: pg::SqlState::InvalidPassword, .. }) |
@@ -84,9 +84,6 @@ impl<T: serde::Serialize> http::Response for JsonResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("application/json"));
-        if self.status == http::Status::Unauthorized {
-            try!(w.write_www_authenticate_basic("postgres"));
-        }
         w.write_content(serde_json::to_string(&self.content).unwrap().as_bytes())
     }
 }
@@ -258,17 +255,17 @@ struct JsonMessage<T> {
 
 
 fn describe_statement(conn: &mut pg::Connection) -> pg::Result<serde_json::Value> {
-    
+
 
     let fields = conn.describe_statement("")?;
-    
+
     if fields.is_empty() {
         return Ok(serde_json::Value::Null);
     }
-    
+
     let (columns_names, source_table_json) = describe_source_table(conn, &fields)?;
-  
-    let typ_descrs = pg::query::<(String, bool)>(conn, &format!(
+
+    let typ_descrs = pg::query(conn, &format!(
         stringify!(
               SELECT format_type(param.typoid, param.typmod)
                     ,pg_type.typcategory = 'N'
@@ -284,7 +281,12 @@ fn describe_statement(conn: &mut pg::Connection) -> pg::Result<serde_json::Value
                  ))
                  .collect::<Vec<_>>()
                  .join(",")
-    ))?;
+    ))?.into_iter()
+        .map(VecDeque::from)
+        .map(|mut row| (
+            row.pop_front().unwrap().unwrap(),
+            row.pop_front().unwrap().unwrap() == "t",
+        )).collect::<Vec<_>>();
 
     let fields_json = fields.into_iter().zip(typ_descrs)
         .map(|(field, (fmttyp, is_num))| json!({
@@ -297,7 +299,7 @@ fn describe_statement(conn: &mut pg::Connection) -> pg::Result<serde_json::Value
                 .and_then(|it| columns_names.get(&it)),
         }))
         .collect::<Vec<_>>();
-    
+
     Ok(json!({
         "fields": fields_json,
         "src_table": source_table_json,
@@ -317,14 +319,14 @@ fn describe_source_table(
     if tables_oids.is_empty() {
         return Ok((BTreeMap::new(), serde_json::Value::Null));
     }
-    
+
     let tables_oids_csv = tables_oids.iter()
                                      .map(|it| it.to_string())
                                      .collect::<Vec<_>>()
                                      .join(",");
-            
+
     let res
-        = pg::query::<(pg::Oid, String,)>(conn, &format!(
+        = pg::query(conn, &format!(
             stringify!(
                   SELECT indrelid, indkey
                     FROM pg_index
@@ -336,6 +338,11 @@ fn describe_source_table(
             tables_oids_csv
         ))?
         .into_iter()
+        .map(VecDeque::from)
+        .map(|mut row| (
+            row.pop_front().unwrap().unwrap().parse::<pg::Oid>().unwrap(),
+            row.pop_front().unwrap().unwrap(),
+        ))
         .map(|(table_oid, key_col_ids_space_separated)| (
             table_oid,
             fields.iter()
@@ -349,13 +356,12 @@ fn describe_source_table(
         .find(|&(table_oid, ref selected_col_ids, ref key_col_ids)| {
             key_col_ids.is_subset(selected_col_ids)
         });
-        
+
     let (table_oid, _, key_columns_ids) = match res {
         Some(it) => it,
         None => return Ok((BTreeMap::new(), serde_json::Value::Null)),
-    }; 
-    
-    #[derive(RustcDecodable)]
+    };
+
     struct ColumnDescr {
         table_oid: pg::Oid,
         table_fullname: String,
@@ -365,7 +371,7 @@ fn describe_source_table(
         has_default: bool,
     }
 
-    let cols_descrs = pg::query::<ColumnDescr>(conn, &format!(
+    let cols_descrs = pg::query(conn, &format!(
         stringify!(
             SELECT attrelid
                   ,quote_ident(nspname) || '.' || quote_ident(relname)
@@ -381,13 +387,22 @@ fn describe_source_table(
                AND attrelid = {}
         ),
         table_oid
-    ))?;
-    
+    ))?.into_iter()
+        .map(VecDeque::from)
+        .map(|mut row| ColumnDescr {
+            table_oid: row.pop_front().unwrap().unwrap().parse().unwrap(),
+            table_fullname: row.pop_front().unwrap().unwrap(),
+            column_id: row.pop_front().unwrap().unwrap().parse().unwrap(),
+            name: row.pop_front().unwrap().unwrap(),
+            is_notnull: row.pop_front().unwrap().unwrap() == "t",
+            has_default: row.pop_front().unwrap().unwrap() == "t",
+        }).collect::<Vec<_>>();
+
     let colnames = cols_descrs.iter().map(|it| (
         (it.table_oid, it.column_id),
         it.name.clone(),
     )).collect::<BTreeMap<_, _>>();
-    
+
     let source_table_json = json!({
         "database": conn.database(),
         "table_name": cols_descrs.iter()

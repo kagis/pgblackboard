@@ -2,3 +2,4 @@
 /node_modules
 /target
 /npm-debug.log
+/.cargo_registry

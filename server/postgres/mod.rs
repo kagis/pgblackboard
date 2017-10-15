@@ -3,8 +3,6 @@ mod sqlstate;
 mod backend;
 mod frontend;
 
-mod decoder;
-use rustc_serialize::Decodable;
 
 use self::md5::Md5;
 
@@ -393,13 +391,13 @@ impl Connection {
     }
 }
 
-pub fn query<T: Decodable>(conn: &mut Connection, stmt: &str) -> Result<Vec<T>> {
+pub fn query(conn: &mut Connection, stmt: &str) -> Result<Vec<Vec<Option<String>>>> {
     let stmt_name = "pgbb_stmt";
     conn.parse_statement(stmt_name, stmt)?;
     conn.execute_statement(stmt_name, 0 , &[])?;
     let mut rows = vec![];
     while let Some(row) = conn.fetch_row() {
-        rows.push(decoder::decode_row(row).unwrap());
+        rows.push(row);
     }
     let result = conn.current_execution_result
                      .take()

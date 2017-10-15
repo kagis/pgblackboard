@@ -1,16 +1,9 @@
-// #![feature(slice_patterns)]
-// #![feature(iter_arith)]
-// #![feature(read_exact)]
-// #![feature(str_char)]
-
 extern crate argparse;
-extern crate rustc_serialize;
 #[macro_use]
 extern crate serde_json;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-// extern crate regex;
 
 mod http;
 
@@ -21,7 +14,6 @@ mod sqlexec;
 mod postgres;
 // mod sql;
 
-use rustc_serialize::{json, Encodable};
 use std::io;
 use std::fs;
 use std::path::PathBuf;
@@ -76,7 +68,7 @@ impl http::Handler for WebApplication {
     {
         let path_prefix = path[0];
         let path_tail = &path[1..];
-        
+
         if path_prefix == "exec" {
             return http::Handler::handle_http_req(
                 &self::sqlexec::SqlExecEndpoint {
@@ -97,7 +89,7 @@ impl http::Handler for WebApplication {
                 content: b"not found".to_vec(),
             })
         }
-        
+
         #[cfg(not(feature = "uibuild"))]
         match path_prefix {
             "" => FsDirHandler("./ui").handle_http_req(&["index.html"], req),
@@ -105,21 +97,21 @@ impl http::Handler for WebApplication {
         }
     }
 }
- 
 
-struct JsonResponse<T: Encodable> {
+
+struct JsonResponse<T: serde::Serialize> {
     status: http::Status,
     content: T,
 }
 
-impl<T: Encodable> http::Response for JsonResponse<T> {
+impl<T: serde::Serialize> http::Response for JsonResponse<T> {
     fn write_to(self: Box<Self>, w: http::ResponseStarter) -> io::Result<()> {
         let mut w = try!(w.start(self.status));
         try!(w.write_content_type("application/json"));
-        w.write_content(json::encode(&self.content).unwrap().as_bytes())
+        w.write_content(serde_json::to_string(&self.content).unwrap().as_bytes())
     }
 }
- 
+
 struct FsDirHandler(&'static str);
 
 impl http::Handler for FsDirHandler {
