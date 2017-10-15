@@ -23,6 +23,23 @@
   border-top-left-radius: .2em;
 }
 
+.output-save_edits {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 0.8125em;
+  font-family: inherit;
+  border-bottom: 1px dotted;
+  line-height: 1;
+  padding: 0;
+  margin: .2em;
+  cursor: pointer;
+}
+
+.output-save_edits:focus {
+  outline: none;
+}
+
 .output-show_map {
   background: transparent;
   border: none;

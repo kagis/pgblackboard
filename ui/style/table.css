@@ -18,8 +18,8 @@
   /* border: none; */
   /* border-width: 0; */
   background-color: var(--table-head-bg-color);
-  /* box-shadow: 1px 1px 0 var(--table-border-color); */
-  outline: 1px solid var(--table-border-color);
+  box-shadow: 1px 1px 0 var(--table-border-color);
+  /* outline: 1px solid var(--table-border-color); */
   z-index: 1;
 }
 
@@ -85,6 +85,7 @@
 .table-rowheader {
   text-align: right;
   font-weight: bold;
+  color: #ccc;
 }
 
 .table-newrow > .table-rowheader::before {

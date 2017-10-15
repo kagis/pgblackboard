@@ -47,16 +47,16 @@ define(function (require, exports, module) {
           ))
         )
         ,el('div.output-cornerbar'
-          // ,el('button.output-save_edits'
-          //   ,el.on('click', _ => dispatch(table_save_edits()))
-          //   ,'save edits'
-          // )
+          ,el('button.output-save_edits'
+            ,!Object.keys(edits).length && el.attr('disabled', 'disabled')
+            ,el.on('click', _ => dispatch(table_save_edits()))
+            ,'save'
+          )
           ,el('button.output-show_map'
             ,el.on('click', _ => dispatch({ type: 'MAP_TOGGLE' }))
             ,show_map && el.class('output-show_map--on')
             ,!show_map && el.class('output-show_map--off')
-            ,show_map && 'hide map'
-            ,!show_map && 'show map'
+            ,'map'
           )
         )
       ),

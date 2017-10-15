@@ -9,8 +9,8 @@ ui:
 	mkdir -p ui/_dist
 	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run build"
 
-.PHONY: run
-run:
+.PHONY: start
+start:
 	$(DOCKER_RUN) --publish 7890:7890 $(RUST_IMAGE) \
 		sh -c "cargo run -- $(args)"
 

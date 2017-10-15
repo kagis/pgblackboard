@@ -1,18 +1,9 @@
-language: rust
-rust: nightly
-install:
-  - npm install
-script:
-  - npm test
-  - cargo test
-  - cargo test -- --ignored
-env:
-  global:
-    - PGUSER=pgblackboard_test_user
-    - PGPASSWORD=pgblackboard_test_pwd
-    - PGHOST=localhost
-    - PGPORT=5432
-jdk:
-  - openjdk7
-before_script:
-  - psql -c "CREATE USER $PGUSER WITH SUPERUSER LOGIN PASSWORD '$PGPASSWORD'" -U postgres
+sudo: required
+services:
+  - docker
+after_success:
+  - make;
+    docker build --tag exedealer/pgblackboard .;
+    docker login -u="$DOCKERHUB_USERID" -p="$DOCKERHUB_PASSWORD";
+    docker push exedealer/pgblackbord;
+

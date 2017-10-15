@@ -341,13 +341,13 @@
 }
 
 .treenode-message_layout {
-  display: inline-block;
+  display: block;
   margin-top: .5em;
   margin-bottom: .4em;
 }
 
 .treenode-message {
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 0 .1em;

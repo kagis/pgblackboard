@@ -10,7 +10,7 @@ define(function (require, exports, module) {
       message: reduce_message,
     });
   }
-  
+
   function reduce_nodes(state = [], action) {
     switch (action.type) {
       case 'LOGIN_SUCCESS':
@@ -92,10 +92,10 @@ define(function (require, exports, module) {
         }
         return {
           treenode_id: action.treenode_id,
-          text: 'There is no child items yet.',
+          text: 'no child items',
           is_error: false,
         };
-        
+
       case 'TREENODE_EXPAND_ERROR':
         return {
           treenode_id: action.treenode_id,
