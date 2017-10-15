@@ -5,7 +5,7 @@ all: ui
 	$(DOCKER_RUN) $(RUST_IMAGE) sh -c "cargo build --release --features uibuild"
 
 .PHONY: ui
-ui:
+ui: node_modules
 	mkdir -p ui/_dist
 	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run build"
 
@@ -39,8 +39,8 @@ _deb:
 	dpkg-deb --build $(DEB_PACKAGE_DIR)
 	rm -r $(DEB_PACKAGE_DIR)
 
-node_modules: package.json
-	npm install
+node_modules:
+	$(DOCKER_RUN) node:8.6-alpine npm install
 
 .PHONY: clean
 clean:
