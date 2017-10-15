@@ -1,6 +1,7 @@
 sudo: required
 services:
   - docker
+language: rust
 after_success:
   - make;
     docker build --tag exedealer/pgblackboard .;
