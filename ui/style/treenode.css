@@ -90,11 +90,16 @@
   font-family: inherit;
   font-size: inherit;
   line-height: 1em;
-  cursor: pointer;
   white-space: nowrap;
 }
 
-.treenode-toggler:hover {
+.treenode-toggler--collapser:hover,
+.treenode-toggler--expander {
+  cursor: pointer;
+}
+
+.treenode-toggler--collapser:hover,
+.treenode-toggler--expander:hover {
   opacity: 1;
 }
 

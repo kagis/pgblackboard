@@ -100,7 +100,7 @@ define(function (require, exports, module) {
                 )
                 ,field.src_column && el.attr('data-column', field.src_column)
                 ,is_updatable && el.class('table-cell--updatable')
-                ,is_updatable && el.attr('contenteditable', 'true')
+                ,is_updatable && el.attr('contenteditable', 'plaintext-only')
                 ,field.is_num && el.class('table-cell--num')
                 ,display_value === '' && el.class('table-cell--emptystr')
                 ,display_value
@@ -119,7 +119,7 @@ define(function (require, exports, module) {
             return el('td.table-cell.table-cell--inserted'
               ,el.attr('tabindex', '0')
               ,el.attr('data-column', field.src_column)
-              ,field.src_column && el.attr('contenteditable', 'true')
+              ,field.src_column && el.attr('contenteditable', 'plaintext-only')
               ,field.is_num && el.class('table-cell--num')
               ,val === '' && el.class('table-cell--emptystr')
               ,val
@@ -135,7 +135,7 @@ define(function (require, exports, module) {
               el('td.table-cell.table-cell--inserted'
                 ,el.attr('tabindex', '0')
                 ,el.attr('data-column', field.src_column)
-                ,field.src_column && el.attr('contenteditable', 'true')
+                ,field.src_column && el.attr('contenteditable', 'plaintext-only')
                 ,field.is_num && el.class('table-cell--num')
               )
             ))

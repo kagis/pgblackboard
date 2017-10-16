@@ -36,6 +36,10 @@
   cursor: pointer;
 }
 
+.output-save_edits:disabled {
+  color: #ccc;
+}
+
 .output-save_edits:focus {
   outline: none;
 }
