@@ -5,8 +5,5 @@ language: c
 script:
   - echo 'ok'
 after_success:
-  - make && \
-    docker build --tag exedealer/pgblackboard . && \
-    docker login -u='$DOCKERHUB_USERID' -p='$DOCKERHUB_PASSWORD' && \
-    docker push exedealer/pgblackbord
+  - make && docker build --tag exedealer/pgblackboard . && docker login -u='$DOCKERHUB_USERID' -p='$DOCKERHUB_PASSWORD' && docker push exedealer/pgblackbord
 
