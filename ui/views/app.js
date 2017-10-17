@@ -10,7 +10,7 @@ define(function (require, exports, module) {
   const render_loginform = require('./loginform');
 
   module.exports = render_app;
-  
+
   function render_app(state) {
     return el('div.main'
       ,state.is_dark && el.class('dark')
@@ -49,7 +49,7 @@ define(function (require, exports, module) {
               tree: state.tree,
               selected_treenode_id: state.selected_treenode_or_draft.treenode_id,
             })
-            
+
             // ,!state.credentials.is_authenticated && (
             //   render_loginform()
             // )
@@ -68,6 +68,7 @@ define(function (require, exports, module) {
               is_loading: state.selected_document.is_loading,
               errors: state.selected_document.errors,
               selection_ranges: state.selected_document.selection_ranges,
+              is_executing: state.is_executing,
             }),
             bottom: el('div.main-output'
               ,el.memoize(render_output, {

@@ -3,7 +3,7 @@ define(function (require, exports, module) {
   const reduce_combined = require('../core/reduce_combined');
 
   module.exports = reduce_app;
-  
+
   function reduce_app(state, action) {
     return reduce_combined(state, action, {
       is_dark: require('./is_dark'),
@@ -18,6 +18,7 @@ define(function (require, exports, module) {
       edits: require('./edits'),
       credentials: require('./credentials'),
       focused_row: require('./focused_row'),
+      is_executing: require('./is_executing'),
     });
   }
 });

@@ -10,10 +10,13 @@ define(function (require, exports, module) {
     const xhr = new XMLHttpRequest();
     xhr.addEventListener('load', onload);
     xhr.addEventListener('error', onerror);
+    xhr.addEventListener('loadend', onloadend);
     xhr.addEventListener('readystatechange', onreadystatechange);
     xhr.open('POST', 'exec');
     xhr.send(JSON.stringify(options));
-    return ee;
+    return Object.assign(ee, {
+      abort: xhr.abort.bind(xhr),
+    });
 
     function onreadystatechange(e) {
       if (xhr.status != 200) {
@@ -40,9 +43,12 @@ define(function (require, exports, module) {
         } catch (e) {}
         ee.emit('error', resp);
       }
+    }
+
+    function onloadend() {
       ee.emit('finish');
     }
-    
+
     function onerror(e) {
       ee.emit('error', e);
     }

@@ -3,12 +3,12 @@ define(function (require, exports, module) {
   const el = require('../core/el');
   const dispatch = require('../core/dispatch');
   const login = require('../actions/login');
-  
+
   module.exports = render_loginform;
-  
-  function render_loginform({ error, is_processing }) {
+
+  function render_loginform({ error, is_authenticating }) {
     let user_input, password_input;
-    
+
     return (
       el('form.loginform'
         ,el.on('submit', onsubmit)
@@ -24,8 +24,9 @@ define(function (require, exports, module) {
         )
         ,el('button.loginform-submit'
           ,el.attr('type', 'submit')
+          ,is_authenticating && el.attr('disabled', 'disabled')
           ,'login'
-          ,is_processing && '...'
+          ,is_authenticating && '...'
         )
         ,error && (
           el('div.loginform-error'
@@ -34,12 +35,14 @@ define(function (require, exports, module) {
         )
       )
     );
-    
+
     function onsubmit(e) {
-      dispatch(login({
-        user: user_input.dom.value,
-        password: password_input.dom.value,
-      }));
+      if (!is_authenticating) {
+        dispatch(login({
+          user: user_input.dom.value,
+          password: password_input.dom.value,
+        }));
+      }
       e.preventDefault();
     }
   }

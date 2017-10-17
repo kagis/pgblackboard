@@ -1,16 +1,16 @@
 define(function (require, exports, module) {
   'use strict';
-  
+
   module.exports = reduce_stmt_results;
-  
+
   function reduce_stmt_results(state, action) {
     switch (action.type) {
       case 'INIT':
-      case 'TREENODE_DEFINITION_LOADED':
-      case 'DRAFTS_SELECT':
+      // case 'TREENODE_SELECT_SUCCESS':
+      // case 'DRAFTS_SELECT':
       case 'EXEC':
         return [];
-        
+
       // case 'EXPAND_QUERY_PLAN':
       //   return merge(state, {
       //       [action.resultIndex]: {
@@ -45,12 +45,12 @@ define(function (require, exports, module) {
             action
           ),
         });
-        
+
       case 'TABLE_SAVED': {
         const patches = state
           .map((it, i) => [
             it,
-            i, 
+            i,
             it.src_table && action.edits[JSON.stringify([
               it.src_table.database,
               it.src_table.table_name,
@@ -88,12 +88,12 @@ define(function (require, exports, module) {
           });
         return Object.assign([], state, ...patches);
       }
-      
+
       default:
         return state;
     }
   }
-  
+
   function reduce_stmt_results_inner(state, action) {
     switch (action.type) {
        case 'STATEMENT_EXECUTING':
@@ -128,10 +128,10 @@ define(function (require, exports, module) {
         return Object.assign({}, state, action.description);
 
       case 'STATEMENT_ROWS':
-        return Object.assign({}, state, { 
+        return Object.assign({}, state, {
           rows: [...state.rows, ...action.rows],
         });
-        
+
       default:
         return state;
     }
@@ -149,5 +149,5 @@ define(function (require, exports, module) {
       children,
     };
   }
-  
+
 });

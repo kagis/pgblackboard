@@ -1,18 +1,21 @@
 define(function (require, exports, module) {
   'use strict';
-  
+
   const next_statement = require('../sql/next_statement');
   const extract_connect_metacmd = require('../sql/extract_connect_metacmd');
   const strip_comments_on_start = require('../sql/strip_comments_on_start');
   const linecol = require('../sql/linecol');
   const sql_stream = require('../api/sql_stream');
+  const bus = require('../core/bus');
+
+  let current_stream;
 
   module.exports = ({ use_map }) => (dispatch, state) => {
     dispatch({
       type: 'EXEC',
       use_map: Boolean(use_map),
     });
-    
+
     const full_script = getScript();
     const database_and_script = extract_connect_metacmd(full_script);
     if (!database_and_script) {
@@ -33,14 +36,14 @@ define(function (require, exports, module) {
       statements.push({ code, position_offset });
     }
 
-    const stream = sql_stream({
+    const stream = current_stream = sql_stream({
       statements: statements.map(it => it.code),
       database,
       user: state.credentials.user,
       password: state.credentials.password,
       describe: true,
     });
-    
+
     let latest_stmt_idx = -1;
 
     stream.on('messages', function (messages) {
@@ -88,7 +91,7 @@ define(function (require, exports, module) {
         }
       }
     });
-    
+
     function stmt_start_pos(stmt) {
       return stmt.length - strip_comments_on_start(stmt).length;
     }
@@ -96,6 +99,10 @@ define(function (require, exports, module) {
     stream.on('error', e => dispatch({
       type: 'EXEC_ERROR',
       message: e && e.message || String(e),
+    }));
+
+    stream.on('finish', () => dispatch({
+      type: 'EXEC_COMPLETE',
     }));
 
     function getScript() {
@@ -110,5 +117,15 @@ define(function (require, exports, module) {
       return state.selected_document.selection;
     }
   };
-  
+
+  module.exports.cancel = function cancel() {
+    if (current_stream) {
+      current_stream.abort();
+      current_stream = null;
+    }
+    return {
+      type: 'EXEC_CANCEL',
+    };
+  };
+
 })

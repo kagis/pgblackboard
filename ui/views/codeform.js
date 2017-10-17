@@ -15,7 +15,8 @@ define(function (require, exports, module) {
     selection_ranges,
     errors,
     is_loading,
-    draft_id
+    draft_id,
+    is_executing,
   }) {
     return el('div.codeform'
 
@@ -32,7 +33,7 @@ define(function (require, exports, module) {
       })
 
       ,el('div.codeform-execbar'
-        ,render_execbar()
+        ,render_execbar({ is_executing })
       )
     );
 
