@@ -10,8 +10,8 @@ install:
 script:
   - npm run build
   - cargo build --release --features uibuild
-  - ls -laR target
   - docker build --tag exedealer/pgblackboard .
 after_success:
+  - echo '$DOCKERHUB_USERID' '$DOCKERHUB_PASSWORD'
   - docker login -u='$DOCKERHUB_USERID' -p='$DOCKERHUB_PASSWORD' && docker push exedealer/pgblackbord
 
