@@ -8,16 +8,16 @@ define(function (require, exports, module) {
     if (!script.length) {
       return;
     }
-    
+
     const database = script[0].database;
-    
+
     script.unshift({
       statement: 'BEGIN',
     });
     script.push({
       statement: 'END',
     });
-    
+
     sql_query({
       statements: script.map(it => it.statement),
       database,
@@ -57,17 +57,19 @@ define(function (require, exports, module) {
       if (typeof err.stmt_index != 'number') {
         return alert(err.message);
       }
-      const { database_and_table, key } = script[err.stmt_index];
+      const { database_and_table, key, type, insert_index } = script[err.stmt_index];
       dispatch({
         type: 'TABLE_SAVE_ERROR',
         database_and_table,
         key,
-        message: err.message, 
+        insert_index,
+        edit_type: type,
+        message: err.message,
       });
     });
   };
-  
-  
+
+
   function modification_script(edits) {
     if (!(edits && Object.keys(edits).length)) {
       return [];
@@ -91,40 +93,41 @@ define(function (require, exports, module) {
         database,
         database_and_table,
         key,
-        statement: 
+        statement:
           'DELETE FROM ' + table + ' WHERE '
           + JSON.parse(key).map(column_eq_value).join(' AND ')
           + ' RETURNING *'
       })),
-      
+
       ...Object.entries(updates).map(([key, dict]) => ({
         type: 'update',
         database,
         database_and_table,
         key,
         statement:
-          'UPDATE ' + table + ' SET ' 
+          'UPDATE ' + table + ' SET '
           + Object.entries(dict).map(column_eq_value).join(', ')
           + ' WHERE '
           + JSON.parse(key).map(column_eq_value).join(' AND ')
           + ' RETURNING *'
       })),
-    
+
       // FIXME: do Object.keys and Object.values garantee the same order?
-      ...inserts.map(dict => ({
+      ...inserts.map((dict, insert_index) => ({
         type: 'insert',
         database,
         database_and_table,
+        insert_index,
         statement:
           'INSERT INTO ' + table + '('
-          + Object.keys(dict).map(quote_ident).join(', ') 
+          + Object.keys(dict).map(quote_ident).join(', ')
           + ') VALUES ('
           + Object.values(dict).map(quote_literal).join(', ')
           + ') RETURNING *'
       })),
     ];
   }
-  
+
   function column_eq_value([column, value]) {
     return quote_ident(column) + ' = ' + quote_literal(value);
   }

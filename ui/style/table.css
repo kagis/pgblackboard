@@ -36,7 +36,8 @@
   box-shadow: 2px 2px 0 -1px var(--table-border-color) inset;
 }
 
-.table td {
+.table-cell,
+.table-rowheader {
   border-width: 1px;
   border-style: solid;
   padding: .2em;
@@ -51,6 +52,39 @@
 
 .table-cell--num {
   text-align: right;
+}
+
+.table-cell--updated {
+  position: relative;
+  padding-right: 1em;
+}
+
+.table-cell--updated.table-cell--num {
+  padding-right: .2em;
+  padding-left: 1em;
+}
+
+.table-cell--updated::after {
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  content: '\e816';
+  position: absolute;
+  right: 2px;
+  color: rgb(145, 205, 152);
+  top: 4px;
+}
+
+.table-cell--updated.table-cell--num::after {
+  right: initial;
+  left: 2px;
 }
 
 .table-row--highlighted .table-cell {
@@ -193,7 +227,7 @@
   font-variant: normal;
   text-transform: none;
   line-height: 1;
-  color: red;
+  color: var(--danger-color);
 }
 
 .table-error_icon:hover::after {

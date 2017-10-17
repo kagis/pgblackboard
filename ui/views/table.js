@@ -19,11 +19,12 @@ define(function (require, exports, module) {
   }) {
 
     const {
-      deletes = {},
       inserts = [],
+      inserts_errors = [],
       updates = {},
       updates_errors = {},
-      inserts_errors = [],
+      deletes = {},
+      deletes_errors = {},
     } = edits || {};
 
     const {
@@ -60,13 +61,12 @@ define(function (require, exports, module) {
           const row_key = JSON.stringify(key_field_indexes
             .map(i => [key_columns[i], row[i]]));
           const row_updates = updates[row_key] || {};
-          const error = updates_errors[row_key];
+          const error = deletes_errors[row_key] || updates_errors[row_key];
           const is_deleted = deletes[row_key];
           return el('tr.table-row'
             ,focused_row_index === row_index && el.class('table-row--highlighted')
             ,el.attr('id', `table-row--${stmt_index}_${row_index}`)
             ,is_deleted && el.class('table-row--deleted')
-            ,error && el.attr('title', error)
             ,error && el.class('table-row--invalid')
             ,el.attr('data-key', row_key)
             ,el('td.table-rowheader'
@@ -98,6 +98,7 @@ define(function (require, exports, module) {
                   'data-original-value',
                   JSON.stringify(original_value)
                 )
+                ,is_updated && el.class('table-cell--updated')
                 ,field.src_column && el.attr('data-column', field.src_column)
                 ,is_updatable && el.class('table-cell--updatable')
                 ,is_updatable && el.attr('contenteditable', 'plaintext-only')
@@ -109,23 +110,28 @@ define(function (require, exports, module) {
           );
         })
 
-        ,inserts.map((dict, index) => el('tr.table-row'
-          ,el.attr('data-index', index)
-          ,el('td.table-rowheader'
-            ,el('button.table-insert_cancel')
-          )
-          ,fields.map(field => {
-            const val = dict[field.src_column];
-            return el('td.table-cell.table-cell--inserted'
-              ,el.attr('tabindex', '0')
-              ,el.attr('data-column', field.src_column)
-              ,field.src_column && el.attr('contenteditable', 'plaintext-only')
-              ,field.is_num && el.class('table-cell--num')
-              ,val === '' && el.class('table-cell--emptystr')
-              ,val
-            );
-          })
-        ))
+        ,inserts.map((dict, index) => [dict, inserts_errors[index]])
+          .map(([dict, error], index) => el('tr.table-row'
+            ,el.attr('data-index', index)
+            ,error && el.class('table-row--invalid')
+            ,el('td.table-rowheader'
+              ,error && el('i.table-error_icon'
+                ,el.attr('data-tooltip', error)
+              )
+              ,el('button.table-insert_cancel')
+            )
+            ,fields.map(field => {
+              const val = dict[field.src_column];
+              return el('td.table-cell.table-cell--inserted'
+                ,el.attr('tabindex', '0')
+                ,el.attr('data-column', field.src_column)
+                ,field.src_column && el.attr('contenteditable', 'plaintext-only')
+                ,field.is_num && el.class('table-cell--num')
+                ,val === '' && el.class('table-cell--emptystr')
+                ,val
+              );
+            })
+          ))
 
         ,can_insert && (
           el('tr.table-newrow.table-row'

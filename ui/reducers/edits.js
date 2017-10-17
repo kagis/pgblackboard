@@ -37,10 +37,11 @@ define(function (require, exports, module) {
   function reduce_edits_inner(
     state = {
       inserts: [],
+      inserts_errors: [],
       updates: {},
-      deletes: {},
       updates_errors: {},
-      inserts_errors: []
+      deletes: {},
+      deletes_errors: {},
     },
     action
   ) {
@@ -60,6 +61,7 @@ define(function (require, exports, module) {
       case 'TABLE_INSERT_CANCEL':
         return Object.assign({}, state, {
           inserts: state.inserts.filter((_, i) => i != action.index),
+          inserts_errors: state.inserts_errors.filter((_, i) => i != action.index),
         });
 
       case 'TABLE_UPDATE':
@@ -82,11 +84,28 @@ define(function (require, exports, module) {
         });
 
       case 'TABLE_SAVE_ERROR':
-        return Object.assign({}, state, {
-          updates_errors: Object.assign(state.updates_errors, {
-            [action.key]: action.message,
-          }),
-        });
+        switch (action.edit_type) {
+          case 'update':
+            return Object.assign({}, state, {
+              updates_errors: Object.assign({}, state.updates_errors, {
+                [action.key]: action.message,
+              }),
+            });
+          case 'delete':
+            return Object.assign({}, state, {
+              delete_errors: Object.assign({}, state.delete_errors, {
+                [action.key]: action.message,
+              }),
+            });
+          case 'insert':
+            return Object.assign({}, state, {
+              inserts_errors: Object.assign([], state.inserts_errors, {
+                [action.insert_index]: action.message,
+              }),
+            });
+          default:
+            return state;
+        }
 
       default:
         return state;

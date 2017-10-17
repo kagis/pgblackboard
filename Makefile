@@ -50,3 +50,26 @@ DOCKER_RUN := docker run -it --rm \
 	--volume $$PWD/.cargo_registry:/usr/local/cargo/registry \
 	--volume $$PWD:/source \
 	--workdir /source
+
+
+FONTELLO_DIR  ?= ./ui/style/fontello
+FONTELLO_HOST ?= http://fontello.com
+
+fontello-open:
+	curl --silent --show-error --fail --output .fontello \
+		--form "config=@${FONTELLO_DIR}/config.json" \
+		${FONTELLO_HOST}
+	open ${FONTELLO_HOST}/`cat .fontello`
+
+fontello-save:
+	@if test ! -e .fontello ; then \
+		echo 'Run `make fontello-open` first.' >&2 ; \
+		exit 128 ; \
+		fi
+	rm -rf .fontello.src .fontello.zip
+	curl --silent --show-error --fail --output .fontello.zip \
+		${FONTELLO_HOST}/`cat .fontello`/get
+	unzip .fontello.zip -d .fontello.src
+	rm -rf ${FONTELLO_DIR}
+	mv `find ./.fontello.src -maxdepth 1 -name 'fontello-*'` ${FONTELLO_DIR}
+	rm -rf .fontello.src .fontello.zip

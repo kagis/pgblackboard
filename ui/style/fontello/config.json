@@ -143,6 +143,18 @@
       "css": "check-empty",
       "code": 61590,
       "src": "fontawesome"
+    },
+    {
+      "uid": "bcb868184ff9c35f8aef564f50c0d649",
+      "css": "feather",
+      "code": 59414,
+      "src": "entypo"
+    },
+    {
+      "uid": "97var6sq7rzo72ktzg1c6ph46u9pftbr",
+      "css": "pencil-alt",
+      "code": 59415,
+      "src": "modernpics"
     }
   ]
 }
