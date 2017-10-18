@@ -57,15 +57,37 @@ define(function (require, exports, module) {
       if (typeof err.stmt_index != 'number') {
         return alert(err.message);
       }
-      const { database_and_table, key, type, insert_index } = script[err.stmt_index];
-      dispatch({
-        type: 'TABLE_SAVE_ERROR',
+      const message = err.message;
+      const {
         database_and_table,
         key,
-        insert_index,
-        edit_type: type,
-        message: err.message,
-      });
+        type,
+        insert_index
+      } = script[err.stmt_index];
+
+      switch (type) {
+        case 'insert':
+          return dispatch({
+            type: 'TABLE_INSERT_ERROR',
+            database_and_table,
+            insert_index,
+            message,
+          });
+        case 'update':
+          return dispatch({
+            type: 'TABLE_UPDATE_ERROR',
+            database_and_table,
+            key,
+            message,
+          });
+        case 'delete':
+          return dispatch({
+            type: 'TABLE_DELETE_ERROR',
+            database_and_table,
+            key,
+            message,
+          });
+      }
     });
   };
 

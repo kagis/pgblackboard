@@ -14,9 +14,11 @@ define(function (require, exports, module) {
 
       case 'TABLE_INSERT':
       case 'TABLE_INSERT_CANCEL':
+      case 'TABLE_INSERT_ERROR':
       case 'TABLE_UPDATE':
+      case 'TABLE_UPDATE_ERROR':
       case 'TABLE_DELETE':
-      case 'TABLE_SAVE_ERROR':
+      case 'TABLE_DELETE_ERROR':
         return obj_filter(
           it => it.inserts.length
             || obj_has_keys(it.deletes)
@@ -64,6 +66,13 @@ define(function (require, exports, module) {
           inserts_errors: state.inserts_errors.filter((_, i) => i != action.index),
         });
 
+      case 'TABLE_INSERT_ERROR':
+        return Object.assign({}, state, {
+          inserts_errors: Object.assign([], state.inserts_errors, {
+            [action.insert_index]: action.message,
+          }),
+        });
+
       case 'TABLE_UPDATE':
         return Object.assign({}, state, {
           updates: obj_filter(obj_has_keys, Object.assign({}, state.updates, {
@@ -76,36 +85,29 @@ define(function (require, exports, module) {
           })),
         });
 
+      case 'TABLE_UPDATE_ERROR':
+        return Object.assign({}, state, {
+          updates_errors: Object.assign({}, state.updates_errors, {
+            [action.key]: action.message,
+          }),
+        });
+
       case 'TABLE_DELETE':
         return Object.assign({}, state, {
           deletes: obj_filter(Boolean, Object.assign({}, state.deletes, {
             [action.key]: action.should_delete,
           })),
+          deletes_errors: obj_filter(Boolean, Object.assign({}, state.deletes_errors, {
+            [action.key]: undefined,
+          })),
         });
 
-      case 'TABLE_SAVE_ERROR':
-        switch (action.edit_type) {
-          case 'update':
-            return Object.assign({}, state, {
-              updates_errors: Object.assign({}, state.updates_errors, {
-                [action.key]: action.message,
-              }),
-            });
-          case 'delete':
-            return Object.assign({}, state, {
-              delete_errors: Object.assign({}, state.delete_errors, {
-                [action.key]: action.message,
-              }),
-            });
-          case 'insert':
-            return Object.assign({}, state, {
-              inserts_errors: Object.assign([], state.inserts_errors, {
-                [action.insert_index]: action.message,
-              }),
-            });
-          default:
-            return state;
-        }
+      case 'TABLE_DELETE_ERROR':
+        return Object.assign({}, state, {
+          deletes_errors: Object.assign({}, state.delete_errors, {
+            [action.key]: action.message,
+          }),
+        });
 
       default:
         return state;

@@ -78,10 +78,8 @@ define(function (require, exports, module) {
               )
               ,can_update_and_delete && (
                 el('button.table-delete_row'
-                  ,el.class(is_deleted
-                    ? 'table-delete_row--on'
-                    : 'table-delete_row--off'
-                  )
+                  ,is_deleted && el.class('table-delete_row--on')
+                  ,!is_deleted && el.class('table-delete_row--off')
                 )
               )
             )
