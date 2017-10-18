@@ -46,7 +46,7 @@ define(function (require, exports, module) {
           ),
         });
 
-      case 'TABLE_SAVED': {
+      case 'TABLE_SAVE_SUCCESS': {
         const patches = state
           .map((it, i) => [
             it,

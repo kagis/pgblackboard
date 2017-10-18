@@ -3,6 +3,11 @@ define(function (require, exports, module) {
   const sql_query = require('../api/sql_query');
 
   module.exports = () => (dispatch, state) => {
+
+    dispatch({
+      type: 'TABLE_SAVE',
+    });
+
     const { edits, credentials } = state;
     const script = modification_script(edits);
     if (!script.length) {
@@ -24,7 +29,7 @@ define(function (require, exports, module) {
       credentials,
       describe: true,
     }).then(it => dispatch({
-      type: 'TABLE_SAVED',
+      type: 'TABLE_SAVE_SUCCESS',
       edits: it
         .map((stmt_result, i) => [stmt_result, script[i]])
         .filter(([_, { type }]) => type)
@@ -54,6 +59,10 @@ define(function (require, exports, module) {
           return acc;
         }, {}),
     })).catch(err => {
+      dispatch({
+        type: 'TABLE_CLEAR_ERRORS',
+      });
+
       if (typeof err.stmt_index != 'number') {
         return alert(err.message);
       }

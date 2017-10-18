@@ -54,7 +54,7 @@
   text-align: right;
 }
 
-.table-cell--updated {
+/* .table-cell--updated {
   position: relative;
   padding-right: 1em;
 }
@@ -85,7 +85,7 @@
 .table-cell--updated.table-cell--num::after {
   right: initial;
   left: 2px;
-}
+} */
 
 .table-row--highlighted .table-cell {
   /* expand cell content on focus */
@@ -164,6 +164,7 @@
   font-variant: normal;
   text-transform: none;
   line-height: 1;
+  content: '\e811';
 }
 
 .table-delete_row:focus {
@@ -171,18 +172,15 @@
 }
 
 .table-delete_row--on::before {
-  visibility: visible;
-  content: '\e814';
-  color: red;
+  color: var(--danger-color);
 }
 
 .table-delete_row--off:hover::before {
-  content: '\e814';
+  color: #555;
 }
 
 .table-delete_row--off::before {
   color: #aaa;
-  content: '\f096';
 }
 
 .table-insert_cancel {
@@ -195,12 +193,50 @@
   color: #aaa;
 }
 
+.table-insert_cancel:focus {
+  outline: none;
+}
+
 .table-insert_cancel:hover {
-  color: #888;
+  color: var(--danger-color);
 }
 
 .table-insert_cancel::before {
-  content: '\e814';
+  content: '\e811';
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: none;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+}
+
+.table-update_cancel {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 100%;
+  color: #aaa;
+  margin-left: .2em;
+}
+
+.table-update_cancel:focus {
+  outline: none;
+}
+
+.table-update_cancel:hover {
+  color: var(--danger-color);
+}
+
+.table-update_cancel::before {
+  content: '\e812';
   font-family: 'fontello';
   font-style: normal;
   font-weight: normal;

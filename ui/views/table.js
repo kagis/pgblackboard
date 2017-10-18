@@ -63,6 +63,7 @@ define(function (require, exports, module) {
           const row_updates = updates[row_key] || {};
           const error = deletes_errors[row_key] || updates_errors[row_key];
           const is_deleted = deletes[row_key];
+          const has_updates = Object.keys(row_updates).length;
           return el('tr.table-row'
             ,focused_row_index === row_index && el.class('table-row--highlighted')
             ,el.attr('id', `table-row--${stmt_index}_${row_index}`)
@@ -76,7 +77,10 @@ define(function (require, exports, module) {
               ,!error && el('span.table-counter'
                 ,String(row_index + 1)
               )
-              ,can_update_and_delete && (
+              ,has_updates && (
+                el('button.table-update_cancel')
+              )
+              ,can_update_and_delete && !has_updates && (
                 el('button.table-delete_row'
                   ,is_deleted && el.class('table-delete_row--on')
                   ,!is_deleted && el.class('table-delete_row--off')
@@ -96,7 +100,7 @@ define(function (require, exports, module) {
                   'data-original-value',
                   JSON.stringify(original_value)
                 )
-                ,is_updated && el.class('table-cell--updated')
+                // ,is_updated && el.class('table-cell--updated')
                 ,field.src_column && el.attr('data-column', field.src_column)
                 ,is_updatable && el.class('table-cell--updatable')
                 ,is_updatable && el.attr('contenteditable', 'plaintext-only')
@@ -201,6 +205,14 @@ define(function (require, exports, module) {
       type: 'TABLE_INSERT_CANCEL',
       database_and_table: this.closest('.table').dataset.database_and_table,
       index: +this.closest('.table-row').dataset.index,
+    });
+  });
+
+  on('.table-update_cancel', 'click', function () {
+    dispatch({
+      type: 'TABLE_UPDATE_CANCEL',
+      database_and_table: this.closest('.table').dataset.database_and_table,
+      key: this.closest('.table-row').dataset.key,
     });
   });
 

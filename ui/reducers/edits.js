@@ -9,13 +9,23 @@ define(function (require, exports, module) {
       case 'TREENODE_DEFINITION_LOADED':
       case 'DRAFTS_SELECT':
       case 'EXEC':
-      case 'TABLE_SAVED':
+      case 'TABLE_SAVE_SUCCESS':
         return {};
+
+      case 'TABLE_CLEAR_ERRORS':
+        return Object.assign({}, ...Object.entries(state).map(([key, inner]) => ({
+          [key]: Object.assign({}, inner, {
+            inserts_errors: [],
+            updates_errors: {},
+            deletes_errors: {},
+          }),
+        })));
 
       case 'TABLE_INSERT':
       case 'TABLE_INSERT_CANCEL':
       case 'TABLE_INSERT_ERROR':
       case 'TABLE_UPDATE':
+      case 'TABLE_UPDATE_CANCEL':
       case 'TABLE_UPDATE_ERROR':
       case 'TABLE_DELETE':
       case 'TABLE_DELETE_ERROR':
@@ -84,6 +94,16 @@ define(function (require, exports, module) {
             ),
           })),
         });
+
+      case 'TABLE_UPDATE_CANCEL':
+        return Object.assign({}, state, {
+          updates: obj_filter(Boolean, Object.assign({}, state.updates, {
+            [action.key]: undefined,
+          })),
+          updates_errors: obj_filter(Boolean, Object.assign({}, state.updates_errors, {
+            [action.key]: undefined,
+          })),
+        })
 
       case 'TABLE_UPDATE_ERROR':
         return Object.assign({}, state, {
