@@ -118,8 +118,12 @@
 }
 .table-rowheader {
   text-align: right;
-  font-weight: bold;
+}
+
+.table-counter {
   color: #ccc;
+  font-size: .6em;
+  margin-right: .5em;
 }
 
 .table-newrow > .table-rowheader::before {
