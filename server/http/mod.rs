@@ -1,20 +1,15 @@
 extern crate threadpool;
 
-mod readall;
 mod method;
 mod reqerror;
 mod status;
-mod grammar;
 mod response;
 
 pub use self::method::Method;
 pub use self::status::Status;
 pub use self::response::{ ResponseStarter, ResponseWriter, ChunkedWriter } ;
 
-// use self::rustc_serialize::base64::FromBase64;
-// use self::rustc_serialize::{json, Decodable};
 use self::threadpool::ThreadPool;
-use self::readall::{ReadAll};
 
 use std::io::{self, BufRead, BufWriter, BufReader, Read, Write};
 use std::net::{TcpListener};
@@ -166,18 +161,21 @@ impl Request {
     // }
 
     fn read_from<T: BufRead>(reader: &mut T) -> io::Result<Request> {
-        let req_line = try!(reader.read_crlf_line());
+        let req_line = {
+            let mut line = String::new();
+            reader.read_line(&mut line)?;
+            line
+        };
 
-        let left_space_pos = try!(req_line.find(' ')
-                                .ok_or(malformed_request_line_err()));
+        let left_space_pos = req_line.find(' ')
+            .ok_or(malformed_request_line_err())?;
 
-        let right_space_pos = try!(req_line.rfind(' ')
-                                .ok_or(malformed_request_line_err()));
-
+        let right_space_pos = req_line.rfind(' ')
+            .ok_or(malformed_request_line_err())?;
 
         let method = req_line[0..left_space_pos].parse::<Method>().unwrap();
 
-        let http_version = &req_line[(right_space_pos + 1)..];
+        let http_version = &req_line.trim_right()[(right_space_pos + 1)..];
         if http_version != "HTTP/1.1" && http_version != "HTTP/1.0" {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -208,7 +206,7 @@ impl Request {
             }
         }
 
-        for line_res in CRLFLines(reader.by_ref()).take_while(err_or_line_is_not_empty) {
+        for line_res in reader.by_ref().lines().take_while(err_or_line_is_not_empty) {
             let line = try!(line_res);
             let (header_name, header_value) = try!(parse_header(&line));
             match &header_name.to_ascii_lowercase()[..] {
@@ -240,9 +238,8 @@ impl Request {
         }
 
         let content = if content_length > 0 {
-            let mut buf = Vec::with_capacity(content_length);
-            buf.extend((0..content_length).map(|_| 0));
-            try!(reader.read_all(&mut buf));
+            let mut buf = vec![0; content_length];
+            reader.read_exact(&mut buf)?;
             Some(buf)
         } else {
             None
@@ -301,51 +298,6 @@ impl Request {
 //         }
 //     })
 // }
-
-
-trait CRLFLineReader {
-    fn read_crlf_line(&mut self) -> io::Result<String>;
-}
-
-impl<T: Read> CRLFLineReader for T {
-    fn read_crlf_line(&mut self) -> io::Result<String> {
-        let mut line = vec![];
-        loop {
-            match try!(self.read_u8()) {
-                b'\r' => {
-                    let mustbe_lf = try!(self.read_u8());
-                    if mustbe_lf != b'\n' {
-                        return Err(invalid_line_ending());
-                    }
-                    return String::from_utf8(line).map_err(|_| io::Error::new(
-                        io::ErrorKind::Other,
-                        "Non ascii string"
-                    ));
-                },
-                b'\n' => return Err(invalid_line_ending()),
-                x => line.push(x),
-            }
-        }
-    }
-}
-
-fn invalid_line_ending() -> io::Error {
-    io::Error::new(
-        io::ErrorKind::Other,
-        "Invalid line ending."
-    )
-}
-
-struct CRLFLines<TReader>(TReader);
-
-impl<T: CRLFLineReader> Iterator for CRLFLines<T> {
-    type Item = io::Result<String>;
-
-    fn next(&mut self) -> Option<io::Result<String>> {
-        Some(self.0.read_crlf_line())
-    }
-}
-
 
 // trait TokenReader {
 //     fn read_token(&mut self, maxlen: uint) -> io::Result<Vec<u8>>;

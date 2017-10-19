@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::io::Read;
 use super::reqerror::RequestError;
 use super::status::Status;
-use super::grammar::is_token;
 
 macro_rules! define_request_methods {
     ( $(($s:expr, $i:ident)),*) => {
