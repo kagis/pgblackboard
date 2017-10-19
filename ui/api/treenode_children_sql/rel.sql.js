@@ -16,8 +16,8 @@ SELECT current_database()                                 AS "database"
             ELSE 'column'
             END                                           AS "type"
       ,concat_ws(' ', attname, ':'
-          ,CASE WHEN not attnotnull then 'nullable' END
           ,format_type(atttypid, atttypmod)
+          ,CASE WHEN not attnotnull then 'nullable' END
       )                                                   AS "name"
       ,col_description(attrelid, attnum)                  AS "comment"
       ,false                                              AS "has_children"
