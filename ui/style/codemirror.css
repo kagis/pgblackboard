@@ -1,4 +1,4 @@
-@import url(../lib/codemirror/5.25.0/codemirror.css);
+@import url(../lib/codemirror/codemirror.css);
 
 .codemirrorContainer {
   display: block;

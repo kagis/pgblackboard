@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 WITH param_cte AS (
   SELECT $1::oid AS param_oid,
@@ -74,4 +74,4 @@ WHERE tgrelid = param_oid
 
 )
 
--- `.trim().slice(0, -2); });
+-- `;

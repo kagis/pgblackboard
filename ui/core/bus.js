@@ -1,5 +1,3 @@
-define(function (require, exports, module) {
-  'use strict';
-  const create_event_emitter = require('./event_emitter');
-  module.exports = create_event_emitter();
-});
+import create_event_emitter from './event_emitter.js';
+export default create_event_emitter();
+

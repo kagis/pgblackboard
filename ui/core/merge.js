@@ -1,7 +1,7 @@
 'use strict'
 
-define(function (require, exports, module) {
-  module.exports = merge;
+
+  export default merge;
 
   function merge(prev, patch) {
     if (patch !== null && patch !== undefined) {

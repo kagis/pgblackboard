@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 WITH parent_cte AS (
   with params_cte AS (
@@ -64,4 +64,4 @@ WITH parent_cte AS (
   ORDER BY name
 )
 
--- `.trim().slice(0, -2); });
+-- `;

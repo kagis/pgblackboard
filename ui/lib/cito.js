@@ -7,6 +7,7 @@
  */
 
 var cito = window.cito || {};
+export default cito;
 (function (cito, window, undefined) {
     'use strict';
 

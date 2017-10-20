@@ -1,12 +1,9 @@
-define(function (require, exports, module) {
-  "use strict";
-
 
 /**
  * Expose `md5omatic(str)`.
  */
- 
-module.exports = md5omatic;
+
+export default md5omatic;
 
 /**
  * Hash any string using message digest.
@@ -15,7 +12,7 @@ module.exports = md5omatic;
  * @return {String}
  * @api public
  */
- 
+
 function md5omatic(str) {
     var x = str2blks_MD5(str);
     var a =  1732584193;
@@ -201,5 +198,3 @@ function ii(a, b, c, d, x, s, t)
 {
     return cmn(bitXOR(c, bitOR(b, (~d))), a, b, x, s, t);
 }
-
-});

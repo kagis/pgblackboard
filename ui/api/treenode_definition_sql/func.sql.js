@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 select concat_ws(e'\n'
     ,'/*'
@@ -12,4 +12,4 @@ select concat_ws(e'\n'
 from pg_proc as p
 where oid = $1
 
--- `.trim().slice(0, -2); });
+-- `;

@@ -1,3 +1,2 @@
-define(function (require, exports, module) {
-  module.exports = window.cito;
-});
+import cito from '../lib/cito.js';
+export default cito;

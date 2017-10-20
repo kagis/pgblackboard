@@ -73,3 +73,11 @@ fontello-save:
 	rm -rf ${FONTELLO_DIR}
 	mv `find ./.fontello.src -maxdepth 1 -name 'fontello-*'` ${FONTELLO_DIR}
 	rm -rf .fontello.src .fontello.zip
+
+codemirror-up:
+	cd ui/lib/codemirror \
+	&& find . -type f -exec \
+		curl https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.30.0/{} \
+			--output {} --verbose \; \
+	&& sed -i.bak 's/^}(this,/}(window,/' codemirror.js \
+	&& rm codemirror.js.bak

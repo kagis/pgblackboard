@@ -1,8 +1,5 @@
-define(function (require, exports, module) {
-  'use strict';
-  const el = require('../core/el');
+import el from '../core/el.js';
 
-  module.exports = ({ is_visible }) => el('div.spinner_shield'
-    ,is_visible && el.class('spinner_shield--visible')
-  );
-});
+export default ({ is_visible }) => el('div.spinner_shield'
+  ,is_visible && el.class('spinner_shield--visible')
+);

@@ -1,16 +1,13 @@
-define(function (require, exports, module) {
-  'use strict';
-  const create_event_emitter = require('./event_emitter');
+import create_event_emitter from './event_emitter.js';
 
-  module.exports = dispatch;
+export default dispatch;
 
-  const event_emitter = create_event_emitter();
+const event_emitter = create_event_emitter();
 
-  function dispatch(action) {
-    event_emitter.emit('action', action);
-  }
+function dispatch(action) {
+  event_emitter.emit('action', action);
+}
 
-  dispatch.subscribe = function (listener) {
-    event_emitter.on('action', listener);
-  };
-});
+dispatch.subscribe = function (listener) {
+  event_emitter.on('action', listener);
+};

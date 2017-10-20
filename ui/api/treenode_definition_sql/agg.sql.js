@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 WITH agg_cte as (
     select *
@@ -23,5 +23,5 @@ select concat_ws(e'\n'
 ) as def
 from agg_cte
 
--- `.trim().slice(0, -2); });
+-- `;
 

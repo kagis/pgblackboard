@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
   SELECT current_database()                   AS "database"
         ,oid                                  AS "id"
@@ -13,4 +13,4 @@
      AND nspname != 'pg_toast'
 ORDER BY name
 
--- `; });
+-- `;

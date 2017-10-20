@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 select concat_ws(e'\n'
     ,'BEGIN;'
@@ -14,4 +14,4 @@ select concat_ws(e'\n'
 from pg_trigger
 where oid = $1
 
--- `.trim().slice(0, -2); });
+-- `;

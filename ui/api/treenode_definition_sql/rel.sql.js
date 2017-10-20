@@ -1,4 +1,4 @@
--- NaN; define((_r, _e, module) => { module.exports = `
+export default `
 
 with params_cte as (
     select $1::oid as param_oid
@@ -85,4 +85,4 @@ select select_stmt
     || e'\n*/\n' as def
   from select_stmt_cte, table_def_cte
 
--- `.trim().slice(0, -2); });
+-- `;
