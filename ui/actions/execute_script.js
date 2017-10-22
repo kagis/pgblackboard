@@ -41,7 +41,7 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
     describe: true,
   });
 
-  let latest_stmt_idx = -1;
+  let stmt_index = -1;
 
   stream.on('messages', function (messages) {
     while (messages.length) {
@@ -49,6 +49,7 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
         const lastRowIndex = messages.findIndex(it => !Array.isArray(it));
         dispatch({
           type: 'STATEMENT_ROWS',
+          stmt_index,
           rows: messages.splice(0, lastRowIndex < 0 ? messages.length : lastRowIndex),
         });
       } else {
@@ -57,20 +58,24 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
           case 'description':
             dispatch({
               type: 'STATEMENT_DESCRIBE',
+              stmt_index,
               description: m.payload,
             });
             break;
 
           case 'executing':
-            latest_stmt_idx++;
+            stmt_index++;
             dispatch({
               type: 'STATEMENT_EXECUTING',
+              stmt_index,
+              stmt: statements[stmt_index].code,
             });
             break;
 
           case 'complete':
             dispatch({
               type: 'STATEMENT_COMPLETE',
+              stmt_index,
               command_tag: m.payload,
             });
             break;
@@ -78,10 +83,11 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
           case 'error':
             dispatch({
               type: 'STATEMENT_ERROR',
+              stmt_index,
               message: m.payload.message,
               linecol: linecol(full_script.slice(0,
-                statements[latest_stmt_idx].position_offset +
-                  (m.payload.position || stmt_start_pos(statements[latest_stmt_idx].code)))),
+                statements[stmt_index].position_offset +
+                  (m.payload.position || stmt_start_pos(statements[stmt_index].code)))),
             });
             break;
         }

@@ -10,3 +10,21 @@
   right: 0;
   bottom: 0;
 }
+
+.layers {
+  position: absolute;
+  z-index: 1;
+  top: 1em;
+  right: 1em;
+}
+
+.layers {
+  background-color: #fff;
+  padding: .5em;
+  border: 1px solid #888;
+
+}
+
+.layers-item {
+  display: block;
+}

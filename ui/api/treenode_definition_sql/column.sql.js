@@ -65,4 +65,4 @@ select concat_ws(e'\n'
 ) as def
 from common_cte
 
--- `;
+`;

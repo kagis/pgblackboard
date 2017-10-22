@@ -13,4 +13,4 @@ export default `
      AND nspname != 'pg_toast'
 ORDER BY name
 
--- `;
+`;

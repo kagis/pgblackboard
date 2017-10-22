@@ -15,4 +15,4 @@ from pg_class
 where relkind = 'i'
     and oid = $1
 
--- `;
+`;

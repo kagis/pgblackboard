@@ -20,9 +20,9 @@ class EventEmitter {
       .filter(it => it != listener);
   }
 
-  emit(event_type, arg) {
+  emit(event_type, arg1, arg2) {
     for (let listener of this._listeners_by_event_type[event_type] || []) {
-      listener(arg);
+      listener(arg1, arg2);
     }
   }
 }

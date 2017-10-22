@@ -10,4 +10,4 @@ select concat_ws(e'\n'
 from pg_namespace
 where oid = $1
 
--- `;
+`;

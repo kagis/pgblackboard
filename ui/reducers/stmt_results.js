@@ -34,9 +34,10 @@ export default function reduce_stmt_results(state, action) {
     case 'STATEMENT_NOTICE':
     case 'STATEMENT_DESCRIBE':
     case 'STATEMENT_ROWS':
+    case 'MAP_LAYER_TOGGLE':
       return Object.assign([], state, {
-        [state.length - 1]: reduce_stmt_results_inner(
-          state[state.length - 1],
+        [action.stmt_index]: reduce_stmt_results_inner(
+          state[action.stmt_index],
           action
         ),
       });
@@ -95,6 +96,7 @@ function reduce_stmt_results_inner(state, action) {
       return {
         rows: [],
         notices: [],
+        stmt: action.stmt,
       };
 
     case 'STATEMENT_COMPLETE':
@@ -120,12 +122,27 @@ function reduce_stmt_results_inner(state, action) {
       });
 
     case 'STATEMENT_DESCRIBE':
-      return Object.assign({}, state, action.description);
+      return {
+        ...state,
+        ...action.description,
+        show_layer: true,
+        geom_field_idx: action.description
+          && action.description.fields
+          && action.description.fields.map(({ name }, idx) => ({ name, idx }))
+            .filter(({ name }) => name == 'st_asgeojson')
+            .map(({ idx }) => idx)[0]
+      };
 
     case 'STATEMENT_ROWS':
       return Object.assign({}, state, {
         rows: [...state.rows, ...action.rows],
       });
+
+    case 'MAP_LAYER_TOGGLE':
+      return {
+        ...state,
+        show_layer: action.should_show_layer,
+      };
 
     default:
       return state;

@@ -5,6 +5,7 @@ import render_queryplan from './queryplan.js';
 import render_map from './map.js';
 import { vertical_splitpanel } from './splitpanel.js';
 import table_save_edits from '../actions/table_save_edits.js';
+import render_layers from './layers.js';
 
 export default function render_output({
   use_map,
@@ -56,7 +57,7 @@ export default function render_output({
         )
       )
     ),
-    bottom: show_map ? render_map({ edits, stmt_results, focused_row }) : null,
+    bottom: show_map && render_mapgroup({ edits, stmt_results, focused_row }),
   });
 }
 
@@ -99,3 +100,11 @@ function render_stmt_result({
     ,queryplan && render_queryplan(queryplan)
   )
 }
+
+
+const render_mapgroup = ({ edits, stmt_results, focused_row }) => (
+  el('div.mapgroup'
+    ,{ children: render_map({ edits, stmt_results, focused_row }) }
+    ,render_layers({ stmt_results })
+  )
+);

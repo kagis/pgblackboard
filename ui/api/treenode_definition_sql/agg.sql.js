@@ -23,5 +23,4 @@ select concat_ws(e'\n'
 ) as def
 from agg_cte
 
--- `;
-
+`;

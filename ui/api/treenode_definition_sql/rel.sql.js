@@ -85,4 +85,4 @@ select select_stmt
     || e'\n*/\n' as def
   from select_stmt_cte, table_def_cte
 
--- `;
+`;

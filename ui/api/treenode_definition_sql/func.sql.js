@@ -12,4 +12,4 @@ select concat_ws(e'\n'
 from pg_proc as p
 where oid = $1
 
--- `;
+`;

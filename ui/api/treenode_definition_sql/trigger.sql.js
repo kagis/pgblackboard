@@ -14,4 +14,4 @@ select concat_ws(e'\n'
 from pg_trigger
 where oid = $1
 
--- `;
+`;
