@@ -1,3 +1,5 @@
+@import url('../lib/mapboxgl/mapbox-gl.css');
+
 .map_container {
   /* stretch container with position absolutre rather
      then width/height 100% beacuse of layout bug in chrome macos.

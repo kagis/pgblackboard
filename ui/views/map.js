@@ -1,7 +1,7 @@
 import dispatch from '../core/dispatch.js';
 import '../lib/leaflet/1.0.3/leaflet-src.js';
 
-import 'https://api.tiles.mapbox.com/mapbox-gl-js/v0.41.0/mapbox-gl.js';
+import '../lib/mapboxgl/mapbox-gl.js';
 // const mapbox
 
 
@@ -168,7 +168,7 @@ function geojson_bbox({ type, coordinates }) {
   }
 }
 
-function mapbox_style({ stmt_results, focused_row }) {
+function mapbox_style({ map: { show_sat }, stmt_results, focused_row }) {
   const result = JSON.parse(JSON.stringify(openmaptiles_style));
 
 
@@ -263,6 +263,10 @@ function mapbox_style({ stmt_results, focused_row }) {
     }] || [],
 
   ];
+
+  if (show_sat) {
+    result.layers.find(({ id }) => id == 'pgblackboard-sat').layout.visibility = 'visible';
+  }
 
   return result;
 }
@@ -501,7 +505,7 @@ const openmaptiles_style = {
       }
     },
     {
-      "id": "pgblackboard-satellite",
+      "id": "pgblackboard-sat",
       "type": "raster",
       "source": "bing-imagery",
       "layout": {

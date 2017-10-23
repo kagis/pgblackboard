@@ -17,8 +17,6 @@
 @import url(./map.css);
 @import url(./map_popup.css);
 
-@import url('https://api.tiles.mapbox.com/mapbox-gl-js/v0.41.0/mapbox-gl.css');
-
 body {
   overflow: hidden; /* disable bouncing scroll in macos */
 }

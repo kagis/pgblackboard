@@ -74,6 +74,7 @@ fontello-save:
 	mv `find ./.fontello.src -maxdepth 1 -name 'fontello-*'` ${FONTELLO_DIR}
 	rm -rf .fontello.src .fontello.zip
 
+.PNONY: codemirror-up
 codemirror-up:
 	cd ui/lib/codemirror \
 	&& find . -type f -exec \
@@ -81,3 +82,10 @@ codemirror-up:
 			--output {} --verbose \; \
 	&& sed -i.bak 's/^}(this,/}(window,/' codemirror.js \
 	&& rm codemirror.js.bak
+
+.PHONY: mapboxgl-up
+mapboxgl-up:
+	cd ui/lib/mapboxgl \
+	&& find . -type f -exec \
+		curl https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/0.41.0/{} \
+			--output {} --verbose \;

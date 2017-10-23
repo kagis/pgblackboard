@@ -8,7 +8,7 @@ import table_save_edits from '../actions/table_save_edits.js';
 import render_layers from './layers.js';
 
 export default function render_output({
-  use_map,
+  map,
   edits,
   stmt_results,
   errors,
@@ -57,7 +57,7 @@ export default function render_output({
         )
       )
     ),
-    bottom: show_map && render_mapgroup({ edits, stmt_results, focused_row }),
+    bottom: show_map && render_mapgroup({ map, edits, stmt_results, focused_row }),
   });
 }
 
@@ -102,9 +102,9 @@ function render_stmt_result({
 }
 
 
-const render_mapgroup = ({ edits, stmt_results, focused_row }) => (
+const render_mapgroup = ({ map, edits, stmt_results, focused_row }) => (
   el('div.mapgroup'
-    ,{ children: render_map({ edits, stmt_results, focused_row }) }
-    ,render_layers({ stmt_results })
+    ,{ children: render_map({ map, edits, stmt_results, focused_row }) }
+    ,render_layers({ map, stmt_results })
   )
 );

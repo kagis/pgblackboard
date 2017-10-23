@@ -68,7 +68,7 @@ function render_authenticated(state) {
           }),
           bottom: el('div.main-output'
             ,el.memoize(render_output, {
-              use_map: state.use_map,
+              map: state.map,
               is_dark: state.is_dark,
               stmt_results: state.stmt_results,
               edits: state.edits,
