@@ -63,7 +63,7 @@ const html_bundle
     css_bundle,
   ]).then(([index_html, js_bundle_code, css_bundle_code]) => index_html
     .replace(
-      '<script type="module" src="./main.js"></script>',
+      '<script type="module" src="main.js"></script>',
       '<script>' + js_bundle_code.replace(/\$/g, '$$$$') + '</script>'
     )
     .replace(
