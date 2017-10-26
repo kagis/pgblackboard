@@ -6,11 +6,20 @@ const rollup_buble = require('rollup-plugin-buble');
 const postcss = require('postcss');
 const postcss_cssnext = require('postcss-cssnext');
 const postcss_import = require('postcss-import');
-const { promisify } = require('util');
 const fs = require('fs');
 
-const read_file = promisify(fs.readFile);
-const write_file = promisify(fs.writeFile);
+const read_file = (...args) => new Promise((resolve, reject) => fs.readFile(...args, (err, data) => {
+  if (err) {
+    return reject(err);
+  }
+  return resolve(data);
+}));
+const write_file = (...args) => new Promise((resolve, reject) => fs.writeFile(...args, (err, data) => {
+  if (err) {
+    return reject(err);
+  }
+  return resolve(data);
+}));
 
 const out_dir = process.env['OUT_DIR'] || 'ui/_dist';
 
