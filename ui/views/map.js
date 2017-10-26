@@ -62,11 +62,11 @@ function create_or_update_map(node, params) {
 class Map {
   constructor(container_el) {
     this.mapboxglMap = new mapboxgl.Map({
-        container: container_el,
-        style: 'https://openmaptiles.github.io/positron-gl-style/style-cdn.json',
-        zoom: 1,
-        center: [20 /* push antarctida down */, 0],
-        attributionControl: false,
+      container: container_el,
+      // style: 'https://openmaptiles.github.io/positron-gl-style/style-cdn.json',
+      zoom: 1,
+      center: [20 /* push antarctida down */, 0],
+      attributionControl: false,
     });
 
     this._handle_row_focus = this._handle_row_focus.bind(this);

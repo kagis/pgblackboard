@@ -53,14 +53,15 @@ DOCKER_RUN := docker run -it --rm \
 
 
 FONTELLO_DIR  ?= ./ui/style/fontello
-FONTELLO_HOST ?= http://fontello.com
 
+.PHONY: fontello-open
 fontello-open:
 	curl --silent --show-error --fail --output .fontello \
 		--form "config=@${FONTELLO_DIR}/config.json" \
-		${FONTELLO_HOST}
-	open ${FONTELLO_HOST}/`cat .fontello`
+		http://fontello.com
+	echo http://fontello.com/`cat .fontello`
 
+.PHONY: fontello-save
 fontello-save:
 	@if test ! -e .fontello ; then \
 		echo 'Run `make fontello-open` first.' >&2 ; \
@@ -68,7 +69,7 @@ fontello-save:
 		fi
 	rm -rf .fontello.src .fontello.zip
 	curl --silent --show-error --fail --output .fontello.zip \
-		${FONTELLO_HOST}/`cat .fontello`/get
+		http://fontello.com/`cat .fontello`/get
 	unzip .fontello.zip -d .fontello.src
 	rm -rf ${FONTELLO_DIR}
 	mv `find ./.fontello.src -maxdepth 1 -name 'fontello-*'` ${FONTELLO_DIR}
