@@ -89,7 +89,7 @@
 
 .table-row--highlighted .table-cell {
   /* expand cell content on focus */
-  white-space: pre;
+  white-space: pre-wrap;
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
