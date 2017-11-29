@@ -1,4 +1,5 @@
 RUST_IMAGE := rust:1.21
+NODE_IMAGE := node:8.6-alpine
 
 .PHONY: all
 all: ui
@@ -7,7 +8,7 @@ all: ui
 .PHONY: ui
 ui: node_modules
 	mkdir -p ui/_dist
-	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run build"
+	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "npm run build"
 
 .PHONY: start
 start:
@@ -20,7 +21,7 @@ build_dev:
 
 .PHONY: lint
 lint:
-	$(DOCKER_RUN) node:8.6-alpine sh -c "npm run lint"
+	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "npm run lint"
 
 .PHONY: rust_shell
 rust_shell:
@@ -40,7 +41,7 @@ _deb:
 	rm -r $(DEB_PACKAGE_DIR)
 
 node_modules:
-	$(DOCKER_RUN) node:8.6-alpine npm install
+	$(DOCKER_RUN) $(NODE_IMAGE) npm install
 
 .PHONY: clean
 clean:

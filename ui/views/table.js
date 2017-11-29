@@ -1,5 +1,3 @@
-
-
 import el from '../core/el.js';
 import on from '../core/on.js';
 import dispatch from '../core/dispatch.js';

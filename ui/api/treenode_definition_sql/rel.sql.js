@@ -13,13 +13,16 @@ attrs_def_cte as (
         concat_ws(' '
             ,rpad(quote_ident(attname), max_attname_len)
             ,upper(format_type(atttypid, atttypmod))
+            ,'COLLATE "' || nullif(collname, 'default') || '"'
             ,case when attnotnull then 'NOT NULL' end
             ,'DEFAULT (' || adsrc || ')'
         )
         ,e'\n  ,'
         order by attnum
     ) as attrs_def
-    from attrs_cte left outer join pg_attrdef on attrelid = adrelid and adnum = attnum
+    from attrs_cte
+      left outer join pg_attrdef on attrelid = adrelid and adnum = attnum
+      left outer join pg_collation on pg_collation.oid = attcollation
 ),
 constraints_def_cte as (
     with constraints_with_maxnamelen as (
