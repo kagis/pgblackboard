@@ -1,6 +1,6 @@
 :root {
   --queryplan-spacing: .5em;
-  --queryplan-edge-width: 1px;
+  --queryplan-edge-width: 2px;
 }
 
 .queryplan {
@@ -69,11 +69,12 @@
   margin: var(--queryplan-spacing);
   margin-top: 0;
   position: relative;
-  background-color: #eee;
+  background-color: #f4f4f4;
   border-radius: 3px;
   box-shadow: .1em .1em .1em #eee;
   text-align: left;
   padding: .3em;
+  font-size: 80%;
 }
 
 .queryplan-children::before {
@@ -90,10 +91,23 @@
   display: flex;
 }
 
+.queryplan-header {
+  display: flex;
+}
+
 .queryplan-node_type {
   text-transform: uppercase;
   font-weight: bold;
-  font-size: 12px;
+  flex: 1;
+}
+
+
+.queryplan-subheader {
+  font-size: 90%;
+}
+
+.queryplan-muted {
+  color: #aaa;
 }
 
 .queryplan-badge {
@@ -105,5 +119,5 @@
   border-radius: 3px;
   margin-top: .3em;
   margin-right: .3em;
-  font-size: smaller;
+  /* font-size: 1; */
 }

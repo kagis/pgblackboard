@@ -1,5 +1,3 @@
-
-
 import el from '../core/el.js';
 import dispatch from '../core/dispatch.js';
 
@@ -25,7 +23,11 @@ function render_queryplan(node) {
 }
 
 function render_queryplan_tree({
-  props,
+  props: {
+    'Node Type': node_type,
+    'Plans': _,
+    ...props
+  },
   children,
   cost,
   duration,
@@ -39,19 +41,86 @@ function render_queryplan_tree({
         type: 'QUERYPLAN_NODE_TOGGLE',
         queryplan_path,
       }))
-      ,el('div.queryplan-node_type'
-        ,props['Node Type']
+
+      ,el('div.queryplan-header'
+        ,el('div.queryplan-node_type'
+          ,node_type
+        )
+        ,el('div.queryplan-duration'
+          ,duration < 1 ? '<1' : String(Number(duration.toFixed(2)))
+          ,el('span.queryplan-muted', 'ms')
+        )
       )
-      ,props['Relation Name'] && el('div.queryplan-relation_name'
-        ,'on '
-        ,props['Relation Name']
+
+      ,props['Relation Name'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'on ')
+          ,props['Relation Name']
+          ,props['Alias'] && ` (${props['Alias']})`
+        )
       )
-      ,max_cost == cost && el('div.queryplan-badge'
-        ,'costiest'
+
+      ,props['Group Key'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'by ')
+          ,props['Group Key']
+        )
       )
-      ,max_duration == duration && el('div.queryplan-badge'
-        ,'slowest'
+
+      ,props['Sort Key'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'by ')
+          ,props['Sort Key']
+        )
       )
+
+      ,props['Join Type'] && (
+        el('div.queryplan-subheader'
+          ,props['Join Type']
+          ,el('span.queryplan-muted', ' join')
+        )
+      )
+
+      ,props['Hash Cond'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'on ')
+          ,props['Hash Cond']
+        )
+      )
+
+      ,props['Index Name'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'using ')
+          ,props['Index Name']
+        )
+      )
+
+      ,props['CTE Name'] && (
+        el('div.queryplan-subheader'
+          ,el('span.queryplan-muted', 'CTE ')
+          ,props['CTE Name']
+        )
+      )
+
+      ,max_duration == duration && (
+        el('div.queryplan-badge'
+          ,'slowest'
+        )
+      )
+
+      ,max_cost == cost && (
+        el('div.queryplan-badge'
+          ,'costliest'
+        )
+      )
+
+      // ,Object.entries(props).map(([prop, val]) => (
+      //   el('div'
+      //     ,el('span', prop)
+      //     ,':'
+      //     ,el('span', String(val))
+      //   )
+      // ))
     )
     ,children.length && el('div.queryplan-children'
       ,children.map((child, i) => render_queryplan_tree(Object.assign({

@@ -9,8 +9,8 @@
     "postcss": "^6.0.13",
     "postcss-cssnext": "^3.0.2",
     "postcss-import": "^11.0.0",
-    "rollup": "^0.50.0",
-    "rollup-plugin-buble": "^0.16.0"
+    "rollup": "0.52.0",
+    "rollup-plugin-buble": "0.18.0"
   },
   "engines": {
     "node": ">=8.5"

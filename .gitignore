@@ -4,3 +4,4 @@
 /npm-debug.log
 /.cargo_registry
 /.fontello
+.DS_Store
