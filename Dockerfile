@@ -16,4 +16,5 @@ RUN cargo build --release --features uibuild
 FROM frolvlad/alpine-glibc
 COPY --from=1 /usr/src/app/target/release/pgblackboard /usr/local/bin/
 RUN chmod a+x /usr/local/bin/pgblackboard
-CMD /usr/local/bin/pgblackboard --postgres $PGBB_POSTGRES
+EXPOSE 7890
+ENTRYPOINT ["/usr/local/bin/pgblackboard"]
