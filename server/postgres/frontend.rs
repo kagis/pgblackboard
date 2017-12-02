@@ -34,7 +34,7 @@ pub struct BindMessage<'a, 'b, 'c> {
 #[derive(Debug)]
 pub struct ExecuteMessage<'a> {
     pub portal_name: &'a str,
-    pub row_limit: u32,
+    pub rowlimit: u32,
 }
 
 #[derive(Debug)]
@@ -172,7 +172,7 @@ impl<'a> FrontendMessage for ExecuteMessage<'a> {
     fn ident(&self) -> Option<u8> { Some(b'E') }
     fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
         out.write_cstr(self.portal_name)
-            .and_then(|_| (out.write_u32_be(self.row_limit)))
+            .and_then(|_| (out.write_u32_be(self.rowlimit)))
     }
 }
 

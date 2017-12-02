@@ -76,10 +76,8 @@ select_stmt_cte as (
     select concat_ws(e'\n'
         ,'  SELECT ' || string_agg(colexpr, e'\n        ,')
         ,'    FROM ' || (select param_oid::regclass from params_cte)
-        ,'   WHERE true'
         ,'ORDER BY ' || (select string_agg(attident, ', ') from pk_cols)
-        ,'   LIMIT 1000;'
-    ) as select_stmt
+    ) || ';' as select_stmt
     from select_attrs_cte
 )
 select select_stmt

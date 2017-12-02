@@ -310,7 +310,7 @@ impl Connection {
     pub fn execute_statement(
         &mut self,
         stmt_name: &str,
-        row_limit: u32,
+        rowlimit: u32,
         params: &[Option<&str>])
         -> Result<()>
     {
@@ -324,7 +324,7 @@ impl Connection {
 
         let execute_message = ExecuteMessage {
             portal_name: "",
-            row_limit: row_limit,
+            rowlimit: rowlimit,
         };
 
         let response = self.write_message(bind_message)
@@ -370,7 +370,7 @@ impl Connection {
                 self.wait_for_ready().and(Err(sql_err))
             }
             BackendMessage::PortalSuspended => {
-                self.wait_for_ready().and(Ok("".to_string()))
+                self.wait_for_ready().and(Ok("SUSPENDED".to_string()))
             }
             ref unexpected => Err(self.bad_response(&unexpected))
         });

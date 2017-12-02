@@ -19,6 +19,7 @@ impl http::Resource for SqlExecEndpoint {
             password: String,
             describe: bool,
             database: String,
+            rowlimit: Option<u32>,
             statements: Vec<String>,
         }
 
@@ -69,6 +70,7 @@ impl http::Resource for SqlExecEndpoint {
         Box::new(SqlExecResponse {
             pgconn: conn,
             describe: form.describe,
+            rowlimit: form.rowlimit.unwrap_or(0),
             statements: form.statements,
         })
     }
@@ -91,6 +93,7 @@ impl<T: serde::Serialize> http::Response for JsonResponse<T> {
 struct SqlExecResponse {
     pgconn: pg::Connection,
     describe: bool,
+    rowlimit: u32,
     statements: Vec<String>,
 }
 
@@ -103,7 +106,7 @@ impl http::Response for SqlExecResponse {
         let mut chunk_writer = try!(w.start_chunked());
 
 
-        let SqlExecResponse { mut pgconn, statements, describe, .. } = { *self };
+        let SqlExecResponse { mut pgconn, statements, describe, rowlimit, .. } = { *self };
 
         let mut w = try!(JsonStream::begin(chunk_writer));
 
@@ -133,7 +136,7 @@ impl http::Response for SqlExecResponse {
                 };
             }
 
-            if let Err(ref err) = pgconn.execute_statement("", 0, &[]) {
+            if let Err(ref err) = pgconn.execute_statement("", rowlimit, &[]) {
                 w.write_message("error", err)?;
                 break;
             }

@@ -39,6 +39,7 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
     user: state.credentials.user,
     password: state.credentials.password,
     describe: true,
+    rowlimit: 1000,
   });
 
   let stmt_index = -1;
