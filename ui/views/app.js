@@ -65,6 +65,8 @@ function render_authenticated(state) {
             errors: state.selected_document.errors,
             selection_ranges: state.selected_document.selection_ranges,
             is_executing: state.is_executing,
+            can_cancel: Boolean(state.backendkey),
+            process_id: state.backendkey && state.backendkey.process_id,
           }),
           bottom: el('div.main-output'
             ,el.memoize(render_output, {

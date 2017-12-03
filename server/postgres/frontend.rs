@@ -1,16 +1,21 @@
 use std::io::{ self, Write };
 use std::mem;
-use std::fmt::Debug;
-
+use std::fmt::{ self, Debug };
 #[derive(Debug)]
 pub struct StartupMessage<'a, 'b> {
     pub user: &'a str,
     pub database: &'b str,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct PasswordMessage<'a> {
     pub password: &'a str,
+}
+
+impl<'a> fmt::Debug for PasswordMessage<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PasswordMessage {{ **** }}")
+    }
 }
 
 #[derive(Debug)]
@@ -118,6 +123,8 @@ impl<'a, 'b> FrontendMessage for StartupMessage<'a, 'b> {
             .and_then(|_| (out.write_cstr(self.user)))
             .and_then(|_| (out.write_cstr("database")))
             .and_then(|_| (out.write_cstr(self.database)))
+            .and_then(|_| (out.write_cstr("application_name")))
+            .and_then(|_| (out.write_cstr("pgblackboard")))
             .and_then(|_| (out.write_u8(0)))
     }
 }

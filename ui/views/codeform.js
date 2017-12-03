@@ -13,6 +13,8 @@ export default function render_codeform({
   is_loading,
   draft_id,
   is_executing,
+  can_cancel,
+  process_id,
 }) {
   return el('div.codeform'
 
@@ -24,12 +26,20 @@ export default function render_codeform({
       value: content,
       is_read_only: is_loading,
       errors,
-      selection_ranges: selection_ranges,
+      selection_ranges,
       on_change: handle_change,
     })
 
     ,el('div.codeform-execbar'
-      ,render_execbar({ is_executing })
+      ,render_execbar({
+        is_executing,
+        can_cancel,
+        smth_is_selected: selection_ranges &&
+          !selection_ranges.every(({ anchor, head }) =>
+            anchor.line == head.line &&
+            anchor.ch == head.ch),
+        process_id,
+      })
     )
   );
 

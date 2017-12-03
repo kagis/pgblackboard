@@ -5,6 +5,8 @@ export default (state, action) => {
         process_id: action.process_id,
         secret_key: action.secret_key,
       };
+    case 'EXEC_COMPLETE':
+      return null;
     default:
       return state;
   }

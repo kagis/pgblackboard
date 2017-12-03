@@ -133,7 +133,6 @@ impl http::Response for SqlExecResponse {
                     Ok(ref stmt_descr) => {
                         try!(w.write_message("description", stmt_descr));
                     }
-
                     Err(ref err) => {
                         try!(w.write_message("error", err));
                         break;
@@ -151,12 +150,19 @@ impl http::Response for SqlExecResponse {
             }
 
             match *pgconn.get_last_execution_result() {
-                Some(Ok(ref cmd_tag)) => try!(w.write_message("complete", cmd_tag)),
-                Some(Err(ref err)) => try!(w.write_message("error", err)),
-                None => try!(w.write_message("complete", &serde_json::Value::Null)),
+                Some(Ok(ref cmd_tag)) => w.write_message("complete", cmd_tag)?,
+                Some(Err(ref err)) => {
+                    w.write_message("error", err)?;
+                    break;
+                }
+                None => w.write_message("complete", &serde_json::Value::Null)?,
             }
         }
-        pgconn.close();
+
+        let process_id = pgconn.get_process_id();
+        if let Err(close_err) = pgconn.close() {
+            eprintln!("(pid{}) error while closing pg connection {:#?}", process_id, close_err);
+        }
 
         let mut chunk_writer = try!(w.end());
         chunk_writer.end()

@@ -19,8 +19,14 @@
   border-bottom: 1px dotted;
   margin-left: .2em;
   margin-right: .2em;
-  font-size: 0.8125em;
+  font-size: inherit;
   color: var(--fg);
+}
+
+.execbar-btn_subtext {
+  display: block;
+  font-size: 60%;
+  line-height: 1;
 }
 
 /*button*/.execbar-execute--table {

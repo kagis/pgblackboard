@@ -118,16 +118,12 @@ impl Connection {
                     hasher.input(pwduser_hash.as_bytes());
                     hasher.input(&salt);
                     let output = format!("md5{}", hasher.result_str());
-                    try!(conn.write_message(PasswordMessage { password: &output }));
+                    conn.write_message(PasswordMessage { password: &output })?;
                     password_was_requested = true;
                 }
 
-                BackendMessage::AuthenticationCleartextPassword => {
-                     try!(conn.write_message(PasswordMessage { password: password }));
-                    password_was_requested = true;
-                }
-
-                BackendMessage::AuthenticationSSPI
+                BackendMessage::AuthenticationCleartextPassword
+                | BackendMessage::AuthenticationSSPI
                 | BackendMessage::AuthenticationSCMCredential
                 | BackendMessage::AuthenticationGSS => return Err(
                     Error::from(io::Error::new(
@@ -164,6 +160,7 @@ impl Connection {
     }
 
     fn wait_for_ready(&mut self) -> Result<()> {
+        // println!("(pid{}) waiting for ready", self.process_id);
         match try!(self.read_message()) {
             BackendMessage::ReadyForQuery { transaction_status } => {
                 self.transaction_status = transaction_status;
@@ -175,16 +172,23 @@ impl Connection {
 
     fn read_message(&mut self) -> Result<BackendMessage> {
         loop {
-            let message = match backend::read_message(&mut self.stream) {
-                Ok(message) => message,
-                Err(err) => {
-                    self.is_desynchronized = true;
-                    return Err(PgErrorOrNotice::from(err));
-                }
-            };
+            let message = backend::read_message(&mut self.stream)
+                .unwrap_or_else(|err| BackendMessage::ErrorResponse(
+                    PgErrorOrNotice::from(err)));
 
             if cfg!(debug_assertions) {
-                println!("-> {:#?}", message);
+                if let BackendMessage::DataRow(ref row) = message {
+                    println!("(pid{})-> DataRow [{}]",
+                        self.process_id,
+                        row.iter()
+                            .map(|maybe_val| maybe_val.as_ref()
+                                .map(|val| format!("{:?}, ", val))
+                                .unwrap_or("null, ".to_owned()))
+                            .collect::<String>()
+                    );
+                } else {
+                    println!("(pid{})-> {:?}", self.process_id, message);
+                }
             }
 
             match message {
@@ -197,14 +201,39 @@ impl Connection {
                 BackendMessage::ParameterStatus { .. } => {
 
                 }
+                BackendMessage::ErrorResponse(sql_err) => {
+                    self.is_desynchronized = true;
+                    return Err(sql_err);
+                }
                 other => return Ok(other)
             }
         }
     }
 
     fn write_message<T: FrontendMessage>(&mut self, msg: T) -> Result<()> {
+        if self.is_desynchronized {
+            return Err(PgErrorOrNotice {
+                severity: "ERROR".to_owned(),
+                code: SqlState::IoError,
+                message: "writing to desyncronized connection".to_owned(),
+                detail: None,
+                hint: None,
+                position: None,
+                internal_position: None,
+                internal_query: None,
+                where_: None,
+                file: None,
+                line: None,
+                routine: None,
+                schema_name: None,
+                table_name: None,
+                column_name: None,
+                datatype_name: None,
+                constraint_name: None,
+            });
+        }
         if cfg!(debug_assertions) {
-            println!("<- {:#?}", &msg);
+            println!("(pid{})<- {:?}", self.process_id, &msg);
         }
         frontend::write_message(&mut self.stream, msg).map_err(|err| {
             self.is_desynchronized = true;
@@ -375,13 +404,10 @@ impl Connection {
                 self.wait_for_ready().and(Ok(command_tag))
             }
             BackendMessage::EmptyQueryResponse => {
-                self.wait_for_ready().and(Ok("".to_string()))
-            }
-            BackendMessage::ErrorResponse(sql_err) => {
-                self.wait_for_ready().and(Err(sql_err))
+                self.wait_for_ready().and(Ok("EMPTY QUERY".to_owned()))
             }
             BackendMessage::PortalSuspended => {
-                self.wait_for_ready().and(Ok("SUSPENDED".to_string()))
+                self.wait_for_ready().and(Ok("SUSPENDED".to_owned()))
             }
             ref unexpected => Err(self.bad_response(&unexpected))
         });
@@ -396,8 +422,9 @@ impl Connection {
 
     pub fn close(mut self) -> Result<()> {
         use std::net::Shutdown::Both;
-        try!(self.write_message(TerminateMessage));
-        try!(self.stream.shutdown(Both));
+        self.is_desynchronized = false;
+        self.write_message(TerminateMessage)?;
+        self.stream.shutdown(Both)?;
         Ok(())
     }
 

@@ -459,7 +459,7 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
     for stream_result in listener.incoming() {
         let handler = handler.clone();
         match stream_result {
-            Err(e) => { println!("{}", e); }
+            Err(e) => { eprintln!("{}", e); }
             Ok(mut stream) => pool.execute(move || {
                 let req = {
                     let mut bufread = BufReader::with_capacity(1024, &mut stream);
@@ -480,7 +480,7 @@ pub fn serve_forever<H>(addr: &str, handler: H) -> io::Result<()>
                 let resp = handler.handle_http_req(&path_slices_vec[..], &req);
                 let resp_result = resp.write_to(ResponseStarter(stream));
                 if let Err(e) = resp_result {
-                    println!("error while sending response {}", e);
+                    eprintln!("error while sending response {}", e);
                 }
             })
         }
