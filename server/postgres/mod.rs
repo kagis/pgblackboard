@@ -35,6 +35,7 @@ use self::frontend::{
     TerminateMessage,
     FlushMessage,
     SyncMessage,
+    CancelRequestMessage,
 };
 
 use std::io::{ self, Read, Write };
@@ -55,6 +56,8 @@ pub struct Connection {
     is_desynchronized: bool,
     current_execution_result: Option<Result<String>>,
     is_executing: bool,
+    process_id: u32,
+    secret_key: u32,
 }
 
 pub fn connect<T>(
@@ -93,6 +96,8 @@ impl Connection {
             is_desynchronized: false,
             current_execution_result: None,
             is_executing: false,
+            process_id: 0,
+            secret_key: 0,
         };
 
         try!(conn.write_message(StartupMessage {
@@ -139,7 +144,13 @@ impl Connection {
 
                 BackendMessage::ErrorResponse(e) => return Err(e),
 
-                BackendMessage::BackendKeyData { .. } => {}
+                BackendMessage::BackendKeyData {
+                    process_id,
+                    secret_key
+                } => {
+                    conn.process_id = process_id;
+                    conn.secret_key = secret_key;
+                }
 
                 BackendMessage::ParameterStatus { .. } => {}
 
@@ -389,6 +400,20 @@ impl Connection {
         try!(self.stream.shutdown(Both));
         Ok(())
     }
+
+    pub fn get_process_id(&self) -> u32 { self.process_id }
+    pub fn get_secret_key(&self) -> u32 { self.secret_key }
+}
+
+pub fn cancel(addr: &str, process_id: u32, secret_key: u32) -> io::Result<()> {
+    use std::net::Shutdown::Both;
+    let mut stream = InternalStream::connect(addr)?;
+    frontend::write_message(&mut stream, CancelRequestMessage {
+        secret_key,
+        process_id,
+    })?;
+    stream.shutdown(Both)?;
+    Ok(())
 }
 
 pub fn query(conn: &mut Connection, stmt: &str) -> Result<Vec<Vec<Option<String>>>> {

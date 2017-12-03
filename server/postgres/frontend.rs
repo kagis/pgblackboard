@@ -56,6 +56,12 @@ pub struct FlushMessage;
 #[derive(Debug)]
 pub struct SyncMessage;
 
+#[derive(Debug)]
+pub struct CancelRequestMessage {
+    pub process_id: u32,
+    pub secret_key: u32,
+}
+
 pub fn write_message<W: Write, M: FrontendMessage>(
     out: &mut W, msg: M)
     -> io::Result<()>
@@ -181,6 +187,15 @@ impl<'a> FrontendMessage for CloseStatementMessage<'a> {
     fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
         out.write_u8(b'S')
             .and_then(|_| (out.write_cstr(self.stmt_name)))
+    }
+}
+
+impl FrontendMessage for CancelRequestMessage {
+    fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
+        out.write_u32_be(16)
+            .and_then(|_| out.write_u32_be(80877102))
+            .and_then(|_| out.write_u32_be(self.process_id))
+            .and_then(|_| out.write_u32_be(self.secret_key))
     }
 }
 

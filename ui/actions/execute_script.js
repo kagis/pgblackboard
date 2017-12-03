@@ -3,6 +3,7 @@ import extract_connect_metacmd from '../sql/extract_connect_metacmd.js';
 import strip_comments_on_start from '../sql/strip_comments_on_start.js';
 import linecol from '../sql/linecol.js';
 import sql_stream from '../api/sql_stream.js';
+import sql_query from '../api/sql_query.js';
 import bus from '../core/bus.js';
 
 let current_stream;
@@ -56,6 +57,13 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
       } else {
         const m = messages.shift();
         switch (m.messageType) {
+          case 'backendkey':
+            dispatch({
+              type: 'BACKENDKEY',
+              ...m.payload,
+            });
+            break;
+
           case 'description':
             dispatch({
               type: 'STATEMENT_DESCRIBE',
@@ -122,12 +130,17 @@ export const execute_script = ({ use_map }) => (dispatch, state) => {
   }
 };
 
-export const cancel_script = function cancel() {
-  if (current_stream) {
-    current_stream.abort();
-    current_stream = null;
-  }
-  return {
-    type: 'EXEC_CANCEL',
-  };
+export const cancel_script = () => function cancel(dispatch, state) {
+  sql_query({
+    statements: [`select pg_cancel_backend(${state.backendkey.process_id})`],
+    database: 'postgres',
+    credentials: state.credentials,
+  });
+  // if (current_stream) {
+  //   current_stream.abort();
+  //   current_stream = null;
+  // }
+  // return {
+  //   type: 'EXEC_CANCEL',
+  // };
 };

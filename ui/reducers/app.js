@@ -12,6 +12,7 @@ import edits from './edits.js';
 import credentials from './credentials.js';
 import focused_row from './focused_row.js';
 import is_executing from './is_executing.js';
+import backendkey from './backendkey.js';
 
 export default (state, action) => reduce_combined(state, action, {
   is_dark,
@@ -27,4 +28,5 @@ export default (state, action) => reduce_combined(state, action, {
   credentials,
   focused_row,
   is_executing,
+  backendkey,
 });

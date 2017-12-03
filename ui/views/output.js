@@ -75,9 +75,6 @@ function render_stmt_result({
   focused_row_index,
 }) {
   return el('div.stmt_result'
-    ,error && el('div.message.message--error'
-      ,error.message
-    )
     ,fields && fields.length && el.memoize(render_table, {
       rows,
       fields,
@@ -94,6 +91,9 @@ function render_stmt_result({
       ),
       focused_row_index,
     })
+    ,error && el('div.message.message--error'
+      ,error.message
+    )
     ,command_tag && el('div.message'
       ,command_tag
     )

@@ -110,6 +110,11 @@ impl http::Response for SqlExecResponse {
 
         let mut w = try!(JsonStream::begin(chunk_writer));
 
+        w.write_message("backendkey", &json!({
+            "process_id": pgconn.get_process_id(),
+            "secret_key": pgconn.get_secret_key(),
+        }))?;
+
 
         //|/\*let SqlExecResponse { mut conn, statements, describe } = { *self };*/
 
