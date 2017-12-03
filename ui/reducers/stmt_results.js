@@ -149,14 +149,16 @@ function reduce_stmt_results_inner(state, action) {
   }
 }
 
-function queryplan_json(jsonplan) {
-  const children = (jsonplan['Plans'] || []).map(queryplan_json);
-  const untotal = prop => jsonplan[prop]
-    - children.map(child => child.props[prop])
-              .reduce((a, b) => a + b, 0);
+function queryplan_json({ 'Plans': children_raw, ...jsonplan }) {
+  const children = (children_raw || []).map(queryplan_json);
+  const untotal = prop => children
+    .map(child => child.props[prop])
+    .filter(Boolean)
+    .reduce((a, b) => a - b, jsonplan[prop]);
+
   return {
-    props: Object.assign({}, jsonplan, { 'Plans': null }),
-    duration: untotal('Actual Total Time') * jsonplan['Actual Loops'],
+    props: jsonplan,
+    duration: untotal('Actual Total Time') * jsonplan['Actual Loops'] || null,
     cost: untotal('Total Cost'),
     children,
   };

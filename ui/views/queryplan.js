@@ -25,7 +25,6 @@ function render_queryplan(node) {
 function render_queryplan_tree({
   props: {
     'Node Type': node_type,
-    'Plans': _,
     ...props
   },
   children,
@@ -46,9 +45,11 @@ function render_queryplan_tree({
         ,el('div.queryplan-node_type'
           ,node_type
         )
-        ,el('div.queryplan-duration'
-          ,duration < 1 ? '<1' : String(Number(duration.toFixed(2)))
-          ,el('span.queryplan-muted', 'ms')
+        ,Number.isFinite(duration) && (
+          el('div.queryplan-duration'
+            ,duration < 1 ? '<1' : String(Number(duration.toFixed(2)))
+            ,el('span.queryplan-muted', 'ms')
+          )
         )
       )
 
@@ -56,14 +57,14 @@ function render_queryplan_tree({
         el('div.queryplan-subheader'
           ,el('span.queryplan-muted', 'on ')
           ,props['Relation Name']
-          ,props['Alias'] && ` (${props['Alias']})`
+          ,props['Alias'] != props['Relation Name'] && ` (${props['Alias']})`
         )
       )
 
       ,props['Group Key'] && (
         el('div.queryplan-subheader'
           ,el('span.queryplan-muted', 'by ')
-          ,props['Group Key']
+          ,String(props['Group Key'])
         )
       )
 

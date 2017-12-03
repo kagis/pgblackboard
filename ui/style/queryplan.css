@@ -65,7 +65,8 @@
   border-style: solid;
   border-color: var(--queryplan-edge-color);
   display: inline-block;
-  width: 200px;
+  min-width: 200px;
+  max-width: 500px;
   margin: var(--queryplan-spacing);
   margin-top: 0;
   position: relative;
