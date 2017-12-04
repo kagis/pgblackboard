@@ -71,7 +71,7 @@ function render_queryplan_tree({
       ,props['Sort Key'] && (
         el('div.queryplan-subheader'
           ,el('span.queryplan-muted', 'by ')
-          ,props['Sort Key']
+          ,String(props['Sort Key'])
         )
       )
 
