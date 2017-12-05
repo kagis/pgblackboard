@@ -21,7 +21,7 @@
 }
 
 .layers {
-  background-color: #fff;
+  background-color: var(--pgbbcolor-bg);
   padding: .5em;
   border: 1px solid #888;
 

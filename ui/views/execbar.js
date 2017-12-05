@@ -10,12 +10,12 @@ export default ({
   process_id,
 }) => el('div.execbar'
 
-  // ,el('button.execbar-execute.execbar-execute--map'
-  //   ,el.on('click', _ => dispatch(execute_script({
-  //     use_map: true,
-  //   })))
-  //   ,'map'
-  // )
+  ,el('button.execbar-btn'
+    ,el.on('click', _ => dispatch({
+      type: 'THEME_TOGGLE',
+    }))
+    ,'theme'
+  )
 
   ,!is_executing && (
     el('button.execbar-btn.execbar-btn--execute'

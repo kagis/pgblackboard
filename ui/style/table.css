@@ -4,11 +4,11 @@
   padding: 0;
   margin: 0;
   margin-bottom: 1em;
-  border-color: var(--table-border-color);
+  border-color: var(--pgbbcolor-table-border);
 }
 
 .table-row:nth-child(even) {
-  background-color: var(--table-row-bg-color);
+  background-color: var(--pgbbcolor-table-row-bg);
 }
 
 .table-header {
@@ -17,8 +17,8 @@
   bottom: 1em;
   /* border: none; */
   /* border-width: 0; */
-  background-color: var(--table-head-bg-color);
-  box-shadow: 1px 1px 0 var(--table-border-color);
+  background-color: var(--pgbbcolor-table-head-bg);
+  box-shadow: 1px 1px 0 var(--pgbbcolor-table-border);
   /* outline: 1px solid var(--table-border-color); */
   z-index: 1;
 }
@@ -33,7 +33,7 @@
 }
 
 .table th {
-  box-shadow: 2px 2px 0 -1px var(--table-border-color) inset;
+  box-shadow: 2px 2px 0 -1px var(--pgbbcolor-table-border) inset;
 }
 
 .table-cell,
@@ -135,7 +135,7 @@
   content: 'null';
   font-style: italic;
   font-size: smaller;
-  color: var(--fg-mute);
+  color: var(--pgbbcolor-mute-fg);
 }
 
 .table-cell--emptystr:empty::before {
@@ -176,7 +176,7 @@
 }
 
 .table-delete_row--on::before {
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .table-delete_row--off:hover::before {
@@ -202,7 +202,7 @@
 }
 
 .table-insert_cancel:hover {
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .table-insert_cancel::before {
@@ -236,7 +236,7 @@
 }
 
 .table-update_cancel:hover {
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .table-update_cancel::before {
@@ -267,7 +267,7 @@
   font-variant: normal;
   text-transform: none;
   line-height: 1;
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .table-error_icon:hover::after {

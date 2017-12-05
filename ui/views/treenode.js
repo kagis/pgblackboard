@@ -33,13 +33,15 @@ function render_treenode({
 
   return el('div.treenode'
 
-    ,can_have_children && el('button.treenode-toggler'
-      ,is_busy && el.class('treenode-toggler--loading')
-      ,is_expanded && el.class('treenode-toggler--collapser')
-      ,!(is_busy || is_expanded) && el.class('treenode-toggler--expander')
-      ,el.attr('disabled', Boolean(is_busy))
-      ,el.attr('data-path', JSON.stringify(treenode_path))
-      ,el.attr('data-id', JSON.stringify(treenode_id))
+    ,can_have_children && (
+      el('button.treenode-toggler'
+        ,is_busy && el.class('treenode-toggler--loading')
+        ,is_expanded && el.class('treenode-toggler--collapser')
+        ,!(is_busy || is_expanded) && el.class('treenode-toggler--expander')
+        ,el.attr('disabled', Boolean(is_busy))
+        ,el.attr('data-path', JSON.stringify(treenode_path))
+        ,el.attr('data-id', JSON.stringify(treenode_id))
+      )
     )
 
     ,el('a.treenode-header'
@@ -52,32 +54,39 @@ function render_treenode({
       ,el('span.treenode-comment', comment)
     )
 
-    ,show_message && el('div.treenode-message_layout'
-      ,el('div.baloon'
-        ,el('div.treenode-message'
-          ,message.is_error && el.class('treenode-message--error')
-          ,!message.is_error && el.class('treenode-message--info')
-          ,message.text
+    ,show_message && (
+      el('div.treenode-message_layout'
+        ,el('div.treenode-baloon'
+          ,el('div.treenode-message'
+            ,message.is_error && el.class('treenode-message--error')
+            ,!message.is_error && el.class('treenode-message--info')
+            ,message.text
+          )
         )
       )
     )
 
-    ,limited_children && el('div.treenode-children'
-      ,limited_children.map((child, i) => render_treenode(Object.assign({
-        treenode_path: treenode_path.concat(i),
-        selected_treenode_id,
-        message,
-      }, child)))
+    ,limited_children && (
+      el('div.treenode-children'
+        ,limited_children.map((child, i) => render_treenode({
+          treenode_path: treenode_path.concat(i),
+          selected_treenode_id,
+          message,
+          ...child,
+        }))
+      )
     )
 
-    ,is_limited && el('button.treenode-showall'
-      ,el.on('click', _ => dispatch({
-        type: 'TREENODE_EXPAND_ALL',
-        treenode_path,
-      }))
-      ,'show all '
-      ,el('strong', String(children.length))
-      ,' items'
+    ,is_limited && (
+      el('button.treenode-showall'
+        ,el.on('click', _ => dispatch({
+          type: 'TREENODE_EXPAND_ALL',
+          treenode_path,
+        }))
+        ,'show all '
+        ,el('strong', String(children.length))
+        ,' items'
+      )
     )
   );
 }

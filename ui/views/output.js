@@ -13,7 +13,8 @@ export default function render_output({
   stmt_results,
   errors,
   focused_row,
-  split
+  split,
+  is_dark,
 }) {
   if (!stmt_results) {
     return null;
@@ -57,7 +58,13 @@ export default function render_output({
         )
       )
     ),
-    bottom: show_map && render_mapgroup({ map, edits, stmt_results, focused_row }),
+    bottom: show_map && render_mapgroup({
+      map,
+      edits,
+      stmt_results,
+      focused_row,
+      is_dark,
+    }),
   });
 }
 
@@ -102,9 +109,15 @@ function render_stmt_result({
 }
 
 
-const render_mapgroup = ({ map, edits, stmt_results, focused_row }) => (
+const render_mapgroup = ({
+  map,
+  edits,
+  stmt_results,
+  focused_row,
+  is_dark,
+}) => (
   el('div.mapgroup'
-    ,{ children: render_map({ map, edits, stmt_results, focused_row }) }
+    ,{ children: render_map({ map, edits, stmt_results, focused_row, is_dark }) }
     ,render_layers({ map, stmt_results })
   )
 );

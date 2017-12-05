@@ -4,7 +4,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: var(--panel-bg);
+  background-color: var(--pgbbcolor-panel-bg);
 }
 
 .output-scrollbox {
@@ -19,7 +19,7 @@
   bottom: 0;
   right: 0;
   padding: .2em;
-  background-color: var(--bg);
+  background-color: var(--pgbbcolor-bg);
   border-top-left-radius: .2em;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .output-save_edits:disabled {
-  color: #ccc;
+  color: var(--pgbbcolor-mute-fg);
 }
 
 .output-save_edits:focus {

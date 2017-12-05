@@ -2,7 +2,7 @@
   padding: .2em;
   border-top-left-radius: .3em;
   white-space: nowrap;
-  background-color: var(--bg);
+  background-color: var(--pgbbcolor-bg);
 }
 
 /*button*/.execbar-btn {
@@ -20,7 +20,7 @@
   margin-left: .2em;
   margin-right: .2em;
   font-size: inherit;
-  color: var(--fg);
+  color: var(--pgbbcolor-fg);
 }
 
 .execbar-btn_subtext {

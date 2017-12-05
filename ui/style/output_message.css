@@ -2,12 +2,12 @@
   padding: .3rem .5rem .3rem .5rem;
   font-size: .8rem;
   font-weight: bold;
-  border-bottom-width: 1px solid var(--bg);
+  border-bottom-width: 1px solid var(--pgbbcolor-bg);
 }
 
 .message--error {
   white-space: pre;
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .message__sourceLink {

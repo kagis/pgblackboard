@@ -24,7 +24,7 @@
   width: 50%;
   left: 0;
   top: 0;
-  border-color: var(--queryplan-edge-color);
+  border-color: var(--pgbbcolor-queryplan-edge);
   border-width: var(--queryplan-edge-width);
   border-top-style: solid;
   border-right-style: solid;
@@ -37,7 +37,7 @@
   width: 50%;
   right: 0;
   top: 0;
-  border-color: var(--queryplan-edge-color);
+  border-color: var(--pgbbcolor-queryplan-edge);
   border-width: var(--queryplan-edge-width);
   border-top-style: solid;
   height: var(--queryplan-spacing);
@@ -63,16 +63,16 @@
 .queryplan-node {
   border-width: var(--queryplan-edge-width);
   border-style: solid;
-  border-color: var(--queryplan-edge-color);
+  border-color: var(--pgbbcolor-queryplan-edge);
   display: inline-block;
   min-width: 200px;
   max-width: 500px;
   margin: var(--queryplan-spacing);
   margin-top: 0;
   position: relative;
-  background-color: #f4f4f4;
+  background-color: var(--pgbbcolor-queryplan-node-bg);
   border-radius: 3px;
-  box-shadow: .1em .1em .1em #eee;
+  box-shadow: .1em .1em .1em var(--pgbbcolor-queryplan-node-shadow);
   text-align: left;
   padding: .3em;
   font-size: 80%;
@@ -84,7 +84,7 @@
   top: calc(-1 * var(--queryplan-spacing));
   left: 50%;
   height: var(--queryplan-spacing);
-  border-left: var(--queryplan-edge-width) solid #888;
+  border-left: var(--queryplan-edge-width) solid var(--pgbbcolor-queryplan-edge);
 }
 
 .queryplan-children {
@@ -113,12 +113,11 @@
 
 .queryplan-badge {
   color: #fff;
-  background-color: var(--danger-color);
+  background-color: var(--pgbbcolor-danger);
   display: inline-block;
   line-height: 1.4;
   padding: 0 .3em;
   border-radius: 3px;
   margin-top: .3em;
   margin-right: .3em;
-  /* font-size: 1; */
 }
