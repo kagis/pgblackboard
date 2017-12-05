@@ -11,6 +11,7 @@
   --pgbbcolor-table-row-bg: #eee;
   --pgbbcolor-danger: #ff4c4c;
   --pgbbcolor-treenode-selected-bg: rgba(0, 0, 0, 0.1);
+  --pgbbcolor-treenode-subicon-default-fg: #fff;
   --pgbbcolor-treenode-subicon-default-bg: #eee;
   --pgbbcolor-treenode-subicon-view-bg: red;
   --pgbbcolor-treenode-subicon-matview-bg: green;
