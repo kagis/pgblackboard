@@ -8,15 +8,7 @@ pub struct StartupMessage<'a, 'b> {
 }
 
 // #[derive(Debug)]
-pub struct PasswordMessage<'a> {
-    pub password: &'a str,
-}
-
-impl<'a> fmt::Debug for PasswordMessage<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PasswordMessage {{ **** }}")
-    }
-}
+pub struct PasswordMessage<'a>(pub &'a str);
 
 #[derive(Debug)]
 pub struct QueryMessage<'a> {
@@ -129,10 +121,17 @@ impl<'a, 'b> FrontendMessage for StartupMessage<'a, 'b> {
     }
 }
 
+
+impl<'a> fmt::Debug for PasswordMessage<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PasswordMessage( **** )")
+    }
+}
+
 impl<'a> FrontendMessage for PasswordMessage<'a> {
     fn ident(&self) -> Option<u8> { Some(b'p') }
     fn write_payload<W: Write>(&self, out: &mut W) -> io::Result<()> {
-        out.write_cstr(self.password)
+        out.write_cstr(self.0)
     }
 }
 

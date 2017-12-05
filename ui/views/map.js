@@ -1,5 +1,4 @@
 import dispatch from '../core/dispatch.js';
-import '../lib/leaflet/1.0.3/leaflet-src.js';
 
 import '../lib/mapboxgl/mapbox-gl.js';
 // const mapbox
@@ -29,7 +28,6 @@ const feature_colors = [
   '#a6cee3',
 ];
 
-import render_map_popup from './map_popup.js';
 import bus from '../core/bus.js';
 
 export default render_map;

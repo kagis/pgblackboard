@@ -1,10 +1,7 @@
-mod md5;
+extern crate md5;
 mod sqlstate;
 mod backend;
 mod frontend;
-
-
-use self::md5::Md5;
 
 pub use self::sqlstate::{
     SqlState,
@@ -110,15 +107,13 @@ impl Connection {
             match try!(conn.read_message()) {
 
                 BackendMessage::AuthenticationMD5Password { salt } => {
-                    let mut hasher = Md5::new();
-                    //hasher.input(password.as_bytes());
-                    //hasher.input(user.as_bytes());
-                    let pwduser_hash = password; // hasher.result_str();
-                    //hasher.reset();
-                    hasher.input(pwduser_hash.as_bytes());
-                    hasher.input(&salt);
-                    let output = format!("md5{}", hasher.result_str());
-                    conn.write_message(PasswordMessage { password: &output })?;
+                    let msg_payload = format!("md5{:x}", md5::compute({
+                        let mut buf = vec![];
+                        buf.extend_from_slice(password.as_bytes());
+                        buf.extend_from_slice(&salt);
+                        buf
+                    }));
+                    conn.write_message(PasswordMessage(&msg_payload))?;
                     password_was_requested = true;
                 }
 
