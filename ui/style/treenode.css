@@ -208,7 +208,7 @@
   top: .2em;
   left: .2em;
   background-color: var(--pgbbcolor-treenode-subicon-default-bg);
-  color: #fff;
+  color: var(--pgbbcolor-treenode-subicon-default-fg);
 }
 
 .treenode-icon--view::after {
