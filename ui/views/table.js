@@ -57,7 +57,7 @@ function render_table({
     ,el('tbody'
       ,rows.map((row, row_index) => {
         const row_key = JSON.stringify(key_field_indexes
-          .map(i => [key_columns[i], row[i]]));
+          .map(i => [fields[i].name, row[i]]));
         const row_updates = updates[row_key] || {};
         const error = deletes_errors[row_key] || updates_errors[row_key];
         const is_deleted = deletes[row_key];
