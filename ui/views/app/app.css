@@ -1,0 +1,102 @@
+.app {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 16px;
+  color: var(--pgbbcolor-fg);
+  background-color: var(--pgbbcolor-bg);
+}
+
+.app-leftbar {
+  position: absolute;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  padding: .5em .1em;
+  background-color: var(--pgbbcolor-bg);
+  box-shadow: 0 0 .5em var(--leftbar-shadow-color);
+  z-index: 2;
+}
+
+.app-theme_toggler {
+  outline: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.app-theme_toggler::-webkit-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+.app-theme_toggler::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+.app-theme_toggler::before {
+  font-family: 'fontello';
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1em;
+  font-size: 115%;
+  content: '\e800';
+}
+
+.app-splitpanel_h {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0; /*1.3125em;*/
+}
+
+.app-splitpanel_v,
+.app-codeform,
+.app-output,
+.app-nav {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.app-nav {
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: translateZ(0);
+  padding-bottom: 30%;
+  box-sizing: border-box;
+}
+
+.app-tree {
+  margin-left: 2em;
+  margin-right: .5em;
+  margin-top: .5em;
+  margin-bottom: .5em;
+}
+
+.app-drafts {
+  margin: .5em;
+}
+
+.app-nav,
+.app-codeform {
+  background-color: var(--pgbbcolor-panel-bg);
+}

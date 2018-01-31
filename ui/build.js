@@ -47,7 +47,7 @@ const postcss_processor = postcss([
   postcss_import,
 ]);
 
-const css_entry = 'ui/style/app.css';
+const css_entry = 'ui/main.css';
 
 const css_bundle
   = read_file(css_entry, 'utf-8')
@@ -63,11 +63,11 @@ const html_bundle
     css_bundle,
   ]).then(([index_html, js_bundle_code, css_bundle_code]) => index_html
     .replace(
-      '<script type="module" src="main.js"></script>',
+      '<script src="main.js" type="module"></script>',
       '<script>' + js_bundle_code.replace(/\$/g, '$$$$') + '</script>'
     )
     .replace(
-      '<link href="./style/app.css" rel="stylesheet" />',
+      '<link href="main.css" rel="stylesheet" />',
       '<style>' + css_bundle_code.replace(/\$/g, '$$$$') + '</style>'
     )
   );

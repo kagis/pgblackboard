@@ -1,0 +1,41 @@
+@import url(../lib/fontello/css/fontello-embedded.css);
+@import url(../lib/roboto/roboto.css);
+@import url(./app/app.css);
+@import url(./codemirror/codemirror.css);
+@import url(./codeform/codeform.css);
+@import url(./draft/draft.css);
+@import url(./execbar/execbar.css);
+@import url(./loginform/loginform.css);
+@import url(./output/output.css);
+@import url(./output_message/output_message.css);
+@import url(./queryplan/queryplan.css);
+@import url(./spinner_shield/spinner_shield.css);
+@import url(./splitpanel/splitpanel.css);
+@import url(./table/table.css);
+@import url(./treenode/treenode.css);
+@import url(./map/map.css);
+@import url(./light.css);
+
+body {
+  overflow: hidden; /* disable bouncing scroll in macos */
+  font-family: 'Roboto', 'DejaVu Sans', 'Verdana', sans-serif;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  padding: 2px;
+}
+
+*::-webkit-scrollbar-button:start:decrement,
+*::-webkit-scrollbar-button:end:increment {
+  display: block;
+  height: 0;
+  width: 0;
+  background-color: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  border: 2px solid;
+}

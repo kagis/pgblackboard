@@ -2,7 +2,7 @@ import cito from './core/cito.js';
 import create_store from './core/store.js';
 import dispatch from './core/dispatch.js';
 import bus from './core/bus.js';
-import render_app from './views/app.js';
+import render_app from './views/app/app.js';
 import reduce_app from './reducers/app.js';
 import login from './actions/login.js';
 import drafts_load from './actions/drafts_load.js';

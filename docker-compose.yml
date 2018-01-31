@@ -1,0 +1,17 @@
+version: '3'
+services:
+  pgblackboard:
+    build:
+      context: .
+      args:
+        CARGO_ARGS: ''
+    command: --postgres postgres:5432
+    working_dir: /pgblackboard
+    ports:
+      - 7890:7890
+    volumes:
+      - $PWD/ui:/pgblackboard/ui
+  postgres:
+    image: mdillon/postgis:10-alpine
+    volumes:
+      - $PWD/demo.sql:/docker-entrypoint-initdb.d/demo.sql

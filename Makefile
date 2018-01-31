@@ -53,7 +53,7 @@ DOCKER_RUN := docker run -it --rm \
 	--workdir /source
 
 
-FONTELLO_DIR  ?= ./ui/style/fontello
+FONTELLO_DIR  ?= ./ui/lib/fontello
 
 .PHONY: fontello-open
 fontello-open:
@@ -78,7 +78,7 @@ fontello-save:
 
 .PNONY: codemirror-up
 codemirror-up:
-	cd ui/lib/codemirror \
+	cd ui/views/codemirror/lib \
 	&& find . -type f -exec \
 		curl https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.30.0/{} \
 			--output {} --verbose \; \
@@ -87,7 +87,7 @@ codemirror-up:
 
 .PHONY: mapboxgl-up
 mapboxgl-up:
-	cd ui/lib/mapboxgl \
+	cd ui/views/map/mapboxgl \
 	&& find . -type f -exec \
 		curl https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/0.41.0/{} \
 			--output {} --verbose \;
