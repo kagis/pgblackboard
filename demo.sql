@@ -7,12 +7,12 @@ create schema world;
 set search_path to world, public;
 comment on schema world is 'Demo schema description long long description long long';
 
-create table foo(
+create table foo (
   fooid int not null primary key,
   name text
 );
 
-create multikey (
+create table multikey (
   col1 text,
   col2_key text,
   col3_key text,
@@ -24,6 +24,6 @@ create table hasindexes (
   foo text,
   bar text,
   buz text
-)
+);
 
 create index on hasindexes(foo);

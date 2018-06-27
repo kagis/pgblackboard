@@ -8,6 +8,12 @@ export default function reduce_focused_row(state = null, action) {
         stmt_index: action.stmt_index,
         row_index: action.row_index,
       };
+    case 'ROW_EXPAND':
+      return {
+        stmt_index: action.stmt_index,
+        row_index: action.row_index,
+        is_expanded: true,
+      };
     default:
       return state;
   }

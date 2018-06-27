@@ -1,9 +1,0 @@
-[Unit]
-Description=Minimalistic PostgreSQL interface
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/pgblackboard
-
-[Install]
-WantedBy=multi-user.target

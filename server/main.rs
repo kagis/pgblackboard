@@ -1,4 +1,3 @@
-extern crate argparse;
 #[macro_use]
 extern crate serde_json;
 extern crate serde;
@@ -14,6 +13,7 @@ mod sqlexec;
 mod postgres;
 // mod sql;
 
+use std::env;
 use std::io;
 use std::fs;
 use std::path::PathBuf;
@@ -21,30 +21,20 @@ use std::path::PathBuf;
 
 
 fn main() {
-    let mut pgaddr = "127.0.0.1:5432".to_string();
-    let mut httpaddr = "0.0.0.0:7890".to_string();
+    let pgaddr = match env::var("PGBB_POSTGRES") {
+        Ok(val) => val,
+        Err(env::VarError::NotPresent) => "127.0.0.1:5432".to_owned(),
+        Err(err) => panic!("error reading PGBB_POSTGRES env var: {}", err),
+    };
 
-    {
-        let mut ap = argparse::ArgumentParser::new();
+    let httpaddr = match env::var("PGBB_HTTP") {
+        Ok(val) => val,
+        Err(env::VarError::NotPresent) => "0.0.0.0:7890".to_owned(),
+        Err(err) => panic!("error reading PGBB_HTTP env var: {}", err),
+    };
 
-        ap.set_description("pgBlackboard server.");
-
-        ap.refer(&mut httpaddr).add_option(
-            &["--http"],
-            argparse::Store,
-            "HOST:PORT to listen for HTTP requests. \
-             Default is 0.0.0.0:7890"
-        );
-
-        ap.refer(&mut pgaddr).add_option(
-            &["--postgres"],
-            argparse::Store,
-            "HOST:PORT of PostgreSQL server. \
-             Default is 127.0.0.1:5432"
-        );
-
-        ap.parse_args_or_exit();
-    }
+    println!("PGBB_POSTGRES={}", &pgaddr);
+    println!("PGBB_HTTP={}", &httpaddr);
 
     let webapp = WebApplication {
         pgaddr: pgaddr,

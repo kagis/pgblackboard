@@ -87,8 +87,7 @@
   left: 2px;
 } */
 
-.table-row--highlighted .table-cell {
-  /* expand cell content on focus */
+.table-row--expanded .table-cell {
   white-space: pre-wrap;
   overflow-wrap: break-word;
   word-wrap: break-word;
@@ -292,7 +291,7 @@
   text-decoration: line-through;
 }
 
-.table-row--highlighted {
+.table-row--focused {
   background: #1d75b3 !important;
   color: #eee;
 }

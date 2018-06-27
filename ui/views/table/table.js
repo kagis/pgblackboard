@@ -14,6 +14,7 @@ function render_table({
   can_update_and_delete,
   can_insert,
   focused_row_index,
+  focused_row_is_expanded,
 }) {
 
   const {
@@ -62,8 +63,13 @@ function render_table({
         const error = deletes_errors[row_key] || updates_errors[row_key];
         const is_deleted = deletes[row_key];
         const has_updates = Object.keys(row_updates).length;
+        const row_is_focused = focused_row_index === row_index;
+        const row_is_expanded = row_is_focused && focused_row_is_expanded;
+
         return el('tr.table-row'
-          ,focused_row_index === row_index && el.class('table-row--highlighted')
+          ,row_is_focused && !row_is_expanded && el.class('table-row--focused')
+          ,row_is_expanded && el.class('table-row--expanded')
+          ,!row_is_focused && el.class('table-row--unfocused')
           ,el.attr('id', `table-row--${stmt_index}_${row_index}`)
           ,is_deleted && el.class('table-row--deleted')
           ,error && el.class('table-row--invalid')
@@ -101,10 +107,12 @@ function render_table({
               // ,is_updated && el.class('table-cell--updated')
               ,field.src_column && el.attr('data-column', field.src_column)
               ,is_updatable && el.class('table-cell--updatable')
-              ,is_updatable && el.attr('contenteditable', 'true')
+              ,is_updatable && row_is_expanded && el.attr('contenteditable', 'true')
               ,field.is_num && el.class('table-cell--num')
               ,display_value === '' && el.class('table-cell--emptystr')
-              ,display_value
+              ,String(display_value).length > 50 && !row_is_expanded
+                ? display_value.slice(0, 50) + '\u2026'
+                : display_value
             );
           })
         );
@@ -153,7 +161,7 @@ function render_table({
 
 on('.table-cell--updatable', 'input', function () {
   const td_el = this;
-  const new_value = td_el.textContent;
+  const new_value = td_el.textContent || null;
   const original_value = td_el.hasAttribute('data-original-value')
     ? JSON.parse(td_el.getAttribute('data-original-value'))
     : NaN;
@@ -167,8 +175,7 @@ on('.table-cell--updatable', 'input', function () {
 });
 
 on('.table-cell--inserted', 'input', function () {
-  const td_el = this;
-  const value = td_el.textContent || undefined;
+  const value = this.textContent || undefined;
   dispatch({
     type: 'TABLE_INSERT',
     database_and_table: this.closest('.table').dataset.database_and_table,
@@ -214,12 +221,23 @@ on('.table-update_cancel', 'click', function () {
   });
 });
 
-on('.table-cell', 'focus', function () {
+on('.table-row--unfocused .table-cell', 'focus', function (e) {
   dispatch({
     type: 'ROW_FOCUS',
     stmt_index: +this.closest('.table').dataset.stmt_index,
     row_index: this.closest('.table-row').rowIndex - 1,
     should_map_move: true,
+  });
+});
+
+on('.table-row--focused .table-cell', 'mousedown', function () {
+  if (this.ownerDocument.activeElement != this) {
+    return;
+  }
+  dispatch({
+    type: 'ROW_EXPAND',
+    stmt_index: +this.closest('.table').dataset.stmt_index,
+    row_index: this.closest('.table-row').rowIndex - 1,
   });
 });
 

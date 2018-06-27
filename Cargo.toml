@@ -5,7 +5,6 @@ authors = ["exe-dealer <exe-dealer@yandex.ru>"]
 repository = "https://github.com/exe-dealer/pgblackboard"
 
 [dependencies]
-argparse = "0.2"
 threadpool = "0.1.3"
 serde = "0.9"
 serde_json = "0.9"

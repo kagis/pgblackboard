@@ -37,6 +37,9 @@ export default function render_output({
           focused_row_index: focused_row
             && focused_row.stmt_index == stmt_index
             && focused_row.row_index,
+          focused_row_is_expanded: focused_row
+            && focused_row.stmt_index == stmt_index
+            && focused_row.is_expanded,
         }))
         ,errors.map(({ message }) => (
           el('div.message.message--error'
@@ -80,6 +83,7 @@ function render_stmt_result({
   },
   stmt_index,
   focused_row_index,
+  focused_row_is_expanded,
 }) {
   return el('div.stmt_result'
     ,fields && fields.length && el.memoize(render_table, {
@@ -97,6 +101,7 @@ function render_stmt_result({
           fields.some(({ src_column }) => src_column == col)
       ),
       focused_row_index,
+      focused_row_is_expanded,
     })
     ,error && el('div.message.message--error'
       ,error.message

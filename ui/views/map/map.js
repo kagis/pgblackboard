@@ -59,7 +59,7 @@ function create_or_update_map(node, params) {
 
 class Map {
   constructor(container_el) {
-    this.mapboxglMap = new mapboxgl.Map({
+    this.mapboxgl_map = new mapboxgl.Map({
       container: container_el,
       // style: 'https://openmaptiles.github.io/positron-gl-style/style-cdn.json',
       zoom: 1,
@@ -69,7 +69,7 @@ class Map {
 
     this._handle_row_focus = this._handle_row_focus.bind(this);
     this._invalidate_size = this._invalidate_size.bind(this);
-    this.mapboxglMap.on('click', this._handle_map_click.bind(this));
+    this.mapboxgl_map.on('click', this._handle_map_click.bind(this));
 
     bus.on('rendered:ROW_FOCUS', this._handle_row_focus);
     bus.on('rendered:MAP_TOGGLE', this._invalidate_size);
@@ -85,7 +85,7 @@ class Map {
     bus.off('rendered:SPLIT_VERTICAL', this._invalidate_size);
   }
   _invalidate_size() {
-    this.mapboxglMap.resize();
+    this.mapboxgl_map.resize();
   }
   _handle_row_focus({ stmt_index, row_index, should_map_move }, state) {
     const stmt_result = state.stmt_results[stmt_index];
@@ -96,10 +96,10 @@ class Map {
     }
     const geojson = JSON.parse(geom);
     const bbox = geojson_bbox(geojson);
-    this.mapboxglMap.fitBounds(bbox);
+    this.mapboxgl_map.fitBounds(bbox);
   }
   _handle_map_click({ point }) {
-    const [feature] = this.mapboxglMap.queryRenderedFeatures(point, {
+    const [feature] = this.mapboxgl_map.queryRenderedFeatures(point, {
       layers: this.layers_ids,
     });
     if (!feature) {
@@ -119,7 +119,7 @@ class Map {
       ...params.stmt_results.map((_, stmt_index) => `pgblackboard:${stmt_index}_line`),
       ...params.stmt_results.map((_, stmt_index) => `pgblackboard:${stmt_index}_polygon`),
     ];
-    this.mapboxglMap.setStyle(mapbox_style(params));
+    this.mapboxgl_map.setStyle(mapbox_style(params));
   }
 }
 
@@ -188,7 +188,7 @@ function mapbox_style({
             stmt_index,
           },
         })),
-      }
+      },
     },
   })));
 
@@ -208,7 +208,7 @@ function mapbox_style({
       },
       'filter': ['==', '$type', 'Polygon'],
     })),
-    ... focused_row && [{
+    ...focused_row && [{
       'id': 'pgblackboard:focused_line',
       'type': 'line',
       'source': `pgblackboard:${focused_row.stmt_index}`,
@@ -248,7 +248,7 @@ function mapbox_style({
       },
       'filter': ["==", "$type", "Point"]
     })),
-    ... focused_row && [{
+    ...focused_row && [{
       'id': 'pgblackboard:focused_point',
       'type': 'circle',
       'source': `pgblackboard:${focused_row.stmt_index}`,
