@@ -15,11 +15,8 @@
   position: sticky;
   top: 0;
   bottom: 1em;
-  /* border: none; */
-  /* border-width: 0; */
   background-color: var(--pgbbcolor-table-head-bg);
   box-shadow: 1px 1px 0 var(--pgbbcolor-table-border);
-  /* outline: 1px solid var(--table-border-color); */
   z-index: 1;
 }
 
@@ -44,7 +41,6 @@
 }
 
 .table-cell {
-  /* truncate long cells */
   max-width: 50em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -53,39 +49,6 @@
 .table-cell--num {
   text-align: right;
 }
-
-/* .table-cell--updated {
-  position: relative;
-  padding-right: 1em;
-}
-
-.table-cell--updated.table-cell--num {
-  padding-right: .2em;
-  padding-left: 1em;
-}
-
-.table-cell--updated::after {
-  font-family: 'fontello';
-  font-style: normal;
-  font-weight: normal;
-  speak: none;
-  text-decoration: none;
-  width: 1em;
-  text-align: center;
-  font-variant: normal;
-  text-transform: none;
-  line-height: 1;
-  content: '\e816';
-  position: absolute;
-  right: 2px;
-  color: rgb(145, 205, 152);
-  top: 4px;
-}
-
-.table-cell--updated.table-cell--num::after {
-  right: initial;
-  left: 2px;
-} */
 
 .table-row--expanded .table-cell {
   white-space: pre-wrap;
@@ -102,13 +65,14 @@
  *  │ COLNAME │
  *  │ coltype │
  *  ┼─────────┼─
- *  │     │
+ *  │         │
  */
 .table-coltype {
   display: block;
   opacity: .5; /* mute color */
   font-size: .5em;
   text-transform: uppercase;
+  margin: 0 .5em;
 }
 
 /* row number */
@@ -294,4 +258,8 @@
 .table-row--focused {
   background: #1d75b3 !important;
   color: #eee;
+}
+
+.table-row {
+  vertical-align: baseline;
 }
