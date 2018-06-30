@@ -87,7 +87,7 @@ class Map {
   _invalidate_size() {
     this.mapboxgl_map.resize();
   }
-  _handle_row_focus({ stmt_index, row_index, should_map_move }, state) {
+  _handle_row_focus({ stmt_index, row_index, shouldnot_map_move }, state) {
     const stmt_result = state.stmt_results[stmt_index];
     const row = stmt_result.rows[row_index];
     const geom = row[stmt_result.geom_field_idx];
@@ -96,7 +96,9 @@ class Map {
     }
     const geojson = JSON.parse(geom);
     const bbox = geojson_bbox(geojson);
-    this.mapboxgl_map.fitBounds(bbox);
+    if (!shouldnot_map_move) {
+      this.mapboxgl_map.fitBounds(bbox, { maxZoom: 15 });
+    }
   }
   _handle_map_click({ point }) {
     const [feature] = this.mapboxgl_map.queryRenderedFeatures(point, {
@@ -110,7 +112,7 @@ class Map {
       type: 'ROW_FOCUS',
       stmt_index,
       row_index,
-      should_table_scroll: true,
+      shouldnot_map_move: true,
     });
   }
   update(params) {
@@ -243,7 +245,7 @@ function mapbox_style({
         'visibility': show_layer ? 'visible' : 'none',
       },
       'paint': {
-          'circle-radius': 3,
+          'circle-radius': 5,
           'circle-color': feature_colors[idx],
       },
       'filter': ["==", "$type", "Point"]

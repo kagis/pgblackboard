@@ -226,7 +226,7 @@ on('.table-row--unfocused .table-cell', 'focus', function (e) {
     type: 'ROW_FOCUS',
     stmt_index: +this.closest('.table').dataset.stmt_index,
     row_index: this.closest('.table-row').rowIndex - 1,
-    should_map_move: true,
+    shouldnot_table_scroll: true,
   });
 });
 
@@ -241,8 +241,8 @@ on('.table-row--focused .table-cell', 'mousedown', function () {
   });
 });
 
-bus.on('rendered:ROW_FOCUS', ({ stmt_index, row_index, should_table_scroll }) => {
-  if (should_table_scroll) {
+bus.on('rendered:ROW_FOCUS', ({ stmt_index, row_index, shouldnot_table_scroll }) => {
+  if (!shouldnot_table_scroll) {
     (document.getElementById(`table-row--${stmt_index}_${row_index + 1}`) ||
     document.getElementById(`table-row--${stmt_index}_${row_index}`))
       .scrollIntoView(false /* bottom */);
