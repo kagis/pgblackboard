@@ -11,7 +11,7 @@ services:
       - 7890:7890
     volumes:
       - ./ui:/opt/pgblackboard/ui:ro
-  postgres:
-    image: mdillon/postgis:10-alpine
-    volumes:
-      - ./demo.sql:/docker-entrypoint-initdb.d/demo.sql
+  # postgres:
+  #   image: mdillon/postgis:10-alpine
+  #   volumes:
+  #     - ./demo.sql:/docker-entrypoint-initdb.d/demo.sql

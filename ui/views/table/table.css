@@ -59,6 +59,7 @@
 /* .table-colheader is all TH except row number */
 .table-colheader {
   width: 6em;
+  padding: .2em .5em;
 }
 
 /*  ┬─────────┬─
@@ -72,7 +73,6 @@
   opacity: .5; /* mute color */
   font-size: .5em;
   text-transform: uppercase;
-  margin: 0 .5em;
 }
 
 /* row number */

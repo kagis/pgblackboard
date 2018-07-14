@@ -317,7 +317,7 @@
 }
 
 .treenode-message--error {
-  color: var(--danger-color);
+  color: var(--pgbbcolor-danger);
 }
 
 .treenode-message--error::before {
