@@ -12,7 +12,7 @@ RUN cargo fetch
 RUN rustup target add x86_64-unknown-linux-musl
 COPY server /usr/src/app/server
 COPY --from=0 /usr/src/app/ui/_dist /usr/src/app/ui/_dist
-ARG CARGO_ARG="--release --features uibuild"
+ARG CARGO_ARGS="--release --features uibuild"
 RUN cargo build --target=x86_64-unknown-linux-musl $CARGO_ARGS
 
 FROM alpine:3.7
