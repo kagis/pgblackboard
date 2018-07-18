@@ -41,7 +41,7 @@
 }
 
 .table-cell {
-  max-width: 50em;
+  max-width: 20em;
   overflow: hidden;
   text-overflow: ellipsis;
 }

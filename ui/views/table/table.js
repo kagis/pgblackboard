@@ -222,11 +222,18 @@ on('.table-update_cancel', 'click', function () {
 });
 
 on('.table-row--unfocused .table-cell', 'focus', function (e) {
-  dispatch({
+  // allow focus outline render before full app rerender for instant feedback
+  setTimeout(_ => dispatch({
     type: 'ROW_FOCUS',
     stmt_index: +this.closest('.table').dataset.stmt_index,
     row_index: this.closest('.table-row').rowIndex - 1,
     shouldnot_table_scroll: true,
+  }), 0);
+});
+
+on('.table-cell', 'blur', function (e) {
+  dispatch({
+    type: 'ROW_FOCUS_CLEAR',
   });
 });
 
