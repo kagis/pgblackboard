@@ -52,13 +52,13 @@ WITH parent_cte AS (
   )
   SELECT current_database()                            AS "database"
         ,pg_proc.oid                                   AS "id"
-        ,CASE WHEN proisagg then 'agg'
-                            ELSE 'func' END            AS "type"
+        ,CASE WHEN pg_aggregate IS NULL THEN 'func' ELSE 'agg' END AS "type"
         ,proname || '(' || array_to_string(proargtypes::regtype[], ', ') || ')' AS "name"
         ,obj_description(pg_proc.oid, 'pg_proc')       AS "comment"
         ,false                                         AS "can_have_children"
         ,''                                            AS "group"
   FROM parent_cte, pg_proc LEFT OUTER JOIN ext_dep_cte ON pg_proc.oid = objid
+    LEFT OUTER JOIN pg_aggregate ON aggfnoid = pg_proc.oid
   WHERE (pronamespace = schema_oid AND refobjid is NULL)
         OR refobjid = ext_oid
   ORDER BY name
