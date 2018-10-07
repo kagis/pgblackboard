@@ -181,7 +181,7 @@
 }
 
 .treenode-icon--index::before {
-  content: '\e80f';
+  content: '\e81a';
 }
 
 .treenode-icon--trigger::before {
@@ -197,7 +197,7 @@
 }
 
 .treenode-icon--check::before {
-  content: '\e807';
+  content: '\e81b';
 }
 
 .treenode-icon::after {

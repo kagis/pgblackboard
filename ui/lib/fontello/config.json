@@ -13,12 +13,6 @@
       "src": "fontawesome"
     },
     {
-      "uid": "b035c28eba2b35c6ffe92aee8b0df507",
-      "css": "check",
-      "code": 59399,
-      "src": "fontawesome"
-    },
-    {
       "uid": "5278ef7773e948d56c4d442c8c8c98cf",
       "css": "lightbulb",
       "code": 59392,
@@ -34,12 +28,6 @@
       "uid": "8fb55fd696d9a0f58f3b27c1d8633750",
       "css": "table",
       "code": 59408,
-      "src": "fontawesome"
-    },
-    {
-      "uid": "9755f76110ae4d12ac5f9466c9152031",
-      "css": "index",
-      "code": 59407,
       "src": "fontawesome"
     },
     {
@@ -152,9 +140,39 @@
     },
     {
       "uid": "97var6sq7rzo72ktzg1c6ph46u9pftbr",
-      "css": "pencil-alt",
+      "css": "edit",
       "code": 59415,
       "src": "modernpics"
+    },
+    {
+      "uid": "d7059fc5329e1a7fcab80ba87831c957",
+      "css": "index",
+      "code": 59416,
+      "src": "iconic"
+    },
+    {
+      "uid": "9597c5a31b6bdd94f4936fcc71d30613",
+      "css": "book",
+      "code": 59417,
+      "src": "iconic"
+    },
+    {
+      "uid": "8aa99bc60f3553bb3e31b73dd6e744c8",
+      "css": "rocket",
+      "code": 61749,
+      "src": "fontawesome"
+    },
+    {
+      "uid": "9c7fd7637a41b59a358cb70893f945a5",
+      "css": "rocket-1",
+      "code": 59418,
+      "src": "entypo"
+    },
+    {
+      "uid": "55389e7d75fe0458efcb909f78e7ad3f",
+      "css": "check",
+      "code": 59419,
+      "src": "mfglabs"
     }
   ]
 }
