@@ -5,7 +5,7 @@ RUN npm install
 COPY ui /usr/src/app/ui
 RUN mkdir -p ui/_dist && npm run build
 
-FROM rust:1.27
+FROM rust:1.29
 COPY Cargo.toml Cargo.lock /usr/src/app/
 WORKDIR /usr/src/app
 RUN cargo fetch
