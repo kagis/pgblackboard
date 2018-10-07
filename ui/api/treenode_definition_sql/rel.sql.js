@@ -65,18 +65,9 @@ select_attrs_cte as (
 ),
 
 select_stmt_cte as (
-    with pk_cols as (
-        select quote_ident(attname) as attident
-        from params_cte, pg_constraint
-            join pg_attribute on contype = 'p'
-                                and attnum = any(conkey)
-                                and attrelid = conrelid
-        where conrelid = param_oid
-    )
     select concat_ws(e'\n'
         ,'  SELECT ' || string_agg(colexpr, e'\n        ,')
         ,'    FROM ' || (select param_oid::regclass from params_cte)
-        ,'ORDER BY ' || (select string_agg(attident, ', ') from pk_cols)
     ) || ';' as select_stmt
     from select_attrs_cte
 )
