@@ -15,7 +15,7 @@ COPY --from=0 /usr/src/app/ui/_dist /usr/src/app/ui/_dist
 ARG CARGO_ARGS="--release --features uibuild"
 RUN cargo build --target=x86_64-unknown-linux-musl $CARGO_ARGS
 
-FROM alpine:3.7
+FROM scratch
 EXPOSE 7890
 ENV PGBB_POSTGRES host.docker.internal:5432
 WORKDIR /opt/pgblackboard
