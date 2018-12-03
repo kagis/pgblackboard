@@ -1,12 +1,12 @@
 export default `
 
 WITH parent_cte AS (
-  with params_cte AS (
+  WITH params_cte AS (
       SELECT $1::oid    AS parent_oid
             ,$2::text   AS parent_type
   )
-  SELECT CASE parent_type WHEN 'schema'    then parent_oid END AS schema_oid
-        ,CASE parent_type WHEN 'extension' then parent_oid END AS ext_oid
+  SELECT CASE parent_type WHEN 'schema'    THEN parent_oid END AS schema_oid
+        ,CASE parent_type WHEN 'extension' THEN parent_oid END AS ext_oid
   FROM params_cte
 )
 
@@ -23,7 +23,7 @@ WITH parent_cte AS (
   ORDER BY extname
 
 ) UNION all (
-  with ext_dep_cte AS (
+  WITH ext_dep_cte AS (
       SELECT objid, refobjid
       FROM pg_depend
       WHERE classid = 'pg_class'::regclass AND deptype = 'e'
@@ -31,6 +31,7 @@ WITH parent_cte AS (
   SELECT current_database()                            AS "database"
         ,pg_class.oid                                  AS "id"
         ,CASE relkind WHEN 'r' then 'table'
+                      WHEN 'p' then 'table'
                       WHEN 'v' then 'view'
                       WHEN 'f' then 'foreigntable'
                       WHEN 'm' then 'matview'
@@ -40,12 +41,12 @@ WITH parent_cte AS (
         ,true                                          AS "can_have_children"
         ,''                                            AS "group"
   FROM parent_cte, pg_class LEFT OUTER JOIN ext_dep_cte ON oid = objid
-  WHERE relkind in ('r', 'v', 'm', 'f')
-    AND ((relnamespace = schema_oid AND ext_dep_cte is NULL)
+  WHERE relkind IN ('p', 'r', 'v', 'm', 'f')
+    AND ((relnamespace = schema_oid AND ext_dep_cte IS NULL)
          OR refobjid = ext_oid)
   ORDER BY name
 ) UNION all (
-  with ext_dep_cte AS (
+  WITH ext_dep_cte AS (
       SELECT objid, refobjid
       FROM pg_depend
       WHERE classid = 'pg_proc'::regclass AND deptype = 'e'

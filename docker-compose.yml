@@ -6,7 +6,7 @@ services:
       args:
         CARGO_ARGS: ''
     environment:
-      PGBB_POSTGRES: 192.168.55.116:5433
+      PGBB_POSTGRES: 192.168.55.119:20304
     ports:
       - 7890:7890
     volumes:

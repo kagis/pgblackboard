@@ -39,10 +39,10 @@ constraints_def_cte as (
     from constraints_with_maxnamelen
 ),
 table_def_cte as (
-    select case relkind
-        when 'v' then e' CREATE VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
-        when 'm' then e' CREATE MATERIALIZED VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
-        when 'r' then 'CREATE TABLE ' || oid::regclass || e' (\n   '
+    select case
+        when relkind = 'v' then e' CREATE VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
+        when relkind = 'm' then e' CREATE MATERIALIZED VIEW ' || oid::regclass || e' AS\n' || pg_get_viewdef(oid)
+        when relkind in ('p', 'r') then 'CREATE TABLE ' || oid::regclass || e' (\n   '
             || concat_ws(e'\n\n  ,'
                 ,(select attrs_def from attrs_def_cte)
                 ,(select constraints_def from constraints_def_cte)
