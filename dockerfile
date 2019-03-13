@@ -17,7 +17,7 @@ RUN cargo build --target=x86_64-unknown-linux-musl $CARGO_ARGS
 
 FROM scratch
 EXPOSE 7890
-ENV PGBB_POSTGRES host.docker.internal:5432
+STOPSIGNAL SIGKILL # TODO handle SIGTERM
 WORKDIR /opt/pgblackboard
 CMD ["/opt/pgblackboard/pgblackboard"]
 COPY --from=1 /usr/src/app/target/x86_64-unknown-linux-musl/*/pgblackboard ./
