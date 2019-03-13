@@ -2,8 +2,6 @@
 
 Minimalistic GIS-enabled webadmin interface for PostgreSQL
 
-[![Build Status](https://travis-ci.org/exe-dealer/pgblackboard.svg?branch=rust)](https://travis-ci.org/exe-dealer/pgblackboard)
-
 ## Features
 
 ### Mapbox GL powered map
@@ -30,7 +28,7 @@ view result of each statement
 
 ## Run
 
-[Dockerhub repo](https://hub.docker.com/r/exedealer/pgblackboard/)
+[Dockerhub repo](https://hub.docker.com/r/kagiskz/pgblackboard/)
 
 ### Run in foreground
 
