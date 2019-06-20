@@ -33,11 +33,11 @@ view result of each statement
 ### Run in foreground
 
 ```
-docker run -it --rm -e PGBB_POSTGRES=PGHOST:PGPORT -p 7890:7890 exedealer/pgblackboard
+docker run -it --rm -e PGBB_POSTGRES=PGHOST:PGPORT -p 7890:7890 kagiskz/pgblackboard
 ```
 
 ### Run in background
 
 ```
-docker run -d --restart unless-stopped -e PGBB_POSTGRES=PGHOST:PGPORT -p 7890:7890 exedealer/pgblackboard
+docker run -d --restart unless-stopped -e PGBB_POSTGRES=PGHOST:PGPORT -p 7890:7890 kagiskz/pgblackboard
 ```
