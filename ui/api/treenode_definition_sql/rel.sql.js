@@ -15,7 +15,7 @@ attrs_def_cte as (
             ,upper(format_type(atttypid, atttypmod))
             ,'COLLATE "' || nullif(collname, 'default') || '"'
             ,case when attnotnull then 'NOT NULL' end
-            ,'DEFAULT (' || adsrc || ')'
+            ,'DEFAULT (' || pg_get_expr(adbin, adrelid) || ')'
         )
         ,e'\n  ,'
         order by attnum
