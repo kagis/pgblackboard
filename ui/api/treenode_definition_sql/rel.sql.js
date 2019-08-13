@@ -26,13 +26,13 @@ attrs_def_cte as (
 ),
 constraints_def_cte as (
     with constraints_with_maxnamelen as (
-        select max(length(quote_ident(conname))) over() as maxnamelen, oid, pg_constraint.*
+        select max(length(quote_ident(conname))) over() as maxnamelen, oid _oid, pg_constraint.*
         from pg_constraint, params_cte
         where conrelid = param_oid
     )
     select string_agg(
         'CONSTRAINT ' || rpad(quote_ident(conname), maxnamelen)
-            || ' ' || pg_get_constraintdef(oid)
+            || ' ' || pg_get_constraintdef(_oid)
         ,e'\n  ,'
         order by strpos('pufc', contype)
     ) as constraints_def
@@ -47,8 +47,7 @@ table_def_cte as (
                 ,(select attrs_def from attrs_def_cte)
                 ,(select constraints_def from constraints_def_cte)
             )
-            || e'\n)'
-            || case when relhasoids then ' WITH OIDS' else '' end || ';'
+            || e'\n);'
         else ''
     end as table_def
     from pg_class, params_cte

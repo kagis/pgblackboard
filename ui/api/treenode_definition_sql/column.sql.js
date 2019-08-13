@@ -27,7 +27,7 @@ select concat_ws(e'\n'
         ,attident
         ,upper(format_type(atttypid, atttypmod))
         ,case when attnotnull then 'NOT NULL' end
-        ,'DEFAULT (' || adsrc || ')'
+        ,'DEFAULT (' || pg_get_expr(adbin, adrelid)  || ')'
     ) || ';'
     ,(select string_agg(concat_ws(' '
             ,altertable
