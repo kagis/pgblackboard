@@ -13,6 +13,6 @@ services:
       - ./ui:/opt/pgblackboard/ui:ro
 
   postgres:
-    image: mdillon/postgis:11-alpine
+    image: postgres:12-alpine # mdillon/postgis:11-alpine
     volumes:
       - ./demo.sql:/docker-entrypoint-initdb.d/demo.sql

@@ -1,11 +1,11 @@
-FROM node:11-alpine
+FROM node:13.6-alpine
 COPY package.json package-lock.json /usr/src/app/
 WORKDIR /usr/src/app
 RUN npm install
 COPY ui /usr/src/app/ui
 RUN mkdir -p ui/_dist && npm run build
 
-FROM rust:1.36
+FROM rust:1.40
 COPY Cargo.toml Cargo.lock /usr/src/app/
 WORKDIR /usr/src/app
 RUN cargo fetch

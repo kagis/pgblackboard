@@ -1,5 +1,4 @@
 @import url(../lib/fontello/css/fontello-embedded.css);
-@import url(../lib/roboto/roboto.css);
 @import url(./app/app.css);
 @import url(./codemirror/codemirror.css);
 @import url(./codeform/codeform.css);
@@ -18,7 +17,7 @@
 
 body {
   overflow: hidden; /* disable bouncing scroll in macos */
-  font-family: 'Roboto', 'DejaVu Sans', 'Verdana', sans-serif;
+  font-family: 'DejaVu Sans', 'Verdana', sans-serif;
 }
 
 *::-webkit-scrollbar {
