@@ -1,0 +1,71 @@
+.login {
+  background-color:  #212122;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 20em;
+  margin: 10em auto;
+}
+
+.login-user,
+.login-password {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #8885;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 2.5;
+  color: inherit;
+  padding: 0 .5em;
+}
+
+.login-user {
+  /* border-top: 1px solid #8885; */
+}
+
+.login-user:focus,
+.login-password:focus {
+  outline: none;
+}
+
+
+.login-submit {
+  appearance: none;
+  background: #444;
+  border: none;
+  border-radius: 1em;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 2;
+  text-transform: uppercase;
+  color: inherit;
+  padding: 0;
+  margin: 1em 2em;
+  cursor: pointer;
+  transition: opacity 200ms ease;
+}
+.login-submit[data-pending] {
+  background-image: linear-gradient(to right, #fff0 0%, #fff2 50%, #fff0 100%);
+  background-repeat: no-repeat;
+  animation: 2s infinite login-submit_pending;
+}
+.login-submit:disabled {
+  cursor: initial;
+  opacity: .5;
+  /* background-color: #333; */
+}
+
+@keyframes login-submit_pending {
+  0% { background-position: -20em 0; }
+  100% { background-position: 20em 0; }
+}
+
+.login-error {
+  white-space: pre-wrap;
+  color: #e26488;
+}

@@ -1,0 +1,17 @@
+{
+  "imports": {
+    "@codemirror/view": "https://unpkg.com/@codemirror/view@6.21.3/dist/index.js",
+    "@codemirror/state": "https://unpkg.com/@codemirror/state@6.3.1/dist/index.js",
+    "@codemirror/commands": "https://unpkg.com/@codemirror/commands@6.3.0/dist/index.js",
+    "@codemirror/language": "https://unpkg.com/@codemirror/language@6.9.1/dist/index.js",
+    "@codemirror/autocomplete": "https://unpkg.com/@codemirror/autocomplete@6.10.2/dist/index.js",
+    "@codemirror/search": "https://unpkg.com/@codemirror/search@6.5.4/dist/index.js",
+    "@codemirror/lang-sql": "https://unpkg.com/@codemirror/lang-sql@6.5.4/dist/index.js",
+    "@lezer/common": "https://unpkg.com/@lezer/common@1.1.0/dist/index.js",
+    "@lezer/highlight": "https://unpkg.com/@lezer/highlight@1.1.6/dist/index.js",
+    "@lezer/lr": "https://unpkg.com/@lezer/lr@1.3.13/dist/index.js",
+    "style-mod": "https://unpkg.com/style-mod@4.1.0/src/style-mod.js",
+    "w3c-keyname": "https://unpkg.com/w3c-keyname@2.2.8/index.js",
+    "crelt": "https://unpkg.com/crelt@1.0.6/index.js"
+  }
+}

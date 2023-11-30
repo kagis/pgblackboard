@@ -1,0 +1,216 @@
+.app {
+  position: absolute;
+  inset: 0;
+  color: #eee;
+  /* background-color: hsl(220 5% 20%); */
+  background-color: hsl(0 0% 14%);
+  display: grid;
+  grid:
+    'nav_b code_b col_r' 2.5rem
+    'nav   col_m  col_r' minmax(0, 1fr)
+    / calc(var(--app-splitl) * 1px) calc(var(--app-splitr) * 1px) minmax(0, 1fr);
+}
+
+.app[data-theme=light] {
+  color: hsl(0 0% 20%);
+  background-color: hsl(0 0% 95%);
+}
+
+.app-col_m {
+  grid-area: col_m;
+  display: grid;
+  grid:
+    'code' minmax(0, 1fr)
+    'datum' calc(var(--app-datum_height) * 1px)
+    / minmax(0, 1fr);
+}
+
+.app-col_r {
+  grid-area: col_r;
+  display: grid;
+  grid-template: 'outs' 1fr 'map' calc(var(--app-splitv) * 1px) / 1fr;
+}
+
+.app-login {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.app-nav {
+  grid-area: nav;
+  padding-top: 1rem;
+  padding-bottom: 50vh;
+  overflow: scroll;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+}
+
+.app-drafts:not(:empty) {
+  margin-bottom: 1rem;
+}
+
+.app-code {
+  grid-area: code;
+  /* grid-area: col_m; */
+}
+
+.app-outs {
+  grid-area: outs;
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+.app-map {
+  grid-area: map;
+  background-color: hsl(0 0% 0% / .05);
+}
+
+.app-code_bar {
+  grid-area: code_b;
+  display: flex;
+  background-color: hsl(0 0% 15%);
+}
+
+.app-run,
+.app-abort,
+.app-map_btn {
+  padding: 0;
+  margin: 0;
+  font: 400 .75rem / 2 Roboto;
+  border: none;
+  border-radius: 1rem;
+  background: none;
+  color: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+  appearance: none;
+}
+
+.app-run {
+  min-width: 5rem;
+  padding-inline: 1rem;
+  align-self: center;
+  margin-inline: .5rem;
+  opacity: 1;
+  transition: opacity 200ms ease;
+  background: hsl(0 0% 90%);
+  color: hsl(0 0% 20%);
+}
+.light .app-run {
+  background: hsl(0 0% 20%);
+  color: hsl(0 0% 95%);
+}
+.app-run[disabled] {
+  opacity: .5;
+}
+.app-run::before {
+  content: attr(aria-label);
+}
+.app-run[data-has_selection] {
+  background-color: hsl(200 65% 45%);
+  color: hsl(0 0% 95%);
+}
+.app-run[data-has_selection]::before {
+  content: '[ ' attr(aria-label) ' ]'; }
+
+.app-abort {
+  min-width: 5rem;
+  align-self: center;
+  background-color: hsl(330 80% 30%);
+  opacity: 1;
+  transition: opacity 200ms ease 400ms;
+}
+.app-abort[disabled] {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.app-abort::before {
+  /* content: '\23f9'; */
+  content: attr(aria-label);
+}
+
+.app-map_btn {
+  align-self: center;
+  min-width: 5rem;
+  margin-inline: auto .5rem;
+  border: 1px solid currentColor;
+  opacity: .75;
+}
+.app-map_btn::before {
+  content: attr(aria-label);
+}
+
+/* .app-selection {
+  font-size: .75rem;
+  opacity: .5;
+  line-height: 2.5rem;
+  margin-inline: .25rem;
+} */
+
+.app-splitl {
+  grid-area: col_m;
+  cursor: ew-resize;
+  width: .5rem;
+  justify-self: start;
+  z-index: 1;
+}
+
+.app-splitr {
+  grid-area: col_m;
+  cursor: ew-resize;
+  width: .5rem;
+  justify-self: end;
+  z-index: 1;
+}
+
+.app-splitv {
+  grid-area: map;
+  cursor: ns-resize;
+  height: .5rem;
+  align-self: start;
+  z-index: 1;
+}
+
+.app-splitl:active,
+.app-splitr:active,
+.app-splitv:active {
+  background-color: hsl(200 85% 40% / 0.45);
+}
+
+.app-nav_bar {
+  grid-area: nav_b;
+  background-color: hsl(0 0% 50% / 0.1)
+}
+
+.app-theme_btn {
+  width: 2rem;
+  height: 2.5rem;
+  position: relative;
+  padding: 0;
+  margin: 0;
+  border: none;
+  appearance: none;
+  background: none;
+  cursor: pointer;
+  opacity: .5;
+  color: inherit;
+}
+.app-theme_btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: currentColor;
+  mask: url('icon_theme.svg') center / 1rem no-repeat;
+  -webkit-mask: url('icon_theme.svg') center / 1rem no-repeat;
+}
+.light .app-theme_btn {
+  transform: scaleX(-1);
+}
+
+
+.app-datum {
+  grid-area: datum;
+  background-color: hsl(0 0% 11%);
+}
