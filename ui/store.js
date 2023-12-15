@@ -1,16 +1,26 @@
 export class Store {
-  splitl = 300;
-  splitr = 500;
-  splitv = 500;
 
-  set_splitl(value) {
-    this.splitl = value;
+  // async init() {
+  //   this.light_theme = Boolean(localStorage.getItem('pgbb:light_theme'));
+  // }
+
+
+  split_left = 300;
+  split_right = 500;
+  split_map = 200;
+  split_datum = 100;
+
+  set_split_left(value) {
+    this.split_left = value;
   }
-  set_splitr(value) {
-    this.splitr = value;
+  set_split_right(value) {
+    this.split_right = value;
   }
-  set_splitv(value) {
-    this.splitv = value;
+  set_split_map(value) {
+    this.split_map = value;
+  }
+  set_split_datum(value) {
+    this.split_datum = value;
   }
 
   tree = {};
@@ -167,24 +177,30 @@ LIMIT 500 OFFSET 0
     this.outs[out_idx].columns[col_idx].width = width;
   }
 
-  selected_row = null;
-
-  select_rowcol(out_idx, row_idx, col_idx = this.selected_col_idx) {
-    this.selected_row = [out_idx, row_idx];
+  select_rowcol(out_idx, row_idx, col_idx) {
+    // this.selected_row = [out_idx, row_idx];
     this.selected_out_idx = out_idx;
     this.selected_row_idx = row_idx;
     // TODO set null if out_idx changed
-    this.selected_col_idx = col_idx;
+    // this.selected_col_idx = col_idx;
+    const out = this?.outs[out_idx];
+    if (out && col_idx != null) {
+      out.selected_col_idx = col_idx;
+    }
   }
 
   get selected_datum() {
-    const col = this.outs?.[this.selected_out_idx]?.columns?.[this.selected_col_idx];
-    return this.outs?.[this.selected_out_idx]?.rows[this.selected_row_idx]?.[this.selected_col_idx];
+    const out = this.outs?.[this.selected_out_idx];
+    if (!out) return;
+    // const col = out.columns?.[out.selected_col_idx];
+    return out.rows[this.selected_row_idx]?.[out.selected_col_idx];
   }
 
-  theme = 'dark';
+  // theme = 'dark';
+  light_theme = false;
   toggle_theme() {
-    this.theme = this.theme == 'dark' ? 'light' : 'dark';
+    this.light_theme = !this.light_theme;
+    // this.theme = this.theme == 'dark' ? 'light' : 'dark';
   }
 
   // bump_draft(draft_id) {
@@ -222,10 +238,8 @@ LIMIT 500 OFFSET 0
   async run() {
     const { outs } = Object.assign(this, {
       outs: [],
-      selected_row: null,
       selected_out_idx: null,
       selected_row_idx: null,
-      selected_col_idx: null,
     });
 
     const { code } = this;
@@ -272,6 +286,7 @@ LIMIT 500 OFFSET 0
             curr.geometry_col = payload.findIndex(col => /^st_asgeojson$/i.test(col.name));
             break;
           case 'DataRow':
+            // TODO set selected out_idx/row_idx/col_idx
             curr.rows.push(...rows);
             break;
           case 'ErrorResponse':
@@ -289,7 +304,6 @@ LIMIT 500 OFFSET 0
     }
     // console.log(out);
   }
-
 }
 
 class JSONDecodeStream extends TransformStream {
@@ -320,8 +334,7 @@ async function * iter_stream(stream) {
       if (done) return;
       yield value;
     }
-  }
-  finally {
+  } finally {
     reader.releaseLock();
   }
 }

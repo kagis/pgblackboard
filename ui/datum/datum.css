@@ -1,25 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&display=swap');
+
 .datum {
-  position: relative;
-  border-top: .5rem solid hsl(0 0% 14%);
+  border-top: .5rem solid;
+  border-color: hsl(0 0% 18%);
+  --cm-background: hsl(0 0% 14%);
+  /* --cm-background: hsl(0 0% 14%); */
+  --cm-keyword: hsl(205 60% 55%);
+  --cm-comment: hsl(0 0% 50%);
+  --cm-literalstr: hsl(15 50% 65%);
+  --cm-literalnum: hsl(100 45% 75%);
 }
 
-.datum-tab {
-  position: absolute;
-  /* background-color: inherit; */
-  background-color: hsl(0 0% 14%);
-  inset: 0 0 auto auto;
-  margin-block: -2.5rem 0;
-  margin-inline: .5rem;
-  line-height: 2rem;
-  padding-inline: .5rem;
-  border-radius: .5rem .5rem 0 0;
+.light .datum {
+  /* border-color: hsl(0 0% 80%); */
+  --cm-background: hsl(0 0% 92%);
 }
 
-.datum-value {
+.datum .cm-editor {
+  height: 100%;
+}
+
+.datum .cm-editor.cm-focused {
+  outline: none;
+}
+
+.datum .cm-scroller {
   font: 400 .875rem / 1.25rem 'Roboto Mono';
-  padding: 1rem 2rem;
-  position: absolute;
-  inset: 0;
-  word-wrap: break-word;
-  overflow: scroll;
+  overscroll-behavior: none;
+  scrollbar-width: thin;
 }
+
+.datum .cm-content {
+  padding-block: 1rem 2rem;
+}
+
+.datum .cm-line {
+  padding-inline: 1rem;
+}
+
+.datum .cm-editor .cm-gutters {
+  border: none;
+  user-select: none;
+}
+
+.datum .cm-editor .cm-lineNumbers .cm-gutterElement {
+  padding-inline: .5rem;
+  min-width: 3rem; /* hundreds */
+  color: hsl(0 0% 50% / .3);
+  font-weight: 300;
+}
+
+.datum .cm-editor .cm-lineNumbers .cm-activeLineGutter {
+  background: none;
+  color: hsl(0 0% 50%);
+}
+
+.datum .cm-scroller { background-color: var(--cm-background); }
+.datum .cm-gutters { background-color: inherit; }
+.datum .cm-focused .cm-selectionBackground { background: hsl(200 100% 70% / .3) !important; }
+.datum .cm-selectionBackground { background: hsl(200 100% 50% / .2); }
+.datum .cm-cursor { border-color: currentcolor; }
+

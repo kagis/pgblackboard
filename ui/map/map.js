@@ -5,32 +5,33 @@ import glyphs from './glyphs.js';
 
 // TODO show circle marker on subpixel polygons
 
-const ne_land_url = URL.createObjectURL(new Blob([JSON.stringify(ne_land)]));
-const ne_cities_url = URL.createObjectURL(new Blob([JSON.stringify(ne_cities)]));
+const ne_land_blob = new Blob([JSON.stringify(ne_land)]);
+const ne_cities_blob = new Blob([JSON.stringify(ne_cities)]);
+const glyphs_blob = await fetch(glyphs).then(x => x.blob());
 
 const style = {
   version: 8,
-  glyphs: '.glyphs/{fontstack}/{range}',
+  glyphs: URL.createObjectURL(glyphs_blob) + '#/{fontstack}/{range}',
   // glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
     'ne_land': {
       type: 'geojson',
-      data: ne_land_url,
+      data: URL.createObjectURL(ne_land_blob),
       tolerance: .2,
     },
     'ne_cities': {
       type: 'geojson',
-      data: ne_cities_url,
+      data: URL.createObjectURL(ne_cities_blob),
     },
     'highlight': {
       type: 'geojson',
-      tolerance: 0, // show all vertices
       data: { type: 'FeatureCollection', features: [] },
+      tolerance: 0, // show all vertices
     },
     'features': {
       type: 'geojson',
-      tolerance: .2,
       data: { type: 'FeatureCollection', features: [] },
+      tolerance: .2,
     },
   },
   layers: [
@@ -143,16 +144,15 @@ const style = {
       type: 'symbol',
       source: 'ne_cities',
       paint: {
-        'text-color': '#aaa',
-        'text-halo-color': '#222',
+        'text-color': 'hsl(0, 0%, 90%)',
+        'text-halo-color': 'hsl(0, 0%, 0%)',
         'text-halo-blur': 1,
         'text-halo-width': 1,
+        'text-opacity': .7, // prevent points overlap
       },
       layout: {
-        // visibility: 'none',
-        // 'text-font': ['Roboto Condensed'],
         'text-size': 14,
-        'text-field': '{name}',
+        'text-field': ['get', 'name'],
         'text-padding': 8,
         'symbol-sort-key': ['get', 'weight'],
       },
@@ -208,33 +208,55 @@ const drop_marker = /*xml*/ `
 
 export default {
   template: /*html*/ `<div class="map"></div>`,
-  mounted() {
-    this._ml = window.debug_map = new MaplibreglMap({
-      style,
-      container: this.$el,
-      transformRequest(url, resource_type) {
-        console.log(url, resource_type);
-        if (resource_type == 'Glyphs' && /\/0-255$/.test(url)) {
-          return { url: glyphs };
-        }
-      },
-    });
-
-    this.add_svg_image('drop_white', drop_white);
-    this.add_svg_image('drop_black', drop_black);
-    this.add_svg_image('drop_marker', drop_marker, true);
-
-    this.$watch(_ => this.$store.theme, this.set_theme);
-    this.$watch(_ => this.feature_collection, this.update_features_source);
-    this.$watch(_ => this.highlight_geojson, this.update_highlight_source);
-
-    this.$root.$el.addEventListener('req_map_navigate', this.on_req_map_navigate);
-    this._ml.on('click', this.on_map_click);
-  },
-  unmounted() { // beforeUnmount?
-    this._ml.remove();
+  computed: {
+    highlight_geojson() {
+      const empty = { type: 'FeatureCollection', features: [] };
+      const out_idx = this.$store.selected_out_idx;
+      const row_idx = this.$store.selected_row_idx;
+      return out_idx != null && row_idx != null && this.get_row_geom(out_idx, row_idx) || empty;
+    },
+    feature_collection() {
+      const { outs } = this.$store;
+      const features = outs.flatMap(({ rows, geometry_col }, out_idx) => {
+        if (geometry_col < 0 || !rows) return []; // skip if no geom col
+        const hue = out_idx * 40; // TODO constrast
+        return rows.map((row, row_idx) => ({
+          type: 'Feature',
+          properties: { out_idx, row_idx, hue },
+          geometry: try_parse_geojson(row[geometry_col]),
+        }));
+      });
+      // console.log('feature_collection', features.length);
+      return { type: 'FeatureCollection', features };
+    },
   },
   methods: {
+    _mounted() {
+      this._ml = window.debug_map = new MaplibreglMap({
+        style,
+        container: this.$el,
+        // transformRequest(url, resource_type) {
+        //   console.log(url, resource_type);
+        //   if (resource_type == 'Glyphs' && /\/0-255$/.test(url)) {
+        //     return { url: glyphs };
+        //   }
+        // },
+      });
+
+      this.add_svg_image('drop_white', drop_white);
+      this.add_svg_image('drop_black', drop_black);
+      // this.add_svg_image('drop_marker', drop_marker, true);
+
+      this.$watch(_ => this.$store.light_theme, this.set_theme);
+      this.$watch(_ => this.feature_collection, this.update_features_source);
+      this.$watch(_ => this.highlight_geojson, this.update_highlight_source);
+
+      this.$root.$el.addEventListener('req_map_navigate', this.on_req_map_navigate);
+      this._ml.on('click', this.on_map_click);
+    },
+    _unmounted() {
+      this._ml.remove();
+    },
     get_row_geom(out_idx, row_idx) {
       // TODO make O(1)
       return this.feature_collection.features.find(f => (
@@ -253,12 +275,12 @@ export default {
         this._ml.addImage(id, img, { pixelRatio: 2, sdf });
       };
     },
-    set_theme(theme) {
+    set_theme(light) {
       for (const { id, paint = 0, layout = 0, metadata = 0 } of style.layers) {
         const { alt_paint = 0, alt_layout = 0 } = metadata;
-        const curr_paint = theme == 'light' ? alt_paint : paint;
+        const curr_paint = light ? alt_paint : paint;
         for (const p in alt_paint) this._ml.setPaintProperty(id, p, curr_paint[p]);
-        const curr_layout = theme == 'light' ? alt_layout : layout;
+        const curr_layout = light ? alt_layout : layout;
         for (const p in alt_layout) this._ml.setLayoutProperty(id, p, curr_layout[p]);
       }
     },
@@ -297,26 +319,11 @@ export default {
       // this._ml.fitBounds(geom.bbox, { padding: 20 });
     },
   },
-  computed: {
-    highlight_geojson() {
-      const empty = { type: 'FeatureCollection', features: [] };
-      const row_ptr = this.$store.selected_row;
-      return row_ptr && this.get_row_geom(...row_ptr) || empty;
-    },
-    feature_collection() {
-      const { outs } = this.$store;
-      const features = outs.flatMap(({ rows, geometry_col }, out_idx) => {
-        if (geometry_col < 0 || !rows) return []; // skip if no geom col
-        const hue = out_idx * 40; // TODO constrast
-        return rows.map((row, row_idx) => ({
-          type: 'Feature',
-          properties: { out_idx, row_idx, hue },
-          geometry: try_parse_geojson(row[geometry_col]),
-        }));
-      });
-      // console.log('feature_collection', features.length);
-      return { type: 'FeatureCollection', features };
-    },
+  mounted() {
+    return this._mounted();
+  },
+  unmounted() { // beforeUnmount?
+    return this._unmounted();
   },
 };
 

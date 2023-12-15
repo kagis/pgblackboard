@@ -3,50 +3,54 @@ import xGrip from '../grip/grip.js';
 export default {
   template: /*html*/ `
     <div class="outs">
-    <div v-for="data, out_idx in outs">
+    <div v-for="out, out_idx in outs">
       <table class="outs-table"
-        v-if="data.columns"
+        v-if="out.columns"
         :data-out_idx="out_idx">
-        <!-- <caption class="outs-caption" v-text="data.status"></caption> -->
+        <!-- <caption class="outs-caption" v-text="out.status"></caption> -->
         <colgroup>
           <col class="outs-col"
-            v-for="col, col_idx in data.columns"
+            v-for="col, col_idx in out.columns"
+            :data-selected="selected_out_idx == out_idx && col_idx == out.selected_col_idx || null"
             :style="{ width: col.width + 'px' }" />
-          <col class="outs-col" />
+          <!-- <col class="outs-col" /> -->
         </colgroup>
         <thead class="outs-head">
           <tr>
-            <th class="outs-th" v-for="col, col_idx in data.columns">
-              <div class="outs-colh">
-                <span class="outs-colh_name" v-text="col.name"></span>
-                <span>&nbsp;</span>
-                <span class="outs-colh_type" v-text="resolve_type(col.typeOid)"></span>
-                <x-grip class="outs-colh_resizer"
-                  :x="col.width"
-                  v-on:drag="resize_col(out_idx, col_idx, $event.x)">
-                </x-grip>
-              </div>
+            <th class="outs-th"
+              scope="col"
+              v-for="col, col_idx in out.columns"
+              :data-selected="selected_out_idx == out_idx && col_idx == out.selected_col_idx || null">
+              <span class="outs-colh_name" v-text="col.name"></span>
+              <span>&nbsp;</span>
+              <span class="outs-colh_type" v-text="resolve_type(col.typeOid)"></span>
+              <x-grip class="outs-colh_resizer"
+                :x="col.width"
+                v-on:drag="resize_col(out_idx, col_idx, $event.x)">
+              </x-grip>
             </th>
-            <th class="outs-colh"></th>
+            <!-- <th class="outs-th" scope="col"></th> -->
           </tr>
         </thead>
-        <tbody v-on:click="on_cell_click(out_idx, $event.target)">
+        <tbody class="outs-tbody"
+          v-on:click="on_cell_click(out_idx, $event.target)">
           <tr class="outs-row"
-            v-for="row, row_idx in data.rows"
+            v-for="row, row_idx in out.rows"
             :data-row_idx="row_idx"
             :data-selected="is_row_selected(out_idx, row_idx) || null">
             <td class="outs-cell"
               v-for="val, col_idx in row"
-              v-text="val"
+              :data-col_type="out.columns[col_idx].typeOid"
               :data-col_idx="col_idx"
+              :data-selected="is_row_selected(out_idx, row_idx) && out.selected_col_idx == col_idx || null"
               :data-null="val == null || null"
-              :data-empty="val == '' || null">
+              v-text="val?.slice(0, 100)">
             </td>
-            <td class="outs-cell"></td>
+            <!-- <td class="outs-cell"> </td> -->
           </tr>
         </tbody>
       </table>
-      <div class="outs-status" v-text="data.status"></div>
+      <div class="outs-status" v-text="out.status"></div>
     </div>
     </div>
   `,
@@ -59,10 +63,15 @@ export default {
   },
   computed: {
     outs: vm => vm.$store.outs,
+    selected_out_idx: vm => vm.$store.selected_out_idx,
+    // selected_row_idx: vm => vm.$store.selected_row_idx,
   },
   methods: {
-    is_row_selected(...args) {
-      return JSON.stringify(this.$store.selected_row) == JSON.stringify(args);
+    // is_col_selected(out_idx, col_idx) {
+    //   return this.$store.selected_out_idx == out_idx && this.$s
+    // },
+    is_row_selected(out_idx, row_idx) {
+      return this.$store.selected_out_idx == out_idx && this.$store.selected_row_idx == row_idx;
     },
     resize_col(out_idx, col_idx, width) {
       this.$store.resize_col(out_idx, col_idx, Math.max(width, 50));
@@ -716,9 +725,8 @@ export default {
     //   this.$root.$el.dispatchEvent(new CustomEvent('req_map_navigate', { detail: { out_idx, row_idx, origin: 'sheet' } }));
     // },
     on_cell_click(out_idx, /** @type {HTMLElement} */ target) {
-      // TODO tr.rowIndex
       const row_idx = Number(target.closest('[data-row_idx]').dataset.row_idx);
-      // TODO td.cellIndex
+      // TODO nullsafe
       const col_idx = Number(target.closest('[data-col_idx]').dataset.col_idx);
       // this.$store.select_row(out_idx, row_idx);
       this.$store.select_rowcol(out_idx, row_idx, col_idx);

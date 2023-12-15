@@ -1,4 +1,4 @@
-import 'https://unpkg.com/maplibre-gl@3.5.2/dist/maplibre-gl-dev.js';
+import 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl-dev.js';
 
 const { maplibregl } = globalThis;
 delete globalThis.maplibregl;

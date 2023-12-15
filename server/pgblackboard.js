@@ -159,7 +159,7 @@ class App {
       headers: {
         'content-type': 'text/plain; charset=utf-8', // TODO application/json
         'x-accel-buffering': 'no', // disable nginx buffering
-        'cache-control': 'no-transform', // prevent buffering caused by gzip
+        'cache-control': 'no-transform', // prevent gzip buffering
       },
     });
   }
@@ -344,6 +344,16 @@ const defn_sql = String.raw /*sql*/ `
 with arg (a1, a2, a3, a2_oid) as (
   select $1[1], $1[2], $1[3], case when $1[2] similar to '[0-9]+' then $1[2]::oid end
 )
+, geom_typoid as (
+  select t.oid
+  from pg_type t, pg_depend d, pg_extension e
+  where d.deptype = 'e'
+    and d.classid = 'pg_type'::regclass
+    and d.objid = t.oid
+    and d.refobjid = e.oid
+    and t.typname in ('geometry', 'geography')
+    and e.extname = 'postgis'
+)
 select format(e'\\connect %I\n\n%s', current_database(), def)
 from arg, lateral (
 
@@ -356,6 +366,7 @@ from arg, lateral (
   select concat_ws(e'\n'
     , 'SELECT', select_cols
     , format('FROM %I.%I', nspname, relname)
+    , format('-- WHERE (%s) = ('''')', orderby_cols)
     , 'ORDER BY ' || orderby_cols
     , 'LIMIT 1000', 'OFFSET 0'
     , ';', '', '/*'
@@ -377,9 +388,16 @@ from arg, lateral (
   join pg_namespace on pg_class.relnamespace = pg_namespace.oid
   left join pg_constraint pk on (contype, conrelid) = ('p', pg_class.oid)
   , lateral (
-    select string_agg(format('  %I', attname), e',\n' order by attnum)
+    select string_agg(format(col_fmt, attname), e',\n' order by attnum)
+      -- TODO desc indexing
       , string_agg(format('%I', attname), ', ' order by pk_pos) filter (where pk_pos is not null)
     from pg_attribute, array_position(pk.conkey, attnum) pk_pos
+    , text(
+      case when atttypid in (select * from geom_typoid)
+      then '  ST_AsGeoJSON(ST_Transform(%I, 4326))'
+      else '  %I'
+      end
+    ) col_fmt
     where attrelid = pg_class.oid and attnum > 0 and not attisdropped
   ) _(select_cols, orderby_cols)
   where ('rel', pg_class.oid) = (a1, a2_oid)

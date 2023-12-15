@@ -9,13 +9,12 @@ import xGrip from '../grip/grip.js';
 
 const template = String.raw /*html*/ `
 <div class="app"
-  :class="{ 'light': theme == 'light' }"
-  :data-theme="theme"
+  :class="{ 'light': light_theme }"
   :style="{
-    '--app-splitl': splitl,
-    '--app-splitr': splitr,
-    '--app-splitv': splitv,
-    '--app-datum_height': datum_height,
+    '--app-split_left': split_left,
+    '--app-split_right': split_right,
+    '--app-split_datum': split_datum,
+    '--app-split_map': split_map,
   }">
   <x-login class="app-login" v-if="!login_done"></x-login>
 
@@ -52,18 +51,15 @@ const template = String.raw /*html*/ `
     <x-drafts class="app-drafts"></x-drafts>
     <x-tree class="app-tree"></x-tree>
   </div>
-  <div class="app-col_m">
-    <x-code class="app-code"></x-code>
-    <x-datum class="app-datum"></x-datum>
-  </div>
-  <div class="app-col_r">
-    <x-outs class="app-outs"></x-outs>
-    <x-map class="app-map"></x-map>
-    <x-grip class="app-splitv" :y="-splitv" v-on:drag="resize_splitv"></x-grip>
-  </div>
+  <x-code class="app-code"></x-code>
+  <x-outs class="app-outs"></x-outs>
+  <x-datum class="app-datum"></x-datum>
+  <x-map class="app-map"></x-map>
 
-  <x-grip class="app-splitl" :x="splitl" v-on:drag="resize_splitl"></x-grip>
-  <x-grip class="app-splitr" :x="splitr" v-on:drag="resize_splitr"></x-grip>
+  <x-grip class="app-split_left" :x="split_left" v-on:drag="resize_split_left"></x-grip>
+  <x-grip class="app-split_right" :x="-split_right" v-on:drag="resize_split_right"></x-grip>
+  <x-grip class="app-split_datum" :y="-split_datum" v-on:drag="resize_split_datum"></x-grip>
+  <x-grip class="app-split_map" :y="-split_map" v-on:drag="resize_split_map"></x-grip>
 </div>
 `;
 
@@ -80,15 +76,15 @@ export default {
     xDatum,
   },
   computed: {
-    theme: vm => vm.$store.theme,
+    light_theme: vm => vm.$store.light_theme,
     can_run: vm => vm.$store.can_run(),
     can_abort: vm => vm.$store.can_abort(),
-    splitl: vm => vm.$store.splitl,
-    splitr: vm => vm.$store.splitr,
-    splitv: vm => vm.$store.splitv,
-    datum_height: vm => 200,
     login_done: vm => vm.$store.login_done,
     code_selected: vm => vm.$store.code.selected,
+    split_left: vm => vm.$store.split_left,
+    split_right: vm => vm.$store.split_right,
+    split_datum: vm => vm.$store.split_datum,
+    split_map: vm => vm.$store.split_map,
   },
   methods: {
     run() {
@@ -100,16 +96,20 @@ export default {
     toggle_theme() {
       this.$store.toggle_theme();
     },
-    resize_splitl({ x }) {
-      this.$store.set_splitl(Math.round(x));
+    resize_split_left({ x }) {
+      this.$store.set_split_left(Math.max(50, Math.round(x)));
       dispatchEvent(new Event('resize')); // resize map
     },
-    resize_splitr({ x }) {
-      this.$store.set_splitr(Math.round(x));
+    resize_split_right({ x }) {
+      this.$store.set_split_right(Math.max(50, Math.round(-x)));
       dispatchEvent(new Event('resize')); // resize map
     },
-    resize_splitv({ y }) {
-      this.$store.set_splitv(Math.round(-y));
+    resize_split_map({ y }) {
+      this.$store.set_split_map(Math.max(50, Math.round(-y)));
+      dispatchEvent(new Event('resize')); // resize map
+    },
+    resize_split_datum({ y }) {
+      this.$store.set_split_datum(Math.max(50, Math.round(-y)));
       dispatchEvent(new Event('resize')); // resize map
     },
   },

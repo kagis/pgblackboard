@@ -6,6 +6,7 @@
   border-spacing: 0;
   table-layout: fixed;
   width: min-content;
+  line-height: 2;
   /* background-color: hsl(0 0% 0% / .1); */
 }
 
@@ -15,38 +16,52 @@
   z-index: 1;
   line-height: 2.5;
   background-color: hsl(0 0% 15%);
+
+  .light & {
+    background-color: hsl(0 0% 90%);
+  }
 }
 
-.light .outs-head {
-  background-color: hsl(0 0% 90%);
+.outs-tbody {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    hsl(0 0% 0% / .1) 0, hsl(0 0% 0% / .1) 1lh,
+    hsl(0 0% 0% / 0) 1lh, hsl(0 0% 0% / 0) 2lh
+  );
+}
+
+.outs-col {
+  width: 10em;
+  background: linear-gradient(to right, hsl(0 0% 0% / .08), hsl(0 0% 0% / 0) 50%);
+
+  &[data-selected] {
+    background-color: hsl(0 0% 18%);
+  }
 }
 
 .outs-th {
   text-align: inherit;
   font-weight: inherit;
-  padding: 0;
-}
-
-.outs-colh {
-  padding-inline: 1em;
-  position: relative;
+  padding: 0 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative; /* resizer */
+  background: linear-gradient(to right, hsl(0 0% 0% / .08), hsl(0 0% 0% / 0) 50%);
+
+  &[data-selected] {
+    background-color: hsl(0 0% 18%);
+    /* top highlight stripe */
+    box-shadow: inset 0 .5rem 0 -.25rem hsl(0 0% 60%);
+  }
 }
 
 .outs-colh_name {
   font-weight: bold;
-  /* text-overflow: ellipsis; */
-  /* overflow: hidden; */
-  display: inline;
 }
 
 .outs-colh_type {
   font-size: .75rem;
-  /* text-overflow: ellipsis; */
-  /* overflow: hidden; */
   color: hsl(0 0% 50%);
-  display: inline;
 }
 
 .outs-colh_resizer {
@@ -56,41 +71,36 @@
   cursor: ew-resize;
 }
 
-.outs-col {
-  width: 10em;
-}
-
-/* chess */
-.outs-col:nth-child(even),
-.outs-th:nth-child(even),
-.outs-row:nth-child(even) {
-  background-color: hsl(0 0% 0% / .1);
-}
-
 .outs-row[data-selected] {
   background-color: hsl(0 0% 100% / .8);
   color: hsl(0 0% 20%);
-}
-.light .outs-row[data-selected] {
-  background-color: hsl(0 0% 0% / .8);
-  color: hsl(0 0% 95%);
+
+  .light & {
+    background-color: hsl(0 0% 0% / .8);
+    color: hsl(0 0% 95%);
+  }
 }
 
 .outs-cell {
   text-overflow: ellipsis;
   overflow: hidden;
   padding: 0 1em;
-  line-height: 2;
-}
-.outs-cell[data-null]::before {
-  content: 'null';
-  opacity: .5;
-  font-style: italic;
-}
-.outs-cell[data-empty]::before {
-  content: 'empty';
-  opacity: .5;
-  font-style: italic;
+  /* show leading/trailing spaces
+  TODO but should not render multiline */
+  /* white-space: pre; */
+
+  &[data-selected] {
+    outline: 1px dashed currentColor;
+    outline-offset: -.25rem;
+  }
+  &:empty::before {
+    opacity: .5;
+    font-style: italic;
+    content: 'empty';
+  }
+  &[data-null]::before {
+    content: 'null';
+  }
 }
 
 .outs-status {

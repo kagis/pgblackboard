@@ -1,33 +1,29 @@
 // deno bundle --import-map importmap.json code.src.js code.js
 
-import { EditorState, RangeSet, Compartment } from '@codemirror/state';
-import { EditorView, GutterMarker, lineNumberMarkers, keymap, lineNumbers, gutter, highlightActiveLineGutter, scrollPastEnd, drawSelection } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { syntaxHighlighting, HighlightStyle, bracketMatching } from '@codemirror/language';
-import { sql, PostgreSQL } from '@codemirror/lang-sql';
-import { tags } from '@lezer/highlight';
+// import { EditorState, RangeSet, Compartment } from '@codemirror/state';
+// import { EditorView, GutterMarker, lineNumberMarkers, keymap, lineNumbers, gutter, highlightActiveLineGutter, scrollPastEnd, drawSelection } from '@codemirror/view';
+// import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+// import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+// import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+// import { syntaxHighlighting, HighlightStyle, bracketMatching } from '@codemirror/language';
+// import { sql, PostgreSQL } from '@codemirror/lang-sql';
+// import { tags } from '@lezer/highlight';
 
-const cm_compartment = new Compartment();
-const error_marker = new class extends GutterMarker {
-  // elementClass = 'code-gutter_error';
-  toDOM() {
-    const el = document.createElement('span');
-    el.className = 'code-gutter_error';
-    return el;
-  }
-};
+import { EditorState, RangeSet, Compartment } from 'https://esm.sh/@codemirror/state@6.3.2?dev';
+import { EditorView, GutterMarker, lineNumberMarkers, keymap, lineNumbers, highlightActiveLineGutter, drawSelection } from 'https://esm.sh/@codemirror/view@6.22.1?dev';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from 'https://esm.sh/@codemirror/commands@6.3.2?dev';
+import { closeBrackets, closeBracketsKeymap } from 'https://esm.sh/@codemirror/autocomplete@6.11.1?dev';
+import { highlightSelectionMatches, searchKeymap } from 'https://esm.sh/@codemirror/search@6.5.5?dev';
+import { syntaxHighlighting, HighlightStyle, bracketMatching } from 'https://esm.sh/@codemirror/language@6.9.3?dev';
+import { sql as lang_sql, PostgreSQL } from 'https://esm.sh/@codemirror/lang-sql@6.5.4?dev';
+import { tags } from 'https://esm.sh/@lezer/highlight@1.2.0?dev';
 
 export default {
   template: /*html*/ `
     <div class="code"></div>
   `,
-  mounted() {
-    this.on_mounted();
-  },
   methods: {
-    on_mounted() {
+    _mounted() {
       this._cm = new EditorView({ parent: this.$el });
       window.debug_cm = this._cm;
       this.$watch(
@@ -54,8 +50,8 @@ export default {
         closeBrackets(),
         bracketMatching(),
         highlightSelectionMatches(),
-        syntaxHighlighting(cm_style),
-        sql({ dialect: PostgreSQL }),
+        syntaxHighlighting(hl_style),
+        lang_sql({ dialect: PostgreSQL }),
 
         keymap.of(historyKeymap),
         keymap.of(defaultKeymap),
@@ -112,6 +108,19 @@ export default {
     },
 
   },
+  mounted() {
+    return this._mounted();
+  },
+};
+
+const cm_compartment = new Compartment();
+const error_marker = new class extends GutterMarker {
+  // elementClass = 'code-gutter_error';
+  toDOM() {
+    const el = document.createElement('span');
+    el.className = 'code-gutter_error';
+    return el;
+  }
 };
 
 // const debug_gutter = gutter({
@@ -121,7 +130,7 @@ export default {
 //   },
 // });
 
-const cm_style = HighlightStyle.define([
+const hl_style = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--cm-keyword)' },
   { tag: tags.string, color: 'var(--cm-literalstr)' },
   { tag: tags.number, color: 'var(--cm-literalnum)' },
