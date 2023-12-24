@@ -18,6 +18,8 @@
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
+  font-stretch: inherit;
+  font-style: inherit;
   line-height: 2.5;
   color: inherit;
   padding: 0 .5em;
@@ -41,6 +43,8 @@
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
+  font-stretch: inherit;
+  font-style: inherit;
   line-height: 2;
   text-transform: uppercase;
   color: inherit;

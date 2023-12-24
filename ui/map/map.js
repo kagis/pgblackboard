@@ -1,7 +1,9 @@
-import { MaplibreglMap, LngLatBounds } from './maplibregl.js';
+import '../_lib/maplibre.js';
 import ne_cities from './ne_cities.js';
 import ne_land from './ne_land.js';
 import glyphs from './glyphs.js';
+
+const { Map: MaplibreMap, LngLatBounds } = globalThis.maplibregl;
 
 // TODO show circle marker on subpixel polygons
 
@@ -13,6 +15,9 @@ const style = {
   version: 8,
   glyphs: URL.createObjectURL(glyphs_blob) + '#/{fontstack}/{range}',
   // glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  transition: {
+    duration: 0, // instant theme switch
+  },
   sources: {
     'ne_land': {
       type: 'geojson',
@@ -40,14 +45,14 @@ const style = {
       type: 'fill',
       source: 'ne_land',
       paint: {
-        'fill-color': '#889',
-        'fill-opacity': .2,
+        'fill-color': 'hsl(0, 0%, 20%)',
+        // 'fill-opacity': .2,
       },
-      // metadata: {
-      //   alt_paint: {
-      //     'fill-color': '#888',
-      //   },
-      // },
+      metadata: {
+        alt_paint: {
+          'fill-color': 'hsl(0, 0%, 98%)',
+        },
+      },
     },
     {
       id: 'out_fill',
@@ -134,8 +139,8 @@ const style = {
       metadata: {
         alt_paint: {
           // 'circle-stroke-color': '#333',
-        'circle-color': ['to-color', ['concat', 'hsla(', ['get', 'hue'], ', 100%, 50%, .6)']],
-        'circle-stroke-color': ['to-color', ['concat', 'hsl(', ['get', 'hue'], ', 100%, 30%)']],
+          'circle-color': ['to-color', ['concat', 'hsla(', ['get', 'hue'], ', 100%, 50%, .6)']],
+          'circle-stroke-color': ['to-color', ['concat', 'hsl(', ['get', 'hue'], ', 100%, 30%)']],
         },
       },
     },
@@ -146,9 +151,8 @@ const style = {
       paint: {
         'text-color': 'hsl(0, 0%, 90%)',
         'text-halo-color': 'hsl(0, 0%, 0%)',
-        'text-halo-blur': 1,
         'text-halo-width': 1,
-        'text-opacity': .7, // prevent points overlap
+        'text-opacity': .8, // prevent points overlap
       },
       layout: {
         'text-size': 14,
@@ -158,8 +162,8 @@ const style = {
       },
       metadata: {
         alt_paint: {
-          'text-color': '#555',
-          'text-halo-color': '#eee',
+          'text-color': 'hsl(0, 0%, 30%)',
+          'text-halo-color': 'hsl(0, 0%, 100%)',
         },
       },
     },
@@ -190,36 +194,37 @@ const style = {
 
 const drop_white = /*xml*/ `
   <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#f0f0f0" stroke="#f0f0f0" fill-opacity="0.6" stroke-width="1.5" d="M4.11619 13.9087L4.11618 13.9087C3.71889 12.9491 3.5 11.9 3.5 10.8C3.5 6.22655 7.29492 2.5 12 2.5C16.7051 2.5 20.5 6.22654 20.5 10.8C20.5 11.9 20.2811 12.9491 19.8838 13.9087C19.5776 14.6484 18.9254 15.6255 18.0848 16.6992C17.2516 17.7634 16.2603 18.889 15.3054 19.9196C14.3514 20.9493 13.4382 21.8796 12.7632 22.5526C12.4511 22.8639 12.1901 23.1199 12 23.3049C11.8099 23.1199 11.5489 22.8639 11.2368 22.5526C10.5618 21.8796 9.64859 20.9493 8.69455 19.9196C7.73971 18.889 6.74839 17.7634 5.91519 16.6992C5.07457 15.6255 4.42238 14.6484 4.11619 13.9087ZM12 14.5C13.933 14.5 15.5 12.933 15.5 11C15.5 9.067 13.933 7.5 12 7.5C10.067 7.5 8.5 9.067 8.5 11C8.5 12.933 10.067 14.5 12 14.5Z" />
+    <path fill="#f0f0f0" stroke="#f0f0f0" fill-opacity="0.8" stroke-width="1.5" d="M4.11619 13.9087L4.11618 13.9087C3.71889 12.9491 3.5 11.9 3.5 10.8C3.5 6.22655 7.29492 2.5 12 2.5C16.7051 2.5 20.5 6.22654 20.5 10.8C20.5 11.9 20.2811 12.9491 19.8838 13.9087C19.5776 14.6484 18.9254 15.6255 18.0848 16.6992C17.2516 17.7634 16.2603 18.889 15.3054 19.9196C14.3514 20.9493 13.4382 21.8796 12.7632 22.5526C12.4511 22.8639 12.1901 23.1199 12 23.3049C11.8099 23.1199 11.5489 22.8639 11.2368 22.5526C10.5618 21.8796 9.64859 20.9493 8.69455 19.9196C7.73971 18.889 6.74839 17.7634 5.91519 16.6992C5.07457 15.6255 4.42238 14.6484 4.11619 13.9087ZM12 14.5C13.933 14.5 15.5 12.933 15.5 11C15.5 9.067 13.933 7.5 12 7.5C10.067 7.5 8.5 9.067 8.5 11C8.5 12.933 10.067 14.5 12 14.5Z" />
   </svg>
 `;
 
 const drop_black = /*xml*/ `
   <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#555" stroke="#555" fill-opacity="0.6" stroke-width="1.5" d="M4.11619 13.9087L4.11618 13.9087C3.71889 12.9491 3.5 11.9 3.5 10.8C3.5 6.22655 7.29492 2.5 12 2.5C16.7051 2.5 20.5 6.22654 20.5 10.8C20.5 11.9 20.2811 12.9491 19.8838 13.9087C19.5776 14.6484 18.9254 15.6255 18.0848 16.6992C17.2516 17.7634 16.2603 18.889 15.3054 19.9196C14.3514 20.9493 13.4382 21.8796 12.7632 22.5526C12.4511 22.8639 12.1901 23.1199 12 23.3049C11.8099 23.1199 11.5489 22.8639 11.2368 22.5526C10.5618 21.8796 9.64859 20.9493 8.69455 19.9196C7.73971 18.889 6.74839 17.7634 5.91519 16.6992C5.07457 15.6255 4.42238 14.6484 4.11619 13.9087ZM12 14.5C13.933 14.5 15.5 12.933 15.5 11C15.5 9.067 13.933 7.5 12 7.5C10.067 7.5 8.5 9.067 8.5 11C8.5 12.933 10.067 14.5 12 14.5Z" />
+    <path fill="#555" stroke="#555" fill-opacity="0.8" stroke-width="1.5" d="M4.11619 13.9087L4.11618 13.9087C3.71889 12.9491 3.5 11.9 3.5 10.8C3.5 6.22655 7.29492 2.5 12 2.5C16.7051 2.5 20.5 6.22654 20.5 10.8C20.5 11.9 20.2811 12.9491 19.8838 13.9087C19.5776 14.6484 18.9254 15.6255 18.0848 16.6992C17.2516 17.7634 16.2603 18.889 15.3054 19.9196C14.3514 20.9493 13.4382 21.8796 12.7632 22.5526C12.4511 22.8639 12.1901 23.1199 12 23.3049C11.8099 23.1199 11.5489 22.8639 11.2368 22.5526C10.5618 21.8796 9.64859 20.9493 8.69455 19.9196C7.73971 18.889 6.74839 17.7634 5.91519 16.6992C5.07457 15.6255 4.42238 14.6484 4.11619 13.9087ZM12 14.5C13.933 14.5 15.5 12.933 15.5 11C15.5 9.067 13.933 7.5 12 7.5C10.067 7.5 8.5 9.067 8.5 11C8.5 12.933 10.067 14.5 12 14.5Z" />
   </svg>
 `;
 
-const drop_marker = /*xml*/ `
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3.65244 14.0641C3.23178 13.0493 3 11.94 3 10.7768C3 5.94062 7.01815 2 12 2C16.9819 2 21 5.9406 21 10.7768C21 11.94 20.7682 13.0493 20.3476 14.0641C20.0233 14.8462 19.3328 15.8795 18.4427 17.0148C17.5605 18.1402 16.5109 19.3304 15.4998 20.4202C14.4897 21.5091 13.5228 22.4928 12.8081 23.2045C12.4776 23.5337 12.2013 23.8044 12 24C11.7987 23.8044 11.5224 23.5337 11.1919 23.2045C10.4772 22.4928 9.51027 21.5091 8.50011 20.4202C7.4891 19.3304 6.43947 18.1402 5.55726 17.0148C4.66719 15.8795 3.97664 14.8462 3.65244 14.0641ZM12 14.6893C14.0467 14.6893 15.7059 13.0323 15.7059 10.9883C15.7059 8.94423 14.0467 7.28722 12 7.28722C9.95329 7.28722 8.29412 8.94423 8.29412 10.9883C8.29412 13.0323 9.95329 14.6893 12 14.6893Z" fill="black"/>
-  </svg>
-`;
+// const drop_marker = /*xml*/ `
+//   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+//     <path d="M3.65244 14.0641C3.23178 13.0493 3 11.94 3 10.7768C3 5.94062 7.01815 2 12 2C16.9819 2 21 5.9406 21 10.7768C21 11.94 20.7682 13.0493 20.3476 14.0641C20.0233 14.8462 19.3328 15.8795 18.4427 17.0148C17.5605 18.1402 16.5109 19.3304 15.4998 20.4202C14.4897 21.5091 13.5228 22.4928 12.8081 23.2045C12.4776 23.5337 12.2013 23.8044 12 24C11.7987 23.8044 11.5224 23.5337 11.1919 23.2045C10.4772 22.4928 9.51027 21.5091 8.50011 20.4202C7.4891 19.3304 6.43947 18.1402 5.55726 17.0148C4.66719 15.8795 3.97664 14.8462 3.65244 14.0641ZM12 14.6893C14.0467 14.6893 15.7059 13.0323 15.7059 10.9883C15.7059 8.94423 14.0467 7.28722 12 7.28722C9.95329 7.28722 8.29412 8.94423 8.29412 10.9883C8.29412 13.0323 9.95329 14.6893 12 14.6893Z" fill="black"/>
+//   </svg>
+// `;
 
 export default {
   template: /*html*/ `<div class="map"></div>`,
   computed: {
     highlight_geojson() {
       const empty = { type: 'FeatureCollection', features: [] };
-      const out_idx = this.$store.selected_out_idx;
-      const row_idx = this.$store.selected_row_idx;
+      const out_idx = this.$store.curr_out_idx;
+      const row_idx = this.$store.curr_row_idx;
       return out_idx != null && row_idx != null && this.get_row_geom(out_idx, row_idx) || empty;
     },
     feature_collection() {
       const { outs } = this.$store;
       const features = outs.flatMap(({ rows, geometry_col }, out_idx) => {
         if (geometry_col < 0 || !rows) return []; // skip if no geom col
-        const hue = out_idx * 40; // TODO constrast
+        // TODO no increment out_idx if not geom col
+        const hue = (200 + out_idx * 40) % 361; // TODO constrast
         return rows.map((row, row_idx) => ({
           type: 'Feature',
           properties: { out_idx, row_idx, hue },
@@ -232,7 +237,7 @@ export default {
   },
   methods: {
     _mounted() {
-      this._ml = window.debug_map = new MaplibreglMap({
+      this._ml = window.debug_map = new MaplibreMap({
         style,
         container: this.$el,
         // transformRequest(url, resource_type) {
@@ -301,7 +306,7 @@ export default {
       const { out_idx, row_idx } = feature.properties;
       const detail = { out_idx, row_idx };
       this.$root.$el.dispatchEvent(new CustomEvent('req_row_focus', { detail }));
-      this.$store.select_rowcol(out_idx, row_idx);
+      this.$store.set_curr_rowcol(out_idx, row_idx);
       // console.log(features);
     },
     on_req_map_navigate({ detail: { out_idx, row_idx } }) {

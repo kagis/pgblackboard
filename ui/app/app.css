@@ -3,11 +3,16 @@
 .app-abort,
 .app-map_btn,
 .app-theme_btn {
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 400;
+  font-stretch: normal;
+  line-height: inherit;
+
   padding: 0;
   margin: 0;
-  font: 400 .75rem / 2 Roboto;
   border: none;
-  border-radius: 1rem;
+  border-radius: 1em;
   background: none;
   color: inherit;
   text-transform: uppercase;
@@ -16,18 +21,39 @@
 }
 
 .app {
+  --app-pane_left_min: 8rem;
+  --app-pane_code_min: 17rem; /* fit "run, abort, map" buttons */
+  --app-pane_right_min: 8rem;
+  --app-header_h: 2.5rem;
+  --app-pane_outs_min: 4rem;
+  --app-pane_datum_min: 4rem;
+  --app-pane_map_min: 4rem;
+
+  --app-dynw: calc(100%
+    - var(--app-pane_left_min)
+    - var(--app-pane_code_min)
+    - var(--app-pane_right_min)
+  );
+  --app-dynh: calc(100%
+    - var(--app-header_h)
+    - var(--app-pane_outs_min)
+    - var(--app-pane_datum_min)
+    - var(--app-pane_map_min)
+  );
+
   position: absolute;
   inset: 0;
   display: grid;
+  overflow: hidden;
   grid:
-    'nav_b code_b outs'  2.5rem
-    'nav   code   outs'  minmax(4rem, 1fr)
-    'nav   code   datum' calc(var(--app-split_datum) * 1px)
-    'nav   code   map'   calc(var(--app-split_map) * 1px)
+    'nav_b code_b outs'  var(--app-header_h)
+    'nav   code   outs'  calc(var(--app-pane_outs) * var(--app-dynh) + var(--app-pane_outs_min))
+    'nav   code   datum' minmax(var(--app-pane_datum_min), 1fr)
+    'nav   code   map'   calc(var(--app-pane_map) * var(--app-dynh) + var(--app-pane_map_min))
     /
-    calc(var(--app-split_left) * 1px)
-    minmax(17rem /* fit "run, abort, map" buttons */, 1fr)
-    calc(var(--app-split_right) * 1px)
+    calc(var(--app-pane_left) * var(--app-dynw) + var(--app-pane_left_min))
+    minmax(var(--app-pane_code_min), 1fr)
+    calc(var(--app-pane_right) * var(--app-dynw) + var(--app-pane_right_min))
   ;
   color: hsl(0 0% 93%);
   background-color: hsl(0 0% 14%);
@@ -40,6 +66,13 @@
   color-scheme: light;
 }
 
+.app-measure {
+  width: var(--app-dynw);
+  height: var(--app-dynh);
+  position: absolute;
+  pointer-events: none;
+}
+
 .app-login {
   position: absolute;
   inset: 0;
@@ -49,7 +82,7 @@
 .app-nav {
   grid-area: nav;
   padding-top: 1rem;
-  padding-bottom: 50vh;
+  padding-bottom: calc(100vh - var(--app-header_h) - 1lh);
   overflow: scroll;
   overscroll-behavior: none;
   scrollbar-width: none;
@@ -71,12 +104,11 @@
 
 .app-datum {
   grid-area: datum;
-  background-color: hsl(0 0% 11%);
+  border-top: 1px solid hsl(0 0% 50% / .2);
 }
 
 .app-map {
   grid-area: map;
-  background-color: hsl(0 0% 0% / .05);
 }
 
 .app-code_bar {
@@ -167,42 +199,43 @@
 }
 
 .app-split_left {
-  grid-area: code;
-  width: .5rem;
-  margin-inline: -.25rem;
   justify-self: start;
+  grid-area: 1 / 2 / 5 / 3;
+  writing-mode: vertical-lr;
   cursor: ew-resize;
-  z-index: 10;
 }
 
 .app-split_right {
-  grid-area: code;
-  width: .5rem;
-  margin-inline: -.25rem;
   justify-self: end;
+  grid-area: 1 / 2 / 5 / 3;
+  writing-mode: vertical-lr;
   cursor: ew-resize;
-  z-index: 10;
 }
 
-.app-split_datum {
+.app-split_outs {
   grid-area: datum;
-  cursor: ns-resize;
-  height: .5rem;
   align-self: start;
-  z-index: 10;
+  cursor: ns-resize;
 }
 
 .app-split_map {
   grid-area: map;
-  cursor: ns-resize;
-  height: .5rem;
   align-self: start;
-  z-index: 10;
+  cursor: ns-resize;
 }
 
-.app-split_left:active,
-.app-split_right:active,
-.app-split_map:active,
-.app-split_datum:active {
-  background-color: hsl(200 85% 40% / 0.45);
+.app-split_left,
+.app-split_right,
+.app-split_map,
+.app-split_outs {
+  font-size: .375rem;
+  block-size: 1em;
+  margin-block: -.5em;
+  /* monaco scroll slider overlap */
+  position: relative;
+  z-index: 100;
+
+  &:active {
+    background-color: hsl(200 85% 40% / 0.45);
+  }
 }

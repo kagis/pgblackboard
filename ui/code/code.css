@@ -1,1 +1,20 @@
-@import url('https://esm.sh/v135/monaco-editor@0.45.0/es2022/monaco-editor.css');
+.code {
+  font-stretch: initial;
+}
+
+/* .code .monaco-editor {
+  width: 100% !important;
+  height: 100% !important;
+} */
+
+.code .margin-view-overlays {
+  font-weight: 300 !important;
+}
+
+.code-error_decoration ~ .line-numbers {
+  color: transparent !important;
+  &::after {
+    content: '\00d7!';
+    color: hsl(330 100% 60%);
+  }
+}

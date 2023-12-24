@@ -1,101 +1,76 @@
-import { EditorState } from 'https://esm.sh/@codemirror/state@6.3.2?dev';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, drawSelection } from 'https://esm.sh/@codemirror/view@6.22.1?dev';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from 'https://esm.sh/@codemirror/commands@6.3.2?dev';
-import { closeBrackets, closeBracketsKeymap } from 'https://esm.sh/@codemirror/autocomplete@6.11.1?dev';
-import { highlightSelectionMatches, searchKeymap } from 'https://esm.sh/@codemirror/search@6.5.5?dev';
-import { syntaxHighlighting, HighlightStyle, bracketMatching } from 'https://esm.sh/@codemirror/language@6.9.3?dev';
-import { json as lang_json } from 'https://esm.sh/@codemirror/lang-json@6.0.1?dev';
-import { tags } from 'https://esm.sh/@lezer/highlight@1.2.0?dev';
+import { editor } from '../_lib/monaco.js';
 
 export default {
   template: /*html*/ `<div class="datum"></div>`,
-  mounted() {
-    this._mounted();
-  },
   computed: {
-    selected_datum: vm => vm.$store.selected_datum,
+    curr_datum: vm => vm.$store.curr_datum,
+    light_theme: vm => vm.$store.light_theme,
   },
   methods: {
     _mounted() {
-      this._cm = new EditorView({ parent: this.$el });
+      this._model = editor.createModel('', 'json');
+
+      this._editor = editor.create(this.$el, {
+        // https://microsoft.github.io/monaco-editor/docs.html#interfaces/editor.IStandaloneEditorConstructionOptions.html
+        model: this._model,
+        // language: 'sql',
+        automaticLayout: true,
+        tabSize: 2,
+        fontSize: 14,
+        lineHeight: 20,
+        fontFamily: 'Roboto Mono',
+        fontWeight: '400',
+        minimap: { enabled: false },
+        renderLineHighlight: 'none',
+        // bracketPairColorization: { enabled: false },
+        padding: { top: 8, bottom: 8 },
+        lineNumbers: 'off',
+        scrollbar: {
+          horizontalScrollbarSize: 8,
+          verticalScrollbarSize: 8,
+          useShadows: false,
+        },
+        wordWrap: 'on',
+        wrappingIndent: 'same',
+        unicodeHighlight: { ambiguousCharacters: false },
+      });
 
       this.$watch(
-        _ => this.selected_datum,
-        doc => this.init_state({ doc }),
+        _ => this.curr_datum,
+        this.watch_curr_datum,
+        { immediate: true },
       );
-    },
-    init_state({ doc }) {
-      const extensions = [
-        // EditorState.readOnly.of(readonly),
-        [EditorView.lineWrapping].filter(_ => this.line_wrapping),
-        EditorView.lineWrapping,
-        EditorView.updateListener.of(this.on_change),
-        history(),
-        // lineNumbers(),
-        // highlightActiveLineGutter(),
-        drawSelection(),
-        EditorState.allowMultipleSelections.of(true),
-        closeBrackets(),
-        bracketMatching(),
-        highlightSelectionMatches(),
-        syntaxHighlighting(hl_style),
-        lang_json(),
 
-        keymap.of(historyKeymap),
-        keymap.of(defaultKeymap),
-        keymap.of(closeBracketsKeymap),
-        keymap.of(searchKeymap),
-        keymap.of(indentWithTab),
-      ];
+      this.$watch(
+        _ => ({
+          // theme: this.light_theme ? 'x-datum-light' : 'x-datum-dark',
+          readOnly: true,
+        }),
+        options => this._editor.updateOptions(options),
+        { immediate: true },
+      );
 
-      this._cm.setState(EditorState.create({ doc, extensions }));
-      // TODO this.update_error()
+      // this._editor.onDidChangeModelContent(this.on_change_content);
     },
-    // https://codemirror.net/docs/ref/#view.ViewUpdate
-    on_change({ docChanged, selectionSet, focusChanged, view, state }) {
-      if (docChanged) {
-        const { doc } = state;
-        // this.$store.edit_code(doc);
-      }
+    _unmounted() {
+      this._editor.dispose();
     },
+    watch_curr_datum(val) {
+      this._model.setValue(val || '');
+      this._model.updateOptions({ bracketColorizationOptions: { enabled: false } });
+      this._editor.revealLine(0);
+    },
+
+    // on_change_content() {
+    //   if (!this.loading) {
+    //     this.save_curr_draft();
+    //   }
+    // },
+  },
+  mounted() {
+    return this._mounted();
+  },
+  unmounted() {
+    return this._unmounted();
   },
 };
-
-const hl_style = HighlightStyle.define([
-  { tag: tags.keyword, color: 'var(--cm-keyword)' },
-  { tag: tags.string, color: 'var(--cm-literalstr)' },
-  { tag: tags.number, color: 'var(--cm-literalnum)' },
-  { tag: tags.comment, color: 'var(--cm-comment)' },
-  // { tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
-  //     color: coral },
-  // { tag: [/*@__PURE__*/tags.function(tags.variableName), tags.labelName],
-  //     color: malibu },
-  // { tag: [tags.color, /*@__PURE__*/tags.constant(tags.name), /*@__PURE__*/tags.standard(tags.name)],
-  //     color: whiskey },
-  // { tag: [/*@__PURE__*/tags.definition(tags.name), tags.separator],
-  //     color: ivory },
-  // { tag: [tags.typeName, tags.className, tags.number, tags.changed, tags.annotation, tags.modifier, tags.self, tags.namespace],
-  //     color: chalky },
-  // { tag: [tags.operator, tags.operatorKeyword, tags.url, tags.escape, tags.regexp, tags.link, /*@__PURE__*/tags.special(tags.string)],
-  //     color: cyan },
-  // { tag: [tags.meta, tags.comment],
-  //     color: stone },
-  // { tag: tags.strong,
-  //     fontWeight: "bold" },
-  // { tag: tags.emphasis,
-  //     fontStyle: "italic" },
-  // { tag: tags.strikethrough,
-  //     textDecoration: "line-through" },
-  // { tag: tags.link,
-  //     color: stone,
-  //     textDecoration: "underline" },
-  // { tag: tags.heading,
-  //     fontWeight: "bold",
-  //     color: coral },
-  // { tag: [tags.atom, tags.bool, /*@__PURE__*/tags.special(tags.variableName)],
-  //     color: whiskey },
-  // { tag: [tags.processingInstruction, tags.string, tags.inserted],
-  //     color: sage },
-  // { tag: tags.invalid,
-  //     color: invalid },
-]);

@@ -11,7 +11,7 @@ export default {
         <colgroup>
           <col class="outs-col"
             v-for="col, col_idx in out.columns"
-            :data-selected="selected_out_idx == out_idx && col_idx == out.selected_col_idx || null"
+            :data-selected="curr_out_idx == out_idx && col_idx == out.curr_col_idx || null"
             :style="{ width: col.width + 'px' }" />
           <!-- <col class="outs-col" /> -->
         </colgroup>
@@ -20,7 +20,7 @@ export default {
             <th class="outs-th"
               scope="col"
               v-for="col, col_idx in out.columns"
-              :data-selected="selected_out_idx == out_idx && col_idx == out.selected_col_idx || null">
+              :data-selected="curr_out_idx == out_idx && col_idx == out.curr_col_idx || null">
               <span class="outs-colh_name" v-text="col.name"></span>
               <span>&nbsp;</span>
               <span class="outs-colh_type" v-text="resolve_type(col.typeOid)"></span>
@@ -42,7 +42,7 @@ export default {
               v-for="val, col_idx in row"
               :data-col_type="out.columns[col_idx].typeOid"
               :data-col_idx="col_idx"
-              :data-selected="is_row_selected(out_idx, row_idx) && out.selected_col_idx == col_idx || null"
+              :data-selected="is_row_selected(out_idx, row_idx) && out.curr_col_idx == col_idx || null"
               :data-null="val == null || null"
               v-text="val?.slice(0, 100)">
             </td>
@@ -63,15 +63,15 @@ export default {
   },
   computed: {
     outs: vm => vm.$store.outs,
-    selected_out_idx: vm => vm.$store.selected_out_idx,
-    // selected_row_idx: vm => vm.$store.selected_row_idx,
+    curr_out_idx: vm => vm.$store.curr_out_idx,
+    // curr_row_idx: vm => vm.$store.curr_row_idx,
   },
   methods: {
     // is_col_selected(out_idx, col_idx) {
-    //   return this.$store.selected_out_idx == out_idx && this.$s
+    //   return this.$store.curr_out_idx == out_idx && this.$s
     // },
     is_row_selected(out_idx, row_idx) {
-      return this.$store.selected_out_idx == out_idx && this.$store.selected_row_idx == row_idx;
+      return this.$store.curr_out_idx == out_idx && this.$store.curr_row_idx == row_idx;
     },
     resize_col(out_idx, col_idx, width) {
       this.$store.resize_col(out_idx, col_idx, Math.max(width, 50));
@@ -729,7 +729,7 @@ export default {
       // TODO nullsafe
       const col_idx = Number(target.closest('[data-col_idx]').dataset.col_idx);
       // this.$store.select_row(out_idx, row_idx);
-      this.$store.select_rowcol(out_idx, row_idx, col_idx);
+      this.$store.set_curr_rowcol(out_idx, row_idx, col_idx);
       this.$root.$el.dispatchEvent(new CustomEvent('req_map_navigate', { detail: { out_idx, row_idx, origin: 'sheet' } }));
     },
     on_row_navigate({ detail: { out_idx, row_idx } }) {

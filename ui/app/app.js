@@ -11,10 +11,10 @@ const template = String.raw /*html*/ `
 <div class="app"
   :class="{ 'light': light_theme }"
   :style="{
-    '--app-split_left': split_left,
-    '--app-split_right': split_right,
-    '--app-split_datum': split_datum,
-    '--app-split_map': split_map,
+    '--app-pane_left': panes.left,
+    '--app-pane_right': panes.right,
+    '--app-pane_outs': panes.outs,
+    '--app-pane_map': panes.map,
   }">
   <x-login class="app-login" v-if="!login_done"></x-login>
 
@@ -40,11 +40,11 @@ const template = String.raw /*html*/ `
       :disabled="!can_abort"
       v-on:click="abort">
     </button>
-    <button class="app-map_btn"
+    <!-- <button class="app-map_btn"
       type="button"
       aria-label="map"
       v-on:click="toggle_map">
-    </button>
+    </button> -->
   </div>
 
   <div class="app-nav">
@@ -56,10 +56,12 @@ const template = String.raw /*html*/ `
   <x-datum class="app-datum"></x-datum>
   <x-map class="app-map"></x-map>
 
-  <x-grip class="app-split_left" :x="split_left" v-on:drag="resize_split_left"></x-grip>
-  <x-grip class="app-split_right" :x="-split_right" v-on:drag="resize_split_right"></x-grip>
-  <x-grip class="app-split_datum" :y="-split_datum" v-on:drag="resize_split_datum"></x-grip>
-  <x-grip class="app-split_map" :y="-split_map" v-on:drag="resize_split_map"></x-grip>
+  <x-grip class="app-split_left" :origin="panes" v-on:drag="resize_left"></x-grip>
+  <x-grip class="app-split_right" :origin="panes" v-on:drag="resize_right"></x-grip>
+  <x-grip class="app-split_outs" :origin="panes" v-on:drag="resize_outs"></x-grip>
+  <x-grip class="app-split_map" :origin="panes" v-on:drag="resize_map"></x-grip>
+
+  <div class="app-measure" ref="measure"></div>
 </div>
 `;
 
@@ -80,11 +82,8 @@ export default {
     can_run: vm => vm.$store.can_run(),
     can_abort: vm => vm.$store.can_abort(),
     login_done: vm => vm.$store.login_done,
-    code_selected: vm => vm.$store.code.selected,
-    split_left: vm => vm.$store.split_left,
-    split_right: vm => vm.$store.split_right,
-    split_datum: vm => vm.$store.split_datum,
-    split_map: vm => vm.$store.split_map,
+    code_selected: vm => vm.$store.curr_draft?.cursor_len,
+    panes: vm => vm.$store.panes,
   },
   methods: {
     run() {
@@ -96,21 +95,43 @@ export default {
     toggle_theme() {
       this.$store.toggle_theme();
     },
-    resize_split_left({ x }) {
-      this.$store.set_split_left(Math.max(50, Math.round(x)));
-      dispatchEvent(new Event('resize')); // resize map
+    resize_left({ x, origin }) {
+      const wmax = this.$refs.measure.clientWidth;
+      let val = origin.left + x / wmax;
+      val = Math.min(Math.max(val, 0), 1);
+      this.$store.resize_panes({
+        left: val,
+        right: Math.min(origin.right, 1 - val),
+      });
     },
-    resize_split_right({ x }) {
-      this.$store.set_split_right(Math.max(50, Math.round(-x)));
-      dispatchEvent(new Event('resize')); // resize map
+    resize_right({ x, origin }) {
+      const wmax = this.$refs.measure.clientWidth;
+      let val = origin.right - x / wmax;
+      val = Math.min(Math.max(val, 0), 1);
+      this.$store.resize_panes({
+        right: val,
+        left: Math.min(origin.left, 1 - val),
+      });
     },
-    resize_split_map({ y }) {
-      this.$store.set_split_map(Math.max(50, Math.round(-y)));
-      dispatchEvent(new Event('resize')); // resize map
+    resize_outs({ y, origin }) {
+      const hmax = this.$refs.measure.clientHeight;
+      let val = origin.outs + y / hmax;
+      val = Math.min(Math.max(val, 0), 1);
+      this.$store.resize_panes({
+        outs: val,
+        map: Math.min(origin.map, 1 - val),
+      });
     },
-    resize_split_datum({ y }) {
-      this.$store.set_split_datum(Math.max(50, Math.round(-y)));
-      dispatchEvent(new Event('resize')); // resize map
+    resize_map({ y, origin }) {
+      const hmax = this.$refs.measure.clientHeight;
+      let val = origin.map - y / hmax;
+      val = Math.min(Math.max(val, 0), 1);
+      this.$store.resize_panes({
+        map: val,
+        outs: Math.min(origin.outs, 1 - val),
+      });
+    },
+    toggle_map() {
     },
   },
 };

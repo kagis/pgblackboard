@@ -1,5 +1,4 @@
 .drafts-item {
-  line-height: 2;
   padding-inline: 2rem;
   cursor: pointer;
   white-space: nowrap;
@@ -26,6 +25,11 @@
 
 .drafts-caption {
   /* margin-inline: .25em; */
+  &:empty::before {
+    content: 'empty';
+    font-style: italic;
+    opacity: .5;
+  }
 }
 
 .drafts-delete {

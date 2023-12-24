@@ -8,11 +8,13 @@ export default {
   props: {
     x: { default: 0 },
     y: { default: 0 },
+    origin: Object,
   },
   methods: {
     on_pointerdown({ clientX, clientY, pointerId }) {
       this.start_x = this.x - clientX;
       this.start_y = this.y - clientY;
+      this._origin = this.origin && JSON.parse(JSON.stringify(this.origin));
       this.$el.setPointerCapture(pointerId);
       this.$el.addEventListener('pointermove', this.on_pointermove);
     },
@@ -27,7 +29,7 @@ export default {
     },
     on_pointermove({ clientX, clientY }, done = false) {
       // TODO fix в safari происходит выделение текста при перетаскивании grip'а
-      this.$emit('drag', { done, x: clientX + this.start_x, y: clientY + this.start_y, clientX, clientY });
+      this.$emit('drag', { done, origin: this._origin, x: clientX + this.start_x, y: clientY + this.start_y, clientX, clientY });
     },
   },
 };

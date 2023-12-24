@@ -103,19 +103,20 @@ class App {
       password,
       database: db,
     };
-    const node_arr = node?.split('.');
+    const node_arr = node?.split('.')?.map(decodeURIComponent);
     const pg = await pgconnect(conn_opts, this.pg_uri);
     try {
       const { rows } = await pg.query({
         statement: tree_sql,
         params: [{ type: 'text[]', value: node_arr }],
       });
-      const result = rows.map(([db, id, type, name, comment, expandable]) => ({
+      const result = rows.map(([db, id, type, name, comment, badge, expandable]) => ({
         type,
-        id: id.join('.'),
+        id: id.map(encodeURIComponent).map(x => x.replace(/\./g, '%2e')).join('.'),
         db,
         name,
         comment,
+        badge,
         expandable,
       }));
       return Response.json({ result });
@@ -127,7 +128,7 @@ class App {
   async _api_defn(/** @type {Request} */ _req, { key, u, db, node }) {
     const password = await this._decrypt_pwd(key);
 
-    const node_arr = node.split('.');
+    const node_arr = node.split('.').map(decodeURIComponent);
     const pg = await pgconnect({
       default_transaction_read_only: 'on',
       user: u,
@@ -220,8 +221,9 @@ const tree_sql = /*sql*/  `
   -- databases
   select datname, array['db']::text[]
     , 'database'
-    , datname::text
+    , datname::text collate "C"
     , shobj_description(oid, 'pg_database')
+    , null
     , true
     , 1
   from pg_database
@@ -233,6 +235,7 @@ const tree_sql = /*sql*/  `
     , 'schema'
     , nspname
     , obj_description(oid, 'pg_namespace')
+    , null
     , true
     , 1
   from arg, pg_namespace
@@ -254,6 +257,7 @@ const tree_sql = /*sql*/  `
       , pg_get_function_result(pg_proc.oid)
     )
     , obj_description(pg_proc.oid, 'pg_proc')
+    , null
     , false
     , 2
   from arg, pg_proc
@@ -266,9 +270,18 @@ const tree_sql = /*sql*/  `
     , format('table table_%s', relkind)
     , relname
     , obj_description(pg_class.oid, 'pg_class')
+    , badge
     , true
     , 1
-  from arg, pg_class
+  from arg, pg_class, text(
+    case
+    -- TODO trailing .0 not dropped
+    when reltuples > 1e9 then to_char(reltuples / 1e9, '999.9 "G"')
+    when reltuples > 1e6 then to_char(reltuples / 1e6, '999.9 "M"')
+    when reltuples > 1e3 then to_char(reltuples / 1e3, '999.9 "k"')
+    when reltuples > 0 then to_char(reltuples, '9999')
+    end
+  ) badge
   where ('ns', relnamespace) = (a1, a2_oid)
     and relkind not in ('i', 'I', 't', 'c', 'S')
 
@@ -290,6 +303,7 @@ const tree_sql = /*sql*/  `
       , case when attnotnull then 'not null' end
     )
     , col_description(attrelid, attnum)
+    , null
     , false
     , attnum
   from arg, pg_attribute
@@ -307,6 +321,7 @@ const tree_sql = /*sql*/  `
     )
     , conname
     , obj_description(oid, 'pg_constraint')
+    , null
     , false
     , 10010
   from arg, pg_constraint
@@ -319,6 +334,7 @@ const tree_sql = /*sql*/  `
     , 'index'
     , relname
     , obj_description(indexrelid, 'pg_class')
+    , null
     , false
     , 10020
   from arg, pg_index join pg_class on indexrelid = oid
@@ -331,12 +347,55 @@ const tree_sql = /*sql*/  `
     , 'trigger'
     , tgname
     , obj_description(oid, 'pg_trigger')
+    , null
     , false
     , 10030
   from arg, pg_trigger
   where ('rel', tgrelid) = (a1, a2_oid) and tgconstraint = 0
 
-  order by 7, 4
+  -- fs root
+  union all
+  select currdb, array['dir', '.']::text[]
+    , 'dir'
+    , current_setting('data_directory')
+    , null
+    , null
+    , true
+    , 2
+  from arg
+  where $1 is null
+
+  -- dir
+  union all
+  select currdb, array['dir', fpath]::text[]
+    , 'dir'
+    , fname
+    , null
+    , null
+    , true
+    , 1
+  from arg
+  , pg_ls_dir(a2) fname
+  , concat(a2, '/', fname) fpath
+  , pg_stat_file(fpath) stat
+  where 'dir' = a1 and stat.isdir
+
+  -- file
+  union all
+  select currdb, array['file', fpath]::text[]
+    , 'file'
+    , fname
+    , null
+    , null -- TODO file size
+    , false
+    , 2
+  from arg
+  , pg_ls_dir(a2) fname
+  , concat(a2, '/', fname) fpath
+  , pg_stat_file(fpath) stat
+  where 'dir' = a1 and not stat.isdir
+
+  order by 8, 4
 `;
 
 
@@ -476,6 +535,14 @@ from arg, lateral (
   )
   from pg_trigger
   where ('trigger', oid) = (a1, a2_oid)
+
+  -- file
+  union all
+  select format(e''
+    'SELECT pg_read_file(%L, 0, 5000);\n'
+    , a2
+  )
+  where 'file' = a1
 
 ) _(def)
 `;

@@ -6,8 +6,6 @@
   border-spacing: 0;
   table-layout: fixed;
   width: min-content;
-  line-height: 2;
-  /* background-color: hsl(0 0% 0% / .1); */
 }
 
 .outs-head {
@@ -15,7 +13,7 @@
   top: 0;
   z-index: 1;
   line-height: 2.5;
-  background-color: hsl(0 0% 15%);
+  background-color: hsl(0 0% 17%);
 
   .light & {
     background-color: hsl(0 0% 90%);
@@ -25,8 +23,8 @@
 .outs-tbody {
   background-image: repeating-linear-gradient(
     to bottom,
-    hsl(0 0% 0% / .1) 0, hsl(0 0% 0% / .1) 1lh,
-    hsl(0 0% 0% / 0) 1lh, hsl(0 0% 0% / 0) 2lh
+    hsl(0 0% 0% / .1) 0 1lh,
+    hsl(0 0% 0% / 0) 1lh 2lh
   );
 }
 
@@ -35,7 +33,11 @@
   background: linear-gradient(to right, hsl(0 0% 0% / .08), hsl(0 0% 0% / 0) 50%);
 
   &[data-selected] {
-    background-color: hsl(0 0% 18%);
+    background: hsl(0 0% 18%);
+
+    .light & {
+      background: hsl(0 0% 85%);
+    }
   }
 }
 
@@ -52,6 +54,10 @@
     background-color: hsl(0 0% 18%);
     /* top highlight stripe */
     box-shadow: inset 0 .5rem 0 -.25rem hsl(0 0% 60%);
+
+    .light & {
+      background-color: hsl(0 0% 90%);
+    }
   }
 }
 
@@ -60,7 +66,7 @@
 }
 
 .outs-colh_type {
-  font-size: .75rem;
+  font-size: .875rem;
   color: hsl(0 0% 50%);
 }
 
@@ -71,11 +77,15 @@
   cursor: ew-resize;
 }
 
-.outs-row[data-selected] {
-  background-color: hsl(0 0% 100% / .8);
-  color: hsl(0 0% 20%);
+.outs-row {
+  /* prevent empty cell collapsion */
+  height: 2em; /* TODO 1lh */
 
-  .light & {
+  &[data-selected] {
+    background-color: hsl(0 0% 100% / .8);
+    color: hsl(0 0% 20%);
+  }
+  .light &[data-selected] {
     background-color: hsl(0 0% 0% / .8);
     color: hsl(0 0% 95%);
   }
@@ -84,7 +94,8 @@
 .outs-cell {
   text-overflow: ellipsis;
   overflow: hidden;
-  padding: 0 1em;
+  padding: 0 1rem;
+
   /* show leading/trailing spaces
   TODO but should not render multiline */
   /* white-space: pre; */
@@ -93,17 +104,14 @@
     outline: 1px dashed currentColor;
     outline-offset: -.25rem;
   }
-  &:empty::before {
-    opacity: .5;
-    font-style: italic;
-    content: 'empty';
-  }
   &[data-null]::before {
-    content: 'null';
+    content: 'NULL';
+    font-size: .75rem;
+    font-style: italic;
+    color: hsl(0 0% 50%);
   }
 }
 
 .outs-status {
-  padding-inline: 1em;
-  line-height: 2;
+  padding-inline: 1rem;
 }

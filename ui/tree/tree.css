@@ -1,29 +1,22 @@
-.tree-node {
-  position: relative;
-  padding-inline: calc(1em + var(--tree-level) * 1em) 2em;
-  line-height: 2;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  cursor: pointer;
-}
-.tree-node:hover {
-  background-color: hsl(0 0% 50% / .2);
-}
-.tree-node[data-selected] {
-  background-color: hsl(0 0% 50% / .3);
-}
-
-.tree-container[data-type~="column"] + .tree-container:not([data-type~="column"]) {
+/* TODO group separator */
+.tree-sub:has(> [data-type~="column"]) + .tree-sub:not(:has(> [data-type~="column"])) {
   margin-block-start: .5em;
 }
 
-.tree-node[data-type~=index] .tree-caption::before,
-.tree-node[data-type~=trigger] .tree-caption::before,
-.tree-node[data-type~=constraint] .tree-caption::before {
-  content: '...';
-  margin-inline-end: .25em;
-  opacity: .5;
+.tree-node {
+  position: relative;
+  padding-inline: calc(1rem + var(--tree-level) * 1rem) 2rem;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+
+  &:hover {
+    background-color: hsl(0 0% 50% / .2);
+  }
+  &[data-selected] {
+    background-color: hsl(0 0% 50% / .3);
+  }
 }
 
 .tree-marker {
@@ -32,55 +25,98 @@
   inline-size: 2rem;
   margin-inline-start: -2rem;
   background-color: currentcolor;
-  mask: url('./marker_database.svg') center / 1rem no-repeat;
-  -webkit-mask: url('./marker_database.svg') center / 1rem no-repeat;
+  mask: var(--tree-marker_image) center / 1rem no-repeat;
+  -webkit-mask: var(--tree-marker_image) center / 1rem no-repeat;
   opacity: .5;
-}
-.tree-marker[data-type~=database] {
-  -webkit-mask-image: url('./marker_database.svg');
-}
-.tree-marker[data-type~=schema] {
-  -webkit-mask-image: url('./marker_schema.svg');
-}
-.tree-marker[data-type~=table] {
-  -webkit-mask-image: url('./marker_table.svg');
-}
-.tree-marker[data-type~=table_v] {
-  -webkit-mask-image: url('./marker_view.svg');
-}
-.tree-marker[data-type~=table_f] {
-  -webkit-mask-image: url('./marker_view.svg');
-}
-.tree-marker[data-type~=column] {
-  -webkit-mask-image: url('./marker_column.svg');
-}
-.tree-marker[data-type~=column_pk] {
-  -webkit-mask-image: url('./marker_column_pk.svg');
-  opacity: 1;
-}
-.tree-marker[data-type~=func] {
-  -webkit-mask-image: url('./marker_func.svg');
-}
-.tree-marker[data-type~=agg] {
-  -webkit-mask-image: url('./marker_agg.svg');
-}
-.tree-marker[data-type~=index] {
-  -webkit-mask-image: url('./marker_index.svg');
-}
-.tree-marker[data-type~=trigger] {
-  -webkit-mask-image: url('./marker_trigger.svg');
-}
-.tree-marker[data-type~=constraint] {
-  -webkit-mask-image: url('./marker_check.svg');
+
+  --tree-marker_image: url('./marker_database.svg'); /* TODO unknown marker */
+
+  .tree-node[data-type~=database] & {
+    --tree-marker_image: url('./marker_database.svg');
+  }
+  .tree-node[data-type~=schema] & {
+    --tree-marker_image: url('./marker_schema.svg');
+  }
+  .tree-node[data-type~=table] & {
+    --tree-marker_image: url('./marker_table.svg');
+  }
+  .tree-node[data-type~=table_v] & {
+    --tree-marker_image: url('./marker_view.svg');
+  }
+  .tree-node[data-type~=table_f] & {
+    --tree-marker_image: url('./marker_view.svg');
+  }
+  .tree-node[data-type~=column] & {
+    --tree-marker_image: url('./marker_column.svg');
+  }
+  .tree-node[data-type~=column_pk] & {
+    --tree-marker_image: url('./marker_column_pk.svg');
+    opacity: 1;
+  }
+  .tree-node[data-type~=func] & {
+    --tree-marker_image: url('./marker_func.svg');
+  }
+  .tree-node[data-type~=agg] & {
+    --tree-marker_image: url('./marker_agg.svg');
+  }
+  .tree-node[data-type~=index] & {
+    --tree-marker_image: url('./marker_index.svg');
+  }
+  .tree-node[data-type~=trigger] & {
+    --tree-marker_image: url('./marker_trigger.svg');
+  }
+  .tree-node[data-type~=constraint] & {
+    --tree-marker_image: url('./marker_check.svg');
+  }
+  .tree-node[data-type~=dir] & {
+    --tree-marker_image: url('./marker_dir.svg');
+  }
+  .tree-node[data-type~=file] & {
+    --tree-marker_image: url('./marker_file.svg');
+  }
 }
 
 .tree-caption {
-  /* margin-inline-start: .25em; */
+  min-width: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+
+  .tree-node[data-type~=index] &::before,
+  .tree-node[data-type~=trigger] &::before,
+  .tree-node[data-type~=constraint] &::before {
+    content: '...';
+    margin-inline-end: .25rem;
+    opacity: .5;
+  }
 }
 
 .tree-comment {
-  font-size: 80%;
-  opacity: .5;
+  flex: 1;
+  min-width: 0;
+  font-size: .75rem;
+  color: hsl(0 0% 50%);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tree-badge {
+  align-self: center;
+  font-weight: 400;
+  font-size: .75rem;
+  font-variant-numeric: proportional-nums;
+  line-height: 1.25rem;
+  border-radius: 1rem;
+  padding-inline: .5rem;
+  color: hsl(0 0% 60%);
+  background-color: hsl(0 0% 12%);
+
+  &:empty {
+    display: none;
+  }
+  .light & {
+    background-color: hsl(0 0% 98%);
+    color: hsl(0 0% 50%);
+  }
 }
 
 .tree-toggler {
@@ -94,57 +130,52 @@
   padding: 0;
   margin: 0;
   border: none;
-  inline-size: 2em;
+  inline-size: 2em; /* TODO 1lh */
   color: inherit;
   background: none;
   opacity: 0;
   transition: opacity 400ms ease 1000ms;
   cursor: pointer;
-}
-.tree-toggler::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: currentcolor;
-  mask: url('./toggler.svg') center / 1rem no-repeat;
-  -webkit-mask: url('./toggler.svg') center / 1rem no-repeat;
-}
-.tree-node[data-expanded] .tree-toggler {
-  transform: rotate(.25turn);
-}
 
-
-.tree:hover .tree-toggler {
-  transition: opacity 200ms ease;
-  opacity: .3;
-}
-
-.tree .tree-toggler:hover {
-  opacity: .7;
-}
-
-.tree-node[data-expanding] .tree-toggler {
-  /* opacity: 0; */
-  /* pointer-events: none; */
-  visibility: hidden;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: currentcolor;
+    mask: url('./toggler.svg') center / 1rem no-repeat;
+    -webkit-mask: url('./toggler.svg') center / 1rem no-repeat;
+  }
+  .tree:hover & {
+    transition: opacity 200ms ease;
+    opacity: .3;
+  }
+  .tree &:hover {
+    opacity: .7;
+  }
+  .tree-node[data-expanding] & {
+    visibility: hidden;
+  }
+  .tree-node[data-expanded] & {
+    transform: rotate(.25turn);
+  }
 }
 
 .tree-loader {
   position: absolute;
   inset: 0 0 0 auto;
   border: 2px solid hsl(0 0% 50%);
-  width: 1em;
-  margin: .5em;
+  width: 1rem;
+  margin: .5rem;
   box-sizing: border-box;
   border-radius: 50%;
   border-left-color: transparent;
   animation: 800ms linear tree-spin infinite;
   pointer-events: none;
   display: none;
-}
 
-.tree-node[data-expanding] .tree-loader {
-  display: initial;
+  .tree-node[data-expanding] & {
+    display: initial;
+  }
 }
 
 @keyframes tree-spin {

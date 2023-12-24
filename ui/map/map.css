@@ -1,6 +1,12 @@
-@import url('https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css');
 
-.maplibregl-canvas-container.maplibregl-interactive {
+.map {
+  background-color: hsl(0 0% 13%);
+
+  .light & {
+    background-color: hsl(205 15% 85%);
+  }
+}
+.map .maplibregl-canvas-container.maplibregl-interactive {
   cursor: default;
 }
 /* .maplibregl-canvas-container.maplibregl-interactive:active {} */
