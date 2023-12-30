@@ -3293,6 +3293,19 @@ function isVNodeSuspensible(vnode) {
   return ((_a = vnode.props) == null ? void 0 : _a.suspensible) != null && vnode.props.suspensible !== false;
 }
 
+const ssrContextKey = Symbol.for("v-scx");
+const useSSRContext = () => {
+  {
+    const ctx = inject(ssrContextKey);
+    if (!ctx) {
+      warn$1(
+        `Server rendering context not provided. Make sure to only call useSSRContext() conditionally in the server build.`
+      );
+    }
+    return ctx;
+  }
+};
+
 function watchEffect(effect, options) {
   return doWatch(effect, null, options);
 }
@@ -3367,8 +3380,8 @@ function doWatch(source, cb, {
     getter = () => source.value;
     forceTrigger = isShallow(source);
   } else if (isReactive(source)) {
-    getter = () => source;
-    deep = true;
+    getter = isShallow(source) || deep === false ? () => traverse(source, 1) : () => traverse(source);
+    forceTrigger = true;
   } else if (isArray(source)) {
     isMultiSource = true;
     forceTrigger = source.some((s) => isReactive(s) || isShallow(s));
@@ -3376,7 +3389,7 @@ function doWatch(source, cb, {
       if (isRef(s)) {
         return s.value;
       } else if (isReactive(s)) {
-        return traverse(s);
+        return traverse(s, isShallow(s) || deep === false ? 1 : void 0);
       } else if (isFunction(s)) {
         return callWithErrorHandling(s, instance, 2);
       } else {
@@ -3509,9 +3522,15 @@ function createPathGetter(ctx, path) {
     return cur;
   };
 }
-function traverse(value, seen) {
+function traverse(value, depth, currentDepth = 0, seen) {
   if (!isObject(value) || value["__v_skip"]) {
     return value;
+  }
+  if (depth && depth > 0) {
+    if (currentDepth >= depth) {
+      return value;
+    }
+    currentDepth++;
   }
   seen = seen || /* @__PURE__ */ new Set();
   if (seen.has(value)) {
@@ -3519,18 +3538,18 @@ function traverse(value, seen) {
   }
   seen.add(value);
   if (isRef(value)) {
-    traverse(value.value, seen);
+    traverse(value.value, depth, currentDepth, seen);
   } else if (isArray(value)) {
     for (let i = 0; i < value.length; i++) {
-      traverse(value[i], seen);
+      traverse(value[i], depth, currentDepth, seen);
     }
   } else if (isSet(value) || isMap(value)) {
     value.forEach((v) => {
-      traverse(v, seen);
+      traverse(v, depth, currentDepth, seen);
     });
   } else if (isPlainObject(value)) {
     for (const key in value) {
-      traverse(value[key], seen);
+      traverse(value[key], depth, currentDepth, seen);
     }
   }
   return value;
@@ -4792,6 +4811,7 @@ function useModel(props, name, options = EMPTY_OBJ) {
     warn$1(`useModel() called with prop "${name}" which is not declared.`);
     return ref();
   }
+  const camelizedName = camelize(name);
   const res = customRef((track, trigger) => {
     let localValue;
     watchSyncEffect(() => {
@@ -4808,7 +4828,8 @@ function useModel(props, name, options = EMPTY_OBJ) {
       },
       set(value) {
         const rawProps = i.vnode.props;
-        if (!(rawProps && name in rawProps) && hasChanged(value, localValue)) {
+        if (!(rawProps && // check if parent has passed v-model
+        (name in rawProps || camelizedName in rawProps) && (`onUpdate:${name}` in rawProps || `onUpdate:${camelizedName}` in rawProps)) && hasChanged(value, localValue)) {
           localValue = value;
           trigger();
         }
@@ -4822,7 +4843,7 @@ function useModel(props, name, options = EMPTY_OBJ) {
     return {
       next() {
         if (i2 < 2) {
-          return { value: i2++ ? props[modifierKey] : res, done: false };
+          return { value: i2++ ? props[modifierKey] || {} : res, done: false };
         } else {
           return { done: true };
         }
@@ -9261,19 +9282,6 @@ function h(type, propsOrChildren, children) {
   }
 }
 
-const ssrContextKey = Symbol.for("v-scx");
-const useSSRContext = () => {
-  {
-    const ctx = inject(ssrContextKey);
-    if (!ctx) {
-      warn$1(
-        `Server rendering context not provided. Make sure to only call useSSRContext() conditionally in the server build.`
-      );
-    }
-    return ctx;
-  }
-};
-
 function initCustomFormatter() {
   if (typeof window === "undefined") {
     return;
@@ -9475,7 +9483,7 @@ function isMemoSame(cached, memo) {
   return true;
 }
 
-const version = "3.4.0";
+const version = "3.4.2";
 const warn = warn$1 ;
 const ErrorTypeStrings = ErrorTypeStrings$1 ;
 const devtools = devtools$1 ;
