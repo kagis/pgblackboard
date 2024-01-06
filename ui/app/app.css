@@ -3,21 +3,14 @@
 .app-abort,
 .app-map_btn,
 .app-theme_btn {
-  font-family: inherit;
+  all: unset;
   font-size: .75rem;
-  font-weight: 400;
+  font-weight: 500;
   font-stretch: normal;
-  line-height: inherit;
-
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 1em;
-  background: none;
-  color: inherit;
+  border-radius: 1rem;
   text-transform: uppercase;
+  text-align: center;
   cursor: pointer;
-  appearance: none;
 }
 
 .app {
@@ -25,7 +18,7 @@
   --app-pane_code_min: 17rem; /* fit "run, abort, map" buttons */
   --app-pane_right_min: 8rem;
   --app-header_h: 2.5rem;
-  --app-pane_outs_min: 4rem;
+  --app-pane_out_min: 4rem;
   --app-pane_datum_min: 4rem;
   --app-pane_map_min: 4rem;
 
@@ -36,7 +29,7 @@
   );
   --app-dynh: calc(100%
     - var(--app-header_h)
-    - var(--app-pane_outs_min)
+    - var(--app-pane_out_min)
     - var(--app-pane_datum_min)
     - var(--app-pane_map_min)
   );
@@ -46,8 +39,8 @@
   display: grid;
   overflow: hidden;
   grid:
-    'nav_b code_b outs'  var(--app-header_h)
-    'nav   code   outs'  calc(var(--app-pane_outs) * var(--app-dynh) + var(--app-pane_outs_min))
+    'nav_b code_b out'  var(--app-header_h)
+    'nav   code   out'  calc(var(--app-pane_out) * var(--app-dynh) + var(--app-pane_out_min))
     'nav   code   datum' minmax(var(--app-pane_datum_min), 1fr)
     'nav   code   map'   calc(var(--app-pane_map) * var(--app-dynh) + var(--app-pane_map_min))
     /
@@ -96,8 +89,8 @@
   grid-area: code;
 }
 
-.app-outs {
-  grid-area: outs;
+.app-out {
+  grid-area: out;
   overflow: auto;
   overscroll-behavior: none;
 }
@@ -114,12 +107,11 @@
 .app-code_bar {
   grid-area: code_b;
   display: flex;
+  align-items: center;
 }
 
 .app-run {
   min-width: 5rem;
-  padding-inline: 1rem;
-  align-self: center;
   margin-inline: .5rem;
   opacity: 1;
   transition: opacity 200ms ease;
@@ -147,7 +139,6 @@
 
 .app-abort {
   min-width: 5rem;
-  align-self: center;
   background-color: hsl(330 80% 30%);
   opacity: 1;
   transition: opacity 200ms ease 400ms;
@@ -212,7 +203,7 @@
   cursor: ew-resize;
 }
 
-.app-split_outs {
+.app-split_out {
   grid-area: datum;
   align-self: start;
   cursor: ns-resize;
@@ -227,7 +218,7 @@
 .app-split_left,
 .app-split_right,
 .app-split_map,
-.app-split_outs {
+.app-split_out {
   font-size: .375rem;
   block-size: 1em;
   margin-block: -.5em;

@@ -1,4 +1,5 @@
 @import url('./_lib/open_sans.css');
+/* @import url('./_lib/noto_sans.css'); */
 @import url('./_lib/roboto_mono.css');
 @import url('./_lib/maplibre.css');
 @import url('./_lib/monaco.css');
@@ -7,7 +8,7 @@
 @import url('./login/login.css');
 @import url('./map/map.css');
 @import url('./code/code.css');
-@import url('./outs/outs.css');
+@import url('./out/out.css');
 @import url('./drafts/drafts.css');
 @import url('./tree/tree.css');
 @import url('./datum/datum.css');
@@ -19,8 +20,7 @@
   font-weight: 300;
   font-stretch: semi-condensed;
   font-variant-numeric: slashed-zero;
-  /* enable serif on capital 'i' for open sans */
-  font-feature-settings: 'ss03';
+  font-synthesis: none;
 }
 
 html, body {

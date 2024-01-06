@@ -1,7 +1,7 @@
 import xLogin from '../login/login.js';
 import xMap from '../map/map.js';
 import xCode from '../code/code.js';
-import xOuts from '../outs/outs.js';
+import xOut from '../out/out.js';
 import xDrafts from '../drafts/drafts.js';
 import xTree from '../tree/tree.js';
 import xDatum from '../datum/datum.js';
@@ -13,7 +13,7 @@ const template = String.raw /*html*/ `
   :style="{
     '--app-pane_left': panes.left,
     '--app-pane_right': panes.right,
-    '--app-pane_outs': panes.outs,
+    '--app-pane_out': panes.out,
     '--app-pane_map': panes.map,
   }">
   <x-login class="app-login" v-if="!login_done"></x-login>
@@ -52,13 +52,13 @@ const template = String.raw /*html*/ `
     <x-tree class="app-tree"></x-tree>
   </div>
   <x-code class="app-code"></x-code>
-  <x-outs class="app-outs"></x-outs>
+  <x-out class="app-out"></x-out>
   <x-datum class="app-datum"></x-datum>
   <x-map class="app-map"></x-map>
 
   <x-grip class="app-split_left" :origin="panes" v-on:drag="resize_left"></x-grip>
   <x-grip class="app-split_right" :origin="panes" v-on:drag="resize_right"></x-grip>
-  <x-grip class="app-split_outs" :origin="panes" v-on:drag="resize_outs"></x-grip>
+  <x-grip class="app-split_out" :origin="panes" v-on:drag="resize_out"></x-grip>
   <x-grip class="app-split_map" :origin="panes" v-on:drag="resize_map"></x-grip>
 
   <div class="app-measure" ref="measure"></div>
@@ -67,10 +67,50 @@ const template = String.raw /*html*/ `
 
 export default {
   template,
+
+  // render(arg) {
+  //   const { $h } = arg;
+  //   return $h('div', {
+  //     class: ['app', this.light_theme && 'light'],
+  //     style: {
+  //       '--app-pane_left': this.panes.left,
+  //       '--app-pane_right': this.panes.right,
+  //       '--app-pane_out': this.panes.out,
+  //       '--app-pane_map': this.panes.map,
+  //     },
+  //   }, [
+  //     this.login_done || $h(xLogin, {
+  //       class: 'app-login',
+  //     }),
+
+  //     this.login_done && [
+  //       $h('div', {
+  //         class: 'app-nav_bar',
+  //       }, [
+  //         $h('button', {
+  //           class: 'app-theme_btn',
+  //           type: 'button',
+  //           'aria-label': 'theme',
+  //           onClick: this.toggle_theme,
+  //         }),
+  //       ]),
+  //       $h(xGrip, {
+  //         class: 'app-split_left',
+  //         origin: this.panes,
+  //         onDrag: this.resize_left
+  //       }),
+  //       $h('div', {
+  //         class: 'app-measure',
+  //         ref: 'measure',
+  //       }),
+  //     ],
+  //   ]);
+  // },
+
   components: {
     xMap,
     xCode,
-    xOuts,
+    xOut,
     xDrafts,
     xTree,
     xGrip,
@@ -113,12 +153,12 @@ export default {
         left: Math.min(origin.left, 1 - val),
       });
     },
-    resize_outs({ y, origin }) {
+    resize_out({ y, origin }) {
       const hmax = this.$refs.measure.clientHeight;
-      let val = origin.outs + y / hmax;
+      let val = origin.out + y / hmax;
       val = Math.min(Math.max(val, 0), 1);
       this.$store.resize_panes({
-        outs: val,
+        out: val,
         map: Math.min(origin.map, 1 - val),
       });
     },
@@ -128,7 +168,7 @@ export default {
       val = Math.min(Math.max(val, 0), 1);
       this.$store.resize_panes({
         map: val,
-        outs: Math.min(origin.outs, 1 - val),
+        out: Math.min(origin.out, 1 - val),
       });
     },
     toggle_map() {

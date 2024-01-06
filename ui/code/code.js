@@ -5,7 +5,7 @@ export default {
   computed: {
     model_uri: vm => vm.$store.curr_draft?.id,
     loading: vm => vm.$store.curr_draft?.loading || false,
-    error_pos: vm => vm.$store.curr_draft?.error_pos,
+    error_pos: vm => vm.$store.out.error_pos,
     // light_theme: vm => vm.$store.light_theme,
     set_code_cursor: vm => vm.$store.set_code_cursor.bind(vm.$store),
     save_curr_draft: vm => vm.$store.save_curr_draft.bind(vm.$store),

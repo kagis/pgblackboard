@@ -9,7 +9,7 @@
   white-space: nowrap;
   cursor: pointer;
   display: flex;
-  align-items: baseline;
+  align-items: center;
 
   &:hover {
     background-color: hsl(0 0% 50% / .2);
@@ -29,7 +29,7 @@
   -webkit-mask: var(--tree-marker_image) center / 1rem no-repeat;
   opacity: .5;
 
-  --tree-marker_image: url('./marker_database.svg'); /* TODO unknown marker */
+  --tree-marker_image: url('./marker_file.svg'); /* TODO unknown marker */
 
   .tree-node[data-type~=database] & {
     --tree-marker_image: url('./marker_database.svg');
@@ -77,6 +77,7 @@
 }
 
 .tree-caption {
+  flex: 1;
   min-width: 0;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -91,16 +92,12 @@
 }
 
 .tree-comment {
-  flex: 1;
-  min-width: 0;
-  font-size: .75rem;
+  font-size: .875rem;
+  font-style: italic;
   color: hsl(0 0% 50%);
-  text-overflow: ellipsis;
-  overflow: hidden;
 }
 
 .tree-badge {
-  align-self: center;
   font-weight: 400;
   font-size: .75rem;
   font-variant-numeric: proportional-nums;

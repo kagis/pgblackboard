@@ -10,9 +10,11 @@ export default {
           :data-expanded="!!node.children?.value || null"
           v-on:click="select(node_idx)">
           <span class="tree-marker"></span>
-          <span class="tree-caption" v-text="node.name"></span>
-          <span>&nbsp;</span>
-          <span class="tree-comment" v-text="node.comment"></span>
+          <span class="tree-caption">
+            <span v-text="node.name"></span>
+            <span>&nbsp;</span>
+            <span class="tree-comment" v-text="node.comment"></span>
+          </span>
           <span class="tree-badge" v-text="node.badge"></span>
           <span class="tree-loader"></span>
           <button class="tree-toggler"

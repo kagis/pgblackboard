@@ -1,14 +1,23 @@
-.outs {
+.out {
   white-space: nowrap;
+
+  &:empty {
+    background-image: linear-gradient(
+      to bottom,
+      hsl(0 0% 50% / .05) 0 2.5rem,
+      transparent 2.5rem
+    );
+  }
 }
 
-.outs-table {
+.out-table {
   border-spacing: 0;
   table-layout: fixed;
   width: min-content;
+  margin-block-end: 2rem;
 }
 
-.outs-head {
+.out-head {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -20,15 +29,15 @@
   }
 }
 
-.outs-tbody {
+.out-tbody {
   background-image: repeating-linear-gradient(
-    to bottom,
+    to top,
     hsl(0 0% 0% / .1) 0 1lh,
     hsl(0 0% 0% / 0) 1lh 2lh
   );
 }
 
-.outs-col {
+.out-col {
   width: 10em;
   background: linear-gradient(to right, hsl(0 0% 0% / .08), hsl(0 0% 0% / 0) 50%);
 
@@ -41,7 +50,7 @@
   }
 }
 
-.outs-th {
+.out-th {
   text-align: inherit;
   font-weight: inherit;
   padding: 0 1rem;
@@ -51,7 +60,7 @@
   background: linear-gradient(to right, hsl(0 0% 0% / .08), hsl(0 0% 0% / 0) 50%);
 
   &[data-selected] {
-    background-color: hsl(0 0% 18%);
+    background-color: hsl(0 0% 25%);
     /* top highlight stripe */
     box-shadow: inset 0 .5rem 0 -.25rem hsl(0 0% 60%);
 
@@ -61,23 +70,23 @@
   }
 }
 
-.outs-colh_name {
+.out-colh_name {
   font-weight: bold;
 }
 
-.outs-colh_type {
+.out-colh_type {
   font-size: .875rem;
   color: hsl(0 0% 50%);
 }
 
-.outs-colh_resizer {
+.out-colh_resizer {
   position: absolute;
   inset: 0 0 0 auto;
   width: .5rem;
   cursor: ew-resize;
 }
 
-.outs-row {
+.out-row {
   /* prevent empty cell collapsion */
   height: 2em; /* TODO 1lh */
 
@@ -91,14 +100,14 @@
   }
 }
 
-.outs-cell {
+.out-cell {
   text-overflow: ellipsis;
   overflow: hidden;
   padding: 0 1rem;
 
   /* show leading/trailing spaces
   TODO but should not render multiline */
-  /* white-space: pre; */
+  white-space: pre;
 
   &[data-selected] {
     outline: 1px dashed currentColor;
@@ -110,8 +119,40 @@
     font-style: italic;
     color: hsl(0 0% 50%);
   }
+  & em {
+    font-style: normal;
+    opacity: .5;
+  }
 }
 
-.outs-status {
+.out-col_rowh {
+  width: 3rem;
+  background-color: hsl(0 0% 15%);
+}
+
+.out-th_rowh {
+  font-size: .875rem;
+  font-weight: inherit;
+  font-variant-numeric: proportional-nums;
+  padding: 0 .5rem;
+  text-align: right;
+  color: hsl(0 0% 50%);
+}
+
+.out-status {
   padding-inline: 1rem;
+  font-weight: 400;
+
+  &::before {
+    content: '#>';
+    font-weight: 300;
+    color: hsl(0 0% 50%);
+    margin-inline: 1rem;
+    font-size: .875rem;
+  }
+}
+
+.out-notice {
+  padding-inline: 1rem;
+  white-space: pre;
 }

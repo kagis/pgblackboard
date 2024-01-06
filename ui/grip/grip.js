@@ -5,18 +5,23 @@ export default {
       v-on:lostpointercapture="on_lostpointercapture">
     </div>
   `,
+  // render({ $h }) {
+  //   return $h('div', { });
+  // },
   props: {
     x: { default: 0 },
     y: { default: 0 },
     origin: Object,
   },
   methods: {
-    on_pointerdown({ clientX, clientY, pointerId }) {
+    on_pointerdown(e) {
+      const { clientX, clientY, pointerId } = e;
       this.start_x = this.x - clientX;
       this.start_y = this.y - clientY;
       this._origin = this.origin && JSON.parse(JSON.stringify(this.origin));
       this.$el.setPointerCapture(pointerId);
       this.$el.addEventListener('pointermove', this.on_pointermove);
+      e.preventDefault(); // disable text selection in safari
     },
     on_lostpointercapture(e) {
       this.$el.removeEventListener('pointermove', this.on_pointermove);

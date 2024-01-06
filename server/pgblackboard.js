@@ -67,7 +67,7 @@ class App {
     const { password } = await req.json(); // base64 ?
     let pg;
     try {
-      pg = await pgconnect({ password, user: u, _debug: true }, this.pg_uri);
+      pg = await pgconnect({ password, user: u, _debug: true }, this.pg_uri, { database: 'postgres' });
     } catch (err) {
       console.error(err);
       return Response.json({ ok: false, reason: err.message });
@@ -104,7 +104,7 @@ class App {
       database: db,
     };
     const node_arr = node?.split('.')?.map(decodeURIComponent);
-    const pg = await pgconnect(conn_opts, this.pg_uri);
+    const pg = await pgconnect(conn_opts, this.pg_uri, { database: 'postgres' });
     try {
       const { rows } = await pg.query({
         statement: tree_sql,
@@ -170,7 +170,19 @@ class App {
       const pg = await pgconnect(
         { user, database, password },
         this.pg_uri,
-        { 'TimeZone': tz, statement_timeout: '10s', default_transaction_read_only: 'on', _debug: false },
+        {
+          'TimeZone': tz,
+          statement_timeout: '10s',
+          default_transaction_read_only: 'on',
+          _debug: true,
+
+          // notices flush rows after each statement
+          client_min_messages: 'LOG',
+          // debug_print_plan: 'on',
+          // debug_pretty_print: 'off',
+          // debug_print_parse: 'on',
+          // debug_print_rewritten: 'on',
+        },
       );
 
       // let end_stdin = Boolean;
@@ -179,15 +191,36 @@ class App {
       // }
 
       try {
+        const type_oids = []; // TODO Set of tuples
         const stream = pg.stream(sql,
           // { stdin: stdin() }
         );
         for await (const chunk of stream) {
+          if (chunk.tag == 'RowDescription') {
+            type_oids.push(...chunk.payload.map(
+              col => `${col.typeOid}/${col.typeMod}`,
+            ));
+          }
           // TODO pgwire should emit ErrorResponse chunk
           yield JSON.stringify(chunk);
           yield '\n';
           // console.log(chunk);
         }
+
+        const [type_map] = await pg.query({
+          params: [{ type: 'text[]', value: type_oids }],
+          statement: /*sql*/ `
+            select jsonb_object_agg(k, n)
+            from unnest($1) k, format_type(
+              split_part(k, '/', 1)::oid,
+              split_part(k, '/', 2)::int4
+            ) n
+          `,
+        });
+
+        yield JSON.stringify({ tag: '.types', payload: type_map });
+        yield '\n';
+
       } finally {
         console.log('ending connection');
         await pg?.end();
@@ -250,7 +283,7 @@ const tree_sql = /*sql*/  `
   select currdb, array['fn', pg_proc.oid]::text[]
     , case when pg_aggregate is null then 'func' else 'agg' end
     , format(
-      '%s(%s) → %s'
+      '%s (%s) → %s'
       , proname
       , pg_get_function_identity_arguments(pg_proc.oid)
       -- TODO fix no result type when procedure
@@ -275,11 +308,11 @@ const tree_sql = /*sql*/  `
     , 1
   from arg, pg_class, text(
     case
-    -- TODO trailing .0 not dropped
-    when reltuples > 1e9 then to_char(reltuples / 1e9, '999.9 "G"')
-    when reltuples > 1e6 then to_char(reltuples / 1e6, '999.9 "M"')
-    when reltuples > 1e3 then to_char(reltuples / 1e3, '999.9 "k"')
-    when reltuples > 0 then to_char(reltuples, '9999')
+    -- TODO trailing .0 not dropped (FM)
+    when reltuples >= 1e9 then to_char(reltuples / 1e9, '999.9 "G"')
+    when reltuples >= 1e6 then to_char(reltuples / 1e6, '999.9 "M"')
+    when reltuples >= 1e3 then to_char(reltuples / 1e3, '999.9 "k"')
+    when reltuples > 0 then to_char(reltuples, '999')
     end
   ) badge
   where ('ns', relnamespace) = (a1, a2_oid)
@@ -308,7 +341,7 @@ const tree_sql = /*sql*/  `
     , attnum
   from arg, pg_attribute
   left join pg_constraint pk on pk.conrelid = attrelid and pk.contype = 'p'
-  where  ('rel', attrelid) = (a1, a2_oid)
+  where ('rel', attrelid) = (a1, a2_oid)
     and attnum > 0 and not attisdropped
 
   -- constraints
@@ -355,9 +388,9 @@ const tree_sql = /*sql*/  `
 
   -- fs root
   union all
-  select currdb, array['dir', '.']::text[]
+  select currdb, array['dir', '/']::text[]
     , 'dir'
-    , current_setting('data_directory')
+    , '/' -- current_setting('data_directory') -- TODO '/'
     , null
     , null
     , true
@@ -401,7 +434,8 @@ const tree_sql = /*sql*/  `
 
 const defn_sql = String.raw /*sql*/ `
 with arg (a1, a2, a3, a2_oid) as (
-  select $1[1], $1[2], $1[3], case when $1[2] similar to '[0-9]+' then $1[2]::oid end
+  select $1[1], $1[2], $1[3]
+    , case when $1[2] similar to '[0-9]+' then $1[2]::oid end
 )
 , geom_typoid as (
   select t.oid
@@ -546,7 +580,6 @@ from arg, lateral (
 
 ) _(def)
 `;
-
 
 if (import.meta.main) {
   await main(Deno.args);

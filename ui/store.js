@@ -1,102 +1,38 @@
 import { editor, Uri } from './_lib/monaco.js';
 
-// export class Store1 {
-
-//   constructor() {
-//     const ls = localStorage;
-
-//     /** @type {string[]} */
-//     const persisted_draft_ids = JSON.parse(ls.getItem('pgbb:draft:_ids')) || [];
-//     for (const id of persisted_draft_ids) {
-//       const content = ls.getItem(id);
-//       editor.createModel(content, 'sql', id);
-//     }
-//     const drafts_kv = Object.fromEntries(persisted_draft_ids.map(id => [id, {
-//       preview: editor.getModel(id).getValue().slice(0, 100),
-//       loading: false,
-//       // dirty: false,
-//       code_cursor: 0,
-//       code_selection: 0,
-//       outs: [],
-//       curr_out_idx: null,
-//       curr_row_idx: null,
-//     }]));
-
-//     this._reactive = {
-//       login_state: '',
-//       login_error: null,
-//       use_light_theme: false,
-//       selected_draft_id: null,
-//       persisted_draft_ids,
-//       drafts_kv,
-//       layout: { left: 300, right: 500, map: 200, datum: 100 },
-//       tree: { children: { value: null, loading: false } },
-//     };
-//   }
-
-//   async login(u, password) {
-//     // TODO cancel previous pending req
-//     this.login_pending = true;
-//     this.login_error = '';
-//     try {
-//       // await new Promise(resolve => setTimeout(resolve, 3000));
-//       const { ok, reason, key } = await this._api('login', { u }, { password });
-//       if (!ok) return this.login_error = reason;
-//       this._key = key;
-//       this._user = u;
-//       this.drafts = this._load_drafts();
-//       await this.tree_toggle([]);
-//       this.login_done = true;
-//     } catch (err) {
-//       this.login_error = String(err);
-//     } finally {
-//       this.login_pending = false;
-//     }
-//   }
-
-//   set_split(arg) {
-//     Object.assign(this._state.split, arg);
-//   }
-// }
-
 export class Store {
 
-  // async init() {
-  //   this.light_theme = Boolean(localStorage.getItem('pgbb:light_theme'));
-  // }
-
-  // split_left = 300;
-  // split_right = 500;
-  // split_map = 200;
-  // split_datum = 100;
-
-  // set_split_left(value) {
-  //   this.split_left = value;
-  // }
-  // set_split_right(value) {
-  //   this.split_right = value;
-  // }
-  // set_split_map(value) {
-  //   this.split_map = value;
-  // }
-  // set_split_datum(value) {
-  //   this.split_datum = value;
-  // }
-
   light_theme = false;
-  panes = { left: .2, right: .6, outs: 1, map: 0 };
+  panes = { left: .2, right: .6, out: 1, map: 0 };
   tree = {};
   curr_treenode_path = null;
   login_pending = false;
   login_done = false;
   login_error = '';
+  // TODO track run count for drafts, gc least used
   drafts_kv = {};
   stored_draft_ids = [];
   dirty_draft_ids = null;
   curr_draft_id = null;
-  outs = [];
-  curr_out_idx = null;
-  curr_row_idx = null;
+  out = {
+    frames: [{
+      curr_col_idx: -1,
+      geom_col_idx: -1,
+      cols: [],
+      status: 'SELECT 1',
+      rows: [{
+        edit: 'update',
+        tuple: [],
+        updates: [],
+      }],
+    }].slice(0, 0),
+    curr_frame_idx: null,
+    curr_row_idx: null,
+    // draft_ver: null,
+    error_pos: null,
+    loading: false,
+    aborter: null,
+  };
 
   resize_panes(update) {
     Object.assign(this.panes, update);
@@ -114,22 +50,23 @@ export class Store {
       this._user = u;
       // this.drafts = this._load_drafts();
       await this.tree_toggle([]);
+
+      const initial_draft_id = this._add_draft(
+        `\\connect postgres\n\n` +
+        `SELECT * FROM pg_stat_activity;\n`,
+      );
+      this.set_curr_draft(initial_draft_id);
+
+      this._load_drafts();
+      setInterval(_ => this._flush_drafts(), 10e3);
+      window.addEventListener('unload', _ => this._flush_drafts());
+
       this.login_done = true;
     } catch (err) {
       this.login_error = String(err);
     } finally {
       this.login_pending = false;
     }
-
-    this._load_drafts();
-    setInterval(_ => this._flush_drafts(), 10e3);
-    window.addEventListener('unload', _ => this._flush_drafts());
-
-    const initial_draft_id = this._add_draft(
-      `\\connect postgres\n\n` +
-      `SELECT * FROM pg_stat_activity;\n`,
-    );
-    this.set_curr_draft(initial_draft_id);
   }
 
   _load_drafts() {
@@ -234,50 +171,6 @@ export class Store {
     return this.drafts_kv[this.curr_draft_id];
   }
 
-  // code = {
-  //   key: null,
-  //   loading: false,
-  //   selection: null,
-  // };
-
-//   code = {
-//     loading: false,
-//     content: String.raw /*sql*/ `\connect geoportalkz
-// --pgbb-basemap https://tile0.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1.4&r=g&ts=online_hd
-
-// -- select * from feature limit 100;
-// -- select pg_sleep(3);
-// -- select 'hello';
-// -- select 1 where false;
-// -- select * from feature limit 100;
-
-// SELECT *, st_asgeojson(geom)
-// FROM adm.admrayon
-// ORDER BY admrayon_id
-// LIMIT 10 OFFSET 0
-// ;
-
-// SELECT row_number() over(), *,  st_asgeojson(geom)
-// FROM nedb.school_list
-// where geom is not null
-// LIMIT 500 OFFSET 0
-// ;
-// `,
-//   };
-
-  // edit_code(content) {
-  //   this.code.error_at = null;
-  //   this.code.content = content;
-  //   this.selected_treenode_path = null;
-  //   this.selected_draft_id ||= (
-  //     this.drafts.ids.unshift('pgbb:draft:' + Date.now().toString(16).padStart(16)),
-  //     this.drafts.ids[0]
-  //   );
-  //   this.drafts[this.selected_draft_id] = content;
-  //   this.drafts.dirty[this.selected_draft_id] = true;
-  // }
-
-
   set_code_cursor(cursor_pos, cursor_len) {
     Object.assign(this.curr_draft, { cursor_pos, cursor_len });
   }
@@ -318,65 +211,50 @@ export class Store {
     // TODO schedule write to localStorage
   }
 
-  resize_col(out_idx, col_idx, width) {
-    this.outs[out_idx].columns[col_idx].width = width;
+  resize_col(frame_idx, col_idx, width) {
+    this.out.frames[frame_idx].cols[col_idx].width = width;
   }
 
   // TODO set_curr_row
-  set_curr_rowcol(out_idx, row_idx, col_idx) {
-    this.curr_out_idx = out_idx;
-    this.curr_row_idx = row_idx;
-    // TODO set null if out_idx changed
-    // this.curr_col_idx = col_idx;
-    const out = this?.outs[out_idx];
-    if (out && col_idx != null) {
-      out.curr_col_idx = col_idx;
+  set_curr_rowcol(frame_idx, row_idx, col_idx) {
+    this.out.curr_frame_idx = frame_idx;
+    this.out.curr_row_idx = row_idx;
+    if (col_idx != null) {
+      this.out.frames[frame_idx].curr_col_idx = col_idx;
     }
   }
 
   get curr_datum() {
-    const out = this.outs?.[this.curr_out_idx];
-    if (!out) return;
-    // const col = out.columns?.[out.curr_col_idx];
-    return out.rows[this.curr_row_idx]?.[out.curr_col_idx];
+    const frame = this.out.frames[this.out.curr_frame_idx];
+    if (!frame) return;
+    // const col = out.cols?.[out.curr_col_idx];
+    return frame.rows[this.out.curr_row_idx].tuple[frame.curr_col_idx];
   }
 
-  // theme = 'dark';
+  edit_delete_flag(frame_idx, row_idx) {
+    // this.outs[frame_idx].edits[row_idx].kind = 'delete';
+  }
+
+  edit_datum(frame_idx, row_idx, col_idx, new_value) {
+    const row = this.out.frames[frame_idx].rows[row_idx];
+    row.dirty = 'update';
+    row.updates[col_idx] = new_value;
+  }
+
   toggle_theme() {
     this.light_theme = !this.light_theme;
-    // this.theme = this.theme == 'dark' ? 'light' : 'dark';
   }
 
-  // bump_draft(draft_id) {
-  //   const { ids } = this.drafts;
-  //   const idx = ids.indexOf(draft_id);
-  //   ids.splice(idx, 1);
-  //   ids.unshift(draft_id);
-  // }
-
-  // bump_working_draft() {
-  //   if (this.selected_draft_id) {
-  //     const id = this.selected_draft_id;
-  //     this.drafts.ids.sort((a, b) => (b == id) - (a == id));
-  //   } else {
-  //     const id = 'pgbb:draft:' + Date.now().toString(16).padStart(14, 0);
-  //     this.drafts[id] = { content: this.query.content };
-  //     this.drafts.ids.unshift(id);
-  //     this.selected_draft_id = id;
-  //     this.selected_treenode_path = null;
-  //   }
-  // }
-
   can_abort() {
-    return Boolean(this._abortctl);
+    return this.out.loading;
   }
 
   abort() {
-    this._abortctl.abort();
+    this.out.aborter.abort();
   }
 
   can_run() {
-    return !this._abortctl && !this.curr_draft?.loading;
+    return !this.out.loading && !this.curr_draft?.loading;
   }
 
   async run() {
@@ -396,56 +274,78 @@ export class Store {
       sql = '\n'.padStart(from, ' ') + sql.slice(from, to);
     }
 
-    const { outs } = Object.assign(this, {
-      outs: [],
-      curr_out_idx: null,
+    const aborter = new AbortController();
+    this.out = {
+      frames: [],
+      curr_frame_idx: null,
       curr_row_idx: null,
-    });
-
-    draft.error_pos = null;
+      error_pos: null,
+      loading: true,
+      aborter,
+    };
+    const out = this.out;
 
     try {
       const qs = new URLSearchParams({ api: 'exec', u: this._user, db, key: this._key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const body = JSON.stringify({ sql, tz });
-      const { signal } = this._abortctl = new AbortController();
-      const resp = await fetch('?' + qs, { method: 'POST', body, signal });
+      const resp = await fetch('?' + qs, { method: 'POST', body, signal: aborter.signal });
       if (!resp.ok) throw Error('HTTP Error', { cause: await resp.text() });
       const msg_stream = (
         resp.body
         .pipeThrough(new TextDecoderStream())
         .pipeThrough(new JSONDecodeStream())
       );
-      let curr = null;
+      let frame = null;
       for await (const { tag, payload, rows } of iter_stream(msg_stream)) {
-        console.log(tag);
-        curr ||= (
-          outs.push({ columns: null, geometry_col: null, rows: [], status: null }),
-          outs.at(-1)
-        );
+        // console.log(tag);
+        if (!frame) {
+          out.frames.push({
+            cols: null,
+            status: null,
+            rows: [],
+            geom_col_idx: -1,
+            curr_col_idx: -1,
+            notices: [],
+          });
+          frame = out.frames.at(-1);
+        }
         switch (tag) {
           case 'RowDescription':
-            curr.columns = payload.map(col => ({ ...col, width: 150 }));
-            curr.geometry_col = payload.findIndex(col => /^st_asgeojson$/i.test(col.name));
+            frame.cols = payload.map(col => ({ ...col, width: 150 }));
+            frame.curr_col_idx = payload.length ? 0 : -1;
+            frame.geom_col_idx = payload.findIndex(col => /^st_asgeojson$/i.test(col.name));
             break;
           case 'DataRow':
-            // TODO set selected out_idx/row_idx/col_idx
-            curr.rows.push(...rows);
+            // TODO set selected frame_idx/row_idx/col_idx
+            frame.rows.push(...rows.map(tuple => ({ tuple, updates: [], dirty: null })));
+            break;
+          case 'NoticeResponse':
+            frame.notices.push(payload);
             break;
           case 'ErrorResponse':
-            draft.error_pos = payload.position && payload.position - 1;
+            out.error_pos = payload.position && payload.position - 1;
           case 'CommandComplete':
-            curr.status = payload;
-            curr = null;
+            frame.status = payload;
+            frame = null;
             break;
+          case '.types':
+            for (const frame of out.frames) {
+              for (const col of frame.cols || []) {
+                const typeKey = `${col.typeOid}/${col.typeMod}`; // TODO move to server col.typeKey
+                col.typeName = payload[typeKey];
+              }
+            }
+            break;
+          // TODO EmptyQuery, PortalSuspended
         }
       }
     } catch (err) {
-      outs.push({ status: err });
+      out.frames.push({ status: err });
     } finally {
-      this._abortctl = null;
+      out.aborter = null;
+      out.loading = false;
     }
-    // console.log(out);
   }
 }
 

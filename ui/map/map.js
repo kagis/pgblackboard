@@ -213,27 +213,9 @@ const drop_black = /*xml*/ `
 export default {
   template: /*html*/ `<div class="map"></div>`,
   computed: {
-    highlight_geojson() {
-      const empty = { type: 'FeatureCollection', features: [] };
-      const out_idx = this.$store.curr_out_idx;
-      const row_idx = this.$store.curr_row_idx;
-      return out_idx != null && row_idx != null && this.get_row_geom(out_idx, row_idx) || empty;
-    },
-    feature_collection() {
-      const { outs } = this.$store;
-      const features = outs.flatMap(({ rows, geometry_col }, out_idx) => {
-        if (geometry_col < 0 || !rows) return []; // skip if no geom col
-        // TODO no increment out_idx if not geom col
-        const hue = (200 + out_idx * 40) % 361; // TODO constrast
-        return rows.map((row, row_idx) => ({
-          type: 'Feature',
-          properties: { out_idx, row_idx, hue },
-          geometry: try_parse_geojson(row[geometry_col]),
-        }));
-      });
-      // console.log('feature_collection', features.length);
-      return { type: 'FeatureCollection', features };
-    },
+    curr_frame_idx: vm => vm.$store.out.curr_frame_idx,
+    curr_row_idx: vm => vm.$store.out.curr_row_idx,
+    frames: vm => vm.$store.out.frames,
   },
   methods: {
     _mounted() {
@@ -252,9 +234,10 @@ export default {
       this.add_svg_image('drop_black', drop_black);
       // this.add_svg_image('drop_marker', drop_marker, true);
 
+      // TODO immediate?
       this.$watch(_ => this.$store.light_theme, this.set_theme);
-      this.$watch(_ => this.feature_collection, this.update_features_source);
-      this.$watch(_ => this.highlight_geojson, this.update_highlight_source);
+      this.$watch(_ => this.get_all_geojson(), this.update_features_source);
+      this.$watch(_ => this.get_highlight_geojson(), this.update_highlight_source);
 
       this.$root.$el.addEventListener('req_map_navigate', this.on_req_map_navigate);
       this._ml.on('click', this.on_map_click);
@@ -262,13 +245,36 @@ export default {
     _unmounted() {
       this._ml.remove();
     },
-    get_row_geom(out_idx, row_idx) {
-      // TODO make O(1)
-      return this.feature_collection.features.find(f => (
-        f.properties.out_idx == out_idx &&
-        f.properties.row_idx == row_idx
-      ))?.geometry;
+
+    get_highlight_geojson() {
+      const empty = { type: 'FeatureCollection', features: [] };
+      return (
+        this.curr_frame_idx != null &&
+        this.curr_row_idx != null &&
+        this.get_row_geom(this.curr_frame_idx, this.curr_row_idx) ||
+        empty
+      );
     },
+
+    get_all_geojson() {
+      const features = this.frames.flatMap(({ rows, geom_col_idx }, frame_idx) => {
+        if (geom_col_idx < 0 || !rows) return [];
+        // TODO no increment frame_idx if not geom col
+        const hue = (200 + frame_idx * 40) % 361; // TODO constrast
+        return rows.map((row, row_idx) => ({
+          type: 'Feature',
+          properties: { frame_idx, row_idx, hue },
+          geometry: try_parse_geojson(row.tuple[geom_col_idx]),
+        }));
+      });
+      return { type: 'FeatureCollection', features };
+    },
+
+    get_row_geom(frame_idx, row_idx) {
+      const { rows, geom_col_idx } = this.frames[frame_idx];
+      return try_parse_geojson(rows[row_idx].tuple[geom_col_idx]);
+    },
+
     add_svg_image(id, svg, sdf) {
       this._ml.addImage(id, { data: [0, 0, 0, 0], width: 1, height: 1 });
       const img = new Image();
@@ -303,15 +309,14 @@ export default {
         this._ml.queryRenderedFeatures(point, { layers: ['out_fill'] })[0]
       );
       if (!feature) return;
-      const { out_idx, row_idx } = feature.properties;
-      const detail = { out_idx, row_idx };
+      const { frame_idx, row_idx } = feature.properties;
+      const detail = { frame_idx, row_idx };
       this.$root.$el.dispatchEvent(new CustomEvent('req_row_focus', { detail }));
-      this.$store.set_curr_rowcol(out_idx, row_idx);
+      this.$store.set_curr_rowcol(frame_idx, row_idx);
       // console.log(features);
     },
-    on_req_map_navigate({ detail: { out_idx, row_idx } }) {
-      const geom = this.get_row_geom(out_idx, row_idx);
-      // console.log(geom);
+    on_req_map_navigate({ detail: { frame_idx, row_idx } }) {
+      const geom = this.get_row_geom(frame_idx, row_idx);
       if (!geom) return;
       const padding = 20; // px
       const { width, height } = this._ml.transform;
