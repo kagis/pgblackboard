@@ -38,11 +38,19 @@ export default {
         unusualLineTerminators: 'off',
       });
 
+      this._editor.onDidFocusEditorText(this._on_focus);
+      this._editor.onDidBlurEditorText(this._on_blur);
+
+      window.debug_editor_datum = this._editor;
+
       this.$watch(
         this._get_curr_rowcol,
         this._watch_curr_rowcol,
         { immediate: true },
       );
+
+    this.$root.$el.addEventListener('req_datum_focus', this.on_req_datum_focus);
+
 
       // this.$watch(
       //   _ => ({
@@ -74,11 +82,22 @@ export default {
     },
     _watch_curr_rowcol({ frame_idx, row_idx, col_idx }) {
       const val = this._get_datum(frame_idx, row_idx, col_idx);
-      this._model?.dispose();
-      this._model = editor.createModel(val || '', 'json');
-      this._model.updateOptions({ bracketColorizationOptions: { enabled: false } });
-      this._model.onDidChangeContent(this._on_change_content);
+      const { typeOid, att_name } = this.$store.out.frames[frame_idx]?.cols[col_idx] || 0;
+      const updatable = Boolean(att_name);
+      const model = editor.createModel(
+        val ?? '<null>',
+        typeOid == 3802 || typeOid == 114 ? 'json' : null
+      );
+      model.updateOptions({ bracketColorizationOptions: { enabled: false } });
+
+      this._model?.dispose(); // TODO async concurency
+      this._model = model;
       this._editor.setModel(this._model);
+      this._editor.updateOptions({ readOnly: !updatable });
+      // if (typeOid == 3802) {
+      //   await this._editor.getAction('editor.action.formatDocument').run();
+      // }
+      model.onDidChangeContent(this._on_change_content);
     },
     _on_change_content() {
       this.$store.edit_datum(
@@ -87,6 +106,17 @@ export default {
         this.$store.out.frames[this.$store.out.curr_frame_idx].curr_col_idx,
         this._model.getValue(),
       );
+    },
+    on_req_datum_focus() {
+      const full_range = this._model.getFullModelRange();
+      this._editor.setSelection(full_range);
+      this._editor.focus();
+    },
+    _on_focus() {
+      this.$store.sync_datum_focused(true);
+    },
+    _on_blur() {
+      this.$store.sync_datum_focused(false);
     },
   },
   mounted() {

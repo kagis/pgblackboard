@@ -85,6 +85,7 @@ export default {
       }
     },
     watch_error_pos(error_pos) {
+      // TODO show all errors from this.$store.out.messages[*].position
       this._decorations.set(
         [error_pos]
         .filter(it => Number.isInteger(it))

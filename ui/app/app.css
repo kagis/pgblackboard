@@ -2,7 +2,10 @@
 .app-run,
 .app-abort,
 .app-map_btn,
-.app-theme_btn {
+.app-theme_btn,
+.app-edit_save_btn,
+.app-dump_changes_btn,
+.app-datum_close_btn {
   all: unset;
   font-size: .75rem;
   font-weight: 500;
@@ -95,9 +98,30 @@
   overscroll-behavior: none;
 }
 
+.app-log {
+  margin-block: 0 2rem;
+}
+
 .app-datum {
   grid-area: datum;
   border-top: 1px solid hsl(0 0% 50% / .2);
+}
+
+.app-datum_close_btn {
+  grid-area: datum;
+  place-self: start end;
+  margin: .5rem 1rem;
+  background-color: hsl(0 0% 20% / .8);
+  min-width: 5rem;
+  z-index: 10;
+  transition: background-color 200ms ease;
+
+  &:hover {
+    background-color: hsl(0 0% 20%);
+  }
+  &:disabled {
+    display: none;
+  }
 }
 
 .app-map {
@@ -153,7 +177,7 @@
   }
 }
 
-.app-map_btn {
+/* .app-map_btn {
   align-self: center;
   min-width: 5rem;
   margin-inline: auto .5rem;
@@ -163,7 +187,7 @@
   &::before {
     content: attr(aria-label);
   }
-}
+} */
 
 .app-nav_bar {
   grid-area: nav_b;
@@ -229,4 +253,9 @@
   &:active {
     background-color: hsl(200 85% 40% / 0.45);
   }
+}
+
+.app-dump_changes_btn {
+  margin-inline: auto 1rem;
+  opacity: .7;
 }

@@ -4,6 +4,7 @@ async function main(args) {
   const flags = parse_flags(args, {
     default: {
       'listen-port': '7890',
+      // 'listen-addr': '0.0.0.0',
     },
   });
 
@@ -97,14 +98,17 @@ class App {
   async _api_tree(/** @type {Request} */ _req, { key, u, db, node }) {
     const password = await this._decrypt_pwd(key);
     const conn_opts = {
-      statement_timeout: '10s',
       default_transaction_read_only: 'on',
       user: u,
       password,
       database: db,
+      search_path: 'pg_catalog',
     };
     const node_arr = node?.split('.')?.map(decodeURIComponent);
-    const pg = await pgconnect(conn_opts, this.pg_uri, { database: 'postgres' });
+    const pg = await pgconnect(conn_opts, this.pg_uri, {
+      database: 'postgres',
+      statement_timeout: '10s',
+    });
     try {
       const { rows } = await pg.query({
         statement: tree_sql,
@@ -134,6 +138,7 @@ class App {
       user: u,
       password,
       database: db,
+      search_path: 'pg_catalog',
     }, this.pg_uri, {
       statement_timeout: '10s',
     });
@@ -151,9 +156,17 @@ class App {
   async _api_exec(/** @type {Request} */ req, { key, u, db }) {
     const password = await this._decrypt_pwd(key);
 
-    const { sql, tz } = await req.json();
+    // TODO kill previous connection -
+    // prevent connections leak in case of abort lag
+
+    const { sql, tz, rw } = await req.json();
     const body = (
-      ReadableStream.from(this._api_exec_body(sql, u, password, db, tz))
+      ReadableStream.from(this._api_exec_body(sql, u, password, db, tz, rw))
+      .pipeThrough(new TransformStream({ // ndjson transform
+        async transform(chunk, ctl) {
+          ctl.enqueue(JSON.stringify(chunk) + '\n');
+        },
+      }))
       .pipeThrough(new TextEncoderStream())
     );
     return new Response(body, {
@@ -165,76 +178,114 @@ class App {
     });
   }
 
-  async * _api_exec_body(sql, user, password, database, tz) {
+  async * _api_exec_body(sql, user, password, database, tz, rw) {
+    let pg;
     try {
-      const pg = await pgconnect(
-        { user, database, password },
-        this.pg_uri,
-        {
-          'TimeZone': tz,
-          statement_timeout: '10s',
-          default_transaction_read_only: 'on',
-          _debug: true,
-
-          // notices flush rows after each statement
-          client_min_messages: 'LOG',
-          // debug_print_plan: 'on',
-          // debug_pretty_print: 'off',
-          // debug_print_parse: 'on',
-          // debug_print_rewritten: 'on',
-        },
-      );
-
-      // let end_stdin = Boolean;
-      // async function * stdin() {
-      //   await new Promise(resolve => end_stdin = resolve);
-      // }
+      const rowdescrs = [];
+      const timeline = [];
 
       try {
-        const type_oids = []; // TODO Set of tuples
-        const stream = pg.stream(sql,
-          // { stdin: stdin() }
+        pg = await pgconnect(
+          { user, database, password },
+          this.pg_uri,
+          {
+            _debug: true,
+            TimeZone: tz,
+            statement_timeout: '10s',
+            default_transaction_read_only: String(!rw),
+
+            // notices flush rows after each statement
+            client_min_messages: 'LOG',
+            // debug_print_plan: 'on',
+            // debug_pretty_print: 'off',
+            // debug_print_parse: 'on',
+            // debug_print_rewritten: 'on',
+          },
         );
+
+        const stream = pg.stream(sql);
         for await (const chunk of stream) {
-          if (chunk.tag == 'RowDescription') {
-            type_oids.push(...chunk.payload.map(
-              col => `${col.typeOid}/${col.typeMod}`,
-            ));
+          switch (chunk.tag) {
+            case 'ReadyForQuery':
+              timeline.push(performance.now());
+              break;
+            case 'RowDescription':
+              for (const col of chunk.payload) {
+                col.type = resolve_typename(col.typeOid);
+              }
+              rowdescrs.push(chunk.payload);
+              break;
           }
           // TODO pgwire should emit ErrorResponse chunk
-          yield JSON.stringify(chunk);
-          yield '\n';
+          yield chunk;
           // console.log(chunk);
         }
+      } catch (err) {
+        // TODO should not expose all errors, console.error only ?
+        const pgerr = err?.[Symbol.for('pg.ErrorResponse')];
+        if (!pgerr) throw err;
+        yield { tag: 'ErrorResponse', payload: pgerr };
+      }
 
-        const [type_map] = await pg.query({
-          params: [{ type: 'text[]', value: type_oids }],
-          statement: /*sql*/ `
-            select jsonb_object_agg(k, n)
-            from unnest($1) k, format_type(
-              split_part(k, '/', 1)::oid,
-              split_part(k, '/', 2)::int4
-            ) n
-          `,
-        });
+      const [start_ts, end_ts] = timeline;
+      const duration = end_ts - start_ts;
+      yield { tag: 'duration', payload: duration };
 
-        yield JSON.stringify({ tag: '.types', payload: type_map });
-        yield '\n';
+      // TODO continue in separate connection?
+      if (pg.inTransaction == 0x45) {
+        await pg.query(/*sql*/ `rollback`);
+      }
+      const [epilog] = await pg.query({
+        statement: /*sql*/ `set search_path = 'pg_catalog'`,
+      }, {
+        params: [{ type: 'jsonb', value: rowdescrs }],
+        statement: /*sql*/ `
+          select coalesce(jsonb_agg(rowdescr2 order by rowdescr_idx), '[]')
+          from jsonb_array_elements($1) with ordinality _ (rowdescr, rowdescr_idx)
+          left join lateral (
+            select "tableOid", conkey
+            from jsonb_to_recordset(rowdescr) _ ("tableOid" oid, "tableColumn" int2)
+            join pg_class on pg_class.oid = "tableOid"
+            join pg_constraint on conrelid = "tableOid" and contype = 'p'
+            group by "tableOid", conkey
+            having conkey <@ array_agg("tableColumn") filter (where "tableColumn" > 0)
+            limit 1
+          ) __ (target_reloid, target_key) on true
+          , jsonb_build_object(
+            'rel_name', regclass(target_reloid), -- TODO fix schema-qualify for pg_catalog.* tables
+            'cols', array(
+              select jsonb_strip_nulls(jsonb_build_object(
+                'type', format_type("typeOid", "typeMod"),
+                'att_name', quote_ident(attname),
+                'att_key', attnum = any(target_key),
+                'att_notnull', attnotnull
+              ))
+              -- TODO ordinality
+              from jsonb_to_recordset(rowdescr) _ ("typeOid" oid, "typeMod" int4, "tableOid" oid, "tableColumn" int2)
+              left join pg_attribute on (attrelid, attnum) = ("tableOid", "tableColumn") and attrelid = target_reloid
+              -- left join pg_class on pg_class.oid = "tableOid"
+            )
+          ) rowdescr2
+        `,
+      });
 
-      } finally {
-        console.log('ending connection');
-        await pg?.end();
+      yield { tag: 'epilog', payload: epilog };
+
+      if (pg.inTransaction) {
+        // TODO pause until user confirmation
       }
     } catch (err) {
-      // TODO should not expose all errors, console.error only ?
-      // console.error(err);
-      const pgerr = err?.[Symbol.for('pg.ErrorResponse')];
-      if (pgerr) {
-        yield JSON.stringify({ tag: 'ErrorResponse', payload: pgerr });
-      } else {
-        yield JSON.stringify({ tag: 'ErrorResponse', payload: err.message, error: err.name });
-      }
-      yield '\n';
+      // TODO do not catch errors from yields
+      yield {
+        tag: 'ErrorResponse',
+        payload: {
+          severity: 'client error',
+          message: `${err.name}: ${err.message}`,
+        },
+      };
+    } finally {
+      console.log('ending connection');
+      await pg?.end();
     }
   }
 }
@@ -388,9 +439,9 @@ const tree_sql = /*sql*/  `
 
   -- fs root
   union all
-  select currdb, array['dir', '/']::text[]
+  select currdb, array['dir', '.']::text[]
     , 'dir'
-    , '/' -- current_setting('data_directory') -- TODO '/'
+    , './' -- current_setting('data_directory') -- TODO '/'
     , null
     , null
     , true
@@ -580,6 +631,75 @@ from arg, lateral (
 
 ) _(def)
 `;
+
+function resolve_typename(type_oid) {
+  switch (type_oid) {
+    case 16: return 'boolean'; case 1000: return 'boolean[]';
+    case 18: return '"char"'; case 1002: return '"char"[]';
+    case 19: return 'name'; case 1003: return 'name[]';
+    case 20: return 'bigint'; case 1016: return 'bigint[]';
+    case 21: return 'smallint'; case 1005: return 'smallint[]';
+    case 23: return 'integer'; case 1007: return 'integer[]';
+    case 24: return 'regproc'; case 1008: return 'regproc[]';
+    case 25: return 'text'; case 1009: return 'text[]';
+    case 26: return 'oid'; case 1028: return 'oid[]';
+    case 600: return 'point'; case 1017: return 'point[]';
+    case 601: return 'lseg'; case 1018: return 'lseg[]';
+    case 602: return 'path'; case 1019: return 'path[]';
+    case 603: return 'box'; case 1020: return 'box[]';
+    case 604: return 'polygon'; case 1027: return 'polygon[]';
+    case 628: return 'line'; case 629: return 'line[]';
+    case 700: return 'real'; case 1021: return 'real[]';
+    case 701: return 'double precision'; case 1022: return 'double precision[]';
+    case 702: return 'abstime'; case 1023: return 'abstime[]';
+    case 703: return 'reltime'; case 1024: return 'reltime[]';
+    case 704: return 'tinterval'; case 1025: return 'tinterval[]';
+    case 718: return 'circle'; case 719: return 'circle[]';
+    case 790: return 'money'; case 791: return 'money[]';
+    case 869: return 'inet'; case 1041: return 'inet[]';
+    case 650: return 'cidr'; case 651: return 'cidr[]';
+    case 1042: return 'character'; case 1014: return 'character[]';
+    case 1043: return 'character varying'; case 1015: return 'character varying[]';
+    case 1082: return 'date'; case 1182: return 'date[]';
+    case 1083: return 'time without time zone'; case 1183: return 'time without time zone[]';
+    case 1114: return 'timestamp without time zone'; case 1115: return 'timestamp without time zone[]';
+    case 1184: return 'timestamp with time zone'; case 1185: return 'timestamp with time zone[]';
+    case 1186: return 'interval'; case 1187: return 'interval[]';
+    case 1266: return 'time with time zone'; case 1270: return 'time with time zone[]';
+    case 1560: return 'bit'; case 1561: return 'bit[]';
+    case 1562: return 'bit varying'; case 1563: return 'bit varying[]';
+    case 1700: return 'numeric'; case 1231: return 'numeric[]';
+    case 2202: return 'regprocedure'; case 2207: return 'regprocedure[]';
+    case 2203: return 'regoper'; case 2208: return 'regoper[]';
+    case 2204: return 'regoperator'; case 2209: return 'regoperator[]';
+    case 2205: return 'regclass'; case 2210: return 'regclass[]';
+    case 2206: return 'regtype'; case 2211: return 'regtype[]';
+    case 4096: return 'regrole'; case 4097: return 'regrole[]';
+    case 4089: return 'regnamespace'; case 4090: return 'regnamespace[]';
+    case 3734: return 'regconfig'; case 3735: return 'regconfig[]';
+    case 3769: return 'regdictionary'; case 3770: return 'regdictionary[]';
+    case 3904: return 'int4range'; case 3905: return 'int4range[]';
+    case 3906: return 'numrange'; case 3907: return 'numrange[]';
+    case 3908: return 'tsrange'; case 3909: return 'tsrange[]';
+    case 3910: return 'tstzrange'; case 3911: return 'tstzrange[]';
+    case 3912: return 'daterange'; case 3913: return 'daterange[]';
+    case 3926: return 'int8range'; case 3927: return 'int8range[]';
+    case 2249: return 'record'; case 2287: return 'record[]';
+    case 2275: return 'cstring'; case 1263: return 'cstring[]';
+    case 2276: return '"any"';
+    case 2277: return 'anyarray';
+    case 2278: return 'void';
+    case 2279: return 'trigger';
+    case 3838: return 'event_trigger';
+    case 2280: return 'language_handler';
+    case 2281: return 'internal';
+    case 2282: return 'opaque';
+    case 2283: return 'anyelement';
+    case 2776: return 'anynonarray';
+    case 3500: return 'anyenum';
+    case 3831: return 'anyrange';
+  }
+}
 
 if (import.meta.main) {
   await main(Deno.args);

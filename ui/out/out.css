@@ -70,8 +70,21 @@
   }
 }
 
+/* .out-colh_key {
+  background-color: currentColor;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  mask: url('./icon_key.svg') center / 1rem no-repeat;
+  -webkit-mask: url('./icon_key.svg') center / 1rem no-repeat;
+} */
+
 .out-colh_name {
   font-weight: bold;
+
+  .out-th[data-key] &  {
+    text-decoration: underline;
+  }
 }
 
 .out-colh_type {
@@ -90,6 +103,10 @@
   /* prevent empty cell collapsion */
   height: 2em; /* TODO 1lh */
 
+  &[data-dirty=delete] {
+    text-decoration: line-through solid 1px;
+    background-color: hsl(0 50% 50% / .3);
+  }
   &[data-selected] {
     background-color: hsl(0 0% 100% / .8);
     color: hsl(0 0% 20%);
@@ -110,6 +127,10 @@
   white-space: pre;
 
   &[data-selected] {
+    /* background-color: hsl(0 0% 100%); */
+    backdrop-filter: contrast(1.5);
+  }
+  .out[data-datum_focused] &[data-selected] {
     outline: 1px dashed currentColor;
     outline-offset: -.25rem;
   }
@@ -119,6 +140,11 @@
     font-style: italic;
     color: hsl(0 0% 50%);
   }
+  &[data-dirty] {
+    text-decoration: underline wavy hsl(200 80% 40%) 1px;
+    /* background-image: radial-gradient(circle at .625rem center, hsl(200 80% 40%) 0 .125rem, transparent 0); */
+    /* background: linear-gradient(135deg, hsl(200 50% 40%) 0 .5rem, transparent 0); */
+  }
   & em {
     font-style: normal;
     opacity: .5;
@@ -127,7 +153,7 @@
 
 .out-col_rowh {
   width: 3rem;
-  background-color: hsl(0 0% 15%);
+  /* background-color: hsl(0 0% 15%); */
 }
 
 .out-th_rowh {
@@ -139,20 +165,41 @@
   color: hsl(0 0% 50%);
 }
 
-.out-status {
-  padding-inline: 1rem;
-  font-weight: 400;
-
-  &::before {
-    content: '#>';
-    font-weight: 300;
-    color: hsl(0 0% 50%);
-    margin-inline: 1rem;
-    font-size: .875rem;
+.out-rownum {
+  .out-row[data-selected] & {
+    display: none;
   }
 }
 
-.out-notice {
-  padding-inline: 1rem;
-  white-space: pre;
+.out-delete_row {
+  all: unset;
+  mask: url('./icon_delete.svg') right center / 1rem no-repeat;
+  -webkit-mask: url('./icon_delete.svg') right center / 1rem no-repeat;
+  background-color: currentColor;
+  display: none;
+  height: 2rem;
+  width: 100%;
+  cursor: pointer;
+
+  .out-row[data-selected] &:enabled {
+    display: block;
+  }
+  .out-row[data-dirty=delete] & {
+    color: hsl(330 50% 50%);
+  }
+}
+
+.out-revert_row {
+  all: unset;
+  mask: url('./icon_revert.svg') right center / 1rem no-repeat;
+  -webkit-mask: url('./icon_revert.svg') right center / 1rem no-repeat;
+  background-color: currentColor;
+  display: none;
+  height: 2rem;
+  width: 100%;
+  cursor: pointer;
+
+  .out-row[data-selected] &:enabled {
+    display: block;
+  }
 }

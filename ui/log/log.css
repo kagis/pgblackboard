@@ -1,0 +1,103 @@
+.log {
+  position: sticky;
+  left: 0;
+  background: linear-gradient(to right,
+    transparent 0 3rem,
+    hsl(0 0% 0% / .08) 3rem,
+    hsl(0 0% 0% / 0) 50%
+  );
+}
+
+.log-header {
+  padding-inline: 4rem 0;
+  line-height: 2.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: hsl(0 0% 50%);
+  background: linear-gradient(to right,
+    transparent 0 3rem,
+    hsl(0 0% 0% / .08) 3rem,
+    hsl(0 0% 0% / 0) 50%
+  ), hsl(0 0% 17%);
+}
+
+.log-status_icon {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3rem;
+  background-color: currentColor;
+  mask: url('./icon_ellipsis.svg') center / 1rem no-repeat;
+  -webkit-mask: url('./icon_ellipsis.svg') center / 1rem no-repeat;
+}
+
+.log-status_icon_succeeded {
+  mask: url('./icon_success.svg') center / 1rem no-repeat;
+  -webkit-mask: url('./icon_succeeded.svg') center / 1rem no-repeat;
+}
+
+.log-status_icon_failed {
+  color: hsl(330 80% 60%);
+  mask-image: url('./icon_failed.svg');
+  -webkit-mask-image: url('./icon_failed.svg');
+}
+
+.log-msg {
+  padding-inline: 4rem 1rem;
+  padding-block: .4rem .35rem;
+  margin: 0;
+  line-height: 1.25rem;
+  position: relative; /* marker */
+  white-space: pre-wrap;
+
+  &:nth-last-child(odd) {
+    background-color: hsl(0 0% 50% / .05);
+  }
+  &::before {
+    content: '';
+    position: absolute;
+    width: 3rem;
+    height: 2rem;
+    left: 0;
+    top: 0;
+    color: hsl(0 0% 50%);
+    background-color: currentcolor;
+    mask: url('./icon_check.svg') center / 1rem no-repeat;
+    -webkit-mask: url('./icon_check.svg') center / 1rem no-repeat;
+  }
+  &[data-tag=NoticeResponse] {
+    color: hsl(0 0% 50%);
+    &::before {
+      /* opacity: .5; */
+      mask-image: url('./icon_ellipsis.svg');
+      -webkit-mask-image: url('./icon_ellipsis.svg');
+    }
+  }
+  &[data-tag=ErrorResponse]  {
+    background-color: hsl(330 80% 60% / .1);
+    &::before {
+      /* opacity: 1; */
+      color: hsl(330 80% 60%);
+      mask-image: url('./icon_ellipsis.svg');
+      -webkit-mask-image: url('./icon_ellipsis.svg');
+    }
+  }
+}
+
+.log-prefix {
+  .log-msg[data-tag=ErrorResponse] & {
+    color: hsl(330 80% 60%);
+  }
+}
+
+.log-detail {
+  margin-block: .5rem 0;
+}
+
+.log-hint {
+  margin-block: .5rem 0;
+}
+
+.log-fields {
+  margin-block: .5rem 0;
+}

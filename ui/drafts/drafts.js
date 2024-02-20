@@ -12,8 +12,9 @@ export default {
         <span class="drafts-caption" v-text="get_caption(id)"></span>
         <button class="drafts-delete"
           type="button"
-          aria-label="delete"
-          v-on:click.stop="rm_draft(id)">
+          aria-label="remove draft"
+          xv-on:pointerdown="on_rm_down"
+          v-on:click.stop="on_rm_click(id, $event.target)">
         </button>
       </div>
     </div>
@@ -29,6 +30,10 @@ export default {
     get_caption(draft_id) {
       const { caption } = this.drafts_kv[draft_id];
       return caption;
+    },
+    on_rm_click(draft_id, button_el) {
+      this.rm_draft(draft_id);
+      // console.log('focused', document.activeElement == button_el);
     },
   },
 };

@@ -3,39 +3,63 @@ import { editor, Uri } from './_lib/monaco.js';
 export class Store {
 
   light_theme = false;
-  panes = { left: .2, right: .6, out: 1, map: 0 };
+  panes = { left: .2, right: .6, out: .8, map: 0 };
   tree = {};
   curr_treenode_path = null;
   login_pending = false;
   login_done = false;
   login_error = '';
-  // TODO track run count for drafts, gc least used
+  // TODO track run_count for drafts, gc least used
   drafts_kv = {};
   stored_draft_ids = [];
   dirty_draft_ids = null;
   curr_draft_id = null;
+  datum_focused = false;
   out = {
     frames: [{
       curr_col_idx: -1,
       geom_col_idx: -1,
       cols: [],
-      status: 'SELECT 1',
+      // status: 'SELECT 1',
       rows: [{
         edit: 'update',
         tuple: [],
         updates: [],
       }],
+      deletes: {},
+      updates: {
+        // "('admterr', 'kz')": {
+        //   'doc': '{ "name": "hello" }'
+        // },
+      },
+      inserts: [],
     }].slice(0, 0),
+    messages: [],
     curr_frame_idx: null,
     curr_row_idx: null,
     // draft_ver: null,
     error_pos: null,
     loading: false,
     aborter: null,
+
+
+    db: null,
+    took_msec: 0,
+    // updates: {
+    //   '["table","()"]': {
+    //     'col1': 1,
+    //     'col2': 'a'
+    //   },
+    // },
+    // inserts: [],
   };
 
   resize_panes(update) {
     Object.assign(this.panes, update);
+  }
+
+  sync_datum_focused(value) {
+    this.datum_focused = value;
   }
 
   async login(u, password) {
@@ -55,7 +79,8 @@ export class Store {
         `\\connect postgres\n\n` +
         `SELECT * FROM pg_stat_activity;\n`,
       );
-      this.set_curr_draft(initial_draft_id);
+      this._unset_curr_draft();
+      this.curr_draft_id = initial_draft_id;
 
       this._load_drafts();
       setInterval(_ => this._flush_drafts(), 10e3);
@@ -79,6 +104,7 @@ export class Store {
   }
 
   _flush_drafts() {
+    // TODO gc drafts
     if (!this.dirty_draft_ids) return;
     localStorage.setItem('pgbb:draft:_ids', JSON.stringify(this.stored_draft_ids));
     for (const id in this.dirty_draft_ids) {
@@ -142,13 +168,15 @@ export class Store {
     const draft = this.drafts_kv[draft_id];
     draft.loading = true;
     const editor_model = editor.getModel(draft_id);
-    this.set_curr_draft(draft_id);
+    this._unset_curr_draft();
+    this.curr_draft_id = draft_id;
     this.curr_treenode_path = path;
     const node = path.reduce(({ children }, idx) => children.value[idx], this.tree);
     const { db, id } = node;
     const content = await (
       this._api('defn', { u: this._user, db, node: id, key: this._key })
       .then(({ result }) => result || '', err => `/* ${err} */\n`)
+      // TODO indicate dead treenode when treenode not found
     );
     if (!editor_model.isDisposed()) {
       editor_model.setValue(content);
@@ -175,7 +203,7 @@ export class Store {
     Object.assign(this.curr_draft, { cursor_pos, cursor_len });
   }
 
-  set_curr_draft(draft_id) {
+  _unset_curr_draft() {
     if (
       this.curr_draft_id in this.drafts_kv &&
       !this.stored_draft_ids.includes(this.curr_draft_id)
@@ -183,6 +211,10 @@ export class Store {
       delete this.drafts_kv[this.curr_draft_id];
       editor.getModel(this.curr_draft_id).dispose();
     }
+    this.curr_draft_id = null;
+  }
+  set_curr_draft(draft_id) {
+    this._unset_curr_draft(draft_id);
     this.curr_draft_id = draft_id;
     this.curr_treenode_path = null;
   }
@@ -194,7 +226,6 @@ export class Store {
     editor.getModel(draft_id).dispose();
     this.dirty_draft_ids ||= {};
     this.dirty_draft_ids[draft_id] = true;
-    // this.drafts.dirty[draft_id] = true;
     if (draft_id == this.curr_draft_id) {
       // TODO
       this.curr_draft_id = null;
@@ -231,14 +262,101 @@ export class Store {
     return frame.rows[this.out.curr_row_idx].tuple[frame.curr_col_idx];
   }
 
-  edit_delete_flag(frame_idx, row_idx) {
-    // this.outs[frame_idx].edits[row_idx].kind = 'delete';
+  delete_row(frame_idx, row_idx) {
+    const row = this.out.frames[frame_idx].rows[row_idx];
+    // row.will_delete = !row.will_delete;
+    row.dirty = row.dirty == 'delete' ? null : 'delete';
+    // TODO how to revert row changes? double delete?
+  }
+
+  revert_row(frame_idx, row_idx) {
+    const row = this.out.frames[frame_idx].rows[row_idx];
+    row.dirty = null;
+    row.updates = [];
   }
 
   edit_datum(frame_idx, row_idx, col_idx, new_value) {
     const row = this.out.frames[frame_idx].rows[row_idx];
     row.dirty = 'update';
     row.updates[col_idx] = new_value;
+  }
+
+  get_changes_num() {
+    let count = 0;
+    for (const { rows } of this.out.frames) {
+      for (const { dirty } of rows) {
+        if (dirty) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  dump_changes() {
+    let script = `\\connect ${this.out.db}\n\nBEGIN READ WRITE;\n\n`;
+
+    for (const frame of this.out.frames) {
+      const key_idxs = frame.cols.map((col, i) => col.att_key && i).filter(Number.isInteger);
+      const key_names = tuple_expr(key_idxs.map(i => frame.cols[i].att_name));
+
+      const delete_keys = [];
+      const update_keys = [];
+      const update_stmts = [];
+      for (const { dirty, tuple, updates } of frame.rows) {
+        const key_vals = tuple_expr(key_idxs.map(i => literal(tuple[i])));
+
+        switch (dirty) {
+          case 'delete':
+            delete_keys.push(key_vals);
+            break;
+          case 'update': {
+            const set_entries = [];
+            for (const [col_idx, col] of frame.cols.entries()) {
+              const upd_value = updates[col_idx];
+              if (upd_value === undefined) continue;
+              set_entries.push(`${col.att_name} = ${literal(upd_value)}`);
+            }
+            update_stmts.push(
+              `UPDATE ${frame.rel_name}\n` +
+              `SET ${set_entries.join('\n  , ')}\n` +
+              `WHERE ${key_names} = ${key_vals};\n\n`
+            );
+            update_keys.push(key_vals);
+            break;
+          };
+        }
+      }
+
+      if (delete_keys.length) {
+        script += (
+          `DELETE FROM ${frame.rel_name}\n` +
+          `WHERE ${key_names} IN (\n  ${delete_keys.join(',\n  ')}\n);\n\n`
+        );
+      }
+      if (update_stmts.length) {
+        script += update_stmts.join('');
+        script +=  (
+          `SELECT * FROM ${frame.rel_name}\n` +
+          `WHERE ${key_names} IN (\n  ${update_keys.join(',\n  ')}\n);\n\n`
+        );
+      }
+    }
+
+    const draft_id = this._add_draft(script);
+    this._unset_curr_draft();
+    this.curr_draft_id = draft_id;
+    this.curr_treenode_path = null;
+
+    // TODO clear edits
+
+    function literal(s) {
+      return s == null ? 'NULL' : `'${s.replace(/'/g, `''`)}'`;
+    }
+    function tuple_expr(arr) {
+      const joined = arr.join(', ');
+      return arr.length > 1 ? `(${joined})` : joined;
+    }
   }
 
   toggle_theme() {
@@ -257,7 +375,7 @@ export class Store {
     return !this.out.loading && !this.curr_draft?.loading;
   }
 
-  async run() {
+  async run({ rw }) {
     const draft = this.curr_draft;
     const { cursor_pos, cursor_len } = draft;
     const editor_model = editor.getModel(this.curr_draft_id);
@@ -276,19 +394,22 @@ export class Store {
 
     const aborter = new AbortController();
     this.out = {
+      db,
       frames: [],
+      messages: [],
       curr_frame_idx: null,
       curr_row_idx: null,
       error_pos: null,
       loading: true,
       aborter,
+      took_msec: 0,
     };
     const out = this.out;
 
     try {
       const qs = new URLSearchParams({ api: 'exec', u: this._user, db, key: this._key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const body = JSON.stringify({ sql, tz });
+      const body = JSON.stringify({ sql, tz, rw });
       const resp = await fetch('?' + qs, { method: 'POST', body, signal: aborter.signal });
       if (!resp.ok) throw Error('HTTP Error', { cause: await resp.text() });
       const msg_stream = (
@@ -297,43 +418,49 @@ export class Store {
         .pipeThrough(new JSONDecodeStream())
       );
       let frame = null;
-      for await (const { tag, payload, rows } of iter_stream(msg_stream)) {
-        // console.log(tag);
-        if (!frame) {
-          out.frames.push({
-            cols: null,
-            status: null,
-            rows: [],
-            geom_col_idx: -1,
-            curr_col_idx: -1,
-            notices: [],
-          });
-          frame = out.frames.at(-1);
-        }
+      for await (const msg of iter_stream(msg_stream)) {
+        const { tag, payload, rows } = msg;
         switch (tag) {
           case 'RowDescription':
-            frame.cols = payload.map(col => ({ ...col, width: 150 }));
-            frame.curr_col_idx = payload.length ? 0 : -1;
-            frame.geom_col_idx = payload.findIndex(col => /^st_asgeojson$/i.test(col.name));
+            out.frames.push({
+              cols: payload.map(col => ({ ...col, width: 150 })),
+              curr_col_idx: Boolean(payload.length) - 1,
+              geom_col_idx: payload.findIndex(col => /^st_asgeojson$/i.test(col.name)),
+              rows: [],
+            });
+            frame = out.frames.at(-1);
             break;
+          // TODO CopyData
           case 'DataRow':
             // TODO set selected frame_idx/row_idx/col_idx
             frame.rows.push(...rows.map(tuple => ({ tuple, updates: [], dirty: null })));
             break;
           case 'NoticeResponse':
-            frame.notices.push(payload);
-            break;
           case 'ErrorResponse':
             out.error_pos = payload.position && payload.position - 1;
-          case 'CommandComplete':
-            frame.status = payload;
-            frame = null;
+            // out.messages.push(payload);
+            out.messages.push(msg)
             break;
-          case '.types':
-            for (const frame of out.frames) {
-              for (const col of frame.cols || []) {
-                const typeKey = `${col.typeOid}/${col.typeMod}`; // TODO move to server col.typeKey
-                col.typeName = payload[typeKey];
+          case 'EmptyQueryResponse':
+          case 'PortalSuspended':
+            // out.messages.push({ message: tag });
+            out.messages.push(msg);
+            break;
+          case 'CommandComplete':
+            out.messages.push(msg);
+            // out.messages.push({
+            //   message: payload,
+            // });
+            break;
+          case 'duration':
+            out.took_msec = msg.payload;
+            break;
+          case 'epilog':
+            for (const [frame_idx, { cols, rel_name }] of payload.entries()) {
+              const frame = out.frames[frame_idx];
+              Object.assign(frame, { rel_name });
+              for (const [col_idx, col] of cols.entries()) {
+                Object.assign(frame.cols[col_idx], col);
               }
             }
             break;
@@ -341,12 +468,22 @@ export class Store {
         }
       }
     } catch (err) {
-      out.frames.push({ status: err });
+      // out.messages.push({ message: err });
+      out.messages.push({
+        tag: 'ErrorResponse',
+        payload: {
+          severity: 'ERROR',
+          code: null,
+          message: String(err),
+        },
+      })
     } finally {
       out.aborter = null;
       out.loading = false;
     }
   }
+
+  // TODO show COMMIT/ROLLBACK button if connection is left in transaction
 }
 
 class JSONDecodeStream extends TransformStream {

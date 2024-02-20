@@ -46,20 +46,24 @@
 /*   background: none; */
   background: #0001;
   color: inherit;
-}
-.drafts-delete::before {
-  position: absolute;
-  inset: 0;
-  background-color: currentcolor;
-  mask: url('delete.svg') center / 1rem no-repeat;
-  -webkit-mask: url('delete.svg') center / 1rem no-repeat;
-  content: '';
-  opacity: .5;
-  transition: opacity 200ms ease;
-}
-.drafts-item[data-selected] .drafts-delete {
-  display: block;
-}
-.drafts-delete:hover::before {
-  opacity: 1;
+
+  &::before {
+    position: absolute;
+    inset: 0;
+    background-color: currentcolor;
+    mask: url('delete.svg') center / 1rem no-repeat;
+    -webkit-mask: url('delete.svg') center / 1rem no-repeat;
+    content: '';
+    opacity: .5;
+    transition: opacity 200ms ease;
+  }
+  .drafts-item[data-selected] & {
+    display: block;
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+  &:focus {
+    color: hsl(0 330% 70%);
+  }
 }

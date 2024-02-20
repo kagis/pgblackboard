@@ -5,6 +5,7 @@ import xOut from '../out/out.js';
 import xDrafts from '../drafts/drafts.js';
 import xTree from '../tree/tree.js';
 import xDatum from '../datum/datum.js';
+import xLog from '../log/log.js';
 import xGrip from '../grip/grip.js';
 
 const template = String.raw /*html*/ `
@@ -45,6 +46,14 @@ const template = String.raw /*html*/ `
       aria-label="map"
       v-on:click="toggle_map">
     </button> -->
+
+    <button class="app-dump_changes_btn"
+      type="button"
+      v-if="changes_num"
+      v-on:click="dump_changes">
+      <span v-text="changes_num"></span>
+      dirty rows
+    </button>
   </div>
 
   <div class="app-nav">
@@ -52,9 +61,20 @@ const template = String.raw /*html*/ `
     <x-tree class="app-tree"></x-tree>
   </div>
   <x-code class="app-code"></x-code>
-  <x-out class="app-out"></x-out>
+  <div class="app-out">
+    <x-log class="app-log"></x-log>
+    <x-out class="app-tables"></x-out>
+  </div>
   <x-datum class="app-datum"></x-datum>
   <x-map class="app-map"></x-map>
+<!--
+  <button class="app-datum_close_btn"
+    type="button"
+    :disabled="!datum_opened"
+    v-on:click="datum_close"
+    aria-label="Close datum | Show log">
+    LOG &times;
+  </button> -->
 
   <x-grip class="app-split_left" :origin="panes" v-on:drag="resize_left"></x-grip>
   <x-grip class="app-split_right" :origin="panes" v-on:drag="resize_right"></x-grip>
@@ -116,6 +136,7 @@ export default {
     xGrip,
     xLogin,
     xDatum,
+    xLog,
   },
   computed: {
     light_theme: vm => vm.$store.light_theme,
@@ -124,16 +145,26 @@ export default {
     login_done: vm => vm.$store.login_done,
     code_selected: vm => vm.$store.curr_draft?.cursor_len,
     panes: vm => vm.$store.panes,
+    changes_num: vm => vm.$store.get_changes_num(),
+    datum_opened: vm => vm.$store.out.datum_opened,
   },
   methods: {
-    run() {
-      this.$store.run();
+    /** @param {MouseEvent} e */
+    run(e) {
+      // TODO show confirm dialog if .out has unsaved edits
+      this.$store.run({ rw: e.altKey });
     },
     abort() {
       this.$store.abort();
     },
     toggle_theme() {
       this.$store.toggle_theme();
+    },
+    dump_changes() {
+      this.$store.dump_changes();
+    },
+    datum_close() {
+      this.$store.datum_close();
     },
     resize_left({ x, origin }) {
       const wmax = this.$refs.measure.clientWidth;

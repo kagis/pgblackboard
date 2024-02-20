@@ -222,12 +222,7 @@ export default {
       this._ml = window.debug_map = new MaplibreMap({
         style,
         container: this.$el,
-        // transformRequest(url, resource_type) {
-        //   console.log(url, resource_type);
-        //   if (resource_type == 'Glyphs' && /\/0-255$/.test(url)) {
-        //     return { url: glyphs };
-        //   }
-        // },
+        attributionControl: false, // TODO ?
       });
 
       this.add_svg_image('drop_white', drop_white);
@@ -260,7 +255,7 @@ export default {
       const features = this.frames.flatMap(({ rows, geom_col_idx }, frame_idx) => {
         if (geom_col_idx < 0 || !rows) return [];
         // TODO no increment frame_idx if not geom col
-        const hue = (200 + frame_idx * 40) % 361; // TODO constrast
+        const hue = (200 + frame_idx * 40) % 360; // TODO constrast
         return rows.map((row, row_idx) => ({
           type: 'Feature',
           properties: { frame_idx, row_idx, hue },
@@ -305,6 +300,7 @@ export default {
       const pad = { x: 2, y: 2 };
       const qbox = [point.sub(pad), point.add(pad)];
       const feature = (
+        // TODO exclude already highlighted feature
         this._ml.queryRenderedFeatures(qbox, { layers: ['out_point', 'out_line'] })[0] ||
         this._ml.queryRenderedFeatures(point, { layers: ['out_fill'] })[0]
       );
@@ -313,7 +309,7 @@ export default {
       const detail = { frame_idx, row_idx };
       this.$root.$el.dispatchEvent(new CustomEvent('req_row_focus', { detail }));
       this.$store.set_curr_rowcol(frame_idx, row_idx);
-      // console.log(features);
+      // TODO zoom to feature extent
     },
     on_req_map_navigate({ detail: { frame_idx, row_idx } }) {
       const geom = this.get_row_geom(frame_idx, row_idx);

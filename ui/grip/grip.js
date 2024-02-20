@@ -21,7 +21,7 @@ export default {
       this._origin = this.origin && JSON.parse(JSON.stringify(this.origin));
       this.$el.setPointerCapture(pointerId);
       this.$el.addEventListener('pointermove', this.on_pointermove);
-      e.preventDefault(); // disable text selection in safari
+      // e.preventDefault(); // disable text selection in safari
     },
     on_lostpointercapture(e) {
       this.$el.removeEventListener('pointermove', this.on_pointermove);

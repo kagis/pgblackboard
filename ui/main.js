@@ -1,7 +1,7 @@
 import monaco_json_worker from './_lib/monaco_json_worker.js';
 import monaco_editor_worker from './_lib/monaco_editor_worker.js';
 import { editor } from './_lib/monaco.js';
-import { createApp, reactive, watchEffect, h } from './_lib/vue.js';
+import { createApp, reactive, computed, watchEffect, h } from './_lib/vue.js';
 import root_component from './app/app.js';
 import { Store } from './store.js';
 
@@ -38,6 +38,7 @@ const store = reactive(new Store());
 const app = createApp(root_component);
 app.config.globalProperties.$store = store;
 app.config.globalProperties.$h = h;
+app.config.globalProperties.$computed = computed;
 
 watchEffect(_ => {
   editor.setTheme(store.light_theme ? 'pgbb-light' : 'pgbb-dark');
