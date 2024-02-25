@@ -448,9 +448,6 @@ export class Store {
             break;
           case 'CommandComplete':
             out.messages.push(msg);
-            // out.messages.push({
-            //   message: payload,
-            // });
             break;
           case 'duration':
             out.took_msec = msg.payload;
@@ -518,32 +515,3 @@ async function * iter_stream(stream) {
     reader.releaseLock();
   }
 }
-
-// class DraftsRepo {
-//   constructor(storage) {
-//     this._storage = storage;
-//   }
-
-//   getall() {
-//     const ids = JSON.parse(this._storage.getItem('pgbb:draft:_ids')) || [];
-//     return ids.map(id => ({ id, content: this._storage.getItem(id) }));
-//   }
-
-//   create(content) {
-//     const id = 'pgbb:draft:' + Date.now().toString(16).padStart(16, 0);
-//     // this.update(id, content);
-//     return id;
-//   }
-
-//   update(id, content) {
-//     this._storage.setItem(id, content);
-//   }
-
-//   remove(id) {
-
-//   }
-
-//   bump(id) {
-
-//   }
-// }
