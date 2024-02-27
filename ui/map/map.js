@@ -5,8 +5,6 @@ import glyphs from './glyphs.js';
 
 const { Map: MaplibreMap, LngLatBounds, MercatorCoordinate } = globalThis.maplibregl;
 
-// TODO show circle marker on subpixel polygons
-
 const ne_land_blob = new Blob([JSON.stringify(ne_land)]);
 const ne_cities_blob = new Blob([JSON.stringify(ne_cities)]);
 const glyphs_blob = await fetch(glyphs).then(x => x.blob());
@@ -132,7 +130,7 @@ const style = {
       ],
       paint: {
         'circle-radius': 2 ,
-        'circle-color': ['to-color', ['concat', 'hsla(', ['get', 'hue'], ', 90%, 50%, .6)']],
+        'circle-color': ['to-color', ['concat', 'hsla(', ['get', 'hue'], ', 90%, 70%, .6)']],
         // 'circle-stroke-width': 1,
         // 'circle-stroke-color': ['to-color', ['concat', 'hsl(', ['get', 'hue'], ', 100%, 70%)']],
       },
@@ -296,17 +294,14 @@ export default {
         const hue = (200 + frame_idx * golden_angle) % 360;
         for (let row_idx = 0; row_idx < rows.length; row_idx++) {
           const { tuple } = rows[row_idx];
-          let geometry = geojson_try_parse(tuple[geom_col_idx]);
+          const geometry = geojson_try_parse(tuple[geom_col_idx]);
           if (!geometry) continue;
-          geometry = geojson_to_geomcoll(geometry);
-          features.push({
-            type: 'Feature',
-            properties: { frame_idx, row_idx, hue, zmin: null },
-            geometry,
-          });
-          for (const g of geometry.geometries) {
-            if (g.type == 'Point') continue;
-            const [w, s, e, n] = g.bbox;
+          const bbox = [180, 90, -180, -90];
+          for (const singular_geom of geojson_unnest(geometry)) {
+            const [w, s, e, n] = geojson_bbox(singular_geom);
+            geojson_extend_bbox(bbox, w, s);
+            geojson_extend_bbox(bbox, e, n);
+            if (singular_geom.type == 'Point') continue;
             const lb = MercatorCoordinate.fromLngLat([w, s]);
             const rt = MercatorCoordinate.fromLngLat([e, n]);
             const span = Math.hypot(rt.x - lb.x, rt.y - lb.y);
@@ -318,73 +313,23 @@ export default {
               geometry: { type: 'Point', coordinates },
             });
           }
+          features.push({
+            type: 'Feature',
+            properties: { frame_idx, row_idx, hue, zmin: null },
+            geometry,
+            bbox,
+          });
         }
       }
       return features;
     },
 
-    // get_highlight_geojson() {
-    //   const empty = { type: 'FeatureCollection', features: [] };
-    //   return (
-    //     this.curr_frame_idx != null &&
-    //     this.curr_row_idx != null &&
-    //     this.get_row_geom(this.curr_frame_idx, this.curr_row_idx) ||
-    //     empty
-    //   );
-    // },
-
     _copmute_highlighted_features() {
-      const highlighted = [];
-      const { curr_frame_idx, curr_row_idx } = this;
-      if (curr_frame_idx != null && curr_row_idx != null) {
-        highlighted.push(...this.features.filter(({ properties: p }) => (
-          p.frame_idx == curr_frame_idx &&
-          p.row_idx == curr_row_idx
-        )));
-      }
-      return highlighted;
+      return this.features.filter(({ properties: p }) => (
+        p.frame_idx == this.curr_frame_idx &&
+        p.row_idx == this.curr_row_idx
+      ));
     },
-
-    // get_all_geojson() {
-    //   const golden_angle = 137.5077640500378546463487; // https://en.wikipedia.org/wiki/Golden_angle
-    //   const granularity = 4 /*marker diameter px*/ / 512 /*world size px*/;
-    //   const features = [];
-    //   for (const [frame_idx, { rows, geom_col_idx }] of this.frames.entries()) {
-    //     if (geom_col_idx < 0 || !rows) continue;
-    //     const hue = (200 + frame_idx * golden_angle);
-    //     for (const [row_idx, { tuple }] of rows.entries()) {
-    //       let geometry = geojson_try_parse(tuple[geom_col_idx]);
-    //       if (!geometry) continue;
-    //       geometry = geojson_to_geomcoll(geometry);
-    //       features.push({
-    //         type: 'Feature',
-    //         properties: { frame_idx, row_idx, hue, zmin: null },
-    //         geometry,
-    //       });
-    //       for (const g of geometry.geometries) {
-    //         if (g.type == 'Point') continue;
-    //         const [w, s, e, n] = g.bbox;
-    //         const lb = MercatorCoordinate.fromLngLat([w, s]);
-    //         const rt = MercatorCoordinate.fromLngLat([e, n]);
-    //         const span = Math.hypot(rt.x - lb.x, rt.y - lb.y);
-    //         const zmin = Math.log2(granularity / span);
-    //         const coordinates = [(w + e) / 2, (s + n) / 2];
-    //         features.push({
-    //           type: 'Feature',
-    //           properties: { frame_idx, row_idx, hue, zmin },
-    //           geometry: { type: 'Point', coordinates },
-    //         });
-    //       }
-    //     }
-    //   }
-    //   return { type: 'FeatureCollection', features };
-    // },
-
-    // get_row_geom(frame_idx, row_idx) {
-    //   const feature = this.feature_collection.get(JSON.stringify([frame_idx, row_idx]));
-    //   return feature.geometry;
-    //   // return this.frames[frame_idx].rows[row_idx].geometry;
-    // },
 
     // add_svg_image(id, svg, sdf) {
     //   this._ml.addImage(id, { data: [0, 0, 0, 0], width: 1, height: 1 });
@@ -397,6 +342,7 @@ export default {
     //     this._ml.addImage(id, img, { pixelRatio: 2, sdf });
     //   };
     // },
+
     set_theme(light) {
       for (const { id, paint = 0, layout = 0, metadata = 0 } of style.layers) {
         const { alt_paint = 0, alt_layout = 0 } = metadata;
@@ -441,14 +387,13 @@ export default {
         p.frame_idx == frame_idx &&
         p.row_idx == row_idx
       ));
-      const geom = feature?.geometry;
-      if (!geom) return;
+      if (!feature) return;
       const padding = 20; // px
       const { width, height } = this._ml.transform;
       const sw = this._ml.unproject([padding, height - padding]);
       const ne = this._ml.unproject([width - padding, padding]);
       const bounds = new LngLatBounds(sw, ne);
-      bounds.extend(geom.bbox);
+      bounds.extend(feature.bbox);
       this._ml.fitBounds(bounds, { padding });
       // TODO if point then use box of the point and nearest point from dataset
       // this._ml.fitBounds(geom.bbox, { padding: 20 });
@@ -468,16 +413,6 @@ function geojson_try_parse(maybe_geojson) {
   } catch {
     return null;
   }
-}
-
-function geojson_to_geomcoll(geom) {
-  const geometries = geojson_unnest(geom);
-  const bbox = [180, 90, -180, -90];
-  for (const g of geometries) {
-    g.bbox = geojson_bbox(g);
-    geojson_extend_bbox(bbox, ...g.bbox);
-  }
-  return { type: 'GeometryCollection', geometries, bbox };
 }
 
 function geojson_unnest(geom) {
@@ -508,18 +443,14 @@ function geojson_bbox({ type, coordinates }) {
       }
       return bbox;
     }
-    // case 'MultiLineString':
-    //   return coordinates.flatMap(it => geojson_bboxes({ type: 'LineString', coordinates: it }));
-    // case 'MultiPolygon':
-    //   return coordinates.flatMap(it => geojson_bboxes({ type: 'Polygon', coordinates: it }));
-    // case 'GeometryCollection':
-    //   return geometries.flatMap(geojson_bboxes);
+    default:
+      throw Error('impossible');
   }
 }
 
-function geojson_extend_bbox(bbox, w, s, e = w, n = s) {
-  bbox[0] = Math.min(bbox[0], w);
-  bbox[1] = Math.min(bbox[1], s);
-  bbox[2] = Math.max(bbox[2], e);
-  bbox[3] = Math.max(bbox[3], n);
+function geojson_extend_bbox(bbox, lng, lat) {
+  bbox[0] = Math.min(bbox[0], lng);
+  bbox[1] = Math.min(bbox[1], lat);
+  bbox[2] = Math.max(bbox[2], lng);
+  bbox[3] = Math.max(bbox[3], lat);
 }
