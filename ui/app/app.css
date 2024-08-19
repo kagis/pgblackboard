@@ -69,7 +69,7 @@
   pointer-events: none;
 }
 
-.app-login {
+.app-auth {
   position: absolute;
   inset: 0;
   z-index: 10;
@@ -96,6 +96,7 @@
   grid-area: out;
   overflow: auto;
   overscroll-behavior: none;
+  border-bottom: 1px solid hsl(0 0% 50% / .2);
 }
 
 .app-log {
@@ -104,7 +105,6 @@
 
 .app-datum {
   grid-area: datum;
-  border-top: 1px solid hsl(0 0% 50% / .2);
 }
 
 .app-datum_close_btn {

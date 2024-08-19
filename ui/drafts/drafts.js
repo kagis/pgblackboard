@@ -12,7 +12,7 @@ export default {
         <span class="drafts-caption" v-text="get_caption(id)"></span>
         <button class="drafts-delete"
           type="button"
-          aria-label="remove draft"
+          aria-label="delete draft"
           xv-on:pointerdown="on_rm_down"
           v-on:click.stop="on_rm_click(id, $event.target)">
         </button>

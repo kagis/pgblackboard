@@ -3,7 +3,7 @@ import { editor, Uri } from './_lib/monaco.js';
 export class Store {
 
   light_theme = false;
-  panes = { left: .2, right: .6, out: .8, map: 0 };
+  panes = { left: .2, right: .6, out: 1, map: 0 };
   tree = {};
   curr_treenode_path = null;
   login_pending = false;
@@ -20,38 +20,23 @@ export class Store {
       curr_col_idx: -1,
       geom_col_idx: -1,
       cols: [],
-      // status: 'SELECT 1',
       rows: [{
-        edit: 'update',
         tuple: [],
         updates: [],
+        will_insert: false,
+        will_delete: false,
       }],
-      deletes: {},
-      updates: {
-        // "('admterr', 'kz')": {
-        //   'doc': '{ "name": "hello" }'
-        // },
-      },
-      inserts: [],
     }].slice(0, 0),
     messages: [],
     curr_frame_idx: null,
     curr_row_idx: null,
-    // draft_ver: null,
+    // TODO draft_ver: null,
     error_pos: null,
-    loading: false,
     aborter: null,
-
-
+    loading: false,
+    suspended: null,
     db: null,
     took_msec: 0,
-    // updates: {
-    //   '["table","()"]': {
-    //     'col1': 1,
-    //     'col2': 'a'
-    //   },
-    // },
-    // inserts: [],
   };
 
   resize_panes(update) {
@@ -62,13 +47,13 @@ export class Store {
     this.datum_focused = value;
   }
 
-  async login(u, password) {
+  async login(u, password) { // TODO login->auth
     // TODO cancel previous pending req
     this.login_pending = true;
     this.login_error = '';
     try {
       // await new Promise(resolve => setTimeout(resolve, 3000));
-      const { ok, reason, key } = await this._api('login', { u }, { password });
+      const { ok, reason, key } = await this._api('auth', { u }, { password });
       if (!ok) return this.login_error = reason;
       this._key = key;
       this._user = u;
@@ -84,7 +69,7 @@ export class Store {
 
       this._load_drafts();
       setInterval(_ => this._flush_drafts(), 10e3);
-      window.addEventListener('unload', _ => this._flush_drafts());
+      globalThis.addEventListener('unload', _ => this._flush_drafts());
 
       this.login_done = true;
     } catch (err) {
@@ -134,13 +119,14 @@ export class Store {
     return draft_id;
 
     function update_caption() {
-      const pos = editor_model.getPositionAt(100);
-      draft.caption = editor_model.getValueInRange({
+      const pos = editor_model.getPositionAt(256);
+      const head = editor_model.getValueInRange({
         startLineNumber: 0,
         startColumn: 0,
         endLineNumber: pos.lineNumber,
         endColumn: pos.column,
       });
+      draft.caption = head.replace(/^\s*\\connect[\s\t]+[^\n]+\n/, '\u2026 ');
     }
   }
 
@@ -188,7 +174,7 @@ export class Store {
     qs = JSON.parse(JSON.stringify(qs)); // rm undefined
     const resp = await fetch('?' + new URLSearchParams({ api, ...qs }), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
     });
     if (!resp.ok) throw Error(`${resp.status} error`);
@@ -263,29 +249,56 @@ export class Store {
   }
 
   delete_row(frame_idx, row_idx) {
-    const row = this.out.frames[frame_idx].rows[row_idx];
+    this.out.frames[frame_idx].rows[row_idx].will_delete = true;
+
+    // const row = this.out.frames[frame_idx].rows[row_idx];
     // row.will_delete = !row.will_delete;
-    row.dirty = row.dirty == 'delete' ? null : 'delete';
-    // TODO how to revert row changes? double delete?
   }
 
   revert_row(frame_idx, row_idx) {
-    const row = this.out.frames[frame_idx].rows[row_idx];
-    row.dirty = null;
+    const { rows } = this.out.frames[frame_idx];
+    const row = rows[row_idx];
+    row.will_delete = false;
     row.updates = [];
+    if (row.will_insert) {
+      rows.splice(row_idx, 1);
+    }
   }
 
+  // edit_datum(frame_idx, row_idx, col_idx, new_value) {
+  //   const rows = this.out.frames[frame_idx].rows;
+  //   rows[row_idx] ||= { dirty: 'insert', tuple: [], updates: [] };
+  //   const row = rows[row_idx];
+  //   row.dirty ||= 'update';
+  //   row.updates[col_idx] = new_value;
+  // }
+
   edit_datum(frame_idx, row_idx, col_idx, new_value) {
-    const row = this.out.frames[frame_idx].rows[row_idx];
-    row.dirty = 'update';
+    const rows = this.out.frames[frame_idx].rows;
+    rows[row_idx] ||= {
+      tuple: [],
+      updates: [],
+      will_insert: true,
+      will_delete: false,
+    };
+    const row = rows[row_idx];
     row.updates[col_idx] = new_value;
   }
 
   get_changes_num() {
     let count = 0;
+    // for (const { rows } of this.out.frames) {
+    //   for (const { dirty } of rows) {
+    //     if (dirty) {
+    //       count++;
+    //     }
+    //   }
+    // }
+    // return count;
+
     for (const { rows } of this.out.frames) {
-      for (const { dirty } of rows) {
-        if (dirty) {
+      for (const { will_insert, will_delete, updates } of rows) {
+        if (will_insert || will_delete || updates.length) {
           count++;
         }
       }
@@ -303,31 +316,44 @@ export class Store {
       const delete_keys = [];
       const update_keys = [];
       const update_stmts = [];
-      for (const { dirty, tuple, updates } of frame.rows) {
+      const insert_stmts = [];
+      for (const { will_insert, will_delete, dirty, tuple, updates } of frame.rows) {
         const key_vals = tuple_expr(key_idxs.map(i => literal(tuple[i])));
-
-        switch (dirty) {
-          case 'delete':
-            delete_keys.push(key_vals);
-            break;
-          case 'update': {
-            const set_entries = [];
-            for (const [col_idx, col] of frame.cols.entries()) {
-              const upd_value = updates[col_idx];
-              if (upd_value === undefined) continue;
-              set_entries.push(`${col.att_name} = ${literal(upd_value)}`);
-            }
-            update_stmts.push(
-              `UPDATE ${frame.rel_name}\n` +
-              `SET ${set_entries.join('\n  , ')}\n` +
-              `WHERE ${key_names} = ${key_vals};\n\n`
-            );
-            update_keys.push(key_vals);
-            break;
-          };
+        if (will_delete) {
+          delete_keys.push(key_vals);
+          continue;
+        }
+        if (will_insert) {
+          const cols = [];
+          const vals = [];
+          for (const [col_idx, col] of frame.cols.entries()) {
+            const val = updates[col_idx];
+            if (val === undefined) continue;
+            vals.push(literal(val));
+            cols.push(col.att_name);
+          }
+          insert_stmts.push(
+            `INSERT INTO ${frame.rel_name} (${cols.join(', ')})\n` +
+            `VALUES (${vals.join(', ')});\n\n`
+          );
+          continue;
+        }
+        if (updates.length) {
+          const set_entries = [];
+          for (const [col_idx, col] of frame.cols.entries()) {
+            const upd_value = updates[col_idx];
+            if (upd_value === undefined) continue;
+            set_entries.push(`${col.att_name} = ${literal(upd_value)}`);
+          }
+          update_stmts.push(
+            `UPDATE ${frame.rel_name}\n` +
+            `SET ${set_entries.join('\n  , ')}\n` +
+            `WHERE ${key_names} = ${key_vals};\n\n`
+          );
+          update_keys.push(key_vals);
+          continue;
         }
       }
-
       if (delete_keys.length) {
         script += (
           `DELETE FROM ${frame.rel_name}\n` +
@@ -341,6 +367,7 @@ export class Store {
           `WHERE ${key_names} IN (\n  ${update_keys.join(',\n  ')}\n);\n\n`
         );
       }
+      script += insert_stmts.join('');
     }
 
     const draft_id = this._add_draft(script);
@@ -364,11 +391,20 @@ export class Store {
   }
 
   can_abort() {
-    return this.out.loading;
+    return Boolean(this.out.aborter);
   }
 
   abort() {
     this.out.aborter.abort();
+  }
+
+  can_wake() {
+    return Boolean(this.out.suspended);
+  }
+
+  async wake() {
+    const token = this.out.suspended.wake_token;
+    await this._api('wake', { token });
   }
 
   can_run() {
@@ -400,17 +436,23 @@ export class Store {
       curr_frame_idx: null,
       curr_row_idx: null,
       error_pos: null,
-      loading: true,
-      aborter,
       took_msec: 0,
+      aborter,
+      loading: true,
+      suspended: null,
     };
     const out = this.out;
 
     try {
-      const qs = new URLSearchParams({ api: 'exec', u: this._user, db, key: this._key });
+      const qs = new URLSearchParams({ api: 'run', u: this._user, db, key: this._key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const body = JSON.stringify({ sql, tz, rw });
-      const resp = await fetch('?' + qs, { method: 'POST', body, signal: aborter.signal });
+      const resp = await fetch('?' + qs, {
+        method: 'POST',
+        signal: aborter.signal,
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+        body,
+      });
       if (!resp.ok) throw Error('HTTP Error', { cause: await resp.text() });
       const msg_stream = (
         resp.body
@@ -419,6 +461,8 @@ export class Store {
       );
       let frame = null;
       for await (const msg of iter_stream(msg_stream)) {
+        out.suspended = null;
+
         const { tag, payload, rows } = msg;
         switch (tag) {
           case 'RowDescription':
@@ -433,21 +477,25 @@ export class Store {
           // TODO CopyData
           case 'DataRow':
             // TODO set selected frame_idx/row_idx/col_idx
-            frame.rows.push(...rows.map(tuple => ({ tuple, updates: [], dirty: null })));
+            frame.rows.push(...rows.map(tuple => ({
+              tuple,
+              updates: [],
+              will_insert: false,
+              will_delete: false,
+            })));
             break;
           case 'NoticeResponse':
           case 'ErrorResponse':
             out.error_pos = payload.position && payload.position - 1;
-            // out.messages.push(payload);
             out.messages.push(msg)
             break;
+          case 'PortalSuspended': // TODO impossible in simple query
           case 'EmptyQueryResponse':
-          case 'PortalSuspended':
-            // out.messages.push({ message: tag });
-            out.messages.push(msg);
-            break;
           case 'CommandComplete':
             out.messages.push(msg);
+            break;
+          case 'suspended':
+            out.suspended = msg.payload;
             break;
           case 'duration':
             out.took_msec = msg.payload;
@@ -461,7 +509,6 @@ export class Store {
               }
             }
             break;
-          // TODO EmptyQuery, PortalSuspended
         }
       }
     } catch (err) {
@@ -469,14 +516,15 @@ export class Store {
       out.messages.push({
         tag: 'ErrorResponse',
         payload: {
-          severity: 'ERROR',
-          code: null,
+          severity: 'client error',
+          code: '00000',
           message: String(err),
         },
-      })
+      });
     } finally {
-      out.aborter = null;
       out.loading = false;
+      out.aborter = null;
+      out.suspended = null;
     }
   }
 

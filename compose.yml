@@ -1,0 +1,14 @@
+name: pgblackboard
+services:
+  pgbb:
+    image: kagiskz/pgblackboard:3-20240630
+    build: .
+    ports: [7890:7890]
+    # command: [pgbb, postgres://192.168.55.130:29401]
+    command: [pgbb, postgres://192.168.55.152:5432]
+    # stop_signal: SIGKILL
+    develop:
+      watch:
+        - action: sync+restart
+          path: .
+          target: /app

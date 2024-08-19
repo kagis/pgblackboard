@@ -1,7 +1,8 @@
-import xLogin from '../login/login.js';
+import xAuth from '../auth/auth.js';
 import xMap from '../map/map.js';
 import xCode from '../code/code.js';
 import xOut from '../out/out.js';
+// import xTable from '../table/table.js';
 import xDrafts from '../drafts/drafts.js';
 import xTree from '../tree/tree.js';
 import xDatum from '../datum/datum.js';
@@ -17,7 +18,7 @@ const template = String.raw /*html*/ `
     '--app-pane_out': panes.out,
     '--app-pane_map': panes.map,
   }">
-  <x-login class="app-login" v-if="!login_done"></x-login>
+  <x-auth class="app-auth" v-if="!login_done"></x-auth>
 
   <div class="app-nav_bar">
     <button class="app-theme_btn"
@@ -62,26 +63,22 @@ const template = String.raw /*html*/ `
   </div>
   <x-code class="app-code"></x-code>
   <div class="app-out">
-    <x-log class="app-log"></x-log>
+    <!-- <x-table class="app-table"
+      v-for="frame_idx of nframes"
+      :frame_idx="frame_idx">
+    </x-table> -->
     <x-out class="app-tables"></x-out>
+    <x-log class="app-log"></x-log>
   </div>
   <x-datum class="app-datum"></x-datum>
   <x-map class="app-map"></x-map>
-<!--
-  <button class="app-datum_close_btn"
-    type="button"
-    :disabled="!datum_opened"
-    v-on:click="datum_close"
-    aria-label="Close datum | Show log">
-    LOG &times;
-  </button> -->
 
   <x-grip class="app-split_left" :origin="panes" v-on:drag="resize_left"></x-grip>
   <x-grip class="app-split_right" :origin="panes" v-on:drag="resize_right"></x-grip>
   <x-grip class="app-split_out" :origin="panes" v-on:drag="resize_out"></x-grip>
   <x-grip class="app-split_map" :origin="panes" v-on:drag="resize_map"></x-grip>
 
-  <div class="app-measure" ref="measure"></div>
+  <div class="app-measure" ref="measure" aria-hidden="true"></div>
 </div>
 `;
 
@@ -131,10 +128,11 @@ export default {
     xMap,
     xCode,
     xOut,
+    // xTable,
     xDrafts,
     xTree,
     xGrip,
-    xLogin,
+    xAuth,
     xDatum,
     xLog,
   },
@@ -146,7 +144,7 @@ export default {
     code_selected: vm => vm.$store.curr_draft?.cursor_len,
     panes: vm => vm.$store.panes,
     changes_num: vm => vm.$store.get_changes_num(),
-    datum_opened: vm => vm.$store.out.datum_opened,
+    nframes: vm => vm.$store.out.frames.length,
   },
   methods: {
     /** @param {MouseEvent} e */
@@ -163,46 +161,33 @@ export default {
     dump_changes() {
       this.$store.dump_changes();
     },
-    datum_close() {
-      this.$store.datum_close();
-    },
     resize_left({ x, origin }) {
       const wmax = this.$refs.measure.clientWidth;
-      let val = origin.left + x / wmax;
-      val = Math.min(Math.max(val, 0), 1);
-      this.$store.resize_panes({
-        left: val,
-        right: Math.min(origin.right, 1 - val),
-      });
+      const val = origin.left + x / wmax;
+      const left = Math.min(Math.max(val, 0), 1);
+      const right = Math.min(origin.right, 1 - left);
+      this.$store.resize_panes({ left, right });
     },
     resize_right({ x, origin }) {
       const wmax = this.$refs.measure.clientWidth;
-      let val = origin.right - x / wmax;
-      val = Math.min(Math.max(val, 0), 1);
-      this.$store.resize_panes({
-        right: val,
-        left: Math.min(origin.left, 1 - val),
-      });
+      const val = origin.right - x / wmax;
+      const right = Math.min(Math.max(val, 0), 1);
+      const left = Math.min(origin.left, 1 - right);
+      this.$store.resize_panes({ left, right });
     },
     resize_out({ y, origin }) {
       const hmax = this.$refs.measure.clientHeight;
-      let val = origin.out + y / hmax;
-      val = Math.min(Math.max(val, 0), 1);
-      this.$store.resize_panes({
-        out: val,
-        map: Math.min(origin.map, 1 - val),
-      });
+      const val = origin.out + y / hmax;
+      const out = Math.min(Math.max(val, 0), 1);
+      const map = Math.min(origin.map, 1 - out);
+      this.$store.resize_panes({ out, map });
     },
     resize_map({ y, origin }) {
       const hmax = this.$refs.measure.clientHeight;
-      let val = origin.map - y / hmax;
-      val = Math.min(Math.max(val, 0), 1);
-      this.$store.resize_panes({
-        map: val,
-        out: Math.min(origin.out, 1 - val),
-      });
-    },
-    toggle_map() {
+      const val = origin.map - y / hmax;
+      const map = Math.min(Math.max(val, 0), 1);
+      const out = Math.min(origin.out, 1 - map);
+      this.$store.resize_panes({ out, map });
     },
   },
 };

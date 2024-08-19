@@ -1,10 +1,10 @@
 import xGrip from '../grip/grip.js';
 
-const xCell = {
+const xTd = {
   template: /*html*/ `
-    <td :data-null="value == null || null"
-      :data-dirty="dirty || null"
-      v-html="html_value">
+    <td :data-null="display == null || null"
+      :data-dirty="change !== undefined || null"
+      v-html="display_html">
     </td>
   `,
   props: {
@@ -12,27 +12,23 @@ const xCell = {
     col_idx: Number,
   },
   computed: {
-    value() {
-      const { updates, tuple } = this.row;
-      const new_val = updates[this.col_idx];
-      if (new_val !== undefined) return new_val;
-      return tuple[this.col_idx];
-    },
-    dirty() {
-      return this.row.updates[this.col_idx] !== undefined;
-    },
-    html_value() {
-      return this.value?.slice(0, 100)?.replace(/[<>&\n]/g, x => {
-        switch (x) {
-          case '&': return '&amp;';
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '\n': return '<em>\\n</em>';
-        }
-      });
-    },
+    actual: vm => vm.row.tuple[vm.col_idx],
+    change: vm => vm.row.updates[vm.col_idx],
+    display: vm => vm.change === undefined ? vm.actual : vm.change,
+    display_html: vm => vm.display?.replace(/(?<=^.{256}).+|[<>&\r\n]/sg, html_escape_td),
   },
 };
+
+function html_escape_td(x) {
+  switch (x) {
+    case '&': return '&amp;';
+    case '<': return '&lt;';
+    case '>': return '&gt;';
+    case '\r': return /*html*/ `<em>&bsol;r</em>`;
+    case '\n': return /*html*/ `<em>&bsol;n</em>`;
+    default: return /*html*/ `<em>&mldr;</em>`;
+  }
+}
 
 export default {
   template: /*html*/ `
@@ -48,16 +44,16 @@ export default {
             v-for="col, col_idx in frame.cols"
             :data-selected="col_is_selected(frame_idx, col_idx) || null"
             :style="{ width: col.width + 'px' }" />
-          <!-- <col class="out-col" /> -->
+          <col class="out-col_last" />
         </colgroup>
         <thead class="out-head">
           <tr>
             <th class="out-th_rowh" scope="col">#</th>
             <th class="out-th"
-              scope="col"
               v-for="col, col_idx in frame.cols"
               :data-key="col.att_key || null"
-              :data-selected="col_is_selected(frame_idx, col_idx) || null">
+              :data-selected="col_is_selected(frame_idx, col_idx) || null"
+              scope="col">
               <!-- TODO support \n, leading/tailing whitespace in colname  -->
               <span class="out-colh_name" v-text="col.name"></span>
               <span>&nbsp;</span>
@@ -67,7 +63,7 @@ export default {
                 v-on:drag="resize_col(frame_idx, col_idx, $event.x)">
               </x-grip>
             </th>
-            <!-- <th class="out-th" scope="col"></th> -->
+            <th class="out-th" scope="col"></th>
           </tr>
         </thead>
         <tbody class="out-tbody"
@@ -75,71 +71,54 @@ export default {
           v-on:mousedown="on_tbody_mousedown">
           <tr class="out-row"
             v-for="row, row_idx in frame.rows"
-            :data-row_idx="row_idx"
-            :data-dirty="row.dirty"
-            :data-selected="row_is_selected(frame_idx, row_idx) || null">
-            <th class="out-th_rowh" scope="row">
-              <template v-if="frame_is_updatable(frame_idx)">
-                <button class="out-delete_row"
-                  type="button"
-                  aria-label="Delete row"
-                  :disabled="row.dirty == 'update'"
-                  v-on:click.stop="delete_row(frame_idx, row_idx)">
-                </button>
-                <button class="out-revert_row"
-                  type="button"
-                  aria-label="Revert row"
-                  :disabled="!(row.dirty == 'update')"
-                  v-on:click.stop="revert_row(frame_idx, row_idx)">
-                </button>
-              </template>
-              <span class="out-rownum" v-text="row_idx + 1"></span>
-            </th>
-            <!-- <td class="out-cell"
-              v-for="col, col_idx in frame.cols"
-              :data-col_type="col.typeOid"
-              :data-col_idx="col_idx"
-              :data-selected="cell_is_selected(frame_idx, row_idx, col_idx) || null">
-
-              <x-cell class="out-cell_new" :tuple="row.updates" :col_idx="col_idx"></x-cell>
-              <x-cell class="out-cell_val" :tuple="row.tuple" :col_idx="col_idx"></x-cell>
-            </td> -->
-            <x-cell class="out-cell"
+            :data-will_delete="row.will_delete || null"
+            :data-selected="row_is_selected(frame_idx, row_idx) || null"
+            :data-row_idx="row_idx">
+            <th class="out-th_rowh" scope="row" v-text="row_idx + 1"></th>
+            <x-td class="out-cell"
               v-for="col, col_idx in frame.cols"
               :row="row"
               :col_idx="col_idx"
+              :data-selected="cell_is_selected(frame_idx, row_idx, col_idx) || null"
               :data-col_type="col.typeOid"
-              :data-col_idx="col_idx"
-              :data-selected="cell_is_selected(frame_idx, row_idx, col_idx) || null">
-            </x-cell>
+              :data-col_idx="col_idx">
+            </x-td>
+            <td class="out-td_last">
+              <template v-if="frame_is_updatable(frame_idx)">
+                <button class="out-delete_row"
+                  type="button"
+                  :disabled="row_is_dirty(row)"
+                  v-on:click.stop="delete_row(frame_idx, row_idx)"
+                  aria-label="Delete row">
+                </button>
+                <button class="out-revert_row"
+                  type="button"
+                  :disabled="!row_is_dirty(row)"
+                  v-on:click.stop="revert_row(frame_idx, row_idx)"
+                  aria-label="Revert row">
+                </button>
+              </template>
+            </td>
+          </tr>
+          <tr class="out-row out-row--new"
+            v-if="frame_is_insertable(frame_idx)"
+            :data-selected="row_is_selected(frame_idx, frame.rows.length) || null"
+            :data-row_idx="frame.rows.length">
+            <th class="out-th_rowh" scope="row">*</th>
+            <td class="out-cell"
+              v-for="col, col_idx in frame.cols"
+              :data-selected="cell_is_selected(frame_idx, frame.rows.length, col_idx) || null"
+              :data-col_idx="col_idx">
+              &mldr;
+            </td>
           </tr>
         </tbody>
       </table>
-
-      <!--
-      <div class="out-msg"
-        v-for="m of messages"
-        :data-tag="m.tag">
-        <template v-if="/^(NoticeResponse|ErrorResponse)$/.test(m.tag)">
-          <span v-text="m.payload.severity"></span>
-          <span>&nbsp;</span>
-          <span v-text="m.payload.message"></span>
-          <span>&nbsp;</span>
-          <span v-text="m.payload.detail"></span>
-        </template>
-        <template v-if="/^CommandComplete$/.test(m.tag)">
-          <span v-text="m.payload"></span>
-        </template>
-        <template v-if="/^EmptyQueryResponse$/.test(m.tag)">
-          <span v-text="m.tag"></span>
-        </template>
-      </div>
-      -->
     </div>
   `,
   components: {
     xGrip,
-    xCell,
+    xTd,
   },
   mounted() {
     // TODO unlisten
@@ -176,8 +155,14 @@ export default {
     frame_is_updatable(frame_idx) {
       return this.frames[frame_idx].cols.some(col => col.att_key);
     },
+    frame_is_insertable(frame_idx) {
+      return this.frames[frame_idx].cols.some(col => col.att_name);
+    },
     delete_row(frame_idx, row_idx) {
       this.$store.delete_row(frame_idx, row_idx);
+    },
+    row_is_dirty(row) {
+      return row.will_insert || row.will_delete || Boolean(row.updates.length);
     },
     revert_row(frame_idx, row_idx) {
       this.$store.revert_row(frame_idx, row_idx);

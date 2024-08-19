@@ -1,6 +1,6 @@
 /**
  * MapLibre GL JS
- * @license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v4.0.2/LICENSE.txt
+ * @license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v4.5.2/LICENSE.txt
  */
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -271,8 +271,9 @@ function __await(v) {
 function __asyncGenerator(thisArg, _arguments, generator) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
     var g = generator.apply(thisArg, _arguments || []), i, q = [];
-    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
-    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+    return i = {}, verb("next"), verb("throw"), verb("return", awaitReturn), i[Symbol.asyncIterator] = function () { return this; }, i;
+    function awaitReturn(f) { return function (v) { return Promise.resolve(v).then(f, reject); }; }
+    function verb(n, f) { if (g[n]) { i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; if (f) i[n] = f(i[n]); } }
     function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
     function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
     function fulfill(value) { resume("next", value); }
@@ -338,7 +339,7 @@ function __classPrivateFieldIn(state, receiver) {
 function __addDisposableResource(env, value, async) {
     if (value !== null && value !== void 0) {
         if (typeof value !== "object" && typeof value !== "function") throw new TypeError("Object expected.");
-        var dispose;
+        var dispose, inner;
         if (async) {
             if (!Symbol.asyncDispose) throw new TypeError("Symbol.asyncDispose is not defined.");
             dispose = value[Symbol.asyncDispose];
@@ -346,14 +347,17 @@ function __addDisposableResource(env, value, async) {
         if (dispose === void 0) {
             if (!Symbol.dispose) throw new TypeError("Symbol.dispose is not defined.");
             dispose = value[Symbol.dispose];
+            if (async) inner = dispose;
         }
         if (typeof dispose !== "function") throw new TypeError("Object not disposable.");
+        if (inner) dispose = function() { try { inner.call(this); } catch (e) { return Promise.reject(e); } };
         env.stack.push({ value: value, dispose: dispose, async: async });
     }
     else if (async) {
         env.stack.push({ async: true });
     }
     return value;
+
 }
 
 var _SuppressedError = typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
@@ -894,6 +898,23 @@ function isOffscreenCanvasDistorted() {
 }
 
 /**
+ * For a given collection of 2D points, returns their axis-aligned bounding box,
+ * in the format [minX, minY, maxX, maxY].
+ */
+function getAABB(points) {
+    let tlX = Infinity;
+    let tlY = Infinity;
+    let brX = -Infinity;
+    let brY = -Infinity;
+    for (const p of points) {
+        tlX = Math.min(tlX, p.x);
+        tlY = Math.min(tlY, p.y);
+        brX = Math.max(brX, p.x);
+        brY = Math.max(brY, p.y);
+    }
+    return [tlX, tlY, brX, brY];
+}
+/**
  * Given a value `t` that varies between 0 and 1, return
  * an interpolation function that eases between 0 and 1 in a pleasing
  * cubic in-out fashion.
@@ -917,7 +938,7 @@ function easeCubicInOut(t) {
  */
 function bezier$1(p1x, p1y, p2x, p2y) {
     const bezier = new UnitBezier$3(p1x, p1y, p2x, p2y);
-    return function (t) {
+    return (t) => {
         return bezier.solve(t);
     };
 }
@@ -1116,7 +1137,7 @@ function warnOnce(message) {
  *
  * @returns true for a counter clockwise set of points
  */
-// http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
+// https://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
 function isCounterClockwise(a, b, c) {
     return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
 }
@@ -1146,42 +1167,6 @@ function findLineIntersection(a1, a2, b1, b2) {
     const aInterpolation = (bDeltaX * originDeltaY - bDeltaY * originDeltaX) / denominator;
     // Find intersection by projecting out from origin of first segment
     return new Point$2(a1.x + (aInterpolation * aDeltaX), a1.y + (aInterpolation * aDeltaY));
-}
-/**
- * Returns the signed area for the polygon ring.  Positive areas are exterior rings and
- * have a clockwise winding.  Negative areas are interior rings and have a counter clockwise
- * ordering.
- *
- * @param ring - Exterior or interior ring
- */
-function calculateSignedArea(ring) {
-    let sum = 0;
-    for (let i = 0, len = ring.length, j = len - 1, p1, p2; i < len; j = i++) {
-        p1 = ring[i];
-        p2 = ring[j];
-        sum += (p2.x - p1.x) * (p1.y + p2.y);
-    }
-    return sum;
-}
-/**
- * Detects closed polygons, first + last point are equal
- *
- * @param points - array of points
- * @returns `true` if the points are a closed polygon
- */
-function isClosedPolygon(points) {
-    // If it is 2 points that are the same then it is a point
-    // If it is 3 points with start and end the same then it is a line
-    if (points.length < 4)
-        return false;
-    const p1 = points[0];
-    const p2 = points[points.length - 1];
-    if (Math.abs(p1.x - p2.x) > 0 ||
-        Math.abs(p1.y - p2.y) > 0) {
-        return false;
-    }
-    // polygon simplification can produce polygons with zero area and more than 3 points
-    return Math.abs(calculateSignedArea(points)) > 0.01;
 }
 /**
  * Converts spherical coordinates to cartesian coordinates.
@@ -1621,7 +1606,8 @@ function makeFetchRequest(requestParameters, abortController) {
             referrer: getReferrer(),
             signal: abortController.signal
         });
-        if (requestParameters.type === 'json') {
+        // If the user has already set an Accept header, do not overwrite it here
+        if (requestParameters.type === 'json' && !request.headers.has('Accept')) {
             request.headers.set('Accept', 'application/json');
         }
         const response = yield fetch(request);
@@ -1629,9 +1615,16 @@ function makeFetchRequest(requestParameters, abortController) {
             const body = yield response.blob();
             throw new AJAXError(response.status, response.statusText, requestParameters.url, body);
         }
-        const parsePromise = (requestParameters.type === 'arrayBuffer' || requestParameters.type === 'image') ? response.arrayBuffer() :
-            requestParameters.type === 'json' ? response.json() :
-                response.text();
+        let parsePromise;
+        if ((requestParameters.type === 'arrayBuffer' || requestParameters.type === 'image')) {
+            parsePromise = response.arrayBuffer();
+        }
+        else if (requestParameters.type === 'json') {
+            parsePromise = response.json();
+        }
+        else {
+            parsePromise = response.text();
+        }
         const result = yield parsePromise;
         if (abortController.signal.aborted) {
             throw createAbortError();
@@ -1641,6 +1634,7 @@ function makeFetchRequest(requestParameters, abortController) {
 }
 function makeXMLHttpRequest(requestParameters, abortController) {
     return new Promise((resolve, reject) => {
+        var _a;
         const xhr = new XMLHttpRequest();
         xhr.open(requestParameters.method || 'GET', requestParameters.url, true);
         if (requestParameters.type === 'arrayBuffer' || requestParameters.type === 'image') {
@@ -1651,7 +1645,10 @@ function makeXMLHttpRequest(requestParameters, abortController) {
         }
         if (requestParameters.type === 'json') {
             xhr.responseType = 'text';
-            xhr.setRequestHeader('Accept', 'application/json');
+            // Do not overwrite the user-provided Accept header
+            if (!((_a = requestParameters.headers) === null || _a === void 0 ? void 0 : _a.Accept)) {
+                xhr.setRequestHeader('Accept', 'application/json');
+            }
         }
         xhr.withCredentials = requestParameters.credentials === 'include';
         xhr.onerror = () => {
@@ -1702,7 +1699,7 @@ const makeRequest = function (requestParameters, abortController) {
             return protocolLoadFn(requestParameters, abortController);
         }
         if (isWorker(self) && self.worker && self.worker.actor) {
-            return self.worker.actor.sendAsync({ type: 'getResource', data: requestParameters, targetMapId: GLOBAL_DISPATCHER_ID }, abortController);
+            return self.worker.actor.sendAsync({ type: "GR" /* MessageType.getResource */, data: requestParameters, targetMapId: GLOBAL_DISPATCHER_ID }, abortController);
         }
     }
     if (!isFileURL(requestParameters.url)) {
@@ -1710,7 +1707,7 @@ const makeRequest = function (requestParameters, abortController) {
             return makeFetchRequest(requestParameters, abortController);
         }
         if (isWorker(self) && self.worker && self.worker.actor) {
-            return self.worker.actor.sendAsync({ type: 'getResource', data: requestParameters, mustQueue: true, targetMapId: GLOBAL_DISPATCHER_ID }, abortController);
+            return self.worker.actor.sendAsync({ type: "GR" /* MessageType.getResource */, data: requestParameters, mustQueue: true, targetMapId: GLOBAL_DISPATCHER_ID }, abortController);
         }
     }
     return makeXMLHttpRequest(requestParameters, abortController);
@@ -1798,7 +1795,6 @@ class Evented {
      * @param listener - The function to be called when the event is fired.
      * The listener function is called with the data object passed to `fire`,
      * extended with `target` and `type` properties.
-     * @returns `this`
      */
     on(type, listener) {
         this._listeners = this._listeners || {};
@@ -1810,7 +1806,6 @@ class Evented {
      *
      * @param type - The event type to remove listeners for.
      * @param listener - The listener function to remove.
-     * @returns `this`
      */
     off(type, listener) {
         _removeEventListener(type, listener, this._listeners);
@@ -1880,7 +1875,6 @@ class Evented {
     }
     /**
      * Bubble all events fired by this instance of Evented to this parent instance of Evented.
-     * @returns `this`
      */
     setEventedParent(parent, data) {
         this._eventedParent = parent;
@@ -1927,6 +1921,9 @@ var $root = {
 	},
 	sky: {
 		type: "sky"
+	},
+	projection: {
+		type: "projection"
 	},
 	terrain: {
 		type: "terrain"
@@ -3465,8 +3462,6 @@ var filter_operator = {
 		has: {
 		},
 		"!has": {
-		},
-		within: {
 		}
 	}
 };
@@ -3573,6 +3568,18 @@ var sky = {
 		},
 		transition: true
 	},
+	"horizon-color": {
+		type: "color",
+		"property-type": "data-constant",
+		"default": "#ffffff",
+		expression: {
+			interpolated: true,
+			parameters: [
+				"zoom"
+			]
+		},
+		transition: true
+	},
 	"fog-color": {
 		type: "color",
 		"property-type": "data-constant",
@@ -3585,7 +3592,7 @@ var sky = {
 		},
 		transition: true
 	},
-	"fog-blend": {
+	"fog-ground-blend": {
 		type: "number",
 		"property-type": "data-constant",
 		"default": 0.5,
@@ -3599,7 +3606,35 @@ var sky = {
 		},
 		transition: true
 	},
-	"horizon-blend": {
+	"horizon-fog-blend": {
+		type: "number",
+		"property-type": "data-constant",
+		"default": 0.8,
+		minimum: 0,
+		maximum: 1,
+		expression: {
+			interpolated: true,
+			parameters: [
+				"zoom"
+			]
+		},
+		transition: true
+	},
+	"sky-horizon-blend": {
+		type: "number",
+		"property-type": "data-constant",
+		"default": 0.8,
+		minimum: 0,
+		maximum: 1,
+		expression: {
+			interpolated: true,
+			parameters: [
+				"zoom"
+			]
+		},
+		transition: true
+	},
+	"atmosphere-blend": {
 		type: "number",
 		"property-type": "data-constant",
 		"default": 0.8,
@@ -3623,6 +3658,18 @@ var terrain = {
 		type: "number",
 		minimum: 0,
 		"default": 1
+	}
+};
+var projection$1 = {
+	type: {
+		type: "enum",
+		"default": "mercator",
+		values: {
+			mercator: {
+			},
+			globe: {
+			}
+		}
 	}
 };
 var paint$9 = [
@@ -4843,6 +4890,7 @@ var v8Spec = {
 	light: light,
 	sky: sky,
 	terrain: terrain,
+	projection: projection$1,
 	paint: paint$9,
 	paint_fill: paint_fill,
 	"paint_fill-extrusion": {
@@ -5336,6 +5384,9 @@ function diffStyles(before, after) {
         }
         if (!deepEqual(before.sky, after.sky)) {
             commands.push({ command: 'setSky', args: [after.sky] });
+        }
+        if (!deepEqual(before.projection, after.projection)) {
+            commands.push({ command: 'setProjection', args: [after.projection] });
         }
         // Handle changes to `sources`
         // If a source is to be removed, we also--before the removeSource
@@ -6772,360 +6823,45 @@ class ParsingContext {
     }
 }
 
-class CollatorExpression {
-    constructor(caseSensitive, diacriticSensitive, locale) {
-        this.type = CollatorType;
-        this.locale = locale;
-        this.caseSensitive = caseSensitive;
-        this.diacriticSensitive = diacriticSensitive;
-    }
-    static parse(args, context) {
-        if (args.length !== 2)
-            return context.error('Expected one argument.');
-        const options = args[1];
-        if (typeof options !== 'object' || Array.isArray(options))
-            return context.error('Collator options argument must be an object.');
-        const caseSensitive = context.parse(options['case-sensitive'] === undefined ? false : options['case-sensitive'], 1, BooleanType);
-        if (!caseSensitive)
-            return null;
-        const diacriticSensitive = context.parse(options['diacritic-sensitive'] === undefined ? false : options['diacritic-sensitive'], 1, BooleanType);
-        if (!diacriticSensitive)
-            return null;
-        let locale = null;
-        if (options['locale']) {
-            locale = context.parse(options['locale'], 1, StringType);
-            if (!locale)
-                return null;
-        }
-        return new CollatorExpression(caseSensitive, diacriticSensitive, locale);
+class Let {
+    constructor(bindings, result) {
+        this.type = result.type;
+        this.bindings = [].concat(bindings);
+        this.result = result;
     }
     evaluate(ctx) {
-        return new Collator(this.caseSensitive.evaluate(ctx), this.diacriticSensitive.evaluate(ctx), this.locale ? this.locale.evaluate(ctx) : null);
+        return this.result.evaluate(ctx);
     }
     eachChild(fn) {
-        fn(this.caseSensitive);
-        fn(this.diacriticSensitive);
-        if (this.locale) {
-            fn(this.locale);
+        for (const binding of this.bindings) {
+            fn(binding[1]);
         }
-    }
-    outputDefined() {
-        // Technically the set of possible outputs is the combinatoric set of Collators produced
-        // by all possible outputs of locale/caseSensitive/diacriticSensitive
-        // But for the primary use of Collators in comparison operators, we ignore the Collator's
-        // possible outputs anyway, so we can get away with leaving this false for now.
-        return false;
-    }
-}
-
-const EXTENT$1 = 8192;
-function updateBBox(bbox, coord) {
-    bbox[0] = Math.min(bbox[0], coord[0]);
-    bbox[1] = Math.min(bbox[1], coord[1]);
-    bbox[2] = Math.max(bbox[2], coord[0]);
-    bbox[3] = Math.max(bbox[3], coord[1]);
-}
-function mercatorXfromLng$1(lng) {
-    return (180 + lng) / 360;
-}
-function mercatorYfromLat$1(lat) {
-    return (180 - (180 / Math.PI * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)))) / 360;
-}
-function boxWithinBox(bbox1, bbox2) {
-    if (bbox1[0] <= bbox2[0])
-        return false;
-    if (bbox1[2] >= bbox2[2])
-        return false;
-    if (bbox1[1] <= bbox2[1])
-        return false;
-    if (bbox1[3] >= bbox2[3])
-        return false;
-    return true;
-}
-function getTileCoordinates(p, canonical) {
-    const x = mercatorXfromLng$1(p[0]);
-    const y = mercatorYfromLat$1(p[1]);
-    const tilesAtZoom = Math.pow(2, canonical.z);
-    return [Math.round(x * tilesAtZoom * EXTENT$1), Math.round(y * tilesAtZoom * EXTENT$1)];
-}
-function onBoundary(p, p1, p2) {
-    const x1 = p[0] - p1[0];
-    const y1 = p[1] - p1[1];
-    const x2 = p[0] - p2[0];
-    const y2 = p[1] - p2[1];
-    return (x1 * y2 - x2 * y1 === 0) && (x1 * x2 <= 0) && (y1 * y2 <= 0);
-}
-function rayIntersect(p, p1, p2) {
-    return ((p1[1] > p[1]) !== (p2[1] > p[1])) && (p[0] < (p2[0] - p1[0]) * (p[1] - p1[1]) / (p2[1] - p1[1]) + p1[0]);
-}
-// ray casting algorithm for detecting if point is in polygon
-function pointWithinPolygon(point, rings) {
-    let inside = false;
-    for (let i = 0, len = rings.length; i < len; i++) {
-        const ring = rings[i];
-        for (let j = 0, len2 = ring.length; j < len2 - 1; j++) {
-            if (onBoundary(point, ring[j], ring[j + 1]))
-                return false;
-            if (rayIntersect(point, ring[j], ring[j + 1]))
-                inside = !inside;
-        }
-    }
-    return inside;
-}
-function pointWithinPolygons(point, polygons) {
-    for (let i = 0; i < polygons.length; i++) {
-        if (pointWithinPolygon(point, polygons[i]))
-            return true;
-    }
-    return false;
-}
-function perp(v1, v2) {
-    return (v1[0] * v2[1] - v1[1] * v2[0]);
-}
-// check if p1 and p2 are in different sides of line segment q1->q2
-function twoSided(p1, p2, q1, q2) {
-    // q1->p1 (x1, y1), q1->p2 (x2, y2), q1->q2 (x3, y3)
-    const x1 = p1[0] - q1[0];
-    const y1 = p1[1] - q1[1];
-    const x2 = p2[0] - q1[0];
-    const y2 = p2[1] - q1[1];
-    const x3 = q2[0] - q1[0];
-    const y3 = q2[1] - q1[1];
-    const det1 = (x1 * y3 - x3 * y1);
-    const det2 = (x2 * y3 - x3 * y2);
-    if ((det1 > 0 && det2 < 0) || (det1 < 0 && det2 > 0))
-        return true;
-    return false;
-}
-// a, b are end points for line segment1, c and d are end points for line segment2
-function lineIntersectLine(a, b, c, d) {
-    // check if two segments are parallel or not
-    // precondition is end point a, b is inside polygon, if line a->b is
-    // parallel to polygon edge c->d, then a->b won't intersect with c->d
-    const vectorP = [b[0] - a[0], b[1] - a[1]];
-    const vectorQ = [d[0] - c[0], d[1] - c[1]];
-    if (perp(vectorQ, vectorP) === 0)
-        return false;
-    // If lines are intersecting with each other, the relative location should be:
-    // a and b lie in different sides of segment c->d
-    // c and d lie in different sides of segment a->b
-    if (twoSided(a, b, c, d) && twoSided(c, d, a, b))
-        return true;
-    return false;
-}
-function lineIntersectPolygon(p1, p2, polygon) {
-    for (const ring of polygon) {
-        // loop through every edge of the ring
-        for (let j = 0; j < ring.length - 1; ++j) {
-            if (lineIntersectLine(p1, p2, ring[j], ring[j + 1])) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-function lineStringWithinPolygon(line, polygon) {
-    // First, check if geometry points of line segments are all inside polygon
-    for (let i = 0; i < line.length; ++i) {
-        if (!pointWithinPolygon(line[i], polygon)) {
-            return false;
-        }
-    }
-    // Second, check if there is line segment intersecting polygon edge
-    for (let i = 0; i < line.length - 1; ++i) {
-        if (lineIntersectPolygon(line[i], line[i + 1], polygon)) {
-            return false;
-        }
-    }
-    return true;
-}
-function lineStringWithinPolygons(line, polygons) {
-    for (let i = 0; i < polygons.length; i++) {
-        if (lineStringWithinPolygon(line, polygons[i]))
-            return true;
-    }
-    return false;
-}
-function getTilePolygon(coordinates, bbox, canonical) {
-    const polygon = [];
-    for (let i = 0; i < coordinates.length; i++) {
-        const ring = [];
-        for (let j = 0; j < coordinates[i].length; j++) {
-            const coord = getTileCoordinates(coordinates[i][j], canonical);
-            updateBBox(bbox, coord);
-            ring.push(coord);
-        }
-        polygon.push(ring);
-    }
-    return polygon;
-}
-function getTilePolygons(coordinates, bbox, canonical) {
-    const polygons = [];
-    for (let i = 0; i < coordinates.length; i++) {
-        const polygon = getTilePolygon(coordinates[i], bbox, canonical);
-        polygons.push(polygon);
-    }
-    return polygons;
-}
-function updatePoint(p, bbox, polyBBox, worldSize) {
-    if (p[0] < polyBBox[0] || p[0] > polyBBox[2]) {
-        const halfWorldSize = worldSize * 0.5;
-        let shift = (p[0] - polyBBox[0] > halfWorldSize) ? -worldSize : (polyBBox[0] - p[0] > halfWorldSize) ? worldSize : 0;
-        if (shift === 0) {
-            shift = (p[0] - polyBBox[2] > halfWorldSize) ? -worldSize : (polyBBox[2] - p[0] > halfWorldSize) ? worldSize : 0;
-        }
-        p[0] += shift;
-    }
-    updateBBox(bbox, p);
-}
-function resetBBox(bbox) {
-    bbox[0] = bbox[1] = Infinity;
-    bbox[2] = bbox[3] = -Infinity;
-}
-function getTilePoints(geometry, pointBBox, polyBBox, canonical) {
-    const worldSize = Math.pow(2, canonical.z) * EXTENT$1;
-    const shifts = [canonical.x * EXTENT$1, canonical.y * EXTENT$1];
-    const tilePoints = [];
-    for (const points of geometry) {
-        for (const point of points) {
-            const p = [point.x + shifts[0], point.y + shifts[1]];
-            updatePoint(p, pointBBox, polyBBox, worldSize);
-            tilePoints.push(p);
-        }
-    }
-    return tilePoints;
-}
-function getTileLines(geometry, lineBBox, polyBBox, canonical) {
-    const worldSize = Math.pow(2, canonical.z) * EXTENT$1;
-    const shifts = [canonical.x * EXTENT$1, canonical.y * EXTENT$1];
-    const tileLines = [];
-    for (const line of geometry) {
-        const tileLine = [];
-        for (const point of line) {
-            const p = [point.x + shifts[0], point.y + shifts[1]];
-            updateBBox(lineBBox, p);
-            tileLine.push(p);
-        }
-        tileLines.push(tileLine);
-    }
-    if (lineBBox[2] - lineBBox[0] <= worldSize / 2) {
-        resetBBox(lineBBox);
-        for (const line of tileLines) {
-            for (const p of line) {
-                updatePoint(p, lineBBox, polyBBox, worldSize);
-            }
-        }
-    }
-    return tileLines;
-}
-function pointsWithinPolygons(ctx, polygonGeometry) {
-    const pointBBox = [Infinity, Infinity, -Infinity, -Infinity];
-    const polyBBox = [Infinity, Infinity, -Infinity, -Infinity];
-    const canonical = ctx.canonicalID();
-    if (polygonGeometry.type === 'Polygon') {
-        const tilePolygon = getTilePolygon(polygonGeometry.coordinates, polyBBox, canonical);
-        const tilePoints = getTilePoints(ctx.geometry(), pointBBox, polyBBox, canonical);
-        if (!boxWithinBox(pointBBox, polyBBox))
-            return false;
-        for (const point of tilePoints) {
-            if (!pointWithinPolygon(point, tilePolygon))
-                return false;
-        }
-    }
-    if (polygonGeometry.type === 'MultiPolygon') {
-        const tilePolygons = getTilePolygons(polygonGeometry.coordinates, polyBBox, canonical);
-        const tilePoints = getTilePoints(ctx.geometry(), pointBBox, polyBBox, canonical);
-        if (!boxWithinBox(pointBBox, polyBBox))
-            return false;
-        for (const point of tilePoints) {
-            if (!pointWithinPolygons(point, tilePolygons))
-                return false;
-        }
-    }
-    return true;
-}
-function linesWithinPolygons(ctx, polygonGeometry) {
-    const lineBBox = [Infinity, Infinity, -Infinity, -Infinity];
-    const polyBBox = [Infinity, Infinity, -Infinity, -Infinity];
-    const canonical = ctx.canonicalID();
-    if (polygonGeometry.type === 'Polygon') {
-        const tilePolygon = getTilePolygon(polygonGeometry.coordinates, polyBBox, canonical);
-        const tileLines = getTileLines(ctx.geometry(), lineBBox, polyBBox, canonical);
-        if (!boxWithinBox(lineBBox, polyBBox))
-            return false;
-        for (const line of tileLines) {
-            if (!lineStringWithinPolygon(line, tilePolygon))
-                return false;
-        }
-    }
-    if (polygonGeometry.type === 'MultiPolygon') {
-        const tilePolygons = getTilePolygons(polygonGeometry.coordinates, polyBBox, canonical);
-        const tileLines = getTileLines(ctx.geometry(), lineBBox, polyBBox, canonical);
-        if (!boxWithinBox(lineBBox, polyBBox))
-            return false;
-        for (const line of tileLines) {
-            if (!lineStringWithinPolygons(line, tilePolygons))
-                return false;
-        }
-    }
-    return true;
-}
-class Within {
-    constructor(geojson, geometries) {
-        this.type = BooleanType;
-        this.geojson = geojson;
-        this.geometries = geometries;
+        fn(this.result);
     }
     static parse(args, context) {
-        if (args.length !== 2)
-            return context.error(`'within' expression requires exactly one argument, but found ${args.length - 1} instead.`);
-        if (isValue(args[1])) {
-            const geojson = args[1];
-            if (geojson.type === 'FeatureCollection') {
-                const polygonsCoords = [];
-                for (const polygon of geojson.features) {
-                    const { type, coordinates } = polygon.geometry;
-                    if (type === 'Polygon') {
-                        polygonsCoords.push(coordinates);
-                    }
-                    if (type === 'MultiPolygon') {
-                        polygonsCoords.push(...coordinates);
-                    }
-                }
-                if (polygonsCoords.length) {
-                    const multipolygonWrapper = {
-                        type: 'MultiPolygon',
-                        coordinates: polygonsCoords
-                    };
-                    return new Within(geojson, multipolygonWrapper);
-                }
+        if (args.length < 4)
+            return context.error(`Expected at least 3 arguments, but found ${args.length - 1} instead.`);
+        const bindings = [];
+        for (let i = 1; i < args.length - 1; i += 2) {
+            const name = args[i];
+            if (typeof name !== 'string') {
+                return context.error(`Expected string, but found ${typeof name} instead.`, i);
             }
-            else if (geojson.type === 'Feature') {
-                const type = geojson.geometry.type;
-                if (type === 'Polygon' || type === 'MultiPolygon') {
-                    return new Within(geojson, geojson.geometry);
-                }
+            if (/[^a-zA-Z0-9_]/.test(name)) {
+                return context.error('Variable names must contain only alphanumeric characters or \'_\'.', i);
             }
-            else if (geojson.type === 'Polygon' || geojson.type === 'MultiPolygon') {
-                return new Within(geojson, geojson);
-            }
+            const value = context.parse(args[i + 1], i + 1);
+            if (!value)
+                return null;
+            bindings.push([name, value]);
         }
-        return context.error('\'within\' expression requires valid geojson object that contains polygon geometry type.');
+        const result = context.parse(args[args.length - 1], args.length - 1, context.expectedType, bindings);
+        if (!result)
+            return null;
+        return new Let(bindings, result);
     }
-    evaluate(ctx) {
-        if (ctx.geometry() != null && ctx.canonicalID() != null) {
-            if (ctx.geometryType() === 'Point') {
-                return pointsWithinPolygons(ctx, this.geometries);
-            }
-            else if (ctx.geometryType() === 'LineString') {
-                return linesWithinPolygons(ctx, this.geometries);
-            }
-        }
-        return false;
-    }
-    eachChild() { }
     outputDefined() {
-        return true;
+        return this.result.outputDefined();
     }
 }
 
@@ -7153,209 +6889,328 @@ class Var {
     }
 }
 
-class CompoundExpression {
-    constructor(name, type, evaluate, args) {
-        this.name = name;
+class At {
+    constructor(type, index, input) {
         this.type = type;
-        this._evaluate = evaluate;
-        this.args = args;
+        this.index = index;
+        this.input = input;
+    }
+    static parse(args, context) {
+        if (args.length !== 3)
+            return context.error(`Expected 2 arguments, but found ${args.length - 1} instead.`);
+        const index = context.parse(args[1], 1, NumberType);
+        const input = context.parse(args[2], 2, array$1(context.expectedType || ValueType));
+        if (!index || !input)
+            return null;
+        const t = input.type;
+        return new At(t.itemType, index, input);
     }
     evaluate(ctx) {
-        return this._evaluate(ctx, this.args);
+        const index = this.index.evaluate(ctx);
+        const array = this.input.evaluate(ctx);
+        if (index < 0) {
+            throw new RuntimeError(`Array index out of bounds: ${index} < 0.`);
+        }
+        if (index >= array.length) {
+            throw new RuntimeError(`Array index out of bounds: ${index} > ${array.length - 1}.`);
+        }
+        if (index !== Math.floor(index)) {
+            throw new RuntimeError(`Array index must be an integer, but found ${index} instead.`);
+        }
+        return array[index];
     }
     eachChild(fn) {
-        this.args.forEach(fn);
+        fn(this.index);
+        fn(this.input);
     }
     outputDefined() {
         return false;
     }
+}
+
+class In {
+    constructor(needle, haystack) {
+        this.type = BooleanType;
+        this.needle = needle;
+        this.haystack = haystack;
+    }
     static parse(args, context) {
-        const op = args[0];
-        const definition = CompoundExpression.definitions[op];
-        if (!definition) {
-            return context.error(`Unknown expression "${op}". If you wanted a literal array, use ["literal", [...]].`, 0);
+        if (args.length !== 3) {
+            return context.error(`Expected 2 arguments, but found ${args.length - 1} instead.`);
         }
-        // Now check argument types against each signature
-        const type = Array.isArray(definition) ?
-            definition[0] : definition.type;
-        const availableOverloads = Array.isArray(definition) ?
-            [[definition[1], definition[2]]] :
-            definition.overloads;
-        const overloads = availableOverloads.filter(([signature]) => (!Array.isArray(signature) || // varags
-            signature.length === args.length - 1 // correct param count
-        ));
-        let signatureContext = null;
-        for (const [params, evaluate] of overloads) {
-            // Use a fresh context for each attempted signature so that, if
-            // we eventually succeed, we haven't polluted `context.errors`.
-            signatureContext = new ParsingContext(context.registry, isExpressionConstant, context.path, null, context.scope);
-            // First parse all the args, potentially coercing to the
-            // types expected by this overload.
-            const parsedArgs = [];
-            let argParseFailed = false;
-            for (let i = 1; i < args.length; i++) {
-                const arg = args[i];
-                const expectedType = Array.isArray(params) ?
-                    params[i - 1] :
-                    params.type;
-                const parsed = signatureContext.parse(arg, 1 + parsedArgs.length, expectedType);
-                if (!parsed) {
-                    argParseFailed = true;
-                    break;
-                }
-                parsedArgs.push(parsed);
-            }
-            if (argParseFailed) {
-                // Couldn't coerce args of this overload to expected type, move
-                // on to next one.
-                continue;
-            }
-            if (Array.isArray(params)) {
-                if (params.length !== parsedArgs.length) {
-                    signatureContext.error(`Expected ${params.length} arguments, but found ${parsedArgs.length} instead.`);
-                    continue;
-                }
-            }
-            for (let i = 0; i < parsedArgs.length; i++) {
-                const expected = Array.isArray(params) ? params[i] : params.type;
-                const arg = parsedArgs[i];
-                signatureContext.concat(i + 1).checkSubtype(expected, arg.type);
-            }
-            if (signatureContext.errors.length === 0) {
-                return new CompoundExpression(op, type, evaluate, parsedArgs);
-            }
+        const needle = context.parse(args[1], 1, ValueType);
+        const haystack = context.parse(args[2], 2, ValueType);
+        if (!needle || !haystack)
+            return null;
+        if (!isValidType(needle.type, [BooleanType, StringType, NumberType, NullType, ValueType])) {
+            return context.error(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(needle.type)} instead`);
         }
-        if (overloads.length === 1) {
-            context.errors.push(...signatureContext.errors);
+        return new In(needle, haystack);
+    }
+    evaluate(ctx) {
+        const needle = this.needle.evaluate(ctx);
+        const haystack = this.haystack.evaluate(ctx);
+        if (!haystack)
+            return false;
+        if (!isValidNativeType(needle, ['boolean', 'string', 'number', 'null'])) {
+            throw new RuntimeError(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(typeOf(needle))} instead.`);
+        }
+        if (!isValidNativeType(haystack, ['string', 'array'])) {
+            throw new RuntimeError(`Expected second argument to be of type array or string, but found ${toString$1(typeOf(haystack))} instead.`);
+        }
+        return haystack.indexOf(needle) >= 0;
+    }
+    eachChild(fn) {
+        fn(this.needle);
+        fn(this.haystack);
+    }
+    outputDefined() {
+        return true;
+    }
+}
+
+class IndexOf {
+    constructor(needle, haystack, fromIndex) {
+        this.type = NumberType;
+        this.needle = needle;
+        this.haystack = haystack;
+        this.fromIndex = fromIndex;
+    }
+    static parse(args, context) {
+        if (args.length <= 2 || args.length >= 5) {
+            return context.error(`Expected 3 or 4 arguments, but found ${args.length - 1} instead.`);
+        }
+        const needle = context.parse(args[1], 1, ValueType);
+        const haystack = context.parse(args[2], 2, ValueType);
+        if (!needle || !haystack)
+            return null;
+        if (!isValidType(needle.type, [BooleanType, StringType, NumberType, NullType, ValueType])) {
+            return context.error(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(needle.type)} instead`);
+        }
+        if (args.length === 4) {
+            const fromIndex = context.parse(args[3], 3, NumberType);
+            if (!fromIndex)
+                return null;
+            return new IndexOf(needle, haystack, fromIndex);
         }
         else {
-            const expected = overloads.length ? overloads : availableOverloads;
-            const signatures = expected
-                .map(([params]) => stringifySignature(params))
-                .join(' | ');
-            const actualTypes = [];
-            // For error message, re-parse arguments without trying to
-            // apply any coercions
-            for (let i = 1; i < args.length; i++) {
-                const parsed = context.parse(args[i], 1 + actualTypes.length);
-                if (!parsed)
+            return new IndexOf(needle, haystack);
+        }
+    }
+    evaluate(ctx) {
+        const needle = this.needle.evaluate(ctx);
+        const haystack = this.haystack.evaluate(ctx);
+        if (!isValidNativeType(needle, ['boolean', 'string', 'number', 'null'])) {
+            throw new RuntimeError(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(typeOf(needle))} instead.`);
+        }
+        if (!isValidNativeType(haystack, ['string', 'array'])) {
+            throw new RuntimeError(`Expected second argument to be of type array or string, but found ${toString$1(typeOf(haystack))} instead.`);
+        }
+        if (this.fromIndex) {
+            const fromIndex = this.fromIndex.evaluate(ctx);
+            return haystack.indexOf(needle, fromIndex);
+        }
+        return haystack.indexOf(needle);
+    }
+    eachChild(fn) {
+        fn(this.needle);
+        fn(this.haystack);
+        if (this.fromIndex) {
+            fn(this.fromIndex);
+        }
+    }
+    outputDefined() {
+        return false;
+    }
+}
+
+class Match {
+    constructor(inputType, outputType, input, cases, outputs, otherwise) {
+        this.inputType = inputType;
+        this.type = outputType;
+        this.input = input;
+        this.cases = cases;
+        this.outputs = outputs;
+        this.otherwise = otherwise;
+    }
+    static parse(args, context) {
+        if (args.length < 5)
+            return context.error(`Expected at least 4 arguments, but found only ${args.length - 1}.`);
+        if (args.length % 2 !== 1)
+            return context.error('Expected an even number of arguments.');
+        let inputType;
+        let outputType;
+        if (context.expectedType && context.expectedType.kind !== 'value') {
+            outputType = context.expectedType;
+        }
+        const cases = {};
+        const outputs = [];
+        for (let i = 2; i < args.length - 1; i += 2) {
+            let labels = args[i];
+            const value = args[i + 1];
+            if (!Array.isArray(labels)) {
+                labels = [labels];
+            }
+            const labelContext = context.concat(i);
+            if (labels.length === 0) {
+                return labelContext.error('Expected at least one branch label.');
+            }
+            for (const label of labels) {
+                if (typeof label !== 'number' && typeof label !== 'string') {
+                    return labelContext.error('Branch labels must be numbers or strings.');
+                }
+                else if (typeof label === 'number' && Math.abs(label) > Number.MAX_SAFE_INTEGER) {
+                    return labelContext.error(`Branch labels must be integers no larger than ${Number.MAX_SAFE_INTEGER}.`);
+                }
+                else if (typeof label === 'number' && Math.floor(label) !== label) {
+                    return labelContext.error('Numeric branch labels must be integer values.');
+                }
+                else if (!inputType) {
+                    inputType = typeOf(label);
+                }
+                else if (labelContext.checkSubtype(inputType, typeOf(label))) {
                     return null;
-                actualTypes.push(toString$1(parsed.type));
+                }
+                if (typeof cases[String(label)] !== 'undefined') {
+                    return labelContext.error('Branch labels must be unique.');
+                }
+                cases[String(label)] = outputs.length;
             }
-            context.error(`Expected arguments of type ${signatures}, but found (${actualTypes.join(', ')}) instead.`);
+            const result = context.parse(value, i, outputType);
+            if (!result)
+                return null;
+            outputType = outputType || result.type;
+            outputs.push(result);
         }
-        return null;
+        const input = context.parse(args[1], 1, ValueType);
+        if (!input)
+            return null;
+        const otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
+        if (!otherwise)
+            return null;
+        if (input.type.kind !== 'value' && context.concat(1).checkSubtype(inputType, input.type)) {
+            return null;
+        }
+        return new Match(inputType, outputType, input, cases, outputs, otherwise);
     }
-    static register(registry, definitions) {
-        CompoundExpression.definitions = definitions;
-        for (const name in definitions) {
-            registry[name] = CompoundExpression;
-        }
+    evaluate(ctx) {
+        const input = this.input.evaluate(ctx);
+        const output = (typeOf(input) === this.inputType && this.outputs[this.cases[input]]) || this.otherwise;
+        return output.evaluate(ctx);
+    }
+    eachChild(fn) {
+        fn(this.input);
+        this.outputs.forEach(fn);
+        fn(this.otherwise);
+    }
+    outputDefined() {
+        return this.outputs.every(out => out.outputDefined()) && this.otherwise.outputDefined();
     }
 }
-function stringifySignature(signature) {
-    if (Array.isArray(signature)) {
-        return `(${signature.map(toString$1).join(', ')})`;
+
+class Case {
+    constructor(type, branches, otherwise) {
+        this.type = type;
+        this.branches = branches;
+        this.otherwise = otherwise;
     }
-    else {
-        return `(${toString$1(signature.type)}...)`;
+    static parse(args, context) {
+        if (args.length < 4)
+            return context.error(`Expected at least 3 arguments, but found only ${args.length - 1}.`);
+        if (args.length % 2 !== 0)
+            return context.error('Expected an odd number of arguments.');
+        let outputType;
+        if (context.expectedType && context.expectedType.kind !== 'value') {
+            outputType = context.expectedType;
+        }
+        const branches = [];
+        for (let i = 1; i < args.length - 1; i += 2) {
+            const test = context.parse(args[i], i, BooleanType);
+            if (!test)
+                return null;
+            const result = context.parse(args[i + 1], i + 1, outputType);
+            if (!result)
+                return null;
+            branches.push([test, result]);
+            outputType = outputType || result.type;
+        }
+        const otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
+        if (!otherwise)
+            return null;
+        if (!outputType)
+            throw new Error('Can\'t infer output type');
+        return new Case(outputType, branches, otherwise);
+    }
+    evaluate(ctx) {
+        for (const [test, expression] of this.branches) {
+            if (test.evaluate(ctx)) {
+                return expression.evaluate(ctx);
+            }
+        }
+        return this.otherwise.evaluate(ctx);
+    }
+    eachChild(fn) {
+        for (const [test, expression] of this.branches) {
+            fn(test);
+            fn(expression);
+        }
+        fn(this.otherwise);
+    }
+    outputDefined() {
+        return this.branches.every(([_, out]) => out.outputDefined()) && this.otherwise.outputDefined();
     }
 }
-function isExpressionConstant(expression) {
-    if (expression instanceof Var) {
-        return isExpressionConstant(expression.boundExpression);
+
+class Slice {
+    constructor(type, input, beginIndex, endIndex) {
+        this.type = type;
+        this.input = input;
+        this.beginIndex = beginIndex;
+        this.endIndex = endIndex;
     }
-    else if (expression instanceof CompoundExpression && expression.name === 'error') {
-        return false;
-    }
-    else if (expression instanceof CollatorExpression) {
-        // Although the results of a Collator expression with fixed arguments
-        // generally shouldn't change between executions, we can't serialize them
-        // as constant expressions because results change based on environment.
-        return false;
-    }
-    else if (expression instanceof Within) {
-        return false;
-    }
-    const isTypeAnnotation = expression instanceof Coercion ||
-        expression instanceof Assertion;
-    let childrenConstant = true;
-    expression.eachChild(child => {
-        // We can _almost_ assume that if `expressions` children are constant,
-        // they would already have been evaluated to Literal values when they
-        // were parsed.  Type annotations are the exception, because they might
-        // have been inferred and added after a child was parsed.
-        // So we recurse into isConstant() for the children of type annotations,
-        // but otherwise simply check whether they are Literals.
-        if (isTypeAnnotation) {
-            childrenConstant = childrenConstant && isExpressionConstant(child);
+    static parse(args, context) {
+        if (args.length <= 2 || args.length >= 5) {
+            return context.error(`Expected 3 or 4 arguments, but found ${args.length - 1} instead.`);
+        }
+        const input = context.parse(args[1], 1, ValueType);
+        const beginIndex = context.parse(args[2], 2, NumberType);
+        if (!input || !beginIndex)
+            return null;
+        if (!isValidType(input.type, [array$1(ValueType), StringType, ValueType])) {
+            return context.error(`Expected first argument to be of type array or string, but found ${toString$1(input.type)} instead`);
+        }
+        if (args.length === 4) {
+            const endIndex = context.parse(args[3], 3, NumberType);
+            if (!endIndex)
+                return null;
+            return new Slice(input.type, input, beginIndex, endIndex);
         }
         else {
-            childrenConstant = childrenConstant && child instanceof Literal;
+            return new Slice(input.type, input, beginIndex);
         }
-    });
-    if (!childrenConstant) {
+    }
+    evaluate(ctx) {
+        const input = this.input.evaluate(ctx);
+        const beginIndex = this.beginIndex.evaluate(ctx);
+        if (!isValidNativeType(input, ['string', 'array'])) {
+            throw new RuntimeError(`Expected first argument to be of type array or string, but found ${toString$1(typeOf(input))} instead.`);
+        }
+        if (this.endIndex) {
+            const endIndex = this.endIndex.evaluate(ctx);
+            return input.slice(beginIndex, endIndex);
+        }
+        return input.slice(beginIndex);
+    }
+    eachChild(fn) {
+        fn(this.input);
+        fn(this.beginIndex);
+        if (this.endIndex) {
+            fn(this.endIndex);
+        }
+    }
+    outputDefined() {
         return false;
     }
-    return isFeatureConstant(expression) &&
-        isGlobalPropertyConstant(expression, ['zoom', 'heatmap-density', 'line-progress', 'accumulated', 'is-supported-script']);
-}
-function isFeatureConstant(e) {
-    if (e instanceof CompoundExpression) {
-        if (e.name === 'get' && e.args.length === 1) {
-            return false;
-        }
-        else if (e.name === 'feature-state') {
-            return false;
-        }
-        else if (e.name === 'has' && e.args.length === 1) {
-            return false;
-        }
-        else if (e.name === 'properties' ||
-            e.name === 'geometry-type' ||
-            e.name === 'id') {
-            return false;
-        }
-        else if (/^filter-/.test(e.name)) {
-            return false;
-        }
-    }
-    if (e instanceof Within) {
-        return false;
-    }
-    let result = true;
-    e.eachChild(arg => {
-        if (result && !isFeatureConstant(arg)) {
-            result = false;
-        }
-    });
-    return result;
-}
-function isStateConstant(e) {
-    if (e instanceof CompoundExpression) {
-        if (e.name === 'feature-state') {
-            return false;
-        }
-    }
-    let result = true;
-    e.eachChild(arg => {
-        if (result && !isStateConstant(arg)) {
-            result = false;
-        }
-    });
-    return result;
-}
-function isGlobalPropertyConstant(e, properties) {
-    if (e instanceof CompoundExpression && properties.indexOf(e.name) >= 0) {
-        return false;
-    }
-    let result = true;
-    e.eachChild((arg) => {
-        if (result && !isGlobalPropertyConstant(arg, properties)) {
-            result = false;
-        }
-    });
-    return result;
 }
 
 /**
@@ -7911,372 +7766,6 @@ class Coalesce {
     }
 }
 
-class Let {
-    constructor(bindings, result) {
-        this.type = result.type;
-        this.bindings = [].concat(bindings);
-        this.result = result;
-    }
-    evaluate(ctx) {
-        return this.result.evaluate(ctx);
-    }
-    eachChild(fn) {
-        for (const binding of this.bindings) {
-            fn(binding[1]);
-        }
-        fn(this.result);
-    }
-    static parse(args, context) {
-        if (args.length < 4)
-            return context.error(`Expected at least 3 arguments, but found ${args.length - 1} instead.`);
-        const bindings = [];
-        for (let i = 1; i < args.length - 1; i += 2) {
-            const name = args[i];
-            if (typeof name !== 'string') {
-                return context.error(`Expected string, but found ${typeof name} instead.`, i);
-            }
-            if (/[^a-zA-Z0-9_]/.test(name)) {
-                return context.error('Variable names must contain only alphanumeric characters or \'_\'.', i);
-            }
-            const value = context.parse(args[i + 1], i + 1);
-            if (!value)
-                return null;
-            bindings.push([name, value]);
-        }
-        const result = context.parse(args[args.length - 1], args.length - 1, context.expectedType, bindings);
-        if (!result)
-            return null;
-        return new Let(bindings, result);
-    }
-    outputDefined() {
-        return this.result.outputDefined();
-    }
-}
-
-class At {
-    constructor(type, index, input) {
-        this.type = type;
-        this.index = index;
-        this.input = input;
-    }
-    static parse(args, context) {
-        if (args.length !== 3)
-            return context.error(`Expected 2 arguments, but found ${args.length - 1} instead.`);
-        const index = context.parse(args[1], 1, NumberType);
-        const input = context.parse(args[2], 2, array$1(context.expectedType || ValueType));
-        if (!index || !input)
-            return null;
-        const t = input.type;
-        return new At(t.itemType, index, input);
-    }
-    evaluate(ctx) {
-        const index = this.index.evaluate(ctx);
-        const array = this.input.evaluate(ctx);
-        if (index < 0) {
-            throw new RuntimeError(`Array index out of bounds: ${index} < 0.`);
-        }
-        if (index >= array.length) {
-            throw new RuntimeError(`Array index out of bounds: ${index} > ${array.length - 1}.`);
-        }
-        if (index !== Math.floor(index)) {
-            throw new RuntimeError(`Array index must be an integer, but found ${index} instead.`);
-        }
-        return array[index];
-    }
-    eachChild(fn) {
-        fn(this.index);
-        fn(this.input);
-    }
-    outputDefined() {
-        return false;
-    }
-}
-
-class In {
-    constructor(needle, haystack) {
-        this.type = BooleanType;
-        this.needle = needle;
-        this.haystack = haystack;
-    }
-    static parse(args, context) {
-        if (args.length !== 3) {
-            return context.error(`Expected 2 arguments, but found ${args.length - 1} instead.`);
-        }
-        const needle = context.parse(args[1], 1, ValueType);
-        const haystack = context.parse(args[2], 2, ValueType);
-        if (!needle || !haystack)
-            return null;
-        if (!isValidType(needle.type, [BooleanType, StringType, NumberType, NullType, ValueType])) {
-            return context.error(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(needle.type)} instead`);
-        }
-        return new In(needle, haystack);
-    }
-    evaluate(ctx) {
-        const needle = this.needle.evaluate(ctx);
-        const haystack = this.haystack.evaluate(ctx);
-        if (!haystack)
-            return false;
-        if (!isValidNativeType(needle, ['boolean', 'string', 'number', 'null'])) {
-            throw new RuntimeError(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(typeOf(needle))} instead.`);
-        }
-        if (!isValidNativeType(haystack, ['string', 'array'])) {
-            throw new RuntimeError(`Expected second argument to be of type array or string, but found ${toString$1(typeOf(haystack))} instead.`);
-        }
-        return haystack.indexOf(needle) >= 0;
-    }
-    eachChild(fn) {
-        fn(this.needle);
-        fn(this.haystack);
-    }
-    outputDefined() {
-        return true;
-    }
-}
-
-class IndexOf {
-    constructor(needle, haystack, fromIndex) {
-        this.type = NumberType;
-        this.needle = needle;
-        this.haystack = haystack;
-        this.fromIndex = fromIndex;
-    }
-    static parse(args, context) {
-        if (args.length <= 2 || args.length >= 5) {
-            return context.error(`Expected 3 or 4 arguments, but found ${args.length - 1} instead.`);
-        }
-        const needle = context.parse(args[1], 1, ValueType);
-        const haystack = context.parse(args[2], 2, ValueType);
-        if (!needle || !haystack)
-            return null;
-        if (!isValidType(needle.type, [BooleanType, StringType, NumberType, NullType, ValueType])) {
-            return context.error(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(needle.type)} instead`);
-        }
-        if (args.length === 4) {
-            const fromIndex = context.parse(args[3], 3, NumberType);
-            if (!fromIndex)
-                return null;
-            return new IndexOf(needle, haystack, fromIndex);
-        }
-        else {
-            return new IndexOf(needle, haystack);
-        }
-    }
-    evaluate(ctx) {
-        const needle = this.needle.evaluate(ctx);
-        const haystack = this.haystack.evaluate(ctx);
-        if (!isValidNativeType(needle, ['boolean', 'string', 'number', 'null'])) {
-            throw new RuntimeError(`Expected first argument to be of type boolean, string, number or null, but found ${toString$1(typeOf(needle))} instead.`);
-        }
-        if (!isValidNativeType(haystack, ['string', 'array'])) {
-            throw new RuntimeError(`Expected second argument to be of type array or string, but found ${toString$1(typeOf(haystack))} instead.`);
-        }
-        if (this.fromIndex) {
-            const fromIndex = this.fromIndex.evaluate(ctx);
-            return haystack.indexOf(needle, fromIndex);
-        }
-        return haystack.indexOf(needle);
-    }
-    eachChild(fn) {
-        fn(this.needle);
-        fn(this.haystack);
-        if (this.fromIndex) {
-            fn(this.fromIndex);
-        }
-    }
-    outputDefined() {
-        return false;
-    }
-}
-
-class Match {
-    constructor(inputType, outputType, input, cases, outputs, otherwise) {
-        this.inputType = inputType;
-        this.type = outputType;
-        this.input = input;
-        this.cases = cases;
-        this.outputs = outputs;
-        this.otherwise = otherwise;
-    }
-    static parse(args, context) {
-        if (args.length < 5)
-            return context.error(`Expected at least 4 arguments, but found only ${args.length - 1}.`);
-        if (args.length % 2 !== 1)
-            return context.error('Expected an even number of arguments.');
-        let inputType;
-        let outputType;
-        if (context.expectedType && context.expectedType.kind !== 'value') {
-            outputType = context.expectedType;
-        }
-        const cases = {};
-        const outputs = [];
-        for (let i = 2; i < args.length - 1; i += 2) {
-            let labels = args[i];
-            const value = args[i + 1];
-            if (!Array.isArray(labels)) {
-                labels = [labels];
-            }
-            const labelContext = context.concat(i);
-            if (labels.length === 0) {
-                return labelContext.error('Expected at least one branch label.');
-            }
-            for (const label of labels) {
-                if (typeof label !== 'number' && typeof label !== 'string') {
-                    return labelContext.error('Branch labels must be numbers or strings.');
-                }
-                else if (typeof label === 'number' && Math.abs(label) > Number.MAX_SAFE_INTEGER) {
-                    return labelContext.error(`Branch labels must be integers no larger than ${Number.MAX_SAFE_INTEGER}.`);
-                }
-                else if (typeof label === 'number' && Math.floor(label) !== label) {
-                    return labelContext.error('Numeric branch labels must be integer values.');
-                }
-                else if (!inputType) {
-                    inputType = typeOf(label);
-                }
-                else if (labelContext.checkSubtype(inputType, typeOf(label))) {
-                    return null;
-                }
-                if (typeof cases[String(label)] !== 'undefined') {
-                    return labelContext.error('Branch labels must be unique.');
-                }
-                cases[String(label)] = outputs.length;
-            }
-            const result = context.parse(value, i, outputType);
-            if (!result)
-                return null;
-            outputType = outputType || result.type;
-            outputs.push(result);
-        }
-        const input = context.parse(args[1], 1, ValueType);
-        if (!input)
-            return null;
-        const otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
-        if (!otherwise)
-            return null;
-        if (input.type.kind !== 'value' && context.concat(1).checkSubtype(inputType, input.type)) {
-            return null;
-        }
-        return new Match(inputType, outputType, input, cases, outputs, otherwise);
-    }
-    evaluate(ctx) {
-        const input = this.input.evaluate(ctx);
-        const output = (typeOf(input) === this.inputType && this.outputs[this.cases[input]]) || this.otherwise;
-        return output.evaluate(ctx);
-    }
-    eachChild(fn) {
-        fn(this.input);
-        this.outputs.forEach(fn);
-        fn(this.otherwise);
-    }
-    outputDefined() {
-        return this.outputs.every(out => out.outputDefined()) && this.otherwise.outputDefined();
-    }
-}
-
-class Case {
-    constructor(type, branches, otherwise) {
-        this.type = type;
-        this.branches = branches;
-        this.otherwise = otherwise;
-    }
-    static parse(args, context) {
-        if (args.length < 4)
-            return context.error(`Expected at least 3 arguments, but found only ${args.length - 1}.`);
-        if (args.length % 2 !== 0)
-            return context.error('Expected an odd number of arguments.');
-        let outputType;
-        if (context.expectedType && context.expectedType.kind !== 'value') {
-            outputType = context.expectedType;
-        }
-        const branches = [];
-        for (let i = 1; i < args.length - 1; i += 2) {
-            const test = context.parse(args[i], i, BooleanType);
-            if (!test)
-                return null;
-            const result = context.parse(args[i + 1], i + 1, outputType);
-            if (!result)
-                return null;
-            branches.push([test, result]);
-            outputType = outputType || result.type;
-        }
-        const otherwise = context.parse(args[args.length - 1], args.length - 1, outputType);
-        if (!otherwise)
-            return null;
-        if (!outputType)
-            throw new Error('Can\'t infer output type');
-        return new Case(outputType, branches, otherwise);
-    }
-    evaluate(ctx) {
-        for (const [test, expression] of this.branches) {
-            if (test.evaluate(ctx)) {
-                return expression.evaluate(ctx);
-            }
-        }
-        return this.otherwise.evaluate(ctx);
-    }
-    eachChild(fn) {
-        for (const [test, expression] of this.branches) {
-            fn(test);
-            fn(expression);
-        }
-        fn(this.otherwise);
-    }
-    outputDefined() {
-        return this.branches.every(([_, out]) => out.outputDefined()) && this.otherwise.outputDefined();
-    }
-}
-
-class Slice {
-    constructor(type, input, beginIndex, endIndex) {
-        this.type = type;
-        this.input = input;
-        this.beginIndex = beginIndex;
-        this.endIndex = endIndex;
-    }
-    static parse(args, context) {
-        if (args.length <= 2 || args.length >= 5) {
-            return context.error(`Expected 3 or 4 arguments, but found ${args.length - 1} instead.`);
-        }
-        const input = context.parse(args[1], 1, ValueType);
-        const beginIndex = context.parse(args[2], 2, NumberType);
-        if (!input || !beginIndex)
-            return null;
-        if (!isValidType(input.type, [array$1(ValueType), StringType, ValueType])) {
-            return context.error(`Expected first argument to be of type array or string, but found ${toString$1(input.type)} instead`);
-        }
-        if (args.length === 4) {
-            const endIndex = context.parse(args[3], 3, NumberType);
-            if (!endIndex)
-                return null;
-            return new Slice(input.type, input, beginIndex, endIndex);
-        }
-        else {
-            return new Slice(input.type, input, beginIndex);
-        }
-    }
-    evaluate(ctx) {
-        const input = this.input.evaluate(ctx);
-        const beginIndex = this.beginIndex.evaluate(ctx);
-        if (!isValidNativeType(input, ['string', 'array'])) {
-            throw new RuntimeError(`Expected first argument to be of type array or string, but found ${toString$1(typeOf(input))} instead.`);
-        }
-        if (this.endIndex) {
-            const endIndex = this.endIndex.evaluate(ctx);
-            return input.slice(beginIndex, endIndex);
-        }
-        return input.slice(beginIndex);
-    }
-    eachChild(fn) {
-        fn(this.input);
-        fn(this.beginIndex);
-        if (this.endIndex) {
-            fn(this.endIndex);
-        }
-    }
-    outputDefined() {
-        return false;
-    }
-}
-
 function isComparableType(op, type) {
     if (op === '==' || op === '!=') {
         // equality operator
@@ -8418,6 +7907,52 @@ const LessThan = makeComparison('<', lt, ltCollate);
 const GreaterThan = makeComparison('>', gt, gtCollate);
 const LessThanOrEqual = makeComparison('<=', lteq, lteqCollate);
 const GreaterThanOrEqual = makeComparison('>=', gteq, gteqCollate);
+
+class CollatorExpression {
+    constructor(caseSensitive, diacriticSensitive, locale) {
+        this.type = CollatorType;
+        this.locale = locale;
+        this.caseSensitive = caseSensitive;
+        this.diacriticSensitive = diacriticSensitive;
+    }
+    static parse(args, context) {
+        if (args.length !== 2)
+            return context.error('Expected one argument.');
+        const options = args[1];
+        if (typeof options !== 'object' || Array.isArray(options))
+            return context.error('Collator options argument must be an object.');
+        const caseSensitive = context.parse(options['case-sensitive'] === undefined ? false : options['case-sensitive'], 1, BooleanType);
+        if (!caseSensitive)
+            return null;
+        const diacriticSensitive = context.parse(options['diacritic-sensitive'] === undefined ? false : options['diacritic-sensitive'], 1, BooleanType);
+        if (!diacriticSensitive)
+            return null;
+        let locale = null;
+        if (options['locale']) {
+            locale = context.parse(options['locale'], 1, StringType);
+            if (!locale)
+                return null;
+        }
+        return new CollatorExpression(caseSensitive, diacriticSensitive, locale);
+    }
+    evaluate(ctx) {
+        return new Collator(this.caseSensitive.evaluate(ctx), this.diacriticSensitive.evaluate(ctx), this.locale ? this.locale.evaluate(ctx) : null);
+    }
+    eachChild(fn) {
+        fn(this.caseSensitive);
+        fn(this.diacriticSensitive);
+        if (this.locale) {
+            fn(this.locale);
+        }
+    }
+    outputDefined() {
+        // Technically the set of possible outputs is the combinatoric set of Collators produced
+        // by all possible outputs of locale/caseSensitive/diacriticSensitive
+        // But for the primary use of Collators in comparison operators, we ignore the Collator's
+        // possible outputs anyway, so we can get away with leaving this false for now.
+        return false;
+    }
+}
 
 class NumberFormat {
     constructor(number, locale, currency, minFractionDigits, maxFractionDigits) {
@@ -8642,6 +8177,1115 @@ class Length {
     }
 }
 
+const EXTENT$1 = 8192;
+function getTileCoordinates(p, canonical) {
+    const x = mercatorXfromLng$1(p[0]);
+    const y = mercatorYfromLat$1(p[1]);
+    const tilesAtZoom = Math.pow(2, canonical.z);
+    return [Math.round(x * tilesAtZoom * EXTENT$1), Math.round(y * tilesAtZoom * EXTENT$1)];
+}
+function getLngLatFromTileCoord(coord, canonical) {
+    const tilesAtZoom = Math.pow(2, canonical.z);
+    const x = (coord[0] / EXTENT$1 + canonical.x) / tilesAtZoom;
+    const y = (coord[1] / EXTENT$1 + canonical.y) / tilesAtZoom;
+    return [lngFromMercatorXfromLng(x), latFromMercatorY$1(y)];
+}
+function mercatorXfromLng$1(lng) {
+    return (180 + lng) / 360;
+}
+function lngFromMercatorXfromLng(mercatorX) {
+    return mercatorX * 360 - 180;
+}
+function mercatorYfromLat$1(lat) {
+    return (180 - (180 / Math.PI * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)))) / 360;
+}
+function latFromMercatorY$1(mercatorY) {
+    return 360 / Math.PI * Math.atan(Math.exp((180 - mercatorY * 360) * Math.PI / 180)) - 90;
+}
+function updateBBox(bbox, coord) {
+    bbox[0] = Math.min(bbox[0], coord[0]);
+    bbox[1] = Math.min(bbox[1], coord[1]);
+    bbox[2] = Math.max(bbox[2], coord[0]);
+    bbox[3] = Math.max(bbox[3], coord[1]);
+}
+function boxWithinBox(bbox1, bbox2) {
+    if (bbox1[0] <= bbox2[0])
+        return false;
+    if (bbox1[2] >= bbox2[2])
+        return false;
+    if (bbox1[1] <= bbox2[1])
+        return false;
+    if (bbox1[3] >= bbox2[3])
+        return false;
+    return true;
+}
+function rayIntersect(p, p1, p2) {
+    return ((p1[1] > p[1]) !== (p2[1] > p[1])) && (p[0] < (p2[0] - p1[0]) * (p[1] - p1[1]) / (p2[1] - p1[1]) + p1[0]);
+}
+function pointOnBoundary(p, p1, p2) {
+    const x1 = p[0] - p1[0];
+    const y1 = p[1] - p1[1];
+    const x2 = p[0] - p2[0];
+    const y2 = p[1] - p2[1];
+    return (x1 * y2 - x2 * y1 === 0) && (x1 * x2 <= 0) && (y1 * y2 <= 0);
+}
+// a, b are end points for line segment1, c and d are end points for line segment2
+function segmentIntersectSegment(a, b, c, d) {
+    // check if two segments are parallel or not
+    // precondition is end point a, b is inside polygon, if line a->b is
+    // parallel to polygon edge c->d, then a->b won't intersect with c->d
+    const vectorP = [b[0] - a[0], b[1] - a[1]];
+    const vectorQ = [d[0] - c[0], d[1] - c[1]];
+    if (perp(vectorQ, vectorP) === 0)
+        return false;
+    // If lines are intersecting with each other, the relative location should be:
+    // a and b lie in different sides of segment c->d
+    // c and d lie in different sides of segment a->b
+    if (twoSided(a, b, c, d) && twoSided(c, d, a, b))
+        return true;
+    return false;
+}
+function lineIntersectPolygon(p1, p2, polygon) {
+    for (const ring of polygon) {
+        // loop through every edge of the ring
+        for (let j = 0; j < ring.length - 1; ++j) {
+            if (segmentIntersectSegment(p1, p2, ring[j], ring[j + 1])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+// ray casting algorithm for detecting if point is in polygon
+function pointWithinPolygon(point, rings, trueIfOnBoundary = false) {
+    let inside = false;
+    for (const ring of rings) {
+        for (let j = 0; j < ring.length - 1; j++) {
+            if (pointOnBoundary(point, ring[j], ring[j + 1]))
+                return trueIfOnBoundary;
+            if (rayIntersect(point, ring[j], ring[j + 1]))
+                inside = !inside;
+        }
+    }
+    return inside;
+}
+function pointWithinPolygons(point, polygons) {
+    for (const polygon of polygons) {
+        if (pointWithinPolygon(point, polygon))
+            return true;
+    }
+    return false;
+}
+function lineStringWithinPolygon(line, polygon) {
+    // First, check if geometry points of line segments are all inside polygon
+    for (const point of line) {
+        if (!pointWithinPolygon(point, polygon)) {
+            return false;
+        }
+    }
+    // Second, check if there is line segment intersecting polygon edge
+    for (let i = 0; i < line.length - 1; ++i) {
+        if (lineIntersectPolygon(line[i], line[i + 1], polygon)) {
+            return false;
+        }
+    }
+    return true;
+}
+function lineStringWithinPolygons(line, polygons) {
+    for (const polygon of polygons) {
+        if (lineStringWithinPolygon(line, polygon))
+            return true;
+    }
+    return false;
+}
+function perp(v1, v2) {
+    return (v1[0] * v2[1] - v1[1] * v2[0]);
+}
+// check if p1 and p2 are in different sides of line segment q1->q2
+function twoSided(p1, p2, q1, q2) {
+    // q1->p1 (x1, y1), q1->p2 (x2, y2), q1->q2 (x3, y3)
+    const x1 = p1[0] - q1[0];
+    const y1 = p1[1] - q1[1];
+    const x2 = p2[0] - q1[0];
+    const y2 = p2[1] - q1[1];
+    const x3 = q2[0] - q1[0];
+    const y3 = q2[1] - q1[1];
+    const det1 = (x1 * y3 - x3 * y1);
+    const det2 = (x2 * y3 - x3 * y2);
+    if ((det1 > 0 && det2 < 0) || (det1 < 0 && det2 > 0))
+        return true;
+    return false;
+}
+
+function getTilePolygon(coordinates, bbox, canonical) {
+    const polygon = [];
+    for (let i = 0; i < coordinates.length; i++) {
+        const ring = [];
+        for (let j = 0; j < coordinates[i].length; j++) {
+            const coord = getTileCoordinates(coordinates[i][j], canonical);
+            updateBBox(bbox, coord);
+            ring.push(coord);
+        }
+        polygon.push(ring);
+    }
+    return polygon;
+}
+function getTilePolygons(coordinates, bbox, canonical) {
+    const polygons = [];
+    for (let i = 0; i < coordinates.length; i++) {
+        const polygon = getTilePolygon(coordinates[i], bbox, canonical);
+        polygons.push(polygon);
+    }
+    return polygons;
+}
+function updatePoint(p, bbox, polyBBox, worldSize) {
+    if (p[0] < polyBBox[0] || p[0] > polyBBox[2]) {
+        const halfWorldSize = worldSize * 0.5;
+        let shift = (p[0] - polyBBox[0] > halfWorldSize) ? -worldSize : (polyBBox[0] - p[0] > halfWorldSize) ? worldSize : 0;
+        if (shift === 0) {
+            shift = (p[0] - polyBBox[2] > halfWorldSize) ? -worldSize : (polyBBox[2] - p[0] > halfWorldSize) ? worldSize : 0;
+        }
+        p[0] += shift;
+    }
+    updateBBox(bbox, p);
+}
+function resetBBox(bbox) {
+    bbox[0] = bbox[1] = Infinity;
+    bbox[2] = bbox[3] = -Infinity;
+}
+function getTilePoints(geometry, pointBBox, polyBBox, canonical) {
+    const worldSize = Math.pow(2, canonical.z) * EXTENT$1;
+    const shifts = [canonical.x * EXTENT$1, canonical.y * EXTENT$1];
+    const tilePoints = [];
+    for (const points of geometry) {
+        for (const point of points) {
+            const p = [point.x + shifts[0], point.y + shifts[1]];
+            updatePoint(p, pointBBox, polyBBox, worldSize);
+            tilePoints.push(p);
+        }
+    }
+    return tilePoints;
+}
+function getTileLines(geometry, lineBBox, polyBBox, canonical) {
+    const worldSize = Math.pow(2, canonical.z) * EXTENT$1;
+    const shifts = [canonical.x * EXTENT$1, canonical.y * EXTENT$1];
+    const tileLines = [];
+    for (const line of geometry) {
+        const tileLine = [];
+        for (const point of line) {
+            const p = [point.x + shifts[0], point.y + shifts[1]];
+            updateBBox(lineBBox, p);
+            tileLine.push(p);
+        }
+        tileLines.push(tileLine);
+    }
+    if (lineBBox[2] - lineBBox[0] <= worldSize / 2) {
+        resetBBox(lineBBox);
+        for (const line of tileLines) {
+            for (const p of line) {
+                updatePoint(p, lineBBox, polyBBox, worldSize);
+            }
+        }
+    }
+    return tileLines;
+}
+function pointsWithinPolygons(ctx, polygonGeometry) {
+    const pointBBox = [Infinity, Infinity, -Infinity, -Infinity];
+    const polyBBox = [Infinity, Infinity, -Infinity, -Infinity];
+    const canonical = ctx.canonicalID();
+    if (polygonGeometry.type === 'Polygon') {
+        const tilePolygon = getTilePolygon(polygonGeometry.coordinates, polyBBox, canonical);
+        const tilePoints = getTilePoints(ctx.geometry(), pointBBox, polyBBox, canonical);
+        if (!boxWithinBox(pointBBox, polyBBox))
+            return false;
+        for (const point of tilePoints) {
+            if (!pointWithinPolygon(point, tilePolygon))
+                return false;
+        }
+    }
+    if (polygonGeometry.type === 'MultiPolygon') {
+        const tilePolygons = getTilePolygons(polygonGeometry.coordinates, polyBBox, canonical);
+        const tilePoints = getTilePoints(ctx.geometry(), pointBBox, polyBBox, canonical);
+        if (!boxWithinBox(pointBBox, polyBBox))
+            return false;
+        for (const point of tilePoints) {
+            if (!pointWithinPolygons(point, tilePolygons))
+                return false;
+        }
+    }
+    return true;
+}
+function linesWithinPolygons(ctx, polygonGeometry) {
+    const lineBBox = [Infinity, Infinity, -Infinity, -Infinity];
+    const polyBBox = [Infinity, Infinity, -Infinity, -Infinity];
+    const canonical = ctx.canonicalID();
+    if (polygonGeometry.type === 'Polygon') {
+        const tilePolygon = getTilePolygon(polygonGeometry.coordinates, polyBBox, canonical);
+        const tileLines = getTileLines(ctx.geometry(), lineBBox, polyBBox, canonical);
+        if (!boxWithinBox(lineBBox, polyBBox))
+            return false;
+        for (const line of tileLines) {
+            if (!lineStringWithinPolygon(line, tilePolygon))
+                return false;
+        }
+    }
+    if (polygonGeometry.type === 'MultiPolygon') {
+        const tilePolygons = getTilePolygons(polygonGeometry.coordinates, polyBBox, canonical);
+        const tileLines = getTileLines(ctx.geometry(), lineBBox, polyBBox, canonical);
+        if (!boxWithinBox(lineBBox, polyBBox))
+            return false;
+        for (const line of tileLines) {
+            if (!lineStringWithinPolygons(line, tilePolygons))
+                return false;
+        }
+    }
+    return true;
+}
+class Within {
+    constructor(geojson, geometries) {
+        this.type = BooleanType;
+        this.geojson = geojson;
+        this.geometries = geometries;
+    }
+    static parse(args, context) {
+        if (args.length !== 2)
+            return context.error(`'within' expression requires exactly one argument, but found ${args.length - 1} instead.`);
+        if (isValue(args[1])) {
+            const geojson = args[1];
+            if (geojson.type === 'FeatureCollection') {
+                const polygonsCoords = [];
+                for (const polygon of geojson.features) {
+                    const { type, coordinates } = polygon.geometry;
+                    if (type === 'Polygon') {
+                        polygonsCoords.push(coordinates);
+                    }
+                    if (type === 'MultiPolygon') {
+                        polygonsCoords.push(...coordinates);
+                    }
+                }
+                if (polygonsCoords.length) {
+                    const multipolygonWrapper = {
+                        type: 'MultiPolygon',
+                        coordinates: polygonsCoords
+                    };
+                    return new Within(geojson, multipolygonWrapper);
+                }
+            }
+            else if (geojson.type === 'Feature') {
+                const type = geojson.geometry.type;
+                if (type === 'Polygon' || type === 'MultiPolygon') {
+                    return new Within(geojson, geojson.geometry);
+                }
+            }
+            else if (geojson.type === 'Polygon' || geojson.type === 'MultiPolygon') {
+                return new Within(geojson, geojson);
+            }
+        }
+        return context.error('\'within\' expression requires valid geojson object that contains polygon geometry type.');
+    }
+    evaluate(ctx) {
+        if (ctx.geometry() != null && ctx.canonicalID() != null) {
+            if (ctx.geometryType() === 'Point') {
+                return pointsWithinPolygons(ctx, this.geometries);
+            }
+            else if (ctx.geometryType() === 'LineString') {
+                return linesWithinPolygons(ctx, this.geometries);
+            }
+        }
+        return false;
+    }
+    eachChild() { }
+    outputDefined() {
+        return true;
+    }
+}
+
+let TinyQueue$1 = class TinyQueue {
+    constructor(data = [], compare = defaultCompare$1) {
+        this.data = data;
+        this.length = this.data.length;
+        this.compare = compare;
+
+        if (this.length > 0) {
+            for (let i = (this.length >> 1) - 1; i >= 0; i--) this._down(i);
+        }
+    }
+
+    push(item) {
+        this.data.push(item);
+        this.length++;
+        this._up(this.length - 1);
+    }
+
+    pop() {
+        if (this.length === 0) return undefined;
+
+        const top = this.data[0];
+        const bottom = this.data.pop();
+        this.length--;
+
+        if (this.length > 0) {
+            this.data[0] = bottom;
+            this._down(0);
+        }
+
+        return top;
+    }
+
+    peek() {
+        return this.data[0];
+    }
+
+    _up(pos) {
+        const {data, compare} = this;
+        const item = data[pos];
+
+        while (pos > 0) {
+            const parent = (pos - 1) >> 1;
+            const current = data[parent];
+            if (compare(item, current) >= 0) break;
+            data[pos] = current;
+            pos = parent;
+        }
+
+        data[pos] = item;
+    }
+
+    _down(pos) {
+        const {data, compare} = this;
+        const halfLength = this.length >> 1;
+        const item = data[pos];
+
+        while (pos < halfLength) {
+            let left = (pos << 1) + 1;
+            let best = data[left];
+            const right = left + 1;
+
+            if (right < this.length && compare(data[right], best) < 0) {
+                left = right;
+                best = data[right];
+            }
+            if (compare(best, item) >= 0) break;
+
+            data[pos] = best;
+            pos = left;
+        }
+
+        data[pos] = item;
+    }
+};
+
+function defaultCompare$1(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function quickselect(arr, k, left, right, compare) {
+    quickselectStep(arr, k, left , right || (arr.length - 1), compare || defaultCompare);
+}
+
+function quickselectStep(arr, k, left, right, compare) {
+
+    while (right > left) {
+        if (right - left > 600) {
+            var n = right - left + 1;
+            var m = k - left + 1;
+            var z = Math.log(n);
+            var s = 0.5 * Math.exp(2 * z / 3);
+            var sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * (m - n / 2 < 0 ? -1 : 1);
+            var newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
+            var newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
+            quickselectStep(arr, k, newLeft, newRight, compare);
+        }
+
+        var t = arr[k];
+        var i = left;
+        var j = right;
+
+        swap$2(arr, left, k);
+        if (compare(arr[right], t) > 0) swap$2(arr, left, right);
+
+        while (i < j) {
+            swap$2(arr, i, j);
+            i++;
+            j--;
+            while (compare(arr[i], t) < 0) i++;
+            while (compare(arr[j], t) > 0) j--;
+        }
+
+        if (compare(arr[left], t) === 0) swap$2(arr, left, j);
+        else {
+            j++;
+            swap$2(arr, j, right);
+        }
+
+        if (j <= k) left = j + 1;
+        if (k <= j) right = j - 1;
+    }
+}
+
+function swap$2(arr, i, j) {
+    var tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+}
+
+function defaultCompare(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Classifies an array of rings into polygons with outer rings and holes
+ * @param rings - the rings to classify
+ * @param maxRings - the maximum number of rings to include in a polygon, use 0 to include all rings
+ * @returns an array of polygons with internal rings as holes
+ */
+function classifyRings$1(rings, maxRings) {
+    const len = rings.length;
+    if (len <= 1)
+        return [rings];
+    const polygons = [];
+    let polygon;
+    let ccw;
+    for (const ring of rings) {
+        const area = calculateSignedArea(ring);
+        if (area === 0)
+            continue;
+        ring.area = Math.abs(area);
+        if (ccw === undefined)
+            ccw = area < 0;
+        if (ccw === area < 0) {
+            if (polygon)
+                polygons.push(polygon);
+            polygon = [ring];
+        }
+        else {
+            polygon.push(ring);
+        }
+    }
+    if (polygon)
+        polygons.push(polygon);
+    // Earcut performance degrades with the # of rings in a polygon. For this
+    // reason, we limit strip out all but the `maxRings` largest rings.
+    if (maxRings > 1) {
+        for (let j = 0; j < polygons.length; j++) {
+            if (polygons[j].length <= maxRings)
+                continue;
+            quickselect(polygons[j], maxRings, 1, polygons[j].length - 1, compareAreas);
+            polygons[j] = polygons[j].slice(0, maxRings);
+        }
+    }
+    return polygons;
+}
+function compareAreas(a, b) {
+    return b.area - a.area;
+}
+/**
+ * Returns the signed area for the polygon ring.  Positive areas are exterior rings and
+ * have a clockwise winding.  Negative areas are interior rings and have a counter clockwise
+ * ordering.
+ *
+ * @param ring - Exterior or interior ring
+ * @returns Signed area
+ */
+function calculateSignedArea(ring) {
+    let sum = 0;
+    for (let i = 0, len = ring.length, j = len - 1, p1, p2; i < len; j = i++) {
+        p1 = ring[i];
+        p2 = ring[j];
+        sum += (p2.x - p1.x) * (p1.y + p2.y);
+    }
+    return sum;
+}
+
+// This is taken from https://github.com/mapbox/cheap-ruler/ in order to take only the relevant parts
+// Values that define WGS84 ellipsoid model of the Earth
+const RE = 6378.137; // equatorial radius
+const FE = 1 / 298.257223563; // flattening
+const E2 = FE * (2 - FE);
+const RAD = Math.PI / 180;
+class CheapRuler {
+    constructor(lat) {
+        // Curvature formulas from https://en.wikipedia.org/wiki/Earth_radius#Meridional
+        const m = RAD * RE * 1000;
+        const coslat = Math.cos(lat * RAD);
+        const w2 = 1 / (1 - E2 * (1 - coslat * coslat));
+        const w = Math.sqrt(w2);
+        // multipliers for converting longitude and latitude degrees into distance
+        this.kx = m * w * coslat; // based on normal radius of curvature
+        this.ky = m * w * w2 * (1 - E2); // based on meridonal radius of curvature
+    }
+    /**
+     * Given two points of the form [longitude, latitude], returns the distance.
+     *
+     * @param a - point [longitude, latitude]
+     * @param b - point [longitude, latitude]
+     * @returns distance
+     * @example
+     * const distance = ruler.distance([30.5, 50.5], [30.51, 50.49]);
+     * //=distance
+     */
+    distance(a, b) {
+        const dx = this.wrap(a[0] - b[0]) * this.kx;
+        const dy = (a[1] - b[1]) * this.ky;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    /**
+     * Returns an object of the form {point, index, t}, where point is closest point on the line
+     * from the given point, index is the start index of the segment with the closest point,
+     * and t is a parameter from 0 to 1 that indicates where the closest point is on that segment.
+     *
+     * @param line - an array of points that form the line
+     * @param p - point [longitude, latitude]
+     * @returns the nearest point, its index in the array and the proportion along the line
+     * @example
+     * const point = ruler.pointOnLine(line, [-67.04, 50.5]).point;
+     * //=point
+     */
+    pointOnLine(line, p) {
+        let minDist = Infinity;
+        let minX, minY, minI, minT;
+        for (let i = 0; i < line.length - 1; i++) {
+            let x = line[i][0];
+            let y = line[i][1];
+            let dx = this.wrap(line[i + 1][0] - x) * this.kx;
+            let dy = (line[i + 1][1] - y) * this.ky;
+            let t = 0;
+            if (dx !== 0 || dy !== 0) {
+                t = (this.wrap(p[0] - x) * this.kx * dx + (p[1] - y) * this.ky * dy) / (dx * dx + dy * dy);
+                if (t > 1) {
+                    x = line[i + 1][0];
+                    y = line[i + 1][1];
+                }
+                else if (t > 0) {
+                    x += (dx / this.kx) * t;
+                    y += (dy / this.ky) * t;
+                }
+            }
+            dx = this.wrap(p[0] - x) * this.kx;
+            dy = (p[1] - y) * this.ky;
+            const sqDist = dx * dx + dy * dy;
+            if (sqDist < minDist) {
+                minDist = sqDist;
+                minX = x;
+                minY = y;
+                minI = i;
+                minT = t;
+            }
+        }
+        return {
+            point: [minX, minY],
+            index: minI,
+            t: Math.max(0, Math.min(1, minT))
+        };
+    }
+    wrap(deg) {
+        while (deg < -180)
+            deg += 360;
+        while (deg > 180)
+            deg -= 360;
+        return deg;
+    }
+}
+
+const MinPointsSize = 100;
+const MinLinePointsSize = 50;
+function compareDistPair(a, b) {
+    return b[0] - a[0];
+}
+function getRangeSize(range) {
+    return range[1] - range[0] + 1;
+}
+function isRangeSafe(range, threshold) {
+    return range[1] >= range[0] && range[1] < threshold;
+}
+function splitRange(range, isLine) {
+    if (range[0] > range[1]) {
+        return [null, null];
+    }
+    const size = getRangeSize(range);
+    if (isLine) {
+        if (size === 2) {
+            return [range, null];
+        }
+        const size1 = Math.floor(size / 2);
+        return [[range[0], range[0] + size1],
+            [range[0] + size1, range[1]]];
+    }
+    if (size === 1) {
+        return [range, null];
+    }
+    const size1 = Math.floor(size / 2) - 1;
+    return [[range[0], range[0] + size1],
+        [range[0] + size1 + 1, range[1]]];
+}
+function getBBox(coords, range) {
+    if (!isRangeSafe(range, coords.length)) {
+        return [Infinity, Infinity, -Infinity, -Infinity];
+    }
+    const bbox = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let i = range[0]; i <= range[1]; ++i) {
+        updateBBox(bbox, coords[i]);
+    }
+    return bbox;
+}
+function getPolygonBBox(polygon) {
+    const bbox = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const ring of polygon) {
+        for (const coord of ring) {
+            updateBBox(bbox, coord);
+        }
+    }
+    return bbox;
+}
+function isValidBBox(bbox) {
+    return bbox[0] !== -Infinity && bbox[1] !== -Infinity && bbox[2] !== Infinity && bbox[3] !== Infinity;
+}
+// Calculate the distance between two bounding boxes.
+// Calculate the delta in x and y direction, and use two fake points {0.0, 0.0}
+// and {dx, dy} to calculate the distance. Distance will be 0.0 if bounding box are overlapping.
+function bboxToBBoxDistance(bbox1, bbox2, ruler) {
+    if (!isValidBBox(bbox1) || !isValidBBox(bbox2)) {
+        return NaN;
+    }
+    let dx = 0.0;
+    let dy = 0.0;
+    // bbox1 in left side
+    if (bbox1[2] < bbox2[0]) {
+        dx = bbox2[0] - bbox1[2];
+    }
+    // bbox1 in right side
+    if (bbox1[0] > bbox2[2]) {
+        dx = bbox1[0] - bbox2[2];
+    }
+    // bbox1 in above side
+    if (bbox1[1] > bbox2[3]) {
+        dy = bbox1[1] - bbox2[3];
+    }
+    // bbox1 in down side
+    if (bbox1[3] < bbox2[1]) {
+        dy = bbox2[1] - bbox1[3];
+    }
+    return ruler.distance([0.0, 0.0], [dx, dy]);
+}
+function pointToLineDistance(point, line, ruler) {
+    const nearestPoint = ruler.pointOnLine(line, point);
+    return ruler.distance(point, nearestPoint.point);
+}
+function segmentToSegmentDistance(p1, p2, q1, q2, ruler) {
+    const dist1 = Math.min(pointToLineDistance(p1, [q1, q2], ruler), pointToLineDistance(p2, [q1, q2], ruler));
+    const dist2 = Math.min(pointToLineDistance(q1, [p1, p2], ruler), pointToLineDistance(q2, [p1, p2], ruler));
+    return Math.min(dist1, dist2);
+}
+function lineToLineDistance(line1, range1, line2, range2, ruler) {
+    const rangeSafe = isRangeSafe(range1, line1.length) && isRangeSafe(range2, line2.length);
+    if (!rangeSafe) {
+        return Infinity;
+    }
+    let dist = Infinity;
+    for (let i = range1[0]; i < range1[1]; ++i) {
+        const p1 = line1[i];
+        const p2 = line1[i + 1];
+        for (let j = range2[0]; j < range2[1]; ++j) {
+            const q1 = line2[j];
+            const q2 = line2[j + 1];
+            if (segmentIntersectSegment(p1, p2, q1, q2)) {
+                return 0.0;
+            }
+            dist = Math.min(dist, segmentToSegmentDistance(p1, p2, q1, q2, ruler));
+        }
+    }
+    return dist;
+}
+function pointsToPointsDistance(points1, range1, points2, range2, ruler) {
+    const rangeSafe = isRangeSafe(range1, points1.length) && isRangeSafe(range2, points2.length);
+    if (!rangeSafe) {
+        return NaN;
+    }
+    let dist = Infinity;
+    for (let i = range1[0]; i <= range1[1]; ++i) {
+        for (let j = range2[0]; j <= range2[1]; ++j) {
+            dist = Math.min(dist, ruler.distance(points1[i], points2[j]));
+            if (dist === 0.0) {
+                return dist;
+            }
+        }
+    }
+    return dist;
+}
+function pointToPolygonDistance(point, polygon, ruler) {
+    if (pointWithinPolygon(point, polygon, true)) {
+        return 0.0;
+    }
+    let dist = Infinity;
+    for (const ring of polygon) {
+        const front = ring[0];
+        const back = ring[ring.length - 1];
+        if (front !== back) {
+            dist = Math.min(dist, pointToLineDistance(point, [back, front], ruler));
+            if (dist === 0.0) {
+                return dist;
+            }
+        }
+        const nearestPoint = ruler.pointOnLine(ring, point);
+        dist = Math.min(dist, ruler.distance(point, nearestPoint.point));
+        if (dist === 0.0) {
+            return dist;
+        }
+    }
+    return dist;
+}
+function lineToPolygonDistance(line, range, polygon, ruler) {
+    if (!isRangeSafe(range, line.length)) {
+        return NaN;
+    }
+    for (let i = range[0]; i <= range[1]; ++i) {
+        if (pointWithinPolygon(line[i], polygon, true)) {
+            return 0.0;
+        }
+    }
+    let dist = Infinity;
+    for (let i = range[0]; i < range[1]; ++i) {
+        const p1 = line[i];
+        const p2 = line[i + 1];
+        for (const ring of polygon) {
+            for (let j = 0, len = ring.length, k = len - 1; j < len; k = j++) {
+                const q1 = ring[k];
+                const q2 = ring[j];
+                if (segmentIntersectSegment(p1, p2, q1, q2)) {
+                    return 0.0;
+                }
+                dist = Math.min(dist, segmentToSegmentDistance(p1, p2, q1, q2, ruler));
+            }
+        }
+    }
+    return dist;
+}
+function polygonIntersect(poly1, poly2) {
+    for (const ring of poly1) {
+        for (const point of ring) {
+            if (pointWithinPolygon(point, poly2, true)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function polygonToPolygonDistance(polygon1, polygon2, ruler, currentMiniDist = Infinity) {
+    const bbox1 = getPolygonBBox(polygon1);
+    const bbox2 = getPolygonBBox(polygon2);
+    if (currentMiniDist !== Infinity && bboxToBBoxDistance(bbox1, bbox2, ruler) >= currentMiniDist) {
+        return currentMiniDist;
+    }
+    if (boxWithinBox(bbox1, bbox2)) {
+        if (polygonIntersect(polygon1, polygon2)) {
+            return 0.0;
+        }
+    }
+    else if (polygonIntersect(polygon2, polygon1)) {
+        return 0.0;
+    }
+    let dist = Infinity;
+    for (const ring1 of polygon1) {
+        for (let i = 0, len1 = ring1.length, l = len1 - 1; i < len1; l = i++) {
+            const p1 = ring1[l];
+            const p2 = ring1[i];
+            for (const ring2 of polygon2) {
+                for (let j = 0, len2 = ring2.length, k = len2 - 1; j < len2; k = j++) {
+                    const q1 = ring2[k];
+                    const q2 = ring2[j];
+                    if (segmentIntersectSegment(p1, p2, q1, q2)) {
+                        return 0.0;
+                    }
+                    dist = Math.min(dist, segmentToSegmentDistance(p1, p2, q1, q2, ruler));
+                }
+            }
+        }
+    }
+    return dist;
+}
+function updateQueue(distQueue, miniDist, ruler, points, polyBBox, rangeA) {
+    if (!rangeA) {
+        return;
+    }
+    const tempDist = bboxToBBoxDistance(getBBox(points, rangeA), polyBBox, ruler);
+    // Insert new pair to the queue if the bbox distance is less than
+    // miniDist, The pair with biggest distance will be at the top
+    if (tempDist < miniDist) {
+        distQueue.push([tempDist, rangeA, [0, 0]]);
+    }
+}
+function updateQueueTwoSets(distQueue, miniDist, ruler, pointSet1, pointSet2, range1, range2) {
+    if (!range1 || !range2) {
+        return;
+    }
+    const tempDist = bboxToBBoxDistance(getBBox(pointSet1, range1), getBBox(pointSet2, range2), ruler);
+    // Insert new pair to the queue if the bbox distance is less than
+    // miniDist, The pair with biggest distance will be at the top
+    if (tempDist < miniDist) {
+        distQueue.push([tempDist, range1, range2]);
+    }
+}
+// Divide and conquer, the time complexity is O(n*lgn), faster than Brute force
+// O(n*n) Most of the time, use index for in-place processing.
+function pointsToPolygonDistance(points, isLine, polygon, ruler, currentMiniDist = Infinity) {
+    let miniDist = Math.min(ruler.distance(points[0], polygon[0][0]), currentMiniDist);
+    if (miniDist === 0.0) {
+        return miniDist;
+    }
+    const distQueue = new TinyQueue$1([[0, [0, points.length - 1], [0, 0]]], compareDistPair);
+    const polyBBox = getPolygonBBox(polygon);
+    while (distQueue.length > 0) {
+        const distPair = distQueue.pop();
+        if (distPair[0] >= miniDist) {
+            continue;
+        }
+        const range = distPair[1];
+        // In case the set size are relatively small, we could use brute-force directly
+        const threshold = isLine ? MinLinePointsSize : MinPointsSize;
+        if (getRangeSize(range) <= threshold) {
+            if (!isRangeSafe(range, points.length)) {
+                return NaN;
+            }
+            if (isLine) {
+                const tempDist = lineToPolygonDistance(points, range, polygon, ruler);
+                if (isNaN(tempDist) || tempDist === 0.0) {
+                    return tempDist;
+                }
+                miniDist = Math.min(miniDist, tempDist);
+            }
+            else {
+                for (let i = range[0]; i <= range[1]; ++i) {
+                    const tempDist = pointToPolygonDistance(points[i], polygon, ruler);
+                    miniDist = Math.min(miniDist, tempDist);
+                    if (miniDist === 0.0) {
+                        return 0.0;
+                    }
+                }
+            }
+        }
+        else {
+            const newRangesA = splitRange(range, isLine);
+            updateQueue(distQueue, miniDist, ruler, points, polyBBox, newRangesA[0]);
+            updateQueue(distQueue, miniDist, ruler, points, polyBBox, newRangesA[1]);
+        }
+    }
+    return miniDist;
+}
+function pointSetToPointSetDistance(pointSet1, isLine1, pointSet2, isLine2, ruler, currentMiniDist = Infinity) {
+    let miniDist = Math.min(currentMiniDist, ruler.distance(pointSet1[0], pointSet2[0]));
+    if (miniDist === 0.0) {
+        return miniDist;
+    }
+    const distQueue = new TinyQueue$1([[0, [0, pointSet1.length - 1], [0, pointSet2.length - 1]]], compareDistPair);
+    while (distQueue.length > 0) {
+        const distPair = distQueue.pop();
+        if (distPair[0] >= miniDist) {
+            continue;
+        }
+        const rangeA = distPair[1];
+        const rangeB = distPair[2];
+        const threshold1 = isLine1 ? MinLinePointsSize : MinPointsSize;
+        const threshold2 = isLine2 ? MinLinePointsSize : MinPointsSize;
+        // In case the set size are relatively small, we could use brute-force directly
+        if (getRangeSize(rangeA) <= threshold1 && getRangeSize(rangeB) <= threshold2) {
+            if (!isRangeSafe(rangeA, pointSet1.length) && isRangeSafe(rangeB, pointSet2.length)) {
+                return NaN;
+            }
+            let tempDist;
+            if (isLine1 && isLine2) {
+                tempDist = lineToLineDistance(pointSet1, rangeA, pointSet2, rangeB, ruler);
+                miniDist = Math.min(miniDist, tempDist);
+            }
+            else if (isLine1 && !isLine2) {
+                const sublibe = pointSet1.slice(rangeA[0], rangeA[1] + 1);
+                for (let i = rangeB[0]; i <= rangeB[1]; ++i) {
+                    tempDist = pointToLineDistance(pointSet2[i], sublibe, ruler);
+                    miniDist = Math.min(miniDist, tempDist);
+                    if (miniDist === 0.0) {
+                        return miniDist;
+                    }
+                }
+            }
+            else if (!isLine1 && isLine2) {
+                const sublibe = pointSet2.slice(rangeB[0], rangeB[1] + 1);
+                for (let i = rangeA[0]; i <= rangeA[1]; ++i) {
+                    tempDist = pointToLineDistance(pointSet1[i], sublibe, ruler);
+                    miniDist = Math.min(miniDist, tempDist);
+                    if (miniDist === 0.0) {
+                        return miniDist;
+                    }
+                }
+            }
+            else {
+                tempDist = pointsToPointsDistance(pointSet1, rangeA, pointSet2, rangeB, ruler);
+                miniDist = Math.min(miniDist, tempDist);
+            }
+        }
+        else {
+            const newRangesA = splitRange(rangeA, isLine1);
+            const newRangesB = splitRange(rangeB, isLine2);
+            updateQueueTwoSets(distQueue, miniDist, ruler, pointSet1, pointSet2, newRangesA[0], newRangesB[0]);
+            updateQueueTwoSets(distQueue, miniDist, ruler, pointSet1, pointSet2, newRangesA[0], newRangesB[1]);
+            updateQueueTwoSets(distQueue, miniDist, ruler, pointSet1, pointSet2, newRangesA[1], newRangesB[0]);
+            updateQueueTwoSets(distQueue, miniDist, ruler, pointSet1, pointSet2, newRangesA[1], newRangesB[1]);
+        }
+    }
+    return miniDist;
+}
+function pointToGeometryDistance(ctx, geometries) {
+    const tilePoints = ctx.geometry();
+    const pointPosition = tilePoints.flat().map(p => getLngLatFromTileCoord([p.x, p.y], ctx.canonical));
+    if (tilePoints.length === 0) {
+        return NaN;
+    }
+    const ruler = new CheapRuler(pointPosition[0][1]);
+    let dist = Infinity;
+    for (const geometry of geometries) {
+        switch (geometry.type) {
+            case 'Point':
+                dist = Math.min(dist, pointSetToPointSetDistance(pointPosition, false, [geometry.coordinates], false, ruler, dist));
+                break;
+            case 'LineString':
+                dist = Math.min(dist, pointSetToPointSetDistance(pointPosition, false, geometry.coordinates, true, ruler, dist));
+                break;
+            case 'Polygon':
+                dist = Math.min(dist, pointsToPolygonDistance(pointPosition, false, geometry.coordinates, ruler, dist));
+                break;
+        }
+        if (dist === 0.0) {
+            return dist;
+        }
+    }
+    return dist;
+}
+function lineStringToGeometryDistance(ctx, geometries) {
+    const tileLine = ctx.geometry();
+    const linePositions = tileLine.flat().map(p => getLngLatFromTileCoord([p.x, p.y], ctx.canonical));
+    if (tileLine.length === 0) {
+        return NaN;
+    }
+    const ruler = new CheapRuler(linePositions[0][1]);
+    let dist = Infinity;
+    for (const geometry of geometries) {
+        switch (geometry.type) {
+            case 'Point':
+                dist = Math.min(dist, pointSetToPointSetDistance(linePositions, true, [geometry.coordinates], false, ruler, dist));
+                break;
+            case 'LineString':
+                dist = Math.min(dist, pointSetToPointSetDistance(linePositions, true, geometry.coordinates, true, ruler, dist));
+                break;
+            case 'Polygon':
+                dist = Math.min(dist, pointsToPolygonDistance(linePositions, true, geometry.coordinates, ruler, dist));
+                break;
+        }
+        if (dist === 0.0) {
+            return dist;
+        }
+    }
+    return dist;
+}
+function polygonToGeometryDistance(ctx, geometries) {
+    const tilePolygon = ctx.geometry();
+    if (tilePolygon.length === 0 || tilePolygon[0].length === 0) {
+        return NaN;
+    }
+    const polygons = classifyRings$1(tilePolygon, 0).map(polygon => {
+        return polygon.map(ring => {
+            return ring.map(p => getLngLatFromTileCoord([p.x, p.y], ctx.canonical));
+        });
+    });
+    const ruler = new CheapRuler(polygons[0][0][0][1]);
+    let dist = Infinity;
+    for (const geometry of geometries) {
+        for (const polygon of polygons) {
+            switch (geometry.type) {
+                case 'Point':
+                    dist = Math.min(dist, pointsToPolygonDistance([geometry.coordinates], false, polygon, ruler, dist));
+                    break;
+                case 'LineString':
+                    dist = Math.min(dist, pointsToPolygonDistance(geometry.coordinates, true, polygon, ruler, dist));
+                    break;
+                case 'Polygon':
+                    dist = Math.min(dist, polygonToPolygonDistance(polygon, geometry.coordinates, ruler, dist));
+                    break;
+            }
+            if (dist === 0.0) {
+                return dist;
+            }
+        }
+    }
+    return dist;
+}
+function toSimpleGeometry(geometry) {
+    if (geometry.type === 'MultiPolygon') {
+        return geometry.coordinates.map(polygon => {
+            return {
+                type: 'Polygon',
+                coordinates: polygon
+            };
+        });
+    }
+    if (geometry.type === 'MultiLineString') {
+        return geometry.coordinates.map(lineString => {
+            return {
+                type: 'LineString',
+                coordinates: lineString
+            };
+        });
+    }
+    if (geometry.type === 'MultiPoint') {
+        return geometry.coordinates.map(point => {
+            return {
+                type: 'Point',
+                coordinates: point
+            };
+        });
+    }
+    return [geometry];
+}
+class Distance {
+    constructor(geojson, geometries) {
+        this.type = NumberType;
+        this.geojson = geojson;
+        this.geometries = geometries;
+    }
+    static parse(args, context) {
+        if (args.length !== 2)
+            return context.error(`'distance' expression requires exactly one argument, but found ${args.length - 1} instead.`);
+        if (isValue(args[1])) {
+            const geojson = args[1];
+            if (geojson.type === 'FeatureCollection') {
+                return new Distance(geojson, geojson.features.map(feature => toSimpleGeometry(feature.geometry)).flat());
+            }
+            else if (geojson.type === 'Feature') {
+                return new Distance(geojson, toSimpleGeometry(geojson.geometry));
+            }
+            else if ('type' in geojson && 'coordinates' in geojson) {
+                return new Distance(geojson, toSimpleGeometry(geojson));
+            }
+        }
+        return context.error('\'distance\' expression requires valid geojson object that contains polygon geometry type.');
+    }
+    evaluate(ctx) {
+        if (ctx.geometry() != null && ctx.canonicalID() != null) {
+            if (ctx.geometryType() === 'Point') {
+                return pointToGeometryDistance(ctx, this.geometries);
+            }
+            else if (ctx.geometryType() === 'LineString') {
+                return lineStringToGeometryDistance(ctx, this.geometries);
+            }
+            else if (ctx.geometryType() === 'Polygon') {
+                return polygonToGeometryDistance(ctx, this.geometries);
+            }
+        }
+        return NaN;
+    }
+    eachChild() { }
+    outputDefined() {
+        return true;
+    }
+}
+
 const expressions$1 = {
     // special forms
     '==': Equals,
@@ -8678,8 +9322,110 @@ const expressions$1 = {
     'to-number': Coercion,
     'to-string': Coercion,
     'var': Var,
-    'within': Within
+    'within': Within,
+    'distance': Distance
 };
+
+class CompoundExpression {
+    constructor(name, type, evaluate, args) {
+        this.name = name;
+        this.type = type;
+        this._evaluate = evaluate;
+        this.args = args;
+    }
+    evaluate(ctx) {
+        return this._evaluate(ctx, this.args);
+    }
+    eachChild(fn) {
+        this.args.forEach(fn);
+    }
+    outputDefined() {
+        return false;
+    }
+    static parse(args, context) {
+        const op = args[0];
+        const definition = CompoundExpression.definitions[op];
+        if (!definition) {
+            return context.error(`Unknown expression "${op}". If you wanted a literal array, use ["literal", [...]].`, 0);
+        }
+        // Now check argument types against each signature
+        const type = Array.isArray(definition) ?
+            definition[0] : definition.type;
+        const availableOverloads = Array.isArray(definition) ?
+            [[definition[1], definition[2]]] :
+            definition.overloads;
+        const overloads = availableOverloads.filter(([signature]) => (!Array.isArray(signature) || // varags
+            signature.length === args.length - 1 // correct param count
+        ));
+        let signatureContext = null;
+        for (const [params, evaluate] of overloads) {
+            // Use a fresh context for each attempted signature so that, if
+            // we eventually succeed, we haven't polluted `context.errors`.
+            signatureContext = new ParsingContext(context.registry, isExpressionConstant, context.path, null, context.scope);
+            // First parse all the args, potentially coercing to the
+            // types expected by this overload.
+            const parsedArgs = [];
+            let argParseFailed = false;
+            for (let i = 1; i < args.length; i++) {
+                const arg = args[i];
+                const expectedType = Array.isArray(params) ?
+                    params[i - 1] :
+                    params.type;
+                const parsed = signatureContext.parse(arg, 1 + parsedArgs.length, expectedType);
+                if (!parsed) {
+                    argParseFailed = true;
+                    break;
+                }
+                parsedArgs.push(parsed);
+            }
+            if (argParseFailed) {
+                // Couldn't coerce args of this overload to expected type, move
+                // on to next one.
+                continue;
+            }
+            if (Array.isArray(params)) {
+                if (params.length !== parsedArgs.length) {
+                    signatureContext.error(`Expected ${params.length} arguments, but found ${parsedArgs.length} instead.`);
+                    continue;
+                }
+            }
+            for (let i = 0; i < parsedArgs.length; i++) {
+                const expected = Array.isArray(params) ? params[i] : params.type;
+                const arg = parsedArgs[i];
+                signatureContext.concat(i + 1).checkSubtype(expected, arg.type);
+            }
+            if (signatureContext.errors.length === 0) {
+                return new CompoundExpression(op, type, evaluate, parsedArgs);
+            }
+        }
+        if (overloads.length === 1) {
+            context.errors.push(...signatureContext.errors);
+        }
+        else {
+            const expected = overloads.length ? overloads : availableOverloads;
+            const signatures = expected
+                .map(([params]) => stringifySignature(params))
+                .join(' | ');
+            const actualTypes = [];
+            // For error message, re-parse arguments without trying to
+            // apply any coercions
+            for (let i = 1; i < args.length; i++) {
+                const parsed = context.parse(args[i], 1 + actualTypes.length);
+                if (!parsed)
+                    return null;
+                actualTypes.push(toString$1(parsed.type));
+            }
+            context.error(`Expected arguments of type ${signatures}, but found (${actualTypes.join(', ')}) instead.`);
+        }
+        return null;
+    }
+    static register(registry, definitions) {
+        CompoundExpression.definitions = definitions;
+        for (const name in definitions) {
+            registry[name] = CompoundExpression;
+        }
+    }
+}
 function rgba(ctx, [r, g, b, a]) {
     r = r.evaluate(ctx);
     g = g.evaluate(ctx);
@@ -9150,6 +9896,116 @@ CompoundExpression.register(expressions$1, {
         (ctx, [collator]) => collator.evaluate(ctx).resolvedLocale()
     ]
 });
+function stringifySignature(signature) {
+    if (Array.isArray(signature)) {
+        return `(${signature.map(toString$1).join(', ')})`;
+    }
+    else {
+        return `(${toString$1(signature.type)}...)`;
+    }
+}
+function isExpressionConstant(expression) {
+    if (expression instanceof Var) {
+        return isExpressionConstant(expression.boundExpression);
+    }
+    else if (expression instanceof CompoundExpression && expression.name === 'error') {
+        return false;
+    }
+    else if (expression instanceof CollatorExpression) {
+        // Although the results of a Collator expression with fixed arguments
+        // generally shouldn't change between executions, we can't serialize them
+        // as constant expressions because results change based on environment.
+        return false;
+    }
+    else if (expression instanceof Within) {
+        return false;
+    }
+    else if (expression instanceof Distance) {
+        return false;
+    }
+    const isTypeAnnotation = expression instanceof Coercion ||
+        expression instanceof Assertion;
+    let childrenConstant = true;
+    expression.eachChild(child => {
+        // We can _almost_ assume that if `expressions` children are constant,
+        // they would already have been evaluated to Literal values when they
+        // were parsed.  Type annotations are the exception, because they might
+        // have been inferred and added after a child was parsed.
+        // So we recurse into isConstant() for the children of type annotations,
+        // but otherwise simply check whether they are Literals.
+        if (isTypeAnnotation) {
+            childrenConstant = childrenConstant && isExpressionConstant(child);
+        }
+        else {
+            childrenConstant = childrenConstant && child instanceof Literal;
+        }
+    });
+    if (!childrenConstant) {
+        return false;
+    }
+    return isFeatureConstant(expression) &&
+        isGlobalPropertyConstant(expression, ['zoom', 'heatmap-density', 'line-progress', 'accumulated', 'is-supported-script']);
+}
+function isFeatureConstant(e) {
+    if (e instanceof CompoundExpression) {
+        if (e.name === 'get' && e.args.length === 1) {
+            return false;
+        }
+        else if (e.name === 'feature-state') {
+            return false;
+        }
+        else if (e.name === 'has' && e.args.length === 1) {
+            return false;
+        }
+        else if (e.name === 'properties' ||
+            e.name === 'geometry-type' ||
+            e.name === 'id') {
+            return false;
+        }
+        else if (/^filter-/.test(e.name)) {
+            return false;
+        }
+    }
+    if (e instanceof Within) {
+        return false;
+    }
+    if (e instanceof Distance) {
+        return false;
+    }
+    let result = true;
+    e.eachChild(arg => {
+        if (result && !isFeatureConstant(arg)) {
+            result = false;
+        }
+    });
+    return result;
+}
+function isStateConstant(e) {
+    if (e instanceof CompoundExpression) {
+        if (e.name === 'feature-state') {
+            return false;
+        }
+    }
+    let result = true;
+    e.eachChild(arg => {
+        if (result && !isStateConstant(arg)) {
+            result = false;
+        }
+    });
+    return result;
+}
+function isGlobalPropertyConstant(e, properties) {
+    if (e instanceof CompoundExpression && properties.indexOf(e.name) >= 0) {
+        return false;
+    }
+    let result = true;
+    e.eachChild((arg) => {
+        if (result && !isGlobalPropertyConstant(arg, properties)) {
+            result = false;
+        }
+    });
+    return result;
+}
 
 function success(value) {
     return { result: 'success', value };
@@ -9780,7 +10636,7 @@ function compare(a, b) {
 function geometryNeeded(filter) {
     if (!Array.isArray(filter))
         return false;
-    if (filter[0] === 'within')
+    if (filter[0] === 'within' || filter[0] === 'distance')
         return true;
     for (let index = 1; index < filter.length; index++) {
         if (geometryNeeded(filter[index]))
@@ -9807,8 +10663,7 @@ function convertFilter$1(filter) {
                                 op === '!in' ? convertNegation(convertInOp$1(filter[1], filter.slice(2))) :
                                     op === 'has' ? convertHasOp$1(filter[1]) :
                                         op === '!has' ? convertNegation(convertHasOp$1(filter[1])) :
-                                            op === 'within' ? filter :
-                                                true;
+                                            true;
     return converted;
 }
 function convertComparisonOp$1(property, value, op) {
@@ -10931,15 +11786,6 @@ function validateNonExpressionFilter(options) {
                 errors.push(new ValidationError(`${key}[1]`, value[1], `string expected, ${type} found`));
             }
             break;
-        case 'within':
-            type = getType(value[1]);
-            if (value.length !== 2) {
-                errors.push(new ValidationError(key, value, `filter array for "${value[0]}" operator must have 2 elements`));
-            }
-            else if (type !== 'object') {
-                errors.push(new ValidationError(`${key}[1]`, value[1], `object expected, ${type} found`));
-            }
-            break;
     }
     return errors;
 }
@@ -11338,7 +12184,7 @@ function validateLight$1(options) {
     return errors;
 }
 
-function validateSky(options) {
+function validateSky$1(options) {
     const sky = options.value;
     const styleSpec = options.styleSpec;
     const skySpec = styleSpec.sky;
@@ -11353,7 +12199,7 @@ function validateSky(options) {
     let errors = [];
     for (const key in sky) {
         if (skySpec[key]) {
-            errors = errors.concat(validate({
+            errors = errors.concat(options.validateSpec({
                 key,
                 value: sky[key],
                 valueSpec: skySpec[key],
@@ -11518,6 +12364,36 @@ function validateSprite(options) {
     }
 }
 
+function validateProjection(options) {
+    const projection = options.value;
+    const styleSpec = options.styleSpec;
+    const projectionSpec = styleSpec.projection;
+    const style = options.style;
+    const rootType = getType(projection);
+    if (projection === undefined) {
+        return [];
+    }
+    else if (rootType !== 'object') {
+        return [new ValidationError('projection', projection, `object expected, ${rootType} found`)];
+    }
+    let errors = [];
+    for (const key in projection) {
+        if (projectionSpec[key]) {
+            errors = errors.concat(options.validateSpec({
+                key,
+                value: projection[key],
+                valueSpec: projectionSpec[key],
+                style,
+                styleSpec
+            }));
+        }
+        else {
+            errors = errors.concat([new ValidationError(key, projection[key], `unknown property "${key}"`)]);
+        }
+    }
+    return errors;
+}
+
 const VALIDATORS = {
     '*'() {
         return [];
@@ -11534,8 +12410,9 @@ const VALIDATORS = {
     'object': validateObject,
     'source': validateSource$1,
     'light': validateLight$1,
-    'sky': validateSky,
+    'sky': validateSky$1,
     'terrain': validateTerrain$1,
+    'projection': validateProjection,
     'string': validateString,
     'formatted': validateFormatted,
     'resolvedImage': validateImage,
@@ -11639,7 +12516,7 @@ validateStyleMin.source = wrapCleanErrors(injectValidateSpec(validateSource$1));
 validateStyleMin.sprite = wrapCleanErrors(injectValidateSpec(validateSprite));
 validateStyleMin.glyphs = wrapCleanErrors(injectValidateSpec(validateGlyphsUrl));
 validateStyleMin.light = wrapCleanErrors(injectValidateSpec(validateLight$1));
-validateStyleMin.sky = wrapCleanErrors(injectValidateSpec(validateSky));
+validateStyleMin.sky = wrapCleanErrors(injectValidateSpec(validateSky$1));
 validateStyleMin.terrain = wrapCleanErrors(injectValidateSpec(validateTerrain$1));
 validateStyleMin.layer = wrapCleanErrors(injectValidateSpec(validateLayer));
 validateStyleMin.filter = wrapCleanErrors(injectValidateSpec(validateFilter$1));
@@ -12074,6 +12951,7 @@ const visit = { eachLayer, eachProperty, eachSource };
 const validateStyle = validateStyleMin;
 const validateSource = validateStyle.source;
 const validateLight = validateStyle.light;
+const validateSky = validateStyle.sky;
 const validateTerrain = validateStyle.terrain;
 const validateFilter = validateStyle.filter;
 const validatePaintProperty = validateStyle.paintProperty;
@@ -12301,114 +13179,22 @@ function isArrayBuffer(value) {
     return value && typeof ArrayBuffer !== 'undefined' &&
         (value instanceof ArrayBuffer || (value.constructor && value.constructor.name === 'ArrayBuffer'));
 }
-/**
- * Serialize the given object for transfer to or from a web worker.
- *
- * For non-builtin types, recursively serialize each property (possibly
- * omitting certain properties - see register()), and package the result along
- * with the constructor's `name` so that the appropriate constructor can be
- * looked up in `deserialize()`.
- *
- * If a `transferables` array is provided, add any transferable objects (i.e.,
- * any ArrayBuffers or ArrayBuffer views) to the list. (If a copy is needed,
- * this should happen in the client code, before using serialize().)
- */
-function serialize(input, transferables) {
-    if (input === null ||
-        input === undefined ||
-        typeof input === 'boolean' ||
-        typeof input === 'number' ||
-        typeof input === 'string' ||
-        input instanceof Boolean ||
-        input instanceof Number ||
-        input instanceof String ||
-        input instanceof Date ||
-        input instanceof RegExp ||
-        input instanceof Blob ||
-        input instanceof Error) {
-        return input;
-    }
-    if (isArrayBuffer(input)) {
-        if (transferables) {
-            transferables.push(input);
-        }
-        return input;
-    }
-    if (isImageBitmap(input)) {
-        if (transferables) {
-            transferables.push(input);
-        }
-        return input;
-    }
-    if (ArrayBuffer.isView(input)) {
-        const view = input;
-        if (transferables) {
-            transferables.push(view.buffer);
-        }
-        return view;
-    }
-    if (input instanceof ImageData) {
-        if (transferables) {
-            transferables.push(input.data.buffer);
-        }
-        return input;
-    }
-    if (Array.isArray(input)) {
-        const serialized = [];
-        for (const item of input) {
-            serialized.push(serialize(item, transferables));
-        }
-        return serialized;
-    }
-    if (typeof input === 'object') {
-        const klass = input.constructor;
-        const name = klass._classRegistryKey;
-        if (!name) {
-            throw new Error(`can't serialize object of unregistered class ${klass.name}`);
-        }
-        if (!registry[name])
-            throw new Error(`${name} is not registered.`);
-        const properties = klass.serialize ?
-            // (Temporary workaround) allow a class to provide static
-            // `serialize()` and `deserialize()` methods to bypass the generic
-            // approach.
-            // This temporary workaround lets us use the generic serialization
-            // approach for objects whose members include instances of dynamic
-            // StructArray types. Once we refactor StructArray to be static,
-            // we can remove this complexity.
-            klass.serialize(input, transferables) : {};
-        if (!klass.serialize) {
-            for (const key in input) {
-                if (!input.hasOwnProperty(key))
-                    continue; // eslint-disable-line no-prototype-builtins
-                if (registry[name].omit.indexOf(key) >= 0)
-                    continue;
-                const property = input[key];
-                properties[key] = registry[name].shallow.indexOf(key) >= 0 ?
-                    property :
-                    serialize(property, transferables);
-            }
-            if (input instanceof Error) {
-                properties.message = input.message;
-            }
-        }
-        else {
-            if (transferables && properties === transferables[transferables.length - 1]) {
-                throw new Error('statically serialized object won\'t survive transfer of $name property');
-            }
-        }
-        if (properties.$name) {
-            throw new Error('$name property is reserved for worker serialization logic.');
-        }
-        if (name !== 'Object') {
-            properties.$name = name;
-        }
-        return properties;
-    }
-    throw new Error(`can't serialize object of type ${typeof input}`);
+function getClassRegistryKey(input) {
+    const klass = input.constructor;
+    return input.$name || klass._classRegistryKey;
 }
-function deserialize(input) {
-    if (input === null ||
+function isRegistered(input) {
+    if (input === null || typeof input !== 'object') {
+        return false;
+    }
+    const classRegistryKey = getClassRegistryKey(input);
+    if (classRegistryKey && classRegistryKey !== 'Object') {
+        return true;
+    }
+    return false;
+}
+function isSerializeHandledByBuiltin(input) {
+    return (!isRegistered(input) && (input === null ||
         input === undefined ||
         typeof input === 'boolean' ||
         typeof input === 'number' ||
@@ -12423,34 +13209,123 @@ function deserialize(input) {
         isArrayBuffer(input) ||
         isImageBitmap(input) ||
         ArrayBuffer.isView(input) ||
-        input instanceof ImageData) {
+        input instanceof ImageData));
+}
+/**
+ * Serialize the given object for transfer to or from a web worker.
+ *
+ * For non-builtin types, recursively serialize each property (possibly
+ * omitting certain properties - see register()), and package the result along
+ * with the constructor's `name` so that the appropriate constructor can be
+ * looked up in `deserialize()`.
+ *
+ * If a `transferables` array is provided, add any transferable objects (i.e.,
+ * any ArrayBuffers or ArrayBuffer views) to the list. (If a copy is needed,
+ * this should happen in the client code, before using serialize().)
+ */
+function serialize(input, transferables) {
+    if (isSerializeHandledByBuiltin(input)) {
+        if (isArrayBuffer(input) || isImageBitmap(input)) {
+            if (transferables) {
+                transferables.push(input);
+            }
+        }
+        if (ArrayBuffer.isView(input)) {
+            const view = input;
+            if (transferables) {
+                transferables.push(view.buffer);
+            }
+        }
+        if (input instanceof ImageData) {
+            if (transferables) {
+                transferables.push(input.data.buffer);
+            }
+        }
+        return input;
+    }
+    if (Array.isArray(input)) {
+        const serialized = [];
+        for (const item of input) {
+            serialized.push(serialize(item, transferables));
+        }
+        return serialized;
+    }
+    if (typeof input !== 'object') {
+        throw new Error(`can't serialize object of type ${typeof input}`);
+    }
+    const classRegistryKey = getClassRegistryKey(input);
+    if (!classRegistryKey) {
+        throw new Error(`can't serialize object of unregistered class ${input.constructor.name}`);
+    }
+    if (!registry[classRegistryKey])
+        throw new Error(`${classRegistryKey} is not registered.`);
+    const { klass } = registry[classRegistryKey];
+    const properties = klass.serialize ?
+        // (Temporary workaround) allow a class to provide static
+        // `serialize()` and `deserialize()` methods to bypass the generic
+        // approach.
+        // This temporary workaround lets us use the generic serialization
+        // approach for objects whose members include instances of dynamic
+        // StructArray types. Once we refactor StructArray to be static,
+        // we can remove this complexity.
+        klass.serialize(input, transferables) : {};
+    if (!klass.serialize) {
+        for (const key in input) {
+            if (!input.hasOwnProperty(key))
+                continue; // eslint-disable-line no-prototype-builtins
+            if (registry[classRegistryKey].omit.indexOf(key) >= 0)
+                continue;
+            const property = input[key];
+            properties[key] = registry[classRegistryKey].shallow.indexOf(key) >= 0 ?
+                property :
+                serialize(property, transferables);
+        }
+        if (input instanceof Error) {
+            properties.message = input.message;
+        }
+    }
+    else {
+        if (transferables && properties === transferables[transferables.length - 1]) {
+            throw new Error('statically serialized object won\'t survive transfer of $name property');
+        }
+    }
+    if (properties.$name) {
+        throw new Error('$name property is reserved for worker serialization logic.');
+    }
+    if (classRegistryKey !== 'Object') {
+        properties.$name = classRegistryKey;
+    }
+    return properties;
+}
+function deserialize(input) {
+    if (isSerializeHandledByBuiltin(input)) {
         return input;
     }
     if (Array.isArray(input)) {
         return input.map(deserialize);
     }
-    if (typeof input === 'object') {
-        const name = input.$name || 'Object';
-        if (!registry[name]) {
-            throw new Error(`can't deserialize unregistered class ${name}`);
-        }
-        const { klass } = registry[name];
-        if (!klass) {
-            throw new Error(`can't deserialize unregistered class ${name}`);
-        }
-        if (klass.deserialize) {
-            return klass.deserialize(input);
-        }
-        const result = Object.create(klass.prototype);
-        for (const key of Object.keys(input)) {
-            if (key === '$name')
-                continue;
-            const value = input[key];
-            result[key] = registry[name].shallow.indexOf(key) >= 0 ? value : deserialize(value);
-        }
-        return result;
+    if (typeof input !== 'object') {
+        throw new Error(`can't deserialize object of type ${typeof input}`);
     }
-    throw new Error(`can't deserialize object of type ${typeof input}`);
+    const classRegistryKey = getClassRegistryKey(input) || 'Object';
+    if (!registry[classRegistryKey]) {
+        throw new Error(`can't deserialize unregistered class ${classRegistryKey}`);
+    }
+    const { klass } = registry[classRegistryKey];
+    if (!klass) {
+        throw new Error(`can't deserialize unregistered class ${classRegistryKey}`);
+    }
+    if (klass.deserialize) {
+        return klass.deserialize(input);
+    }
+    const result = Object.create(klass.prototype);
+    for (const key of Object.keys(input)) {
+        if (key === '$name')
+            continue;
+        const value = input[key];
+        result[key] = registry[classRegistryKey].shallow.indexOf(key) >= 0 ? value : deserialize(value);
+    }
+    return result;
 }
 
 class ZoomHistory {
@@ -12484,8 +13359,8 @@ class ZoomHistory {
     }
 }
 
-// The following table comes from <http://www.unicode.org/Public/12.0.0/ucd/Blocks.txt>.
-// Keep it synchronized with <http://www.unicode.org/Public/UCD/latest/ucd/Blocks.txt>.
+// The following table comes from <https://www.unicode.org/Public/12.0.0/ucd/Blocks.txt>.
+// Keep it synchronized with <https://www.unicode.org/Public/UCD/latest/ucd/Blocks.txt>.
 const unicodeBlockLookup = {
     // 'Basic Latin': (char) => char >= 0x0000 && char <= 0x007F,
     'Latin-1 Supplement': (char) => char >= 0x0080 && char <= 0x00FF,
@@ -12871,9 +13746,9 @@ function charAllowsIdeographicBreaking(char) {
     return false;
 }
 // The following logic comes from
-// <http://www.unicode.org/Public/12.0.0/ucd/VerticalOrientation.txt>.
+// <https://www.unicode.org/Public/12.0.0/ucd/VerticalOrientation.txt>.
 // Keep it synchronized with
-// <http://www.unicode.org/Public/UCD/latest/ucd/VerticalOrientation.txt>.
+// <https://www.unicode.org/Public/UCD/latest/ucd/VerticalOrientation.txt>.
 // The data file denotes with “U” or “Tu” any codepoint that may be drawn
 // upright in vertical text but does not distinguish between upright and
 // “neutral” characters.
@@ -12993,7 +13868,7 @@ function charHasUprightVerticalOrientation(char) {
  *
  * A character has neutral orientation if it may be drawn rotated or unrotated
  * when the line is oriented vertically, depending on the orientation of the
- * adjacent characters. For example, along a verticlly oriented line, the vulgar
+ * adjacent characters. For example, along a vertically oriented line, the vulgar
  * fraction ½ is drawn upright among Chinese characters but rotated among Latin
  * letters. A neutrally oriented character does not influence whether an
  * adjacent character is drawn upright or rotated.
@@ -13131,7 +14006,7 @@ function charInSupportedScript(char, canRenderRTL) {
         unicodeBlockLookup['Khmer'](char)) {
         // These blocks cover common scripts that require
         // complex text shaping, based on unicode script metadata:
-        // http://www.unicode.org/repos/cldr/trunk/common/properties/scriptMetadata.txt
+        // https://www.unicode.org/repos/cldr/trunk/common/properties/scriptMetadata.txt
         // where "Web Rank <= 32" "Shaping Required = YES"
         return false;
     }
@@ -13165,6 +14040,12 @@ class RTLWorkerPlugin {
     setState(state) {
         this.pluginStatus = state.pluginStatus;
         this.pluginURL = state.pluginURL;
+    }
+    getState() {
+        return {
+            pluginStatus: this.pluginStatus,
+            pluginURL: this.pluginURL
+        };
     }
     setMethods(rtlTextPlugin) {
         this.applyArabicShaping = rtlTextPlugin.applyArabicShaping;
@@ -13943,7 +14824,7 @@ const RESIZE_MULTIPLIER = 5;
  * we implement a more specific subclass that inherits from one of the
  * StructArrayLayouts and adds a `get(i): T` accessor that returns a structured
  * object whose properties are proxies into the underlying memory space for the
- * i-th element.  This affords the convience of working with (seemingly) plain
+ * i-th element.  This affords the convenience of working with (seemingly) plain
  * Javascript objects without the overhead of serializing/deserializing them
  * into ArrayBuffers for efficient web worker transfer.
  */
@@ -13988,7 +14869,7 @@ class StructArray {
         }
     }
     /**
-     * Resets the length of the array to 0 without de-allocating capcacity.
+     * Resets the length of the array to 0 without de-allocating capacity.
      */
     clear() {
         this.length = 0;
@@ -14065,7 +14946,7 @@ function align$1(offset, size) {
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[2]
+ * [0] - Int16[2]
  *
  */
 class StructArrayLayout2i4 extends StructArray {
@@ -14090,7 +14971,7 @@ register('StructArrayLayout2i4', StructArrayLayout2i4);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[3]
+ * [0] - Int16[3]
  *
  */
 class StructArrayLayout3i6 extends StructArray {
@@ -14116,7 +14997,7 @@ register('StructArrayLayout3i6', StructArrayLayout3i6);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[4]
+ * [0] - Int16[4]
  *
  */
 class StructArrayLayout4i8 extends StructArray {
@@ -14143,8 +15024,8 @@ register('StructArrayLayout4i8', StructArrayLayout4i8);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[2]
- * [4]: Int16[4]
+ * [0] - Int16[2]
+ * [4] - Int16[4]
  *
  */
 class StructArrayLayout2i4i12 extends StructArray {
@@ -14173,8 +15054,8 @@ register('StructArrayLayout2i4i12', StructArrayLayout2i4i12);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[2]
- * [4]: Uint8[4]
+ * [0] - Int16[2]
+ * [4] - Uint8[4]
  *
  */
 class StructArrayLayout2i4ub8 extends StructArray {
@@ -14204,7 +15085,7 @@ register('StructArrayLayout2i4ub8', StructArrayLayout2i4ub8);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Float32[2]
+ * [0] - Float32[2]
  *
  */
 class StructArrayLayout2f8 extends StructArray {
@@ -14229,7 +15110,7 @@ register('StructArrayLayout2f8', StructArrayLayout2f8);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint16[10]
+ * [0] - Uint16[10]
  *
  */
 class StructArrayLayout10ui20 extends StructArray {
@@ -14262,9 +15143,9 @@ register('StructArrayLayout10ui20', StructArrayLayout10ui20);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[4]
- * [8]: Uint16[4]
- * [16]: Int16[4]
+ * [0] - Int16[4]
+ * [8] - Uint16[4]
+ * [16] - Int16[4]
  *
  */
 class StructArrayLayout4i4ui4i24 extends StructArray {
@@ -14300,7 +15181,7 @@ register('StructArrayLayout4i4ui4i24', StructArrayLayout4i4ui4i24);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Float32[3]
+ * [0] - Float32[3]
  *
  */
 class StructArrayLayout3f12 extends StructArray {
@@ -14326,7 +15207,7 @@ register('StructArrayLayout3f12', StructArrayLayout3f12);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint32[1]
+ * [0] - Uint32[1]
  *
  */
 class StructArrayLayout1ul4 extends StructArray {
@@ -14350,9 +15231,9 @@ register('StructArrayLayout1ul4', StructArrayLayout1ul4);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[6]
- * [12]: Uint32[1]
- * [16]: Uint16[2]
+ * [0] - Int16[6]
+ * [12] - Uint32[1]
+ * [16] - Uint16[2]
  *
  */
 class StructArrayLayout6i1ul2ui20 extends StructArray {
@@ -14387,9 +15268,9 @@ register('StructArrayLayout6i1ul2ui20', StructArrayLayout6i1ul2ui20);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[2]
- * [4]: Int16[2]
- * [8]: Int16[2]
+ * [0] - Int16[2]
+ * [4] - Int16[2]
+ * [8] - Int16[2]
  *
  */
 class StructArrayLayout2i2i2i12 extends StructArray {
@@ -14418,9 +15299,9 @@ register('StructArrayLayout2i2i2i12', StructArrayLayout2i2i2i12);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Float32[2]
- * [8]: Float32[1]
- * [12]: Int16[2]
+ * [0] - Float32[2]
+ * [8] - Float32[1]
+ * [12] - Int16[2]
  *
  */
 class StructArrayLayout2f1f2i16 extends StructArray {
@@ -14450,36 +15331,41 @@ register('StructArrayLayout2f1f2i16', StructArrayLayout2f1f2i16);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint8[2]
- * [4]: Float32[2]
+ * [0] - Uint8[2]
+ * [4] - Float32[2]
+ * [12] - Int16[2]
  *
  */
-class StructArrayLayout2ub2f12 extends StructArray {
+class StructArrayLayout2ub2f2i16 extends StructArray {
     _refreshViews() {
         this.uint8 = new Uint8Array(this.arrayBuffer);
         this.float32 = new Float32Array(this.arrayBuffer);
+        this.int16 = new Int16Array(this.arrayBuffer);
     }
-    emplaceBack(v0, v1, v2, v3) {
+    emplaceBack(v0, v1, v2, v3, v4, v5) {
         const i = this.length;
         this.resize(i + 1);
-        return this.emplace(i, v0, v1, v2, v3);
+        return this.emplace(i, v0, v1, v2, v3, v4, v5);
     }
-    emplace(i, v0, v1, v2, v3) {
-        const o1 = i * 12;
-        const o4 = i * 3;
+    emplace(i, v0, v1, v2, v3, v4, v5) {
+        const o1 = i * 16;
+        const o4 = i * 4;
+        const o2 = i * 8;
         this.uint8[o1 + 0] = v0;
         this.uint8[o1 + 1] = v1;
         this.float32[o4 + 1] = v2;
         this.float32[o4 + 2] = v3;
+        this.int16[o2 + 6] = v4;
+        this.int16[o2 + 7] = v5;
         return i;
     }
 }
-StructArrayLayout2ub2f12.prototype.bytesPerElement = 12;
-register('StructArrayLayout2ub2f12', StructArrayLayout2ub2f12);
+StructArrayLayout2ub2f2i16.prototype.bytesPerElement = 16;
+register('StructArrayLayout2ub2f2i16', StructArrayLayout2ub2f2i16);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint16[3]
+ * [0] - Uint16[3]
  *
  */
 class StructArrayLayout3ui6 extends StructArray {
@@ -14505,14 +15391,14 @@ register('StructArrayLayout3ui6', StructArrayLayout3ui6);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[2]
- * [4]: Uint16[2]
- * [8]: Uint32[3]
- * [20]: Uint16[3]
- * [28]: Float32[2]
- * [36]: Uint8[3]
- * [40]: Uint32[1]
- * [44]: Int16[1]
+ * [0] - Int16[2]
+ * [4] - Uint16[2]
+ * [8] - Uint32[3]
+ * [20] - Uint16[3]
+ * [28] - Float32[2]
+ * [36] - Uint8[3]
+ * [40] - Uint32[1]
+ * [44] - Int16[1]
  *
  */
 class StructArrayLayout2i2ui3ul3ui2f3ub1ul1i48 extends StructArray {
@@ -14557,11 +15443,11 @@ register('StructArrayLayout2i2ui3ul3ui2f3ub1ul1i48', StructArrayLayout2i2ui3ul3u
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Int16[8]
- * [16]: Uint16[15]
- * [48]: Uint32[1]
- * [52]: Float32[2]
- * [60]: Uint16[2]
+ * [0] - Int16[8]
+ * [16] - Uint16[15]
+ * [48] - Uint32[1]
+ * [52] - Float32[2]
+ * [60] - Uint16[2]
  *
  */
 class StructArrayLayout8i15ui1ul2f2ui64 extends StructArray {
@@ -14616,7 +15502,7 @@ register('StructArrayLayout8i15ui1ul2f2ui64', StructArrayLayout8i15ui1ul2f2ui64)
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Float32[1]
+ * [0] - Float32[1]
  *
  */
 class StructArrayLayout1f4 extends StructArray {
@@ -14640,8 +15526,8 @@ register('StructArrayLayout1f4', StructArrayLayout1f4);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint16[1]
- * [4]: Float32[2]
+ * [0] - Uint16[1]
+ * [4] - Float32[2]
  *
  */
 class StructArrayLayout1ui2f12 extends StructArray {
@@ -14669,8 +15555,8 @@ register('StructArrayLayout1ui2f12', StructArrayLayout1ui2f12);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint32[1]
- * [4]: Uint16[2]
+ * [0] - Uint32[1]
+ * [4] - Uint16[2]
  *
  */
 class StructArrayLayout1ul2ui8 extends StructArray {
@@ -14698,7 +15584,7 @@ register('StructArrayLayout1ul2ui8', StructArrayLayout1ul2ui8);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint16[2]
+ * [0] - Uint16[2]
  *
  */
 class StructArrayLayout2ui4 extends StructArray {
@@ -14723,7 +15609,7 @@ register('StructArrayLayout2ui4', StructArrayLayout2ui4);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Uint16[1]
+ * [0] - Uint16[1]
  *
  */
 class StructArrayLayout1ui2 extends StructArray {
@@ -14747,7 +15633,7 @@ register('StructArrayLayout1ui2', StructArrayLayout1ui2);
 /**
  * @internal
  * Implementation of the StructArray layout:
- * [0]: Float32[4]
+ * [0] - Float32[4]
  *
  */
 class StructArrayLayout4f16 extends StructArray {
@@ -14953,7 +15839,7 @@ class CollisionBoxLayoutArray extends StructArrayLayout2i2i2i12 {
 }
 class CollisionCircleLayoutArray extends StructArrayLayout2f1f2i16 {
 }
-class CollisionVertexArray extends StructArrayLayout2ub2f12 {
+class CollisionVertexArray extends StructArrayLayout2ub2f2i16 {
 }
 class QuadTriangleArray extends StructArrayLayout3ui6 {
 }
@@ -15276,10 +16162,10 @@ function sort$1(ids, positions, left, right) {
             while (ids[j] > pivot);
             if (i >= j)
                 break;
-            swap$2(ids, i, j);
-            swap$2(positions, 3 * i, 3 * j);
-            swap$2(positions, 3 * i + 1, 3 * j + 1);
-            swap$2(positions, 3 * i + 2, 3 * j + 2);
+            swap$1(ids, i, j);
+            swap$1(positions, 3 * i, 3 * j);
+            swap$1(positions, 3 * i + 1, 3 * j + 1);
+            swap$1(positions, 3 * i + 2, 3 * j + 2);
         }
         if (j - left < right - j) {
             sort$1(ids, positions, left, j);
@@ -15291,7 +16177,7 @@ function sort$1(ids, positions, left, right) {
         }
     }
 }
-function swap$2(arr, i, j) {
+function swap$1(arr, i, j) {
     const tmp = arr[i];
     arr[i] = arr[j];
     arr[j] = tmp;
@@ -15781,7 +16667,7 @@ class ProgramConfiguration {
     }
     setUniforms(context, binderUniforms, properties, globals) {
         // Uniform state bindings are owned by the Program, but we set them
-        // from within the ProgramConfiguraton's binder members.
+        // from within the ProgramConfiguration's binder members.
         for (const { name, property, binding } of binderUniforms) {
             this.binders[property].setUniform(binding, globals, properties.get(property), name);
         }
@@ -16205,7 +17091,7 @@ function pointIntersectsBufferedLine(p, line, radius) {
     }
     return false;
 }
-// Code from http://stackoverflow.com/a/1501725/331379.
+// Code from https://stackoverflow.com/a/1501725/331379.
 function distToSegmentSquared(p, v, w) {
     const l2 = v.distSqr(w);
     if (l2 === 0)
@@ -24311,38 +25197,29 @@ const layout$4 = createLayout([
 ], 4);
 const { members: members$3, size: size$3, alignment: alignment$3 } = layout$4;
 
-var earcut$2 = {exports: {}};
+function earcut(data, holeIndices, dim = 2) {
 
-var earcut_1 = earcut$2.exports;
-
-'use strict';
-
-earcut$2.exports = earcut;
-var _default = earcut$2.exports.default = earcut;
-
-function earcut(data, holeIndices, dim) {
-
-    dim = dim || 2;
-
-    var hasHoles = holeIndices && holeIndices.length,
-        outerLen = hasHoles ? holeIndices[0] * dim : data.length,
-        outerNode = linkedList(data, 0, outerLen, dim, true),
-        triangles = [];
+    const hasHoles = holeIndices && holeIndices.length;
+    const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+    let outerNode = linkedList(data, 0, outerLen, dim, true);
+    const triangles = [];
 
     if (!outerNode || outerNode.next === outerNode.prev) return triangles;
 
-    var minX, minY, maxX, maxY, x, y, invSize;
+    let minX, minY, invSize;
 
     if (hasHoles) outerNode = eliminateHoles(data, holeIndices, outerNode, dim);
 
     // if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
     if (data.length > 80 * dim) {
-        minX = maxX = data[0];
-        minY = maxY = data[1];
+        minX = Infinity;
+        minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
 
-        for (var i = dim; i < outerLen; i += dim) {
-            x = data[i];
-            y = data[i + 1];
+        for (let i = dim; i < outerLen; i += dim) {
+            const x = data[i];
+            const y = data[i + 1];
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             if (x > maxX) maxX = x;
@@ -24361,12 +25238,12 @@ function earcut(data, holeIndices, dim) {
 
 // create a circular doubly linked list from polygon points in the specified winding order
 function linkedList(data, start, end, dim, clockwise) {
-    var i, last;
+    let last;
 
     if (clockwise === (signedArea$1(data, start, end, dim) > 0)) {
-        for (i = start; i < end; i += dim) last = insertNode(i, data[i], data[i + 1], last);
+        for (let i = start; i < end; i += dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
     } else {
-        for (i = end - dim; i >= start; i -= dim) last = insertNode(i, data[i], data[i + 1], last);
+        for (let i = end - dim; i >= start; i -= dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
     }
 
     if (last && equals(last, last.next)) {
@@ -24382,7 +25259,7 @@ function filterPoints(start, end) {
     if (!start) return start;
     if (!end) end = start;
 
-    var p = start,
+    let p = start,
         again;
     do {
         again = false;
@@ -24408,19 +25285,15 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
     // interlink polygon nodes in z-order
     if (!pass && invSize) indexCurve(ear, minX, minY, invSize);
 
-    var stop = ear,
-        prev, next;
+    let stop = ear;
 
     // iterate through ears, slicing them one by one
     while (ear.prev !== ear.next) {
-        prev = ear.prev;
-        next = ear.next;
+        const prev = ear.prev;
+        const next = ear.next;
 
         if (invSize ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
-            // cut off the triangle
-            triangles.push(prev.i / dim | 0);
-            triangles.push(ear.i / dim | 0);
-            triangles.push(next.i / dim | 0);
+            triangles.push(prev.i, ear.i, next.i); // cut off the triangle
 
             removeNode(ear);
 
@@ -24441,7 +25314,7 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
 
             // if this didn't work, try curing all small self-intersections locally
             } else if (pass === 1) {
-                ear = cureLocalIntersections(filterPoints(ear), triangles, dim);
+                ear = cureLocalIntersections(filterPoints(ear), triangles);
                 earcutLinked(ear, triangles, dim, minX, minY, invSize, 2);
 
             // as a last resort, try splitting the remaining polygon into two
@@ -24456,22 +25329,22 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
 
 // check whether a polygon node forms a valid ear with adjacent nodes
 function isEar(ear) {
-    var a = ear.prev,
+    const a = ear.prev,
         b = ear,
         c = ear.next;
 
     if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
 
     // now make sure we don't have other points inside the potential ear
-    var ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+    const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
 
     // triangle bbox; min & max are calculated like this for speed
-    var x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx),
+    const x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx),
         y0 = ay < by ? (ay < cy ? ay : cy) : (by < cy ? by : cy),
         x1 = ax > bx ? (ax > cx ? ax : cx) : (bx > cx ? bx : cx),
         y1 = ay > by ? (ay > cy ? ay : cy) : (by > cy ? by : cy);
 
-    var p = c.next;
+    let p = c.next;
     while (p !== a) {
         if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 &&
             pointInTriangle(ax, ay, bx, by, cx, cy, p.x, p.y) &&
@@ -24483,25 +25356,25 @@ function isEar(ear) {
 }
 
 function isEarHashed(ear, minX, minY, invSize) {
-    var a = ear.prev,
+    const a = ear.prev,
         b = ear,
         c = ear.next;
 
     if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
 
-    var ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+    const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
 
     // triangle bbox; min & max are calculated like this for speed
-    var x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx),
+    const x0 = ax < bx ? (ax < cx ? ax : cx) : (bx < cx ? bx : cx),
         y0 = ay < by ? (ay < cy ? ay : cy) : (by < cy ? by : cy),
         x1 = ax > bx ? (ax > cx ? ax : cx) : (bx > cx ? bx : cx),
         y1 = ay > by ? (ay > cy ? ay : cy) : (by > cy ? by : cy);
 
     // z-order range for the current triangle bbox;
-    var minZ = zOrder(x0, y0, minX, minY, invSize),
+    const minZ = zOrder(x0, y0, minX, minY, invSize),
         maxZ = zOrder(x1, y1, minX, minY, invSize);
 
-    var p = ear.prevZ,
+    let p = ear.prevZ,
         n = ear.nextZ;
 
     // look for points inside the triangle in both directions
@@ -24533,17 +25406,15 @@ function isEarHashed(ear, minX, minY, invSize) {
 }
 
 // go through all polygon nodes and cure small local self-intersections
-function cureLocalIntersections(start, triangles, dim) {
-    var p = start;
+function cureLocalIntersections(start, triangles) {
+    let p = start;
     do {
-        var a = p.prev,
+        const a = p.prev,
             b = p.next.next;
 
         if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
 
-            triangles.push(a.i / dim | 0);
-            triangles.push(p.i / dim | 0);
-            triangles.push(b.i / dim | 0);
+            triangles.push(a.i, p.i, b.i);
 
             // remove two nodes involved
             removeNode(p);
@@ -24560,13 +25431,13 @@ function cureLocalIntersections(start, triangles, dim) {
 // try splitting polygon into two and triangulate them independently
 function splitEarcut(start, triangles, dim, minX, minY, invSize) {
     // look for a valid diagonal that divides the polygon into two
-    var a = start;
+    let a = start;
     do {
-        var b = a.next.next;
+        let b = a.next.next;
         while (b !== a.prev) {
             if (a.i !== b.i && isValidDiagonal(a, b)) {
                 // split the polygon in two by the diagonal
-                var c = splitPolygon(a, b);
+                let c = splitPolygon(a, b);
 
                 // filter colinear points around the cuts
                 a = filterPoints(a, a.next);
@@ -24585,13 +25456,12 @@ function splitEarcut(start, triangles, dim, minX, minY, invSize) {
 
 // link every hole into the outer loop, producing a single-ring polygon without holes
 function eliminateHoles(data, holeIndices, outerNode, dim) {
-    var queue = [],
-        i, len, start, end, list;
+    const queue = [];
 
-    for (i = 0, len = holeIndices.length; i < len; i++) {
-        start = holeIndices[i] * dim;
-        end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
-        list = linkedList(data, start, end, dim, false);
+    for (let i = 0, len = holeIndices.length; i < len; i++) {
+        const start = holeIndices[i] * dim;
+        const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+        const list = linkedList(data, start, end, dim, false);
         if (list === list.next) list.steiner = true;
         queue.push(getLeftmost(list));
     }
@@ -24599,7 +25469,7 @@ function eliminateHoles(data, holeIndices, outerNode, dim) {
     queue.sort(compareX);
 
     // process holes from left to right
-    for (i = 0; i < queue.length; i++) {
+    for (let i = 0; i < queue.length; i++) {
         outerNode = eliminateHole(queue[i], outerNode);
     }
 
@@ -24612,12 +25482,12 @@ function compareX(a, b) {
 
 // find a bridge between vertices that connects hole with an outer ring and and link it
 function eliminateHole(hole, outerNode) {
-    var bridge = findHoleBridge(hole, outerNode);
+    const bridge = findHoleBridge(hole, outerNode);
     if (!bridge) {
         return outerNode;
     }
 
-    var bridgeReverse = splitPolygon(bridge, hole);
+    const bridgeReverse = splitPolygon(bridge, hole);
 
     // filter collinear points around the cuts
     filterPoints(bridgeReverse, bridgeReverse.next);
@@ -24626,17 +25496,17 @@ function eliminateHole(hole, outerNode) {
 
 // David Eberly's algorithm for finding a bridge between hole and outer polygon
 function findHoleBridge(hole, outerNode) {
-    var p = outerNode,
-        hx = hole.x,
-        hy = hole.y,
-        qx = -Infinity,
-        m;
+    let p = outerNode;
+    const hx = hole.x;
+    const hy = hole.y;
+    let qx = -Infinity;
+    let m;
 
     // find a segment intersected by a ray from the hole's leftmost point to the left;
     // segment's endpoint with lesser x will be potential connection point
     do {
         if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
-            var x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
+            const x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
             if (x <= hx && x > qx) {
                 qx = x;
                 m = p.x < p.next.x ? p : p.next;
@@ -24652,11 +25522,10 @@ function findHoleBridge(hole, outerNode) {
     // if there are no points found, we have a valid connection;
     // otherwise choose the point of the minimum angle with the ray as connection point
 
-    var stop = m,
-        mx = m.x,
-        my = m.y,
-        tanMin = Infinity,
-        tan;
+    const stop = m;
+    const mx = m.x;
+    const my = m.y;
+    let tanMin = Infinity;
 
     p = m;
 
@@ -24664,7 +25533,7 @@ function findHoleBridge(hole, outerNode) {
         if (hx >= p.x && p.x >= mx && hx !== p.x &&
                 pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
 
-            tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
+            const tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
 
             if (locallyInside(p, hole) &&
                 (tan < tanMin || (tan === tanMin && (p.x > m.x || (p.x === m.x && sectorContainsSector(m, p)))))) {
@@ -24686,7 +25555,7 @@ function sectorContainsSector(m, p) {
 
 // interlink polygon nodes in z-order
 function indexCurve(start, minX, minY, invSize) {
-    var p = start;
+    let p = start;
     do {
         if (p.z === 0) p.z = zOrder(p.x, p.y, minX, minY, invSize);
         p.prevZ = p.prev;
@@ -24703,25 +25572,26 @@ function indexCurve(start, minX, minY, invSize) {
 // Simon Tatham's linked list merge sort algorithm
 // http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
 function sortLinked(list) {
-    var i, p, q, e, tail, numMerges, pSize, qSize,
-        inSize = 1;
+    let numMerges;
+    let inSize = 1;
 
     do {
-        p = list;
+        let p = list;
+        let e;
         list = null;
-        tail = null;
+        let tail = null;
         numMerges = 0;
 
         while (p) {
             numMerges++;
-            q = p;
-            pSize = 0;
-            for (i = 0; i < inSize; i++) {
+            let q = p;
+            let pSize = 0;
+            for (let i = 0; i < inSize; i++) {
                 pSize++;
                 q = q.nextZ;
                 if (!q) break;
             }
-            qSize = inSize;
+            let qSize = inSize;
 
             while (pSize > 0 || (qSize > 0 && q)) {
 
@@ -24774,7 +25644,7 @@ function zOrder(x, y, minX, minY, invSize) {
 
 // find the leftmost node of a polygon ring
 function getLeftmost(start) {
-    var p = start,
+    let p = start,
         leftmost = start;
     do {
         if (p.x < leftmost.x || (p.x === leftmost.x && p.y < leftmost.y)) leftmost = p;
@@ -24811,10 +25681,10 @@ function equals(p1, p2) {
 
 // check if two segments intersect
 function intersects(p1, q1, p2, q2) {
-    var o1 = sign(area(p1, q1, p2));
-    var o2 = sign(area(p1, q1, q2));
-    var o3 = sign(area(p2, q2, p1));
-    var o4 = sign(area(p2, q2, q1));
+    const o1 = sign(area(p1, q1, p2));
+    const o2 = sign(area(p1, q1, q2));
+    const o3 = sign(area(p2, q2, p1));
+    const o4 = sign(area(p2, q2, q1));
 
     if (o1 !== o2 && o3 !== o4) return true; // general case
 
@@ -24837,7 +25707,7 @@ function sign(num) {
 
 // check if a polygon diagonal intersects any polygon segments
 function intersectsPolygon(a, b) {
-    var p = a;
+    let p = a;
     do {
         if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i &&
                 intersects(p, p.next, a, b)) return true;
@@ -24856,10 +25726,10 @@ function locallyInside(a, b) {
 
 // check if the middle point of a polygon diagonal is inside the polygon
 function middleInside(a, b) {
-    var p = a,
-        inside = false,
-        px = (a.x + b.x) / 2,
-        py = (a.y + b.y) / 2;
+    let p = a;
+    let inside = false;
+    const px = (a.x + b.x) / 2;
+    const py = (a.y + b.y) / 2;
     do {
         if (((p.y > py) !== (p.next.y > py)) && p.next.y !== p.y &&
                 (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
@@ -24873,8 +25743,8 @@ function middleInside(a, b) {
 // link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;
 // if one belongs to the outer ring and another to a hole, it merges it into a single ring
 function splitPolygon(a, b) {
-    var a2 = new Node(a.i, a.x, a.y),
-        b2 = new Node(b.i, b.x, b.y),
+    const a2 = createNode(a.i, a.x, a.y),
+        b2 = createNode(b.i, b.x, b.y),
         an = a.next,
         bp = b.prev;
 
@@ -24895,7 +25765,7 @@ function splitPolygon(a, b) {
 
 // create a node and optionally link it with previous one (in a circular doubly linked list)
 function insertNode(i, x, y, last) {
-    var p = new Node(i, x, y);
+    const p = createNode(i, x, y);
 
     if (!last) {
         p.prev = p;
@@ -24918,49 +25788,39 @@ function removeNode(p) {
     if (p.nextZ) p.nextZ.prevZ = p.prevZ;
 }
 
-function Node(i, x, y) {
-    // vertex index in coordinates array
-    this.i = i;
-
-    // vertex coordinates
-    this.x = x;
-    this.y = y;
-
-    // previous and next vertex nodes in a polygon ring
-    this.prev = null;
-    this.next = null;
-
-    // z-order curve value
-    this.z = 0;
-
-    // previous and next nodes in z-order
-    this.prevZ = null;
-    this.nextZ = null;
-
-    // indicates whether this is a steiner point
-    this.steiner = false;
+function createNode(i, x, y) {
+    return {
+        i, // vertex index in coordinates array
+        x, y, // vertex coordinates
+        prev: null, // previous and next vertex nodes in a polygon ring
+        next: null,
+        z: 0, // z-order curve value
+        prevZ: null, // previous and next nodes in z-order
+        nextZ: null,
+        steiner: false // indicates whether this is a steiner point
+    };
 }
 
 // return a percentage difference between the polygon area and its triangulation area;
 // used to verify correctness of triangulation
-earcut.deviation = function (data, holeIndices, dim, triangles) {
-    var hasHoles = holeIndices && holeIndices.length;
-    var outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+function deviation(data, holeIndices, dim, triangles) {
+    const hasHoles = holeIndices && holeIndices.length;
+    const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
 
-    var polygonArea = Math.abs(signedArea$1(data, 0, outerLen, dim));
+    let polygonArea = Math.abs(signedArea$1(data, 0, outerLen, dim));
     if (hasHoles) {
-        for (var i = 0, len = holeIndices.length; i < len; i++) {
-            var start = holeIndices[i] * dim;
-            var end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+        for (let i = 0, len = holeIndices.length; i < len; i++) {
+            const start = holeIndices[i] * dim;
+            const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
             polygonArea -= Math.abs(signedArea$1(data, start, end, dim));
         }
     }
 
-    var trianglesArea = 0;
-    for (i = 0; i < triangles.length; i += 3) {
-        var a = triangles[i] * dim;
-        var b = triangles[i + 1] * dim;
-        var c = triangles[i + 2] * dim;
+    let trianglesArea = 0;
+    for (let i = 0; i < triangles.length; i += 3) {
+        const a = triangles[i] * dim;
+        const b = triangles[i + 1] * dim;
+        const c = triangles[i + 2] * dim;
         trianglesArea += Math.abs(
             (data[a] - data[c]) * (data[b + 1] - data[a + 1]) -
             (data[a] - data[b]) * (data[c + 1] - data[a + 1]));
@@ -24968,11 +25828,11 @@ earcut.deviation = function (data, holeIndices, dim, triangles) {
 
     return polygonArea === 0 && trianglesArea === 0 ? 0 :
         Math.abs((trianglesArea - polygonArea) / polygonArea);
-};
+}
 
 function signedArea$1(data, start, end, dim) {
-    var sum = 0;
-    for (var i = start, j = end - dim; i < end; i += dim) {
+    let sum = 0;
+    for (let i = start, j = end - dim; i < end; i += dim) {
         sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
         j = i;
     }
@@ -24980,119 +25840,24 @@ function signedArea$1(data, start, end, dim) {
 }
 
 // turn a polygon in a multi-dimensional array form (e.g. as in GeoJSON) into a form Earcut accepts
-earcut.flatten = function (data) {
-    var dim = data[0][0].length,
-        result = {vertices: [], holes: [], dimensions: dim},
-        holeIndex = 0;
+function flatten(data) {
+    const vertices = [];
+    const holes = [];
+    const dimensions = data[0][0].length;
+    let holeIndex = 0;
+    let prevLen = 0;
 
-    for (var i = 0; i < data.length; i++) {
-        for (var j = 0; j < data[i].length; j++) {
-            for (var d = 0; d < dim; d++) result.vertices.push(data[i][j][d]);
+    for (const ring of data) {
+        for (const p of ring) {
+            for (let d = 0; d < dimensions; d++) vertices.push(p[d]);
         }
-        if (i > 0) {
-            holeIndex += data[i - 1].length;
-            result.holes.push(holeIndex);
+        if (prevLen) {
+            holeIndex += prevLen;
+            holes.push(holeIndex);
         }
+        prevLen = ring.length;
     }
-    return result;
-};
-
-var earcutExports = earcut$2.exports;
-var earcut$1 = /*@__PURE__*/getDefaultExportFromCjs$1(earcutExports);
-
-function quickselect(arr, k, left, right, compare) {
-    quickselectStep(arr, k, left || 0, right || (arr.length - 1), compare || defaultCompare$1);
-}
-
-function quickselectStep(arr, k, left, right, compare) {
-
-    while (right > left) {
-        if (right - left > 600) {
-            var n = right - left + 1;
-            var m = k - left + 1;
-            var z = Math.log(n);
-            var s = 0.5 * Math.exp(2 * z / 3);
-            var sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * (m - n / 2 < 0 ? -1 : 1);
-            var newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
-            var newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
-            quickselectStep(arr, k, newLeft, newRight, compare);
-        }
-
-        var t = arr[k];
-        var i = left;
-        var j = right;
-
-        swap$1(arr, left, k);
-        if (compare(arr[right], t) > 0) swap$1(arr, left, right);
-
-        while (i < j) {
-            swap$1(arr, i, j);
-            i++;
-            j--;
-            while (compare(arr[i], t) < 0) i++;
-            while (compare(arr[j], t) > 0) j--;
-        }
-
-        if (compare(arr[left], t) === 0) swap$1(arr, left, j);
-        else {
-            j++;
-            swap$1(arr, j, right);
-        }
-
-        if (j <= k) left = j + 1;
-        if (k <= j) right = j - 1;
-    }
-}
-
-function swap$1(arr, i, j) {
-    var tmp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = tmp;
-}
-
-function defaultCompare$1(a, b) {
-    return a < b ? -1 : a > b ? 1 : 0;
-}
-
-// classifies an array of rings into polygons with outer rings and holes
-function classifyRings$1(rings, maxRings) {
-    const len = rings.length;
-    if (len <= 1)
-        return [rings];
-    const polygons = [];
-    let polygon, ccw;
-    for (let i = 0; i < len; i++) {
-        const area = calculateSignedArea(rings[i]);
-        if (area === 0)
-            continue;
-        rings[i].area = Math.abs(area);
-        if (ccw === undefined)
-            ccw = area < 0;
-        if (ccw === area < 0) {
-            if (polygon)
-                polygons.push(polygon);
-            polygon = [rings[i]];
-        }
-        else {
-            polygon.push(rings[i]);
-        }
-    }
-    if (polygon)
-        polygons.push(polygon);
-    // Earcut performance degrades with the # of rings in a polygon. For this
-    // reason, we limit strip out all but the `maxRings` largest rings.
-    if (maxRings > 1) {
-        for (let j = 0; j < polygons.length; j++) {
-            if (polygons[j].length <= maxRings)
-                continue;
-            quickselect(polygons[j], maxRings, 1, polygons[j].length - 1, compareAreas);
-            polygons[j] = polygons[j].slice(0, maxRings);
-        }
-    }
-    return polygons;
-}
-function compareAreas(a, b) {
-    return b.area - a.area;
+    return {vertices, holes, dimensions};
 }
 
 function hasPattern(type, layers, options) {
@@ -25263,7 +26028,7 @@ class FillBucket {
                 lineSegment.vertexLength += ring.length;
                 lineSegment.primitiveLength += ring.length;
             }
-            const indices = earcut$1(flattened, holeIndices);
+            const indices = earcut(flattened, holeIndices);
             for (let i = 0; i < indices.length; i += 3) {
                 this.indexArray.emplaceBack(triangleIndex + indices[i], triangleIndex + indices[i + 1], triangleIndex + indices[i + 2]);
             }
@@ -25742,8 +26507,8 @@ class FillExtrusionBucket {
         this.centroidVertexBuffer.destroy();
     }
     addFeature(feature, geometry, index, canonical, imagePositions) {
-        const centroid = { x: 0, y: 0, vertexCount: 0 };
         for (const polygon of classifyRings$1(geometry, EARCUT_MAX_RINGS)) {
+            const centroid = { x: 0, y: 0, vertexCount: 0 };
             let numVertices = 0;
             for (const ring of polygon) {
                 numVertices += ring.length;
@@ -25821,17 +26586,19 @@ class FillExtrusionBucket {
                     flattened.push(p.y);
                 }
             }
-            const indices = earcut$1(flattened, holeIndices);
+            const indices = earcut(flattened, holeIndices);
             for (let j = 0; j < indices.length; j += 3) {
                 // Counter-clockwise winding order.
                 this.indexArray.emplaceBack(triangleIndex + indices[j], triangleIndex + indices[j + 2], triangleIndex + indices[j + 1]);
             }
             segment.primitiveLength += indices.length / 3;
             segment.vertexLength += numVertices;
-        }
-        // remember polygon centroid to calculate elevation in GPU
-        for (let i = 0; i < centroid.vertexCount; i++) {
-            this.centroidVertexArray.emplaceBack(Math.floor(centroid.x / centroid.vertexCount), Math.floor(centroid.y / centroid.vertexCount));
+            // remember polygon centroid to calculate elevation in GPU
+            for (let i = 0; i < centroid.vertexCount; i++) {
+                const averageX = Math.floor(centroid.x / centroid.vertexCount);
+                const averageY = Math.floor(centroid.y / centroid.vertexCount);
+                this.centroidVertexArray.emplaceBack(averageX, averageY);
+            }
         }
         this.programConfigurations.populatePaintArrays(this.layoutVertexArray.length, feature, index, imagePositions, canonical);
     }
@@ -26598,7 +27365,8 @@ const placementOpacityAttributes = createLayout([
 ], 4);
 const collisionVertexAttributes = createLayout([
     { name: 'a_placed', components: 2, type: 'Uint8' },
-    { name: 'a_shift', components: 2, type: 'Float32' }
+    { name: 'a_shift', components: 2, type: 'Float32' },
+    { name: 'a_box_real', components: 2, type: 'Int16' },
 ]);
 const collisionBox = createLayout([
     // the box is centered around the anchor point
@@ -26994,7 +27762,7 @@ var SHIFT_LEFT_32 = (1 << 16) * (1 << 16),
 // Threshold chosen based on both benchmarking and knowledge about browser string
 // data structures (which currently switch structure types at 12 bytes or more)
 var TEXT_DECODER_MIN_LENGTH = 12;
-var utf8TextDecoder = typeof TextDecoder === 'undefined' ? null : new TextDecoder('utf8');
+var utf8TextDecoder = typeof TextDecoder === 'undefined' ? null : new TextDecoder('utf-8');
 
 Pbf.prototype = {
 
@@ -27752,13 +28520,15 @@ function potpack(boxes) {
 /* eslint-disable key-spacing */
 const IMAGE_PADDING = 1;
 class ImagePosition {
-    constructor(paddedRect, { pixelRatio, version, stretchX, stretchY, content }) {
+    constructor(paddedRect, { pixelRatio, version, stretchX, stretchY, content, textFitWidth, textFitHeight }) {
         this.paddedRect = paddedRect;
         this.pixelRatio = pixelRatio;
         this.stretchX = stretchX;
         this.stretchY = stretchY;
         this.content = content;
         this.version = version;
+        this.textFitWidth = textFitWidth;
+        this.textFitHeight = textFitHeight;
     }
     get tl() {
         return [
@@ -27994,7 +28764,7 @@ function breakLines(input, lineBreakPoints) {
     }
     return lines;
 }
-function shapeText(text, glyphMap, glyphPositions, imagePositions, defaultFontStack, maxWidth, lineHeight, textAnchor, textJustify, spacing, translate, writingMode, allowVerticalPlacement, symbolPlacement, layoutTextSize, layoutTextSizeThisZoom) {
+function shapeText(text, glyphMap, glyphPositions, imagePositions, defaultFontStack, maxWidth, lineHeight, textAnchor, textJustify, spacing, translate, writingMode, allowVerticalPlacement, layoutTextSize, layoutTextSizeThisZoom) {
     const logicalInput = TaggedString.fromFeature(text, defaultFontStack);
     if (writingMode === exports.WritingMode.vertical) {
         logicalInput.verticalizePunctuation();
@@ -28004,7 +28774,7 @@ function shapeText(text, glyphMap, glyphPositions, imagePositions, defaultFontSt
     if (processBidirectionalText && logicalInput.sections.length === 1) {
         // Bidi doesn't have to be style-aware
         lines = [];
-        const untaggedLines = processBidirectionalText(logicalInput.toString(), determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, symbolPlacement, layoutTextSize));
+        const untaggedLines = processBidirectionalText(logicalInput.toString(), determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize));
         for (const line of untaggedLines) {
             const taggedLine = new TaggedString();
             taggedLine.text = line;
@@ -28019,7 +28789,7 @@ function shapeText(text, glyphMap, glyphPositions, imagePositions, defaultFontSt
         // Need version of mapbox-gl-rtl-text with style support for combining RTL text
         // with formatting
         lines = [];
-        const processedLines = processStyledBidirectionalText(logicalInput.text, logicalInput.sectionIndex, determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, symbolPlacement, layoutTextSize));
+        const processedLines = processStyledBidirectionalText(logicalInput.text, logicalInput.sectionIndex, determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize));
         for (const line of processedLines) {
             const taggedLine = new TaggedString();
             taggedLine.text = line[0];
@@ -28029,7 +28799,7 @@ function shapeText(text, glyphMap, glyphPositions, imagePositions, defaultFontSt
         }
     }
     else {
-        lines = breakLines(logicalInput, determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, symbolPlacement, layoutTextSize));
+        lines = breakLines(logicalInput, determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize));
     }
     const positionedLines = [];
     const shaping = {
@@ -28062,7 +28832,6 @@ const breakable = {
     [0x0a]: true, // newline
     [0x20]: true, // space
     [0x26]: true, // ampersand
-    [0x28]: true, // left parenthesis
     [0x29]: true, // right parenthesis
     [0x2b]: true, // plus sign
     [0x2d]: true, // hyphen-minus
@@ -28076,6 +28845,10 @@ const breakable = {
     // Many other characters may be reasonable breakpoints
     // Consider "neutral orientation" characters at scriptDetection.charHasNeutralVerticalOrientation
     // See https://github.com/mapbox/mapbox-gl-js/issues/3658
+};
+// Allow breaks depending on the following character
+const breakableBefore = {
+    [0x28]: true, // left parenthesis
 };
 function getGlyphAdvance(codePoint, section, glyphMap, imagePositions, spacing, layoutTextSize) {
     if (!section.imageName) {
@@ -28163,9 +28936,7 @@ function leastBadBreaks(lastLineBreak) {
     }
     return leastBadBreaks(lastLineBreak.priorBreak).concat(lastLineBreak.index);
 }
-function determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, symbolPlacement, layoutTextSize) {
-    if (symbolPlacement !== 'point')
-        return [];
+function determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePositions, layoutTextSize) {
     if (!logicalInput)
         return [];
     const potentialLineBreaks = [];
@@ -28181,7 +28952,7 @@ function determineLineBreaks(logicalInput, spacing, maxWidth, glyphMap, imagePos
         // surrounding spaces.
         if ((i < logicalInput.length() - 1)) {
             const ideographicBreak = charAllowsIdeographicBreaking(codePoint);
-            if (breakable[codePoint] || ideographicBreak || section.imageName) {
+            if (breakable[codePoint] || ideographicBreak || section.imageName || (i !== logicalInput.length() - 2 && breakableBefore[logicalInput.getCharCode(i + 1)])) {
                 potentialLineBreaks.push(evaluateBreak(i + 1, currentX, targetWidth, potentialLineBreaks, calculatePenalty(codePoint, logicalInput.getCharCode(i + 1), ideographicBreak && hasServerSuggestedBreakpoints), false));
             }
         }
@@ -28370,6 +29141,51 @@ function shapeIcon(image, iconOffset, iconAnchor) {
     const y1 = dy - image.displaySize[1] * verticalAlign;
     const y2 = y1 + image.displaySize[1];
     return { image, top: y1, bottom: y2, left: x1, right: x2 };
+}
+/**
+ * Called after a PositionedIcon has already been run through fitIconToText,
+ * but needs further adjustment to apply textFitWidth and textFitHeight.
+ * @param shapedIcon - The icon that will be adjusted.
+ * @returns Extents of the shapedIcon with text fit adjustments if necessary.
+ */
+function applyTextFit(shapedIcon) {
+    var _a, _b;
+    // Assume shapedIcon.image is set or this wouldn't be called.
+    // Size of the icon after it was adjusted using stretchX and Y
+    let iconLeft = shapedIcon.left;
+    let iconTop = shapedIcon.top;
+    let iconWidth = shapedIcon.right - iconLeft;
+    let iconHeight = shapedIcon.bottom - iconTop;
+    // Size of the original content area
+    const contentWidth = shapedIcon.image.content[2] - shapedIcon.image.content[0];
+    const contentHeight = shapedIcon.image.content[3] - shapedIcon.image.content[1];
+    const textFitWidth = (_a = shapedIcon.image.textFitWidth) !== null && _a !== void 0 ? _a : "stretchOrShrink" /* TextFit.stretchOrShrink */;
+    const textFitHeight = (_b = shapedIcon.image.textFitHeight) !== null && _b !== void 0 ? _b : "stretchOrShrink" /* TextFit.stretchOrShrink */;
+    const contentAspectRatio = contentWidth / contentHeight;
+    // Scale to the proportional axis first note that height takes precedence if
+    // both axes are set to proportional.
+    if (textFitHeight === "proportional" /* TextFit.proportional */) {
+        if ((textFitWidth === "stretchOnly" /* TextFit.stretchOnly */ && iconWidth / iconHeight < contentAspectRatio) || textFitWidth === "proportional" /* TextFit.proportional */) {
+            // Push the width of the icon back out to match the content aspect ratio
+            const newIconWidth = Math.ceil(iconHeight * contentAspectRatio);
+            iconLeft *= newIconWidth / iconWidth;
+            iconWidth = newIconWidth;
+        }
+    }
+    else if (textFitWidth === "proportional" /* TextFit.proportional */) {
+        if (textFitHeight === "stretchOnly" /* TextFit.stretchOnly */ && contentAspectRatio !== 0 && iconWidth / iconHeight > contentAspectRatio) {
+            // Push the height of the icon back out to match the content aspect ratio
+            const newIconHeight = Math.ceil(iconWidth / contentAspectRatio);
+            iconTop *= newIconHeight / iconHeight;
+            iconHeight = newIconHeight;
+        }
+    }
+    else {
+        // If neither textFitHeight nor textFitWidth are proportional then
+        // there is no effect since the content rectangle should be precisely
+        // matched to the content
+    }
+    return { x1: iconLeft, y1: iconTop, x2: iconLeft + iconWidth, y2: iconTop + iconHeight };
 }
 function fitIconToText(shapedIcon, shapedText, textFit, padding, iconOffset, fontScale) {
     const image = shapedIcon.image;
@@ -28733,12 +29549,11 @@ class SymbolBucket {
                 // conversion here.
                 const resolvedTokens = layer.getValueAndResolveTokens('text-field', evaluationFeature, canonical, availableImages);
                 const formattedText = Formatted.factory(resolvedTokens);
-                if (containsRTLText(formattedText)) {
-                    this.hasRTLText = true;
-                }
-                if (!this.hasRTLText || // non-rtl text so can proceed safely
+                // on this instance: if hasRTLText is already true, all future calls to containsRTLText can be skipped.
+                const bucketHasRTLText = this.hasRTLText = (this.hasRTLText || containsRTLText(formattedText));
+                if (!bucketHasRTLText || // non-rtl text so can proceed safely
                     rtlWorkerPlugin.getRTLTextPluginStatus() === 'unavailable' || // We don't intend to lazy-load the rtl text plugin, so proceed with incorrect shaping
-                    this.hasRTLText && rtlWorkerPlugin.isParsed() // Use the rtlText plugin to shape text
+                    bucketHasRTLText && rtlWorkerPlugin.isParsed() // Use the rtlText plugin to shape text
                 ) {
                     text = transformText(formattedText, layer, evaluationFeature);
                 }
@@ -28814,7 +29629,7 @@ class SymbolBucket {
         this.icon.programConfigurations.updatePaintArrays(states, vtLayer, this.layers, imagePositions);
     }
     isEmpty() {
-        // When the bucket encounters only rtl-text but the plugin isnt loaded, no symbol instances will be created.
+        // When the bucket encounters only rtl-text but the plugin isn't loaded, no symbol instances will be created.
         // In order for the bucket to be serialized, and not discarded as an empty bucket both checks are necessary.
         return this.symbolInstances.length === 0 && !this.hasRTLText;
     }
@@ -29297,17 +30112,17 @@ class SymbolStyleLayer extends StyleLayer {
             if (!SymbolStyleLayer.hasPaintOverride(this.layout, overridable)) {
                 continue;
             }
-            const overriden = this.paint.get(overridable);
-            const override = new FormatSectionOverride(overriden);
-            const styleExpression = new StyleExpression(override, overriden.property.specification);
+            const overridden = this.paint.get(overridable);
+            const override = new FormatSectionOverride(overridden);
+            const styleExpression = new StyleExpression(override, overridden.property.specification);
             let expression = null;
-            if (overriden.value.kind === 'constant' || overriden.value.kind === 'source') {
+            if (overridden.value.kind === 'constant' || overridden.value.kind === 'source') {
                 expression = new ZoomConstantExpression('source', styleExpression);
             }
             else {
-                expression = new ZoomDependentExpression('composite', styleExpression, overriden.value.zoomStops);
+                expression = new ZoomDependentExpression('composite', styleExpression, overridden.value.zoomStops);
             }
-            this.paint._values[overridable] = new PossiblyEvaluatedPropertyValue(overriden.property, expression, overriden.parameters);
+            this.paint._values[overridable] = new PossiblyEvaluatedPropertyValue(overridden.property, expression, overridden.parameters);
         }
     }
     _handleOverridablePaintPropertyUpdate(name, oldValue, newValue) {
@@ -29518,7 +30333,7 @@ class ThrottledInvoker {
 }
 
 /**
- * An implementation of the [Actor design pattern](http://en.wikipedia.org/wiki/Actor_model)
+ * An implementation of the [Actor design pattern](https://en.wikipedia.org/wiki/Actor_model)
  * that maintains the relationship between asynchronous tasks and the objects
  * that spin them off - in this case, tasks like parsing parts of styles,
  * owned by the styles
@@ -29583,7 +30398,7 @@ class Actor {
     receive(message) {
         const data = message.data;
         const id = data.id;
-        if (data.origin !== 'file://' && location.origin !== 'file://' && data.origin !== location.origin) {
+        if (data.origin !== 'file://' && location.origin !== 'file://' && data.origin !== 'resource://android' && location.origin !== 'resource://android' && data.origin !== location.origin) {
             return;
         }
         if (data.targetMapId && this.mapId !== data.targetMapId) {
@@ -29828,12 +30643,12 @@ class LngLat {
 /*
  * The average circumference of the world in meters.
  */
-const earthCircumfrence = 2 * Math.PI * earthRadius; // meters
+const earthCircumference = 2 * Math.PI * earthRadius; // meters
 /*
  * The circumference at a line of latitude in meters.
  */
 function circumferenceAtLatitude(latitude) {
-    return earthCircumfrence * Math.cos(latitude * Math.PI / 180);
+    return earthCircumference * Math.cos(latitude * Math.PI / 180);
 }
 function mercatorXfromLng(lng) {
     return (180 + lng) / 360;
@@ -29952,7 +30767,7 @@ class MercatorCoordinate {
      */
     meterInMercatorCoordinateUnits() {
         // 1 meter / circumference at equator in meters * Mercator projection scale factor at this latitude
-        return 1 / earthCircumfrence * mercatorScale(latFromMercatorY(this.y));
+        return 1 / earthCircumference * mercatorScale(latFromMercatorY(this.y));
     }
 }
 
@@ -30211,7 +31026,7 @@ register('OverscaledTileID', OverscaledTileID, { omit: ['posMatrix'] });
 
 /**
  * DEMData is a data structure for decoding, backfilling, and storing elevation data for processing in the hillshade shaders
- * data can be populated either from a pngraw image tile or from serliazed data sent back from a worker. When data is initially
+ * data can be populated either from a pngraw image tile or from serialized data sent back from a worker. When data is initially
  * loaded from a image tile, we decode the pixel values using the appropriate decoding formula, but we store the
  * elevation data as an Int32 value. we add 65536 (2^16) to eliminate negative values and enable the use of
  * integer overflow when creating the texture used in the hillshadePrepare step.
@@ -30765,7 +31580,7 @@ function getCenterAnchor(line, maxAngle, shapedText, shapedIcon, glyphSize, boxS
 }
 function getAnchors(line, spacing, maxAngle, shapedText, shapedIcon, glyphSize, boxScale, overscaling, tileExtent) {
     // Resample a line to get anchor points for labels and check that each
-    // potential label passes text-max-angle check and has enough froom to fit
+    // potential label passes text-max-angle check and has enough room to fit
     // on the line.
     const angleWindowSize = getAngleWindowSize(shapedText, glyphSize, boxScale);
     const shapedLabelLength = getShapedLabelLength(shapedText, shapedIcon);
@@ -30837,8 +31652,12 @@ function getIconQuads(shapedIcon, iconRotate, isSDFIcon, hasIconTextFit) {
     const pixelRatio = image.pixelRatio;
     const imageWidth = image.paddedRect.w - 2 * border;
     const imageHeight = image.paddedRect.h - 2 * border;
-    const iconWidth = shapedIcon.right - shapedIcon.left;
-    const iconHeight = shapedIcon.bottom - shapedIcon.top;
+    let icon = {
+        x1: shapedIcon.left,
+        y1: shapedIcon.top,
+        x2: shapedIcon.right,
+        y2: shapedIcon.bottom
+    };
     const stretchX = image.stretchX || [[0, imageWidth]];
     const stretchY = image.stretchY || [[0, imageHeight]];
     const reduceRanges = (sum, range) => sum + range[1] - range[0];
@@ -30856,23 +31675,33 @@ function getIconQuads(shapedIcon, iconRotate, isSDFIcon, hasIconTextFit) {
     let fixedContentHeight = fixedHeight;
     if (image.content && hasIconTextFit) {
         const content = image.content;
+        const contentWidth = content[2] - content[0];
+        const contentHeight = content[3] - content[1];
+        // Constrict content area to fit target aspect ratio
+        if (image.textFitWidth || image.textFitHeight) {
+            icon = applyTextFit(shapedIcon);
+        }
         stretchOffsetX = sumWithinRange(stretchX, 0, content[0]);
         stretchOffsetY = sumWithinRange(stretchY, 0, content[1]);
         stretchContentWidth = sumWithinRange(stretchX, content[0], content[2]);
         stretchContentHeight = sumWithinRange(stretchY, content[1], content[3]);
         fixedOffsetX = content[0] - stretchOffsetX;
         fixedOffsetY = content[1] - stretchOffsetY;
-        fixedContentWidth = content[2] - content[0] - stretchContentWidth;
-        fixedContentHeight = content[3] - content[1] - stretchContentHeight;
+        fixedContentWidth = contentWidth - stretchContentWidth;
+        fixedContentHeight = contentHeight - stretchContentHeight;
     }
+    const iconLeft = icon.x1;
+    const iconTop = icon.y1;
+    const iconWidth = icon.x2 - iconLeft;
+    const iconHeight = icon.y2 - iconTop;
     const makeBox = (left, top, right, bottom) => {
-        const leftEm = getEmOffset(left.stretch - stretchOffsetX, stretchContentWidth, iconWidth, shapedIcon.left);
+        const leftEm = getEmOffset(left.stretch - stretchOffsetX, stretchContentWidth, iconWidth, iconLeft);
         const leftPx = getPxOffset(left.fixed - fixedOffsetX, fixedContentWidth, left.stretch, stretchWidth);
-        const topEm = getEmOffset(top.stretch - stretchOffsetY, stretchContentHeight, iconHeight, shapedIcon.top);
+        const topEm = getEmOffset(top.stretch - stretchOffsetY, stretchContentHeight, iconHeight, iconTop);
         const topPx = getPxOffset(top.fixed - fixedOffsetY, fixedContentHeight, top.stretch, stretchHeight);
-        const rightEm = getEmOffset(right.stretch - stretchOffsetX, stretchContentWidth, iconWidth, shapedIcon.left);
+        const rightEm = getEmOffset(right.stretch - stretchOffsetX, stretchContentWidth, iconWidth, iconLeft);
         const rightPx = getPxOffset(right.fixed - fixedOffsetX, fixedContentWidth, right.stretch, stretchWidth);
-        const bottomEm = getEmOffset(bottom.stretch - stretchOffsetY, stretchContentHeight, iconHeight, shapedIcon.top);
+        const bottomEm = getEmOffset(bottom.stretch - stretchOffsetY, stretchContentHeight, iconHeight, iconTop);
         const bottomPx = getPxOffset(bottom.fixed - fixedOffsetY, fixedContentHeight, bottom.stretch, stretchHeight);
         const tl = new Point$2(leftEm, topEm);
         const tr = new Point$2(rightEm, topEm);
@@ -31064,6 +31893,7 @@ class CollisionFeature {
      * @param alignLine - Whether the label is aligned with the line or the viewport.
      */
     constructor(collisionBoxArray, anchor, featureIndex, sourceLayerIndex, bucketIndex, shaped, boxScale, padding, alignLine, rotate) {
+        var _a;
         this.boxStartIndex = collisionBoxArray.length;
         if (alignLine) {
             // Compute height of the shape in glyph metrics and apply collision padding.
@@ -31083,26 +31913,34 @@ class CollisionFeature {
             }
         }
         else {
+            const icon = ((_a = shaped.image) === null || _a === void 0 ? void 0 : _a.content) && (shaped.image.textFitWidth || shaped.image.textFitHeight) ?
+                applyTextFit(shaped) :
+                {
+                    x1: shaped.left,
+                    y1: shaped.top,
+                    x2: shaped.right,
+                    y2: shaped.bottom
+                };
             // margin is in CSS order: [top, right, bottom, left]
-            let y1 = shaped.top * boxScale - padding[0];
-            let y2 = shaped.bottom * boxScale + padding[2];
-            let x1 = shaped.left * boxScale - padding[3];
-            let x2 = shaped.right * boxScale + padding[1];
+            icon.y1 = icon.y1 * boxScale - padding[0];
+            icon.y2 = icon.y2 * boxScale + padding[2];
+            icon.x1 = icon.x1 * boxScale - padding[3];
+            icon.x2 = icon.x2 * boxScale + padding[1];
             const collisionPadding = shaped.collisionPadding;
             if (collisionPadding) {
-                x1 -= collisionPadding[0] * boxScale;
-                y1 -= collisionPadding[1] * boxScale;
-                x2 += collisionPadding[2] * boxScale;
-                y2 += collisionPadding[3] * boxScale;
+                icon.x1 -= collisionPadding[0] * boxScale;
+                icon.y1 -= collisionPadding[1] * boxScale;
+                icon.x2 += collisionPadding[2] * boxScale;
+                icon.y2 += collisionPadding[3] * boxScale;
             }
             if (rotate) {
                 // Account for *-rotate in point collision boxes
                 // See https://github.com/mapbox/mapbox-gl-js/issues/6075
                 // Doesn't account for icon-text-fit
-                const tl = new Point$2(x1, y1);
-                const tr = new Point$2(x2, y1);
-                const bl = new Point$2(x1, y2);
-                const br = new Point$2(x2, y2);
+                const tl = new Point$2(icon.x1, icon.y1);
+                const tr = new Point$2(icon.x2, icon.y1);
+                const bl = new Point$2(icon.x1, icon.y2);
+                const br = new Point$2(icon.x2, icon.y2);
                 const rotateRadians = rotate * Math.PI / 180;
                 tl._rotate(rotateRadians);
                 tr._rotate(rotateRadians);
@@ -31111,19 +31949,19 @@ class CollisionFeature {
                 // Collision features require an "on-axis" geometry,
                 // so take the envelope of the rotated geometry
                 // (may be quite large for wide labels rotated 45 degrees)
-                x1 = Math.min(tl.x, tr.x, bl.x, br.x);
-                x2 = Math.max(tl.x, tr.x, bl.x, br.x);
-                y1 = Math.min(tl.y, tr.y, bl.y, br.y);
-                y2 = Math.max(tl.y, tr.y, bl.y, br.y);
+                icon.x1 = Math.min(tl.x, tr.x, bl.x, br.x);
+                icon.x2 = Math.max(tl.x, tr.x, bl.x, br.x);
+                icon.y1 = Math.min(tl.y, tr.y, bl.y, br.y);
+                icon.y2 = Math.max(tl.y, tr.y, bl.y, br.y);
             }
-            collisionBoxArray.emplaceBack(anchor.x, anchor.y, x1, y1, x2, y2, featureIndex, sourceLayerIndex, bucketIndex);
+            collisionBoxArray.emplaceBack(anchor.x, anchor.y, icon.x1, icon.y1, icon.x2, icon.y2, featureIndex, sourceLayerIndex, bucketIndex);
         }
         this.boxEndIndex = collisionBoxArray.length;
     }
 }
 
 class TinyQueue {
-    constructor(data = [], compare = defaultCompare) {
+    constructor(data = [], compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0)) {
         this.data = data;
         this.length = this.data.length;
         this.compare = compare;
@@ -31135,8 +31973,7 @@ class TinyQueue {
 
     push(item) {
         this.data.push(item);
-        this.length++;
-        this._up(this.length - 1);
+        this._up(this.length++);
     }
 
     pop() {
@@ -31144,9 +31981,8 @@ class TinyQueue {
 
         const top = this.data[0];
         const bottom = this.data.pop();
-        this.length--;
 
-        if (this.length > 0) {
+        if (--this.length > 0) {
             this.data[0] = bottom;
             this._down(0);
         }
@@ -31179,36 +32015,30 @@ class TinyQueue {
         const item = data[pos];
 
         while (pos < halfLength) {
-            let left = (pos << 1) + 1;
-            let best = data[left];
-            const right = left + 1;
+            let bestChild = (pos << 1) + 1; // initially it is the left child
+            const right = bestChild + 1;
 
-            if (right < this.length && compare(data[right], best) < 0) {
-                left = right;
-                best = data[right];
+            if (right < this.length && compare(data[right], data[bestChild]) < 0) {
+                bestChild = right;
             }
-            if (compare(best, item) >= 0) break;
+            if (compare(data[bestChild], item) >= 0) break;
 
-            data[pos] = best;
-            pos = left;
+            data[pos] = data[bestChild];
+            pos = bestChild;
         }
 
         data[pos] = item;
     }
 }
 
-function defaultCompare(a, b) {
-    return a < b ? -1 : a > b ? 1 : 0;
-}
-
 /**
- * Finds an approximation of a polygon's Pole Of Inaccessibiliy https://en.wikipedia.org/wiki/Pole_of_inaccessibility
- * This is a copy of http://github.com/mapbox/polylabel adapted to use Points
+ * Finds an approximation of a polygon's Pole Of Inaccessibility https://en.wikipedia.org/wiki/Pole_of_inaccessibility
+ * This is a copy of https://github.com/mapbox/polylabel adapted to use Points
  *
  * @param polygonRings - first item in array is the outer ring followed optionally by the list of holes, should be an element of the result of util/classify_rings
  * @param precision - Specified in input coordinate units. If 0 returns after first run, if `> 0` repeatedly narrows the search space until the radius of the area searched for the best pole is less than precision
  * @param debug - Print some statistics to the console during execution
- * @returns Pole of Inaccessibiliy.
+ * @returns Pole of Inaccessibility.
  */
 function findPoleOfInaccessibility(polygonRings, precision = 1, debug = false) {
     // find the bounding box of the outer ring
@@ -31520,13 +32350,13 @@ function performSymbolLayout(args) {
             const symbolPlacement = layout.get('symbol-placement');
             const maxWidth = symbolPlacement === 'point' ?
                 layout.get('text-max-width').evaluate(feature, {}, args.canonical) * ONE_EM :
-                0;
+                Infinity;
             const addVerticalShapingForPointLabelIfNeeded = () => {
                 if (args.bucket.allowVerticalPlacement && allowsVerticalWritingMode(unformattedText)) {
                     // Vertical POI label placement is meant to be used for scripts that support vertical
                     // writing mode, thus, default left justification is used. If Latin
                     // scripts would need to be supported, this should take into account other justifications.
-                    shapedTextOrientations.vertical = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, 'left', spacingIfAllowed, textOffset, exports.WritingMode.vertical, true, symbolPlacement, layoutTextSize, layoutTextSizeThisZoom);
+                    shapedTextOrientations.vertical = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, 'left', spacingIfAllowed, textOffset, exports.WritingMode.vertical, true, layoutTextSize, layoutTextSizeThisZoom);
                 }
             };
             // If this layer uses text-variable-anchor, generate shapings for all justification possibilities.
@@ -31552,7 +32382,7 @@ function performSymbolLayout(args) {
                     else {
                         // If using text-variable-anchor for the layer, we use a center anchor for all shapings and apply
                         // the offsets for the anchor in the placement step.
-                        const shaping = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, 'center', justification, spacingIfAllowed, textOffset, exports.WritingMode.horizontal, false, symbolPlacement, layoutTextSize, layoutTextSizeThisZoom);
+                        const shaping = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, 'center', justification, spacingIfAllowed, textOffset, exports.WritingMode.horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
                         if (shaping) {
                             shapedTextOrientations.horizontal[justification] = shaping;
                             singleLine = shaping.positionedLines.length === 1;
@@ -31566,14 +32396,14 @@ function performSymbolLayout(args) {
                     textJustify = getAnchorJustification(textAnchor);
                 }
                 // Horizontal point or line label.
-                const shaping = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, textJustify, spacingIfAllowed, textOffset, exports.WritingMode.horizontal, false, symbolPlacement, layoutTextSize, layoutTextSizeThisZoom);
+                const shaping = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, textJustify, spacingIfAllowed, textOffset, exports.WritingMode.horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
                 if (shaping)
                     shapedTextOrientations.horizontal[textJustify] = shaping;
                 // Vertical point label (if allowVerticalPlacement is enabled).
                 addVerticalShapingForPointLabelIfNeeded();
                 // Verticalized line label.
                 if (allowsVerticalWritingMode(unformattedText) && textAlongLine && keepUpright) {
-                    shapedTextOrientations.vertical = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, textJustify, spacingIfAllowed, textOffset, exports.WritingMode.vertical, false, symbolPlacement, layoutTextSize, layoutTextSizeThisZoom);
+                    shapedTextOrientations.vertical = shapeText(text, args.glyphMap, args.glyphPositions, args.imagePositions, fontstack, maxWidth, lineHeight, textAnchor, textJustify, spacingIfAllowed, textOffset, exports.WritingMode.vertical, false, layoutTextSize, layoutTextSizeThisZoom);
                 }
             }
         }
@@ -31809,13 +32639,13 @@ function addSymbol(bucket, anchor, line, shapedTextOrientations, shapedIcon, ima
             }
         }
         bucket.addSymbols(bucket.icon, iconQuads, iconSizeData, iconOffset, iconAlongLine, feature, exports.WritingMode.none, anchor, lineArray.lineStartIndex, lineArray.lineLength,
-        // The icon itself does not have an associated symbol since the text isnt placed yet
+        // The icon itself does not have an associated symbol since the text isn't placed yet
         -1, canonical);
         placedIconSymbolIndex = bucket.icon.placedSymbolArray.length - 1;
         if (verticalIconQuads) {
             numVerticalIconVertices = verticalIconQuads.length * 4;
             bucket.addSymbols(bucket.icon, verticalIconQuads, iconSizeData, iconOffset, iconAlongLine, feature, exports.WritingMode.vertical, anchor, lineArray.lineStartIndex, lineArray.lineLength,
-            // The icon itself does not have an associated symbol since the text isnt placed yet
+            // The icon itself does not have an associated symbol since the text isn't placed yet
             -1, canonical);
             verticalPlacedIconSymbolIndex = bucket.icon.placedSymbolArray.length - 1;
         }
@@ -32396,11 +33226,13 @@ exports.emptyStyle = emptyStyle;
 exports.equals = equals$6;
 exports.evaluateSizeForFeature = evaluateSizeForFeature;
 exports.evaluateSizeForZoom = evaluateSizeForZoom;
+exports.exactEquals = exactEquals$5;
 exports.extend = extend;
 exports.filterObject = filterObject;
 exports.findLineIntersection = findLineIntersection;
 exports.fromRotation = fromRotation$2;
 exports.fromScaling = fromScaling;
+exports.getAABB = getAABB;
 exports.getAnchorAlignment = getAnchorAlignment;
 exports.getAnchorJustification = getAnchorJustification;
 exports.getArrayBuffer = getArrayBuffer;
@@ -32466,6 +33298,7 @@ exports.uniqueId = uniqueId;
 exports.v8Spec = v8Spec;
 exports.validateCustomStyleLayer = validateCustomStyleLayer;
 exports.validateLight = validateLight;
+exports.validateSky = validateSky;
 exports.validateStyle = validateStyle;
 exports.vectorTile = vectorTile;
 exports.warnOnce = warnOnce;
@@ -32637,6 +33470,8 @@ class WorkerTile {
                     featureIndex.bucketLayerIDs.push(family.map((l) => l.id));
                 }
             }
+            // options.glyphDependencies looks like: {"SomeFontName":{"10":true,"32":true}}
+            // this line makes an object like: {"SomeFontName":[10,32]}
             const stacks = performance.mapObject(options.glyphDependencies, (glyphs) => Object.keys(glyphs).map(Number));
             this.inFlightDependencies.forEach((request) => request === null || request === void 0 ? void 0 : request.abort());
             this.inFlightDependencies = [];
@@ -32644,21 +33479,21 @@ class WorkerTile {
             if (Object.keys(stacks).length) {
                 const abortController = new AbortController();
                 this.inFlightDependencies.push(abortController);
-                getGlyphsPromise = actor.sendAsync({ type: 'getGlyphs', data: { stacks, source: this.source, tileID: this.tileID, type: 'glyphs' } }, abortController);
+                getGlyphsPromise = actor.sendAsync({ type: "GG" /* MessageType.getGlyphs */, data: { stacks, source: this.source, tileID: this.tileID, type: 'glyphs' } }, abortController);
             }
             const icons = Object.keys(options.iconDependencies);
             let getIconsPromise = Promise.resolve({});
             if (icons.length) {
                 const abortController = new AbortController();
                 this.inFlightDependencies.push(abortController);
-                getIconsPromise = actor.sendAsync({ type: 'getImages', data: { icons, source: this.source, tileID: this.tileID, type: 'icons' } }, abortController);
+                getIconsPromise = actor.sendAsync({ type: "GI" /* MessageType.getImages */, data: { icons, source: this.source, tileID: this.tileID, type: 'icons' } }, abortController);
             }
             const patterns = Object.keys(options.patternDependencies);
             let getPatternsPromise = Promise.resolve({});
             if (patterns.length) {
                 const abortController = new AbortController();
                 this.inFlightDependencies.push(abortController);
-                getPatternsPromise = actor.sendAsync({ type: 'getImages', data: { icons: patterns, source: this.source, tileID: this.tileID, type: 'patterns' } }, abortController);
+                getPatternsPromise = actor.sendAsync({ type: "GI" /* MessageType.getImages */, data: { icons: patterns, source: this.source, tileID: this.tileID, type: 'patterns' } }, abortController);
             }
             const [glyphMap, iconMap, patternMap] = yield Promise.all([getGlyphsPromise, getIconsPromise, getPatternsPromise]);
             const glyphAtlas = new GlyphAtlas(glyphMap);
@@ -32752,7 +33587,7 @@ class VectorTileWorkerSource {
                     errorMessage += 'please make sure the data is not gzipped and that you have configured the relevant header in the server';
                 }
                 else {
-                    errorMessage += `got error: ${ex.messge}`;
+                    errorMessage += `got error: ${ex.message}`;
                 }
                 throw new Error(errorMessage);
             }
@@ -33254,7 +34089,7 @@ function writeValue (value, pbf) {
 var vtPbfExports = vtPbf$1.exports;
 var vtpbf = /*@__PURE__*/performance.getDefaultExportFromCjs(vtPbfExports);
 
-const defaultOptions = {
+const defaultOptions$1 = {
     minZoom: 0,   // min zoom to generate clusters on
     maxZoom: 16,  // max zoom level to cluster the points on
     minPoints: 2, // minimum points to form a cluster
@@ -33283,7 +34118,7 @@ const OFFSET_PROP = 6;
 
 class Supercluster {
     constructor(options) {
-        this.options = Object.assign(Object.create(defaultOptions), options);
+        this.options = Object.assign(Object.create(defaultOptions$1), options);
         this.trees = new Array(this.options.maxZoom + 1);
         this.stride = this.options.reduce ? 7 : 6;
         this.clusterProps = [];
@@ -33679,18 +34514,18 @@ function yLat(y) {
 // calculate simplification data using optimized Douglas-Peucker algorithm
 
 function simplify(coords, first, last, sqTolerance) {
-    var maxSqDist = sqTolerance;
-    var mid = (last - first) >> 1;
-    var minPosToMid = last - first;
-    var index;
+    let maxSqDist = sqTolerance;
+    const mid = first + ((last - first) >> 1);
+    let minPosToMid = last - first;
+    let index;
 
-    var ax = coords[first];
-    var ay = coords[first + 1];
-    var bx = coords[last];
-    var by = coords[last + 1];
+    const ax = coords[first];
+    const ay = coords[first + 1];
+    const bx = coords[last];
+    const by = coords[last + 1];
 
-    for (var i = first + 3; i < last; i += 3) {
-        var d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
+    for (let i = first + 3; i < last; i += 3) {
+        const d = getSqSegDist(coords[i], coords[i + 1], ax, ay, bx, by);
 
         if (d > maxSqDist) {
             index = i;
@@ -33700,7 +34535,7 @@ function simplify(coords, first, last, sqTolerance) {
             // a workaround to ensure we choose a pivot close to the middle of the list,
             // reducing recursion depth, for certain degenerate inputs
             // https://github.com/mapbox/geojson-vt/issues/104
-            var posToMid = Math.abs(i - mid);
+            const posToMid = Math.abs(i - mid);
             if (posToMid < minPosToMid) {
                 index = i;
                 minPosToMid = posToMid;
@@ -33718,12 +34553,12 @@ function simplify(coords, first, last, sqTolerance) {
 // square distance from a point to a segment
 function getSqSegDist(px, py, x, y, bx, by) {
 
-    var dx = bx - x;
-    var dy = by - y;
+    let dx = bx - x;
+    let dy = by - y;
 
     if (dx !== 0 || dy !== 0) {
 
-        var t = ((px - x) * dx + (py - y) * dy) / (dx * dx + dy * dy);
+        const t = ((px - x) * dx + (py - y) * dy) / (dx * dx + dy * dy);
 
         if (t > 1) {
             x = bx;
@@ -33742,43 +34577,41 @@ function getSqSegDist(px, py, x, y, bx, by) {
 }
 
 function createFeature(id, type, geom, tags) {
-    var feature = {
-        id: typeof id === 'undefined' ? null : id,
-        type: type,
+    const feature = {
+        id: id == null ? null : id,
+        type,
         geometry: geom,
-        tags: tags,
+        tags,
         minX: Infinity,
         minY: Infinity,
         maxX: -Infinity,
         maxY: -Infinity
     };
-    calcBBox(feature);
-    return feature;
-}
-
-function calcBBox(feature) {
-    var geom = feature.geometry;
-    var type = feature.type;
 
     if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
         calcLineBBox(feature, geom);
 
-    } else if (type === 'Polygon' || type === 'MultiLineString') {
-        for (var i = 0; i < geom.length; i++) {
-            calcLineBBox(feature, geom[i]);
+    } else if (type === 'Polygon') {
+        // the outer ring (ie [0]) contains all inner rings
+        calcLineBBox(feature, geom[0]);
+
+    } else if (type === 'MultiLineString') {
+        for (const line of geom) {
+            calcLineBBox(feature, line);
         }
 
     } else if (type === 'MultiPolygon') {
-        for (i = 0; i < geom.length; i++) {
-            for (var j = 0; j < geom[i].length; j++) {
-                calcLineBBox(feature, geom[i][j]);
-            }
+        for (const polygon of geom) {
+            // the outer ring (ie [0]) contains all inner rings
+            calcLineBBox(feature, polygon[0]);
         }
     }
+
+    return feature;
 }
 
 function calcLineBBox(feature, geom) {
-    for (var i = 0; i < geom.length; i += 3) {
+    for (let i = 0; i < geom.length; i += 3) {
         feature.minX = Math.min(feature.minX, geom[i]);
         feature.minY = Math.min(feature.minY, geom[i + 1]);
         feature.maxX = Math.max(feature.maxX, geom[i]);
@@ -33789,9 +34622,9 @@ function calcLineBBox(feature, geom) {
 // converts GeoJSON feature into an intermediate projected JSON vector format with simplification data
 
 function convert(data, options) {
-    var features = [];
+    const features = [];
     if (data.type === 'FeatureCollection') {
-        for (var i = 0; i < data.features.length; i++) {
+        for (let i = 0; i < data.features.length; i++) {
             convertFeature(features, data.features[i], options, i);
         }
 
@@ -33809,11 +34642,13 @@ function convert(data, options) {
 function convertFeature(features, geojson, options, index) {
     if (!geojson.geometry) return;
 
-    var coords = geojson.geometry.coordinates;
-    var type = geojson.geometry.type;
-    var tolerance = Math.pow(options.tolerance / ((1 << options.maxZoom) * options.extent), 2);
-    var geometry = [];
-    var id = geojson.id;
+    const coords = geojson.geometry.coordinates;
+    if (coords && coords.length === 0) return;
+
+    const type = geojson.geometry.type;
+    const tolerance = Math.pow(options.tolerance / ((1 << options.maxZoom) * options.extent), 2);
+    let geometry = [];
+    let id = geojson.id;
     if (options.promoteId) {
         id = geojson.properties[options.promoteId];
     } else if (options.generateId) {
@@ -33823,8 +34658,8 @@ function convertFeature(features, geojson, options, index) {
         convertPoint(coords, geometry);
 
     } else if (type === 'MultiPoint') {
-        for (var i = 0; i < coords.length; i++) {
-            convertPoint(coords[i], geometry);
+        for (const p of coords) {
+            convertPoint(p, geometry);
         }
 
     } else if (type === 'LineString') {
@@ -33833,9 +34668,9 @@ function convertFeature(features, geojson, options, index) {
     } else if (type === 'MultiLineString') {
         if (options.lineMetrics) {
             // explode into linestrings to be able to track metrics
-            for (i = 0; i < coords.length; i++) {
+            for (const line of coords) {
                 geometry = [];
-                convertLine(coords[i], geometry, tolerance, false);
+                convertLine(line, geometry, tolerance, false);
                 features.push(createFeature(id, 'LineString', geometry, geojson.properties));
             }
             return;
@@ -33847,16 +34682,16 @@ function convertFeature(features, geojson, options, index) {
         convertLines(coords, geometry, tolerance, true);
 
     } else if (type === 'MultiPolygon') {
-        for (i = 0; i < coords.length; i++) {
-            var polygon = [];
-            convertLines(coords[i], polygon, tolerance, true);
-            geometry.push(polygon);
+        for (const polygon of coords) {
+            const newPolygon = [];
+            convertLines(polygon, newPolygon, tolerance, true);
+            geometry.push(newPolygon);
         }
     } else if (type === 'GeometryCollection') {
-        for (i = 0; i < geojson.geometry.geometries.length; i++) {
+        for (const singleGeometry of geojson.geometry.geometries) {
             convertFeature(features, {
-                id: id,
-                geometry: geojson.geometry.geometries[i],
+                id,
+                geometry: singleGeometry,
                 properties: geojson.properties
             }, options, index);
         }
@@ -33869,22 +34704,18 @@ function convertFeature(features, geojson, options, index) {
 }
 
 function convertPoint(coords, out) {
-    out.push(projectX(coords[0]));
-    out.push(projectY(coords[1]));
-    out.push(0);
+    out.push(projectX(coords[0]), projectY(coords[1]), 0);
 }
 
 function convertLine(ring, out, tolerance, isPolygon) {
-    var x0, y0;
-    var size = 0;
+    let x0, y0;
+    let size = 0;
 
-    for (var j = 0; j < ring.length; j++) {
-        var x = projectX(ring[j][0]);
-        var y = projectY(ring[j][1]);
+    for (let j = 0; j < ring.length; j++) {
+        const x = projectX(ring[j][0]);
+        const y = projectY(ring[j][1]);
 
-        out.push(x);
-        out.push(y);
-        out.push(0);
+        out.push(x, y, 0);
 
         if (j > 0) {
             if (isPolygon) {
@@ -33897,7 +34728,7 @@ function convertLine(ring, out, tolerance, isPolygon) {
         y0 = y;
     }
 
-    var last = out.length - 3;
+    const last = out.length - 3;
     out[2] = 1;
     simplify(out, 0, last, tolerance);
     out[last + 2] = 1;
@@ -33908,8 +34739,8 @@ function convertLine(ring, out, tolerance, isPolygon) {
 }
 
 function convertLines(rings, out, tolerance, isPolygon) {
-    for (var i = 0; i < rings.length; i++) {
-        var geom = [];
+    for (let i = 0; i < rings.length; i++) {
+        const geom = [];
         convertLine(rings[i], geom, tolerance, isPolygon);
         out.push(geom);
     }
@@ -33920,36 +34751,36 @@ function projectX(x) {
 }
 
 function projectY(y) {
-    var sin = Math.sin(y * Math.PI / 180);
-    var y2 = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
+    const sin = Math.sin(y * Math.PI / 180);
+    const y2 = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
     return y2 < 0 ? 0 : y2 > 1 ? 1 : y2;
 }
 
-/* clip features between two axis-parallel lines:
+/* clip features between two vertical or horizontal axis-parallel lines:
  *     |        |
  *  ___|___     |     /
  * /   |   \____|____/
  *     |        |
+ *
+ * k1 and k2 are the line coordinates
+ * axis: 0 for x, 1 for y
+ * minAll and maxAll: minimum and maximum coordinate value for all features
  */
-
 function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
-
     k1 /= scale;
     k2 /= scale;
 
     if (minAll >= k1 && maxAll < k2) return features; // trivial accept
     else if (maxAll < k1 || minAll >= k2) return null; // trivial reject
 
-    var clipped = [];
+    const clipped = [];
 
-    for (var i = 0; i < features.length; i++) {
+    for (const feature of features) {
+        const geometry = feature.geometry;
+        let type = feature.type;
 
-        var feature = features[i];
-        var geometry = feature.geometry;
-        var type = feature.type;
-
-        var min = axis === 0 ? feature.minX : feature.minY;
-        var max = axis === 0 ? feature.maxX : feature.maxY;
+        const min = axis === 0 ? feature.minX : feature.minY;
+        const max = axis === 0 ? feature.maxX : feature.maxY;
 
         if (min >= k1 && max < k2) { // trivial accept
             clipped.push(feature);
@@ -33958,7 +34789,7 @@ function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
             continue;
         }
 
-        var newGeometry = [];
+        let newGeometry = [];
 
         if (type === 'Point' || type === 'MultiPoint') {
             clipPoints(geometry, newGeometry, k1, k2, axis);
@@ -33973,19 +34804,19 @@ function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
             clipLines(geometry, newGeometry, k1, k2, axis, true);
 
         } else if (type === 'MultiPolygon') {
-            for (var j = 0; j < geometry.length; j++) {
-                var polygon = [];
-                clipLines(geometry[j], polygon, k1, k2, axis, true);
-                if (polygon.length) {
-                    newGeometry.push(polygon);
+            for (const polygon of geometry) {
+                const newPolygon = [];
+                clipLines(polygon, newPolygon, k1, k2, axis, true);
+                if (newPolygon.length) {
+                    newGeometry.push(newPolygon);
                 }
             }
         }
 
         if (newGeometry.length) {
             if (options.lineMetrics && type === 'LineString') {
-                for (j = 0; j < newGeometry.length; j++) {
-                    clipped.push(createFeature(feature.id, type, newGeometry[j], feature.tags));
+                for (const line of newGeometry) {
+                    clipped.push(createFeature(feature.id, type, line, feature.tags));
                 }
                 continue;
             }
@@ -34010,33 +34841,31 @@ function clip(features, scale, k1, k2, axis, minAll, maxAll, options) {
 }
 
 function clipPoints(geom, newGeom, k1, k2, axis) {
-    for (var i = 0; i < geom.length; i += 3) {
-        var a = geom[i + axis];
+    for (let i = 0; i < geom.length; i += 3) {
+        const a = geom[i + axis];
 
         if (a >= k1 && a <= k2) {
-            newGeom.push(geom[i]);
-            newGeom.push(geom[i + 1]);
-            newGeom.push(geom[i + 2]);
+            addPoint(newGeom, geom[i], geom[i + 1], geom[i + 2]);
         }
     }
 }
 
 function clipLine(geom, newGeom, k1, k2, axis, isPolygon, trackMetrics) {
 
-    var slice = newSlice(geom);
-    var intersect = axis === 0 ? intersectX : intersectY;
-    var len = geom.start;
-    var segLen, t;
+    let slice = newSlice(geom);
+    const intersect = axis === 0 ? intersectX : intersectY;
+    let len = geom.start;
+    let segLen, t;
 
-    for (var i = 0; i < geom.length - 3; i += 3) {
-        var ax = geom[i];
-        var ay = geom[i + 1];
-        var az = geom[i + 2];
-        var bx = geom[i + 3];
-        var by = geom[i + 4];
-        var a = axis === 0 ? ax : ay;
-        var b = axis === 0 ? bx : by;
-        var exited = false;
+    for (let i = 0; i < geom.length - 3; i += 3) {
+        const ax = geom[i];
+        const ay = geom[i + 1];
+        const az = geom[i + 2];
+        const bx = geom[i + 3];
+        const by = geom[i + 4];
+        const a = axis === 0 ? ax : ay;
+        const b = axis === 0 ? bx : by;
+        let exited = false;
 
         if (trackMetrics) segLen = Math.sqrt(Math.pow(ax - bx, 2) + Math.pow(ay - by, 2));
 
@@ -34076,11 +34905,11 @@ function clipLine(geom, newGeom, k1, k2, axis, isPolygon, trackMetrics) {
     }
 
     // add the last point
-    var last = geom.length - 3;
-    ax = geom[last];
-    ay = geom[last + 1];
-    az = geom[last + 2];
-    a = axis === 0 ? ax : ay;
+    let last = geom.length - 3;
+    const ax = geom[last];
+    const ay = geom[last + 1];
+    const az = geom[last + 2];
+    const a = axis === 0 ? ax : ay;
     if (a >= k1 && a <= k2) addPoint(slice, ax, ay, az);
 
     // close the polygon if its endpoints are not the same after clipping
@@ -34096,7 +34925,7 @@ function clipLine(geom, newGeom, k1, k2, axis, isPolygon, trackMetrics) {
 }
 
 function newSlice(line) {
-    var slice = [];
+    const slice = [];
     slice.size = line.size;
     slice.start = line.start;
     slice.end = line.end;
@@ -34104,38 +34933,32 @@ function newSlice(line) {
 }
 
 function clipLines(geom, newGeom, k1, k2, axis, isPolygon) {
-    for (var i = 0; i < geom.length; i++) {
-        clipLine(geom[i], newGeom, k1, k2, axis, isPolygon, false);
+    for (const line of geom) {
+        clipLine(line, newGeom, k1, k2, axis, isPolygon, false);
     }
 }
 
 function addPoint(out, x, y, z) {
-    out.push(x);
-    out.push(y);
-    out.push(z);
+    out.push(x, y, z);
 }
 
 function intersectX(out, ax, ay, bx, by, x) {
-    var t = (x - ax) / (bx - ax);
-    out.push(x);
-    out.push(ay + (by - ay) * t);
-    out.push(1);
+    const t = (x - ax) / (bx - ax);
+    addPoint(out, x, ay + (by - ay) * t, 1);
     return t;
 }
 
 function intersectY(out, ax, ay, bx, by, y) {
-    var t = (y - ay) / (by - ay);
-    out.push(ax + (bx - ax) * t);
-    out.push(y);
-    out.push(1);
+    const t = (y - ay) / (by - ay);
+    addPoint(out, ax + (bx - ax) * t, y, 1);
     return t;
 }
 
 function wrap(features, options) {
-    var buffer = options.buffer / options.extent;
-    var merged = features;
-    var left  = clip(features, 1, -1 - buffer, buffer,     0, -1, 2, options); // left world copy
-    var right = clip(features, 1,  1 - buffer, 2 + buffer, 0, -1, 2, options); // right world copy
+    const buffer = options.buffer / options.extent;
+    let merged = features;
+    const left  = clip(features, 1, -1 - buffer, buffer,     0, -1, 2, options); // left world copy
+    const right = clip(features, 1,  1 - buffer, 2 + buffer, 0, -1, 2, options); // right world copy
 
     if (left || right) {
         merged = clip(features, 1, -buffer, 1 + buffer, 0, -1, 2, options) || []; // center world copy
@@ -34148,28 +34971,28 @@ function wrap(features, options) {
 }
 
 function shiftFeatureCoords(features, offset) {
-    var newFeatures = [];
+    const newFeatures = [];
 
-    for (var i = 0; i < features.length; i++) {
-        var feature = features[i],
-            type = feature.type;
+    for (let i = 0; i < features.length; i++) {
+        const feature = features[i];
+        const type = feature.type;
 
-        var newGeometry;
+        let newGeometry;
 
         if (type === 'Point' || type === 'MultiPoint' || type === 'LineString') {
             newGeometry = shiftCoords(feature.geometry, offset);
 
         } else if (type === 'MultiLineString' || type === 'Polygon') {
             newGeometry = [];
-            for (var j = 0; j < feature.geometry.length; j++) {
-                newGeometry.push(shiftCoords(feature.geometry[j], offset));
+            for (const line of feature.geometry) {
+                newGeometry.push(shiftCoords(line, offset));
             }
         } else if (type === 'MultiPolygon') {
             newGeometry = [];
-            for (j = 0; j < feature.geometry.length; j++) {
-                var newPolygon = [];
-                for (var k = 0; k < feature.geometry[j].length; k++) {
-                    newPolygon.push(shiftCoords(feature.geometry[j][k], offset));
+            for (const polygon of feature.geometry) {
+                const newPolygon = [];
+                for (const line of polygon) {
+                    newPolygon.push(shiftCoords(line, offset));
                 }
                 newGeometry.push(newPolygon);
             }
@@ -34182,7 +35005,7 @@ function shiftFeatureCoords(features, offset) {
 }
 
 function shiftCoords(points, offset) {
-    var newPoints = [];
+    const newPoints = [];
     newPoints.size = points.size;
 
     if (points.start !== undefined) {
@@ -34190,7 +35013,7 @@ function shiftCoords(points, offset) {
         newPoints.end = points.end;
     }
 
-    for (var i = 0; i < points.length; i += 3) {
+    for (let i = 0; i < points.length; i += 3) {
         newPoints.push(points[i] + offset, points[i + 1], points[i + 2]);
     }
     return newPoints;
@@ -34201,26 +35024,24 @@ function shiftCoords(points, offset) {
 function transformTile(tile, extent) {
     if (tile.transformed) return tile;
 
-    var z2 = 1 << tile.z,
-        tx = tile.x,
-        ty = tile.y,
-        i, j, k;
+    const z2 = 1 << tile.z;
+    const tx = tile.x;
+    const ty = tile.y;
 
-    for (i = 0; i < tile.features.length; i++) {
-        var feature = tile.features[i],
-            geom = feature.geometry,
-            type = feature.type;
+    for (const feature of tile.features) {
+        const geom = feature.geometry;
+        const type = feature.type;
 
         feature.geometry = [];
 
         if (type === 1) {
-            for (j = 0; j < geom.length; j += 2) {
+            for (let j = 0; j < geom.length; j += 2) {
                 feature.geometry.push(transformPoint(geom[j], geom[j + 1], extent, z2, tx, ty));
             }
         } else {
-            for (j = 0; j < geom.length; j++) {
-                var ring = [];
-                for (k = 0; k < geom[j].length; k += 2) {
+            for (let j = 0; j < geom.length; j++) {
+                const ring = [];
+                for (let k = 0; k < geom[j].length; k += 2) {
                     ring.push(transformPoint(geom[j][k], geom[j][k + 1], extent, z2, tx, ty));
                 }
                 feature.geometry.push(ring);
@@ -34240,49 +35061,41 @@ function transformPoint(x, y, extent, z2, tx, ty) {
 }
 
 function createTile(features, z, tx, ty, options) {
-    var tolerance = z === options.maxZoom ? 0 : options.tolerance / ((1 << z) * options.extent);
-    var tile = {
+    const tolerance = z === options.maxZoom ? 0 : options.tolerance / ((1 << z) * options.extent);
+    const tile = {
         features: [],
         numPoints: 0,
         numSimplified: 0,
-        numFeatures: 0,
+        numFeatures: features.length,
         source: null,
         x: tx,
         y: ty,
-        z: z,
+        z,
         transformed: false,
         minX: 2,
         minY: 1,
         maxX: -1,
         maxY: 0
     };
-    for (var i = 0; i < features.length; i++) {
-        tile.numFeatures++;
-        addFeature(tile, features[i], tolerance, options);
-
-        var minX = features[i].minX;
-        var minY = features[i].minY;
-        var maxX = features[i].maxX;
-        var maxY = features[i].maxY;
-
-        if (minX < tile.minX) tile.minX = minX;
-        if (minY < tile.minY) tile.minY = minY;
-        if (maxX > tile.maxX) tile.maxX = maxX;
-        if (maxY > tile.maxY) tile.maxY = maxY;
+    for (const feature of features) {
+        addFeature(tile, feature, tolerance, options);
     }
     return tile;
 }
 
 function addFeature(tile, feature, tolerance, options) {
+    const geom = feature.geometry;
+    const type = feature.type;
+    const simplified = [];
 
-    var geom = feature.geometry,
-        type = feature.type,
-        simplified = [];
+    tile.minX = Math.min(tile.minX, feature.minX);
+    tile.minY = Math.min(tile.minY, feature.minY);
+    tile.maxX = Math.max(tile.maxX, feature.maxX);
+    tile.maxY = Math.max(tile.maxY, feature.maxY);
 
     if (type === 'Point' || type === 'MultiPoint') {
-        for (var i = 0; i < geom.length; i += 3) {
-            simplified.push(geom[i]);
-            simplified.push(geom[i + 1]);
+        for (let i = 0; i < geom.length; i += 3) {
+            simplified.push(geom[i], geom[i + 1]);
             tile.numPoints++;
             tile.numSimplified++;
         }
@@ -34291,33 +35104,35 @@ function addFeature(tile, feature, tolerance, options) {
         addLine(simplified, geom, tile, tolerance, false, false);
 
     } else if (type === 'MultiLineString' || type === 'Polygon') {
-        for (i = 0; i < geom.length; i++) {
+        for (let i = 0; i < geom.length; i++) {
             addLine(simplified, geom[i], tile, tolerance, type === 'Polygon', i === 0);
         }
 
     } else if (type === 'MultiPolygon') {
 
-        for (var k = 0; k < geom.length; k++) {
-            var polygon = geom[k];
-            for (i = 0; i < polygon.length; i++) {
+        for (let k = 0; k < geom.length; k++) {
+            const polygon = geom[k];
+            for (let i = 0; i < polygon.length; i++) {
                 addLine(simplified, polygon[i], tile, tolerance, true, i === 0);
             }
         }
     }
 
     if (simplified.length) {
-        var tags = feature.tags || null;
+        let tags = feature.tags || null;
+
         if (type === 'LineString' && options.lineMetrics) {
             tags = {};
-            for (var key in feature.tags) tags[key] = feature.tags[key];
+            for (const key in feature.tags) tags[key] = feature.tags[key];
             tags['mapbox_clip_start'] = geom.start / geom.size;
             tags['mapbox_clip_end'] = geom.end / geom.size;
         }
-        var tileFeature = {
+
+        const tileFeature = {
             geometry: simplified,
             type: type === 'Polygon' || type === 'MultiPolygon' ? 3 :
-                type === 'LineString' || type === 'MultiLineString' ? 2 : 1,
-            tags: tags
+            (type === 'LineString' || type === 'MultiLineString' ? 2 : 1),
+            tags
         };
         if (feature.id !== null) {
             tileFeature.id = feature.id;
@@ -34327,20 +35142,19 @@ function addFeature(tile, feature, tolerance, options) {
 }
 
 function addLine(result, geom, tile, tolerance, isPolygon, isOuter) {
-    var sqTolerance = tolerance * tolerance;
+    const sqTolerance = tolerance * tolerance;
 
     if (tolerance > 0 && (geom.size < (isPolygon ? sqTolerance : tolerance))) {
         tile.numPoints += geom.length / 3;
         return;
     }
 
-    var ring = [];
+    const ring = [];
 
-    for (var i = 0; i < geom.length; i += 3) {
+    for (let i = 0; i < geom.length; i += 3) {
         if (tolerance === 0 || geom[i + 2] > sqTolerance) {
             tile.numSimplified++;
-            ring.push(geom[i]);
-            ring.push(geom[i + 1]);
+            ring.push(geom[i], geom[i + 1]);
         }
         tile.numPoints++;
     }
@@ -34351,14 +35165,14 @@ function addLine(result, geom, tile, tolerance, isPolygon, isOuter) {
 }
 
 function rewind(ring, clockwise) {
-    var area = 0;
-    for (var i = 0, len = ring.length, j = len - 2; i < len; j = i, i += 2) {
+    let area = 0;
+    for (let i = 0, len = ring.length, j = len - 2; i < len; j = i, i += 2) {
         area += (ring[i] - ring[j]) * (ring[i + 1] + ring[j + 1]);
     }
     if (area > 0 === clockwise) {
-        for (i = 0, len = ring.length; i < len / 2; i += 2) {
-            var x = ring[i];
-            var y = ring[i + 1];
+        for (let i = 0, len = ring.length; i < len / 2; i += 2) {
+            const x = ring[i];
+            const y = ring[i + 1];
             ring[i] = ring[len - 2 - i];
             ring[i + 1] = ring[len - 1 - i];
             ring[len - 2 - i] = x;
@@ -34367,46 +35181,7 @@ function rewind(ring, clockwise) {
     }
 }
 
-function geojsonvt(data, options) {
-    return new GeoJSONVT(data, options);
-}
-
-function GeoJSONVT(data, options) {
-    options = this.options = extend(Object.create(this.options), options);
-
-    var debug = options.debug;
-
-    if (debug) console.time('preprocess data');
-
-    if (options.maxZoom < 0 || options.maxZoom > 24) throw new Error('maxZoom should be in the 0-24 range');
-    if (options.promoteId && options.generateId) throw new Error('promoteId and generateId cannot be used together.');
-
-    var features = convert(data, options);
-
-    this.tiles = {};
-    this.tileCoords = [];
-
-    if (debug) {
-        console.timeEnd('preprocess data');
-        console.log('index: maxZoom: %d, maxPoints: %d', options.indexMaxZoom, options.indexMaxPoints);
-        console.time('generate tiles');
-        this.stats = {};
-        this.total = 0;
-    }
-
-    features = wrap(features, options);
-
-    // start slicing from the top tile down
-    if (features.length) this.splitTile(features, 0, 0, 0);
-
-    if (debug) {
-        if (features.length) console.log('features: %d, points: %d', this.tiles[0].numFeatures, this.tiles[0].numPoints);
-        console.timeEnd('generate tiles');
-        console.log('tiles generated:', this.total, JSON.stringify(this.stats));
-    }
-}
-
-GeoJSONVT.prototype.options = {
+const defaultOptions = {
     maxZoom: 14,            // max zoom to preserve detail on
     indexMaxZoom: 5,        // max zoom in the tile index
     indexMaxPoints: 100000, // max number of points per tile in the tile index
@@ -34419,146 +35194,201 @@ GeoJSONVT.prototype.options = {
     debug: 0                // logging level (0, 1 or 2)
 };
 
-GeoJSONVT.prototype.splitTile = function (features, z, x, y, cz, cx, cy) {
+class GeoJSONVT {
+    constructor(data, options) {
+        options = this.options = extend(Object.create(defaultOptions), options);
 
-    var stack = [features, z, x, y],
-        options = this.options,
-        debug = options.debug;
+        const debug = options.debug;
 
-    // avoid recursion by using a processing queue
-    while (stack.length) {
-        y = stack.pop();
-        x = stack.pop();
-        z = stack.pop();
-        features = stack.pop();
+        if (debug) console.time('preprocess data');
 
-        var z2 = 1 << z,
-            id = toID(z, x, y),
-            tile = this.tiles[id];
+        if (options.maxZoom < 0 || options.maxZoom > 24) throw new Error('maxZoom should be in the 0-24 range');
+        if (options.promoteId && options.generateId) throw new Error('promoteId and generateId cannot be used together.');
 
-        if (!tile) {
-            if (debug > 1) console.time('creation');
+        // projects and adds simplification info
+        let features = convert(data, options);
 
-            tile = this.tiles[id] = createTile(features, z, x, y, options);
-            this.tileCoords.push({z: z, x: x, y: y});
+        // tiles and tileCoords are part of the public API
+        this.tiles = {};
+        this.tileCoords = [];
 
-            if (debug) {
-                if (debug > 1) {
-                    console.log('tile z%d-%d-%d (features: %d, points: %d, simplified: %d)',
-                        z, x, y, tile.numFeatures, tile.numPoints, tile.numSimplified);
-                    console.timeEnd('creation');
+        if (debug) {
+            console.timeEnd('preprocess data');
+            console.log('index: maxZoom: %d, maxPoints: %d', options.indexMaxZoom, options.indexMaxPoints);
+            console.time('generate tiles');
+            this.stats = {};
+            this.total = 0;
+        }
+
+        // wraps features (ie extreme west and extreme east)
+        features = wrap(features, options);
+
+        // start slicing from the top tile down
+        if (features.length) this.splitTile(features, 0, 0, 0);
+
+        if (debug) {
+            if (features.length) console.log('features: %d, points: %d', this.tiles[0].numFeatures, this.tiles[0].numPoints);
+            console.timeEnd('generate tiles');
+            console.log('tiles generated:', this.total, JSON.stringify(this.stats));
+        }
+    }
+
+    // splits features from a parent tile to sub-tiles.
+    // z, x, and y are the coordinates of the parent tile
+    // cz, cx, and cy are the coordinates of the target tile
+    //
+    // If no target tile is specified, splitting stops when we reach the maximum
+    // zoom or the number of points is low as specified in the options.
+    splitTile(features, z, x, y, cz, cx, cy) {
+
+        const stack = [features, z, x, y];
+        const options = this.options;
+        const debug = options.debug;
+
+        // avoid recursion by using a processing queue
+        while (stack.length) {
+            y = stack.pop();
+            x = stack.pop();
+            z = stack.pop();
+            features = stack.pop();
+
+            const z2 = 1 << z;
+            const id = toID(z, x, y);
+            let tile = this.tiles[id];
+
+            if (!tile) {
+                if (debug > 1) console.time('creation');
+
+                tile = this.tiles[id] = createTile(features, z, x, y, options);
+                this.tileCoords.push({z, x, y});
+
+                if (debug) {
+                    if (debug > 1) {
+                        console.log('tile z%d-%d-%d (features: %d, points: %d, simplified: %d)',
+                            z, x, y, tile.numFeatures, tile.numPoints, tile.numSimplified);
+                        console.timeEnd('creation');
+                    }
+                    const key = `z${  z}`;
+                    this.stats[key] = (this.stats[key] || 0) + 1;
+                    this.total++;
                 }
-                var key = 'z' + z;
-                this.stats[key] = (this.stats[key] || 0) + 1;
-                this.total++;
             }
+
+            // save reference to original geometry in tile so that we can drill down later if we stop now
+            tile.source = features;
+
+            // if it's the first-pass tiling
+            if (cz == null) {
+                // stop tiling if we reached max zoom, or if the tile is too simple
+                if (z === options.indexMaxZoom || tile.numPoints <= options.indexMaxPoints) continue;
+            // if a drilldown to a specific tile
+            } else if (z === options.maxZoom || z === cz) {
+                // stop tiling if we reached base zoom or our target tile zoom
+                continue;
+            } else if (cz != null) {
+                // stop tiling if it's not an ancestor of the target tile
+                const zoomSteps = cz - z;
+                if (x !== cx >> zoomSteps || y !== cy >> zoomSteps) continue;
+            }
+
+            // if we slice further down, no need to keep source geometry
+            tile.source = null;
+
+            if (features.length === 0) continue;
+
+            if (debug > 1) console.time('clipping');
+
+            // values we'll use for clipping
+            const k1 = 0.5 * options.buffer / options.extent;
+            const k2 = 0.5 - k1;
+            const k3 = 0.5 + k1;
+            const k4 = 1 + k1;
+
+            let tl = null;
+            let bl = null;
+            let tr = null;
+            let br = null;
+
+            let left  = clip(features, z2, x - k1, x + k3, 0, tile.minX, tile.maxX, options);
+            let right = clip(features, z2, x + k2, x + k4, 0, tile.minX, tile.maxX, options);
+            features = null;
+
+            if (left) {
+                tl = clip(left, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+                bl = clip(left, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+                left = null;
+            }
+
+            if (right) {
+                tr = clip(right, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
+                br = clip(right, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
+                right = null;
+            }
+
+            if (debug > 1) console.timeEnd('clipping');
+
+            stack.push(tl || [], z + 1, x * 2,     y * 2);
+            stack.push(bl || [], z + 1, x * 2,     y * 2 + 1);
+            stack.push(tr || [], z + 1, x * 2 + 1, y * 2);
+            stack.push(br || [], z + 1, x * 2 + 1, y * 2 + 1);
         }
-
-        // save reference to original geometry in tile so that we can drill down later if we stop now
-        tile.source = features;
-
-        // if it's the first-pass tiling
-        if (!cz) {
-            // stop tiling if we reached max zoom, or if the tile is too simple
-            if (z === options.indexMaxZoom || tile.numPoints <= options.indexMaxPoints) continue;
-
-        // if a drilldown to a specific tile
-        } else {
-            // stop tiling if we reached base zoom or our target tile zoom
-            if (z === options.maxZoom || z === cz) continue;
-
-            // stop tiling if it's not an ancestor of the target tile
-            var m = 1 << (cz - z);
-            if (x !== Math.floor(cx / m) || y !== Math.floor(cy / m)) continue;
-        }
-
-        // if we slice further down, no need to keep source geometry
-        tile.source = null;
-
-        if (features.length === 0) continue;
-
-        if (debug > 1) console.time('clipping');
-
-        // values we'll use for clipping
-        var k1 = 0.5 * options.buffer / options.extent,
-            k2 = 0.5 - k1,
-            k3 = 0.5 + k1,
-            k4 = 1 + k1,
-            tl, bl, tr, br, left, right;
-
-        tl = bl = tr = br = null;
-
-        left  = clip(features, z2, x - k1, x + k3, 0, tile.minX, tile.maxX, options);
-        right = clip(features, z2, x + k2, x + k4, 0, tile.minX, tile.maxX, options);
-        features = null;
-
-        if (left) {
-            tl = clip(left, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
-            bl = clip(left, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
-            left = null;
-        }
-
-        if (right) {
-            tr = clip(right, z2, y - k1, y + k3, 1, tile.minY, tile.maxY, options);
-            br = clip(right, z2, y + k2, y + k4, 1, tile.minY, tile.maxY, options);
-            right = null;
-        }
-
-        if (debug > 1) console.timeEnd('clipping');
-
-        stack.push(tl || [], z + 1, x * 2,     y * 2);
-        stack.push(bl || [], z + 1, x * 2,     y * 2 + 1);
-        stack.push(tr || [], z + 1, x * 2 + 1, y * 2);
-        stack.push(br || [], z + 1, x * 2 + 1, y * 2 + 1);
-    }
-};
-
-GeoJSONVT.prototype.getTile = function (z, x, y) {
-    var options = this.options,
-        extent = options.extent,
-        debug = options.debug;
-
-    if (z < 0 || z > 24) return null;
-
-    var z2 = 1 << z;
-    x = ((x % z2) + z2) % z2; // wrap tile x coordinate
-
-    var id = toID(z, x, y);
-    if (this.tiles[id]) return transformTile(this.tiles[id], extent);
-
-    if (debug > 1) console.log('drilling down to z%d-%d-%d', z, x, y);
-
-    var z0 = z,
-        x0 = x,
-        y0 = y,
-        parent;
-
-    while (!parent && z0 > 0) {
-        z0--;
-        x0 = Math.floor(x0 / 2);
-        y0 = Math.floor(y0 / 2);
-        parent = this.tiles[toID(z0, x0, y0)];
     }
 
-    if (!parent || !parent.source) return null;
+    getTile(z, x, y) {
+        z = +z;
+        x = +x;
+        y = +y;
 
-    // if we found a parent tile containing the original geometry, we can drill down from it
-    if (debug > 1) console.log('found parent tile z%d-%d-%d', z0, x0, y0);
+        const options = this.options;
+        const {extent, debug} = options;
 
-    if (debug > 1) console.time('drilling down');
-    this.splitTile(parent.source, z0, x0, y0, z, x, y);
-    if (debug > 1) console.timeEnd('drilling down');
+        if (z < 0 || z > 24) return null;
 
-    return this.tiles[id] ? transformTile(this.tiles[id], extent) : null;
-};
+        const z2 = 1 << z;
+        x = (x + z2) & (z2 - 1); // wrap tile x coordinate
+
+        const id = toID(z, x, y);
+        if (this.tiles[id]) return transformTile(this.tiles[id], extent);
+
+        if (debug > 1) console.log('drilling down to z%d-%d-%d', z, x, y);
+
+        let z0 = z;
+        let x0 = x;
+        let y0 = y;
+        let parent;
+
+        while (!parent && z0 > 0) {
+            z0--;
+            x0 = x0 >> 1;
+            y0 = y0 >> 1;
+            parent = this.tiles[toID(z0, x0, y0)];
+        }
+
+        if (!parent || !parent.source) return null;
+
+        // if we found a parent tile containing the original geometry, we can drill down from it
+        if (debug > 1) {
+            console.log('found parent tile z%d-%d-%d', z0, x0, y0);
+            console.time('drilling down');
+        }
+        this.splitTile(parent.source, z0, x0, y0, z, x, y);
+        if (debug > 1) console.timeEnd('drilling down');
+
+        return this.tiles[id] ? transformTile(this.tiles[id], extent) : null;
+    }
+}
 
 function toID(z, x, y) {
     return (((1 << z) * y + x) * 32) + z;
 }
 
 function extend(dest, src) {
-    for (var i in src) dest[i] = src[i];
+    for (const i in src) dest[i] = src[i];
     return dest;
+}
+
+function geojsonvt(data, options) {
+    return new GeoJSONVT(data, options);
 }
 
 function getFeatureId(feature, promoteId) {
@@ -34707,7 +35537,7 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
      * preparatory method must be called before {@link GeoJSONWorkerSource#loadTile}
      * can correctly serve up tiles.
      *
-     * Defers to {@link GeoJSONWorkerSource#loadGeoJSON} for the fetching/parsing,
+     * Defers to {@link GeoJSONWorkerSource#loadAndProcessGeoJSON} for the pre-processing.
      *
      * When a `loadData` request comes in while a previous one is being processed,
      * the previous one is aborted.
@@ -34716,29 +35546,17 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
      * @returns a promise that resolves when the data is loaded and parsed into a GeoJSON object
      */
     loadData(params) {
-        var _a;
         return performance.__awaiter(this, void 0, void 0, function* () {
+            var _a;
             (_a = this._pendingRequest) === null || _a === void 0 ? void 0 : _a.abort();
             const perf = (params && params.request && params.request.collectResourceTiming) ?
                 new performance.RequestPerformance(params.request) : false;
             this._pendingRequest = new AbortController();
             try {
-                let data = yield this.loadGeoJSON(params, this._pendingRequest);
-                delete this._pendingRequest;
-                if (typeof data !== 'object') {
-                    throw new Error(`Input data given to '${params.source}' is not a valid GeoJSON object.`);
-                }
-                rewind$2(data, true);
-                if (params.filter) {
-                    const compiled = performance.createExpression(params.filter, { type: 'boolean', 'property-type': 'data-driven', overridable: false, transition: false });
-                    if (compiled.result === 'error')
-                        throw new Error(compiled.value.map(err => `${err.key}: ${err.message}`).join(', '));
-                    const features = data.features.filter(feature => compiled.value.evaluate({ zoom: 0 }, feature));
-                    data = { type: 'FeatureCollection', features };
-                }
+                this._pendingData = this.loadAndProcessGeoJSON(params, this._pendingRequest);
                 this._geoJSONIndex = params.cluster ?
-                    new Supercluster(getSuperclusterOptions(params)).load(data.features) :
-                    geojsonvt(data, params.geojsonVtOptions);
+                    new Supercluster(getSuperclusterOptions(params)).load((yield this._pendingData).features) :
+                    geojsonvt(yield this._pendingData, params.geojsonVtOptions);
                 this.loaded = {};
                 const result = {};
                 if (perf) {
@@ -34762,6 +35580,16 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
         });
     }
     /**
+     * Allows to get the source's actual GeoJSON.
+     *
+     * @returns a promise which is resolved with the source's actual GeoJSON
+     */
+    getData() {
+        return performance.__awaiter(this, void 0, void 0, function* () {
+            return this._pendingData;
+        });
+    }
+    /**
     * Implements {@link WorkerSource#reloadTile}.
     *
     * If the tile is loaded, uses the implementation in VectorTileWorkerSource.
@@ -34778,6 +35606,33 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
         else {
             return this.loadTile(params);
         }
+    }
+    /**
+     * Fetch, parse and process GeoJSON according to the given params.
+     *
+     * Defers to {@link GeoJSONWorkerSource#loadGeoJSON} for the fetching and parsing.
+     *
+     * @param params - the parameters
+     * @param abortController - the abort controller that allows aborting this operation
+     * @returns a promise that is resolved with the processes GeoJSON
+     */
+    loadAndProcessGeoJSON(params, abortController) {
+        return performance.__awaiter(this, void 0, void 0, function* () {
+            let data = yield this.loadGeoJSON(params, abortController);
+            delete this._pendingRequest;
+            if (typeof data !== 'object') {
+                throw new Error(`Input data given to '${params.source}' is not a valid GeoJSON object.`);
+            }
+            rewind$2(data, true);
+            if (params.filter) {
+                const compiled = performance.createExpression(params.filter, { type: 'boolean', 'property-type': 'data-driven', overridable: false, transition: false });
+                if (compiled.result === 'error')
+                    throw new Error(compiled.value.map(err => `${err.key}: ${err.message}`).join(', '));
+                const features = data.features.filter(feature => compiled.value.evaluate({ zoom: 0 }, feature));
+                data = { type: 'FeatureCollection', features };
+            }
+            return data;
+        });
     }
     /**
      * Fetch and parse GeoJSON according to the given params.
@@ -34868,7 +35723,7 @@ function getSuperclusterOptions({ superclusterOptions, clusterProperties }) {
 }
 
 /**
- * The Worker class responsidble for background thread related execution
+ * The Worker class responsible for background thread related execution
  */
 class Worker {
     constructor(self) {
@@ -34894,37 +35749,40 @@ class Worker {
             }
             performance.rtlWorkerPlugin.setMethods(rtlTextPlugin);
         };
-        this.actor.registerMessageHandler('loadDEMTile', (mapId, params) => {
+        this.actor.registerMessageHandler("LDT" /* MessageType.loadDEMTile */, (mapId, params) => {
             return this._getDEMWorkerSource(mapId, params.source).loadTile(params);
         });
-        this.actor.registerMessageHandler('removeDEMTile', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("RDT" /* MessageType.removeDEMTile */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             this._getDEMWorkerSource(mapId, params.source).removeTile(params);
         }));
-        this.actor.registerMessageHandler('getClusterExpansionZoom', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("GCEZ" /* MessageType.getClusterExpansionZoom */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             return this._getWorkerSource(mapId, params.type, params.source).getClusterExpansionZoom(params);
         }));
-        this.actor.registerMessageHandler('getClusterChildren', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("GCC" /* MessageType.getClusterChildren */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             return this._getWorkerSource(mapId, params.type, params.source).getClusterChildren(params);
         }));
-        this.actor.registerMessageHandler('getClusterLeaves', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("GCL" /* MessageType.getClusterLeaves */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             return this._getWorkerSource(mapId, params.type, params.source).getClusterLeaves(params);
         }));
-        this.actor.registerMessageHandler('loadData', (mapId, params) => {
+        this.actor.registerMessageHandler("LD" /* MessageType.loadData */, (mapId, params) => {
             return this._getWorkerSource(mapId, params.type, params.source).loadData(params);
         });
-        this.actor.registerMessageHandler('loadTile', (mapId, params) => {
+        this.actor.registerMessageHandler("GD" /* MessageType.getData */, (mapId, params) => {
+            return this._getWorkerSource(mapId, params.type, params.source).getData();
+        });
+        this.actor.registerMessageHandler("LT" /* MessageType.loadTile */, (mapId, params) => {
             return this._getWorkerSource(mapId, params.type, params.source).loadTile(params);
         });
-        this.actor.registerMessageHandler('reloadTile', (mapId, params) => {
+        this.actor.registerMessageHandler("RT" /* MessageType.reloadTile */, (mapId, params) => {
             return this._getWorkerSource(mapId, params.type, params.source).reloadTile(params);
         });
-        this.actor.registerMessageHandler('abortTile', (mapId, params) => {
+        this.actor.registerMessageHandler("AT" /* MessageType.abortTile */, (mapId, params) => {
             return this._getWorkerSource(mapId, params.type, params.source).abortTile(params);
         });
-        this.actor.registerMessageHandler('removeTile', (mapId, params) => {
+        this.actor.registerMessageHandler("RMT" /* MessageType.removeTile */, (mapId, params) => {
             return this._getWorkerSource(mapId, params.type, params.source).removeTile(params);
         });
-        this.actor.registerMessageHandler('removeSource', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("RS" /* MessageType.removeSource */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             if (!this.workerSources[mapId] ||
                 !this.workerSources[mapId][params.type] ||
                 !this.workerSources[mapId][params.type][params.source]) {
@@ -34936,22 +35794,28 @@ class Worker {
                 worker.removeSource(params);
             }
         }));
-        this.actor.registerMessageHandler('setReferrer', (_mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("RM" /* MessageType.removeMap */, (mapId) => performance.__awaiter(this, void 0, void 0, function* () {
+            delete this.layerIndexes[mapId];
+            delete this.availableImages[mapId];
+            delete this.workerSources[mapId];
+            delete this.demWorkerSources[mapId];
+        }));
+        this.actor.registerMessageHandler("SR" /* MessageType.setReferrer */, (_mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             this.referrer = params;
         }));
-        this.actor.registerMessageHandler('syncRTLPluginState', (mapId, params) => {
+        this.actor.registerMessageHandler("SRPS" /* MessageType.syncRTLPluginState */, (mapId, params) => {
             return this._syncRTLPluginState(mapId, params);
         });
-        this.actor.registerMessageHandler('importScript', (_mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("IS" /* MessageType.importScript */, (_mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             this.self.importScripts(params);
         }));
-        this.actor.registerMessageHandler('setImages', (mapId, params) => {
+        this.actor.registerMessageHandler("SI" /* MessageType.setImages */, (mapId, params) => {
             return this._setImages(mapId, params);
         });
-        this.actor.registerMessageHandler('updateLayers', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("UL" /* MessageType.updateLayers */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             this._getLayerIndex(mapId).update(params.layers, params.removedIds);
         }));
-        this.actor.registerMessageHandler('setLayers', (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
+        this.actor.registerMessageHandler("SL" /* MessageType.setLayers */, (mapId, params) => performance.__awaiter(this, void 0, void 0, function* () {
             this._getLayerIndex(mapId).replace(params);
         }));
     }
@@ -34966,19 +35830,34 @@ class Worker {
             }
         });
     }
-    _syncRTLPluginState(map, state) {
+    _syncRTLPluginState(mapId, incomingState) {
         return performance.__awaiter(this, void 0, void 0, function* () {
-            performance.rtlWorkerPlugin.setState(state);
-            const pluginURL = performance.rtlWorkerPlugin.getPluginURL();
-            if (state.pluginStatus === 'loaded' && !performance.rtlWorkerPlugin.isParsed() && pluginURL != null) {
-                this.self.importScripts(pluginURL);
-                const complete = performance.rtlWorkerPlugin.isParsed();
-                if (complete) {
-                    return complete;
-                }
-                throw new Error(`RTL Text Plugin failed to import scripts from ${pluginURL}`);
+            // Parsed plugin cannot be changed, so just return its current state.
+            if (performance.rtlWorkerPlugin.isParsed()) {
+                return performance.rtlWorkerPlugin.getState();
             }
-            return false;
+            if (incomingState.pluginStatus !== 'loading') {
+                // simply sync and done
+                performance.rtlWorkerPlugin.setState(incomingState);
+                return incomingState;
+            }
+            const urlToLoad = incomingState.pluginURL;
+            this.self.importScripts(urlToLoad);
+            const complete = performance.rtlWorkerPlugin.isParsed();
+            if (complete) {
+                const loadedState = {
+                    pluginStatus: 'loaded',
+                    pluginURL: urlToLoad
+                };
+                performance.rtlWorkerPlugin.setState(loadedState);
+                return loadedState;
+            }
+            // error case
+            performance.rtlWorkerPlugin.setState({
+                pluginStatus: 'error',
+                pluginURL: ''
+            });
+            throw new Error(`RTL Text Plugin failed to import scripts from ${urlToLoad}`);
         });
     }
     _getAvailableImages(mapId) {
@@ -35057,11 +35936,15 @@ define('index', ['exports', './shared'], (function (exports, performance$1) { 'u
 
 var name = "maplibre-gl";
 var description = "BSD licensed community fork of mapbox-gl, a WebGL interactive maps library";
-var version$2 = "4.0.2";
+var version$2 = "4.5.2";
 var main = "dist/maplibre-gl.js";
 var style = "dist/maplibre-gl.css";
 var license = "BSD-3-Clause";
+var homepage = "https://maplibre.org/";
 var funding = "https://github.com/maplibre/maplibre-gl-js?sponsor=1";
+var bugs = {
+	url: "https://github.com/maplibre/maplibre-gl-js/issues/"
+};
 var repository = {
 	type: "git",
 	url: "git://github.com/maplibre/maplibre-gl-js.git"
@@ -35076,117 +35959,119 @@ var dependencies = {
 	"@mapbox/unitbezier": "^0.0.1",
 	"@mapbox/vector-tile": "^1.3.1",
 	"@mapbox/whoots-js": "^3.1.0",
-	"@maplibre/maplibre-gl-style-spec": "^20.1.1",
+	"@maplibre/maplibre-gl-style-spec": "^20.3.0",
 	"@types/geojson": "^7946.0.14",
 	"@types/geojson-vt": "3.2.5",
 	"@types/mapbox__point-geometry": "^0.1.4",
 	"@types/mapbox__vector-tile": "^1.3.4",
 	"@types/pbf": "^3.0.5",
 	"@types/supercluster": "^7.1.3",
-	earcut: "^2.2.4",
-	"geojson-vt": "^3.2.1",
+	earcut: "^3.0.0",
+	"geojson-vt": "^4.0.2",
 	"gl-matrix": "^3.4.3",
 	"global-prefix": "^3.0.0",
 	kdbush: "^4.0.2",
 	"murmurhash-js": "^1.0.0",
-	pbf: "^3.2.1",
+	pbf: "^3.3.0",
 	potpack: "^2.0.0",
-	quickselect: "^2.0.0",
+	quickselect: "^3.0.0",
 	supercluster: "^8.0.1",
-	tinyqueue: "^2.0.3",
+	tinyqueue: "^3.0.0",
 	"vt-pbf": "^3.1.3"
 };
 var devDependencies = {
-	"@mapbox/mapbox-gl-rtl-text": "^0.2.3",
+	autoprefixer: "^10.4.20",
+	"@mapbox/mapbox-gl-rtl-text": "^0.3.0",
 	"@mapbox/mvt-fixtures": "^3.10.0",
-	"@rollup/plugin-commonjs": "^25.0.7",
+	"@rollup/plugin-commonjs": "^26.0.1",
 	"@rollup/plugin-json": "^6.1.0",
 	"@rollup/plugin-node-resolve": "^15.2.3",
-	"@rollup/plugin-replace": "^5.0.5",
+	"@rollup/plugin-replace": "^5.0.7",
 	"@rollup/plugin-strip": "^3.0.4",
 	"@rollup/plugin-terser": "^0.4.4",
 	"@rollup/plugin-typescript": "^11.1.6",
 	"@types/benchmark": "^2.1.5",
 	"@types/cssnano": "^5.0.0",
 	"@types/d3": "^7.4.3",
-	"@types/diff": "^5.0.9",
+	"@types/diff": "^5.2.1",
 	"@types/earcut": "^2.1.4",
-	"@types/eslint": "^8.56.2",
+	"@types/eslint": "^8.56.7",
 	"@types/gl": "^6.0.5",
 	"@types/glob": "^8.1.0",
 	"@types/jest": "^29.5.12",
-	"@types/jsdom": "^21.1.6",
+	"@types/jsdom": "^21.1.7",
 	"@types/minimist": "^1.2.5",
 	"@types/murmurhash-js": "^1.0.6",
-	"@types/nise": "^1.4.4",
-	"@types/node": "^20.11.19",
+	"@types/nise": "^1.4.5",
+	"@types/node": "^22.1.0",
 	"@types/offscreencanvas": "^2019.7.3",
 	"@types/pixelmatch": "^5.2.6",
-	"@types/pngjs": "^6.0.4",
-	"@types/react": "^18.2.56",
-	"@types/react-dom": "^18.2.19",
+	"@types/pngjs": "^6.0.5",
+	"@types/react": "^18.3.3",
+	"@types/react-dom": "^18.3.0",
 	"@types/request": "^2.48.12",
 	"@types/shuffle-seed": "^1.1.3",
 	"@types/window-or-global": "^1.0.6",
-	"@typescript-eslint/eslint-plugin": "^7.0.0",
-	"@typescript-eslint/parser": "^6.21.0",
-	address: "^2.0.1",
+	"@typescript-eslint/eslint-plugin": "^7.18.0",
+	"@typescript-eslint/parser": "^7.18.0",
+	address: "^2.0.3",
 	benchmark: "^2.1.4",
 	canvas: "^2.11.2",
-	cssnano: "^6.0.3",
-	d3: "^7.8.5",
+	cssnano: "^7.0.4",
+	d3: "^7.9.0",
 	"d3-queue": "^3.0.7",
-	"devtools-protocol": "^0.0.1262051",
+	"devtools-protocol": "^0.0.1339468",
 	diff: "^5.2.0",
-	"dts-bundle-generator": "^9.3.1",
-	eslint: "^8.56.0",
+	"dts-bundle-generator": "^9.5.1",
+	eslint: "^8.57.0",
 	"eslint-config-mourner": "^3.0.0",
-	"eslint-plugin-html": "^8.0.0",
+	"eslint-plugin-html": "^8.1.1",
 	"eslint-plugin-import": "^2.29.1",
-	"eslint-plugin-jest": "^27.9.0",
-	"eslint-plugin-react": "^7.33.2",
-	"eslint-plugin-tsdoc": "0.2.17",
+	"eslint-plugin-jest": "^28.8.0",
+	"eslint-plugin-react": "^7.35.0",
+	"eslint-plugin-tsdoc": "0.3.0",
 	expect: "^29.7.0",
-	glob: "^10.3.10",
-	"is-builtin-module": "^3.2.1",
+	glob: "^11.0.0",
+	"is-builtin-module": "^4.0.0",
 	jest: "^29.7.0",
 	"jest-environment-jsdom": "^29.7.0",
-	"jest-monocart-coverage": "^1.0.2",
+	"jest-junit": "^16.0.0",
+	"jest-monocart-coverage": "^1.1.1",
 	"jest-webgl-canvas-mock": "^2.5.3",
-	jsdom: "^24.0.0",
-	"json-stringify-pretty-compact": "^4.0.0",
+	jsdom: "^24.1.1",
+	"junit-report-builder": "^5.0.0",
 	minimist: "^1.2.8",
 	"mock-geolocation": "^1.0.11",
-	"monocart-coverage-reports": "^2.5.0",
-	nise: "^5.1.9",
+	"monocart-coverage-reports": "^2.10.2",
+	nise: "^6.0.0",
 	"npm-font-open-sans": "^1.1.0",
 	"npm-run-all": "^4.1.5",
-	"pdf-merger-js": "^5.1.1",
-	pixelmatch: "^5.3.0",
+	"pdf-merger-js": "^5.1.2",
+	pixelmatch: "^6.0.0",
 	pngjs: "^7.0.0",
-	postcss: "^8.4.35",
+	postcss: "^8.4.41",
 	"postcss-cli": "^11.0.0",
 	"postcss-inline-svg": "^6.0.0",
 	"pretty-bytes": "^6.1.1",
-	puppeteer: "^22.1.0",
-	react: "^18.2.0",
-	"react-dom": "^18.2.0",
-	rollup: "^4.12.0",
+	puppeteer: "^23.0.2",
+	react: "^18.3.1",
+	"react-dom": "^18.3.1",
+	rollup: "^4.20.0",
 	"rollup-plugin-sourcemaps": "^0.6.3",
 	rw: "^1.3.3",
-	semver: "^7.6.0",
+	semver: "^7.6.3",
 	"shuffle-seed": "^1.1.6",
 	"source-map-explorer": "^2.5.3",
 	st: "^3.0.0",
-	stylelint: "^16.2.1",
-	"stylelint-config-standard": "^36.0.0",
-	"ts-jest": "^29.1.2",
+	stylelint: "^16.8.1",
+	"stylelint-config-standard": "^36.0.1",
+	"ts-jest": "^29.2.4",
 	"ts-node": "^10.9.2",
-	tslib: "^2.6.2",
-	typedoc: "^0.25.8",
-	"typedoc-plugin-markdown": "^3.17.1",
-	"typedoc-plugin-missing-exports": "^2.2.0",
-	typescript: "^5.3.3"
+	tslib: "^2.6.3",
+	typedoc: "^0.26.5",
+	"typedoc-plugin-markdown": "^4.2.3",
+	"typedoc-plugin-missing-exports": "^3.0.0",
+	typescript: "^5.5.4"
 };
 var overrides = {
 	"postcss-inline-svg": {
@@ -35204,11 +36089,12 @@ var scripts = {
 	"generate-typings": "dts-bundle-generator --export-referenced-types --umd-module-name=maplibregl -o ./dist/maplibre-gl.d.ts ./src/index.ts",
 	"generate-docs": "typedoc && node --no-warnings --loader ts-node/esm build/generate-docs.ts",
 	"generate-images": "node --no-warnings --loader ts-node/esm build/generate-doc-images.ts",
-	"build-dist": "npm run build-css && npm run generate-typings && npm run build-dev && npm run build-csp-dev && npm run build-prod && npm run build-csp",
+	"build-dist": "npm run build-css && npm run generate-typings && npm run build-dev && npm run build-csp-dev && npm run build-prod && npm run build-prod-unminified && npm run build-csp",
 	"build-dev": "rollup --configPlugin @rollup/plugin-typescript -c --environment BUILD:dev",
 	"watch-dev": "rollup --configPlugin @rollup/plugin-typescript -c --environment BUILD:dev --watch",
-	"build-prod": "rollup --configPlugin @rollup/plugin-typescript -c --environment BUILD:production",
-	"build-csp": "rollup --configPlugin @rollup/plugin-typescript -c rollup.config.csp.ts",
+	"build-prod": "rollup --configPlugin @rollup/plugin-typescript -c --environment BUILD:production,MINIFY:true",
+	"build-prod-unminified": "rollup --configPlugin @rollup/plugin-typescript -c --environment BUILD:production",
+	"build-csp": "rollup --configPlugin @rollup/plugin-typescript -c rollup.config.csp.ts --environment BUILD:production,MINIFY:true",
 	"build-csp-dev": "rollup --configPlugin @rollup/plugin-typescript -c rollup.config.csp.ts --environment BUILD:dev",
 	"build-css": "postcss -o dist/maplibre-gl.css src/css/maplibre-gl.css",
 	"watch-css": "postcss --watch -o dist/maplibre-gl.css src/css/maplibre-gl.css",
@@ -35219,13 +36105,13 @@ var scripts = {
 	start: "run-p watch-css watch-dev start-server",
 	"start-bench": "run-p watch-css watch-benchmarks start-server",
 	lint: "eslint --cache --ext .ts,.tsx,.js,.html --ignore-path .gitignore .",
-	"lint-css": "stylelint src/css/maplibre-gl.css",
+	"lint-css": "stylelint **/*.css --fix -f verbose",
 	test: "run-p lint lint-css test-render jest",
 	jest: "jest",
 	"test-build": "jest --selectProjects=build --reporters=default",
 	"test-build-ci": "jest --selectProjects=build",
 	"test-integration": "jest --selectProjects=integration --reporters=default",
-	"test-integration-ci": "jest --selectProjects=integration",
+	"test-integration-ci": "jest --coverage --selectProjects=integration",
 	"test-render": "node --no-warnings --loader ts-node/esm test/integration/render/run_render_tests.ts",
 	"test-unit": "jest --selectProjects=unit --reporters=default",
 	"test-unit-ci": "jest --coverage --selectProjects unit",
@@ -35253,7 +36139,9 @@ var packageJSON = {
 	main: main,
 	style: style,
 	license: license,
+	homepage: homepage,
 	funding: funding,
+	bugs: bugs,
 	repository: repository,
 	types: types,
 	type: type,
@@ -35435,13 +36323,13 @@ let webpImgTest;
 let webpImgTestOnloadComplete = false;
 if (typeof document !== 'undefined') {
     webpImgTest = document.createElement('img');
-    webpImgTest.onload = function () {
+    webpImgTest.onload = () => {
         if (glForTesting)
             testWebpTextureUpload(glForTesting);
         glForTesting = null;
         webpImgTestOnloadComplete = true;
     };
-    webpImgTest.onerror = function () {
+    webpImgTest.onerror = () => {
         webpCheckComplete = true;
         glForTesting = null;
     };
@@ -35683,20 +36571,6 @@ var ImageRequest;
 })(ImageRequest || (ImageRequest = {}));
 ImageRequest.resetRequestQueue();
 
-/**
- * A type of MapLibre resource.
- */
-var ResourceType;
-(function (ResourceType) {
-    ResourceType["Glyphs"] = "Glyphs";
-    ResourceType["Image"] = "Image";
-    ResourceType["Source"] = "Source";
-    ResourceType["SpriteImage"] = "SpriteImage";
-    ResourceType["SpriteJSON"] = "SpriteJSON";
-    ResourceType["Style"] = "Style";
-    ResourceType["Tile"] = "Tile";
-    ResourceType["Unknown"] = "Unknown";
-})(ResourceType || (ResourceType = {}));
 class RequestManager {
     constructor(transformRequestFn) {
         this._transformRequestFn = transformRequestFn;
@@ -35707,31 +36581,9 @@ class RequestManager {
         }
         return { url };
     }
-    normalizeSpriteURL(url, format, extension) {
-        const urlObject = parseUrl(url);
-        urlObject.path += `${format}${extension}`;
-        return formatUrl(urlObject);
-    }
     setTransformRequest(transformRequest) {
         this._transformRequestFn = transformRequest;
     }
-}
-const urlRe = /^(\w+):\/\/([^/?]*)(\/[^?]+)?\??(.+)?/;
-function parseUrl(url) {
-    const parts = url.match(urlRe);
-    if (!parts) {
-        throw new Error(`Unable to parse URL "${url}"`);
-    }
-    return {
-        protocol: parts[1],
-        authority: parts[2],
-        path: parts[3] || '/',
-        params: parts[4] ? parts[4].split('&') : []
-    };
-}
-function formatUrl(obj) {
-    const params = obj.params.length ? `?${obj.params.join('&')}` : '';
-    return `${obj.protocol}://${obj.authority}${obj.path}${params}`;
 }
 
 /**
@@ -35759,6 +36611,11 @@ function coerceSpriteToArray(sprite) {
     return resultArray;
 }
 
+function normalizeSpriteURL(url, format, extension) {
+    const split = url.split('?');
+    split[0] += `${format}${extension}`;
+    return split.join('?');
+}
 function loadSprite(originalSprite, requestManager, pixelRatio, abortController) {
     return performance$1.__awaiter(this, void 0, void 0, function* () {
         const spriteArray = coerceSpriteToArray(originalSprite);
@@ -35766,9 +36623,9 @@ function loadSprite(originalSprite, requestManager, pixelRatio, abortController)
         const jsonsMap = {};
         const imagesMap = {};
         for (const { id, url } of spriteArray) {
-            const jsonRequestParameters = requestManager.transformRequest(requestManager.normalizeSpriteURL(url, format, '.json'), ResourceType.SpriteJSON);
+            const jsonRequestParameters = requestManager.transformRequest(normalizeSpriteURL(url, format, '.json'), "SpriteJSON" /* ResourceType.SpriteJSON */);
             jsonsMap[id] = performance$1.getJSON(jsonRequestParameters, abortController);
-            const imageRequestParameters = requestManager.transformRequest(requestManager.normalizeSpriteURL(url, format, '.png'), ResourceType.SpriteImage);
+            const imageRequestParameters = requestManager.transformRequest(normalizeSpriteURL(url, format, '.png'), "SpriteImage" /* ResourceType.SpriteImage */);
             imagesMap[id] = ImageRequest.getImage(imageRequestParameters, abortController);
         }
         yield Promise.all([...Object.values(jsonsMap), ...Object.values(imagesMap)]);
@@ -35787,9 +36644,9 @@ function doOnceCompleted(jsonsMap, imagesMap) {
             const context = browser.getImageCanvasContext((yield imagesMap[spriteName]).data);
             const json = (yield jsonsMap[spriteName]).data;
             for (const id in json) {
-                const { width, height, x, y, sdf, pixelRatio, stretchX, stretchY, content } = json[id];
+                const { width, height, x, y, sdf, pixelRatio, stretchX, stretchY, content, textFitWidth, textFitHeight } = json[id];
                 const spriteData = { width, height, x, y, context };
-                result[spriteName][id] = { data: null, pixelRatio, sdf, stretchX, stretchY, content, spriteData };
+                result[spriteName][id] = { data: null, pixelRatio, sdf, stretchX, stretchY, content, textFitWidth, textFitHeight, spriteData };
             }
         }
         return result;
@@ -36056,6 +36913,8 @@ class ImageManager extends performance$1.Evented {
                     stretchX: image.stretchX,
                     stretchY: image.stretchY,
                     content: image.content,
+                    textFitWidth: image.textFitWidth,
+                    textFitHeight: image.textFitHeight,
                     hasRenderCallback: Boolean(image.userImage && image.userImage.render)
                 };
             }
@@ -36151,7 +37010,7 @@ function loadGlyphRange(fontstack, range, urlTemplate, requestManager) {
     return performance$1.__awaiter(this, void 0, void 0, function* () {
         const begin = range * 256;
         const end = begin + 255;
-        const request = requestManager.transformRequest(urlTemplate.replace('{fontstack}', fontstack).replace('{range}', `${begin}-${end}`), ResourceType.Glyphs);
+        const request = requestManager.transformRequest(urlTemplate.replace('{fontstack}', fontstack).replace('{range}', `${begin}-${end}`), "Glyphs" /* ResourceType.Glyphs */);
         const response = yield performance$1.getArrayBuffer(request, new AbortController());
         if (!response || !response.data) {
             throw new Error(`Could not load glyph range. range: ${range}, ${begin}-${end}`);
@@ -36473,7 +37332,7 @@ class LightPositionProperty {
         };
     }
 }
-const TRANSITION_SUFFIX = '-transition';
+const TRANSITION_SUFFIX$1 = '-transition';
 let lightProperties;
 /*
  * Represents the light used to light extruded features.
@@ -36500,8 +37359,8 @@ class Light extends performance$1.Evented {
         }
         for (const name in light) {
             const value = light[name];
-            if (name.endsWith(TRANSITION_SUFFIX)) {
-                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length), value);
+            if (name.endsWith(TRANSITION_SUFFIX$1)) {
+                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX$1.length), value);
             }
             else {
                 this._transitionable.setValue(name, value);
@@ -36527,6 +37386,78 @@ class Light extends performance$1.Evented {
             style: { glyphs: true, sprite: true },
             styleSpec: performance$1.v8Spec
         }));
+    }
+}
+
+const properties = new performance$1.Properties({
+    'sky-color': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['sky-color']),
+    'horizon-color': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['horizon-color']),
+    'fog-color': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['fog-color']),
+    'fog-ground-blend': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['fog-ground-blend']),
+    'horizon-fog-blend': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['horizon-fog-blend']),
+    'sky-horizon-blend': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['sky-horizon-blend']),
+    'atmosphere-blend': new performance$1.DataConstantProperty(performance$1.v8Spec.sky['atmosphere-blend'])
+});
+const TRANSITION_SUFFIX = '-transition';
+class Sky extends performance$1.Evented {
+    constructor(sky) {
+        super();
+        this._transitionable = new performance$1.Transitionable(properties);
+        this.setSky(sky);
+        this._transitioning = this._transitionable.untransitioned();
+    }
+    setSky(sky, options = {}) {
+        if (this._validate(performance$1.validateSky, sky, options))
+            return;
+        for (const name in sky) {
+            const value = sky[name];
+            if (name.endsWith(TRANSITION_SUFFIX)) {
+                this._transitionable.setTransition(name.slice(0, -TRANSITION_SUFFIX.length), value);
+            }
+            else {
+                this._transitionable.setValue(name, value);
+            }
+        }
+    }
+    getSky() {
+        return this._transitionable.serialize();
+    }
+    updateTransitions(parameters) {
+        this._transitioning = this._transitionable.transitioned(parameters, this._transitioning);
+    }
+    hasTransition() {
+        return this._transitioning.hasTransition();
+    }
+    recalculate(parameters) {
+        this.properties = this._transitioning.possiblyEvaluate(parameters);
+    }
+    _validate(validate, value, options = {}) {
+        if ((options === null || options === void 0 ? void 0 : options.validate) === false) {
+            return false;
+        }
+        return performance$1.emitValidationErrors(this, validate.call(performance$1.validateStyle, performance$1.extend({
+            value,
+            // Workaround for https://github.com/mapbox/mapbox-gl-js/issues/2407
+            style: { glyphs: true, sprite: true },
+            styleSpec: performance$1.v8Spec
+        })));
+    }
+    /**
+     * Currently fog is a very simple implementation, and should only used
+     * to create an atmosphere near the horizon.
+     * But because the fog is drawn from the far-clipping-plane to
+     * map-center, and because the fog does nothing know about the horizon,
+     * this method does a fadeout in respect of pitch. So, when the horizon
+     * gets out of view, which is at about pitch 70, this methods calculates
+     * the corresponding opacity values. Below pitch 60 the fog is completely
+     * invisible.
+     */
+    calculateFogBlendOpacity(pitch) {
+        if (pitch < 60)
+            return 0; // disable
+        if (pitch < 70)
+            return (pitch - 60) / 10; // fade in
+        return 1;
     }
 }
 
@@ -36854,7 +37785,7 @@ let globalDispatcher;
 function getGlobalDispatcher() {
     if (!globalDispatcher) {
         globalDispatcher = new Dispatcher(getGlobalWorkerPool(), performance$1.GLOBAL_DISPATCHER_ID);
-        globalDispatcher.registerMessageHandler('getResource', (_mapId, params, abortController) => {
+        globalDispatcher.registerMessageHandler("GR" /* MessageType.getResource */, (_mapId, params, abortController) => {
             return performance$1.makeRequest(params, abortController);
         });
     }
@@ -37018,7 +37949,7 @@ function loadTileJson(options, requestManager, abortController) {
     return performance$1.__awaiter(this, void 0, void 0, function* () {
         let tileJSON = options;
         if (options.url) {
-            const response = yield performance$1.getJSON(requestManager.transformRequest(options.url, ResourceType.Source), abortController);
+            const response = yield performance$1.getJSON(requestManager.transformRequest(options.url, "Source" /* ResourceType.Source */), abortController);
             tileJSON = response.data;
         }
         else {
@@ -37098,7 +38029,6 @@ class LngLatBounds {
      * Set the northeast corner of the bounding box
      *
      * @param ne - a {@link LngLatLike} object describing the northeast corner of the bounding box.
-     * @returns `this`
      */
     setNorthEast(ne) {
         this._ne = ne instanceof performance$1.LngLat ? new performance$1.LngLat(ne.lng, ne.lat) : performance$1.LngLat.convert(ne);
@@ -37108,7 +38038,6 @@ class LngLatBounds {
      * Set the southwest corner of the bounding box
      *
      * @param sw - a {@link LngLatLike} object describing the southwest corner of the bounding box.
-     * @returns `this`
      */
     setSouthWest(sw) {
         this._sw = sw instanceof performance$1.LngLat ? new performance$1.LngLat(sw.lng, sw.lat) : performance$1.LngLat.convert(sw);
@@ -37118,7 +38047,6 @@ class LngLatBounds {
      * Extend the bounds to include a given LngLatLike or LngLatBoundsLike.
      *
      * @param obj - object to extend to
-     * @returns `this`
      */
     extend(obj) {
         const sw = this._sw, ne = this._ne;
@@ -37454,7 +38382,6 @@ class VectorTileSource extends performance$1.Evented {
      * Sets the source `tiles` property and re-renders the map.
      *
      * @param tiles - An array of one or more tile source URLs, as in the TileJSON spec.
-     * @returns `this`
      */
     setTiles(tiles) {
         this.setSourceProperty(() => {
@@ -37466,7 +38393,6 @@ class VectorTileSource extends performance$1.Evented {
      * Sets the source `url` property and re-renders the map.
      *
      * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
-     * @returns `this`
      */
     setUrl(url) {
         this.setSourceProperty(() => {
@@ -37488,7 +38414,7 @@ class VectorTileSource extends performance$1.Evented {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
             const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
             const params = {
-                request: this.map._requestManager.transformRequest(url, ResourceType.Tile),
+                request: this.map._requestManager.transformRequest(url, "Tile" /* ResourceType.Tile */),
                 uid: tile.uid,
                 tileID: tile.tileID,
                 zoom: tile.tileID.overscaledZ,
@@ -37500,10 +38426,10 @@ class VectorTileSource extends performance$1.Evented {
                 promoteId: this.promoteId
             };
             params.request.collectResourceTiming = this._collectResourceTiming;
-            let messageType = 'reloadTile';
+            let messageType = "RT" /* MessageType.reloadTile */;
             if (!tile.actor || tile.state === 'expired') {
                 tile.actor = this.dispatcher.getActor();
-                messageType = 'loadTile';
+                messageType = "LT" /* MessageType.loadTile */;
             }
             else if (tile.state === 'loading') {
                 return new Promise((resolve, reject) => {
@@ -37552,7 +38478,10 @@ class VectorTileSource extends performance$1.Evented {
                 delete tile.abortController;
             }
             if (tile.actor) {
-                yield tile.actor.sendAsync({ type: 'abortTile', data: { uid: tile.uid, type: this.type, source: this.id } });
+                yield tile.actor.sendAsync({
+                    type: "AT" /* MessageType.abortTile */,
+                    data: { uid: tile.uid, type: this.type, source: this.id }
+                });
             }
         });
     }
@@ -37560,7 +38489,14 @@ class VectorTileSource extends performance$1.Evented {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
             tile.unloadVectorData();
             if (tile.actor) {
-                yield tile.actor.sendAsync({ type: 'removeTile', data: { uid: tile.uid, type: this.type, source: this.id } });
+                yield tile.actor.sendAsync({
+                    type: "RMT" /* MessageType.removeTile */,
+                    data: {
+                        uid: tile.uid,
+                        type: this.type,
+                        source: this.id
+                    }
+                });
             }
         });
     }
@@ -37665,7 +38601,6 @@ class RasterTileSource extends performance$1.Evented {
      * Sets the source `tiles` property and re-renders the map.
      *
      * @param tiles - An array of one or more tile source URLs, as in the raster tiles spec (See the [Style Specification](https://maplibre.org/maplibre-style-spec/)
-     * @returns `this`
      */
     setTiles(tiles) {
         this.setSourceProperty(() => {
@@ -37677,7 +38612,6 @@ class RasterTileSource extends performance$1.Evented {
      * Sets the source `url` property and re-renders the map.
      *
      * @param url - A URL to a TileJSON resource. Supported protocols are `http:` and `https:`.
-     * @returns `this`
      */
     setUrl(url) {
         this.setSourceProperty(() => {
@@ -37697,7 +38631,7 @@ class RasterTileSource extends performance$1.Evented {
             const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
             tile.abortController = new AbortController();
             try {
-                const response = yield ImageRequest.getImage(this.map._requestManager.transformRequest(url, ResourceType.Tile), tile.abortController, this.map._refreshExpiredTiles);
+                const response = yield ImageRequest.getImage(this.map._requestManager.transformRequest(url, "Tile" /* ResourceType.Tile */), tile.abortController, this.map._refreshExpiredTiles);
                 delete tile.abortController;
                 if (tile.aborted) {
                     tile.state = 'unloaded';
@@ -37717,9 +38651,6 @@ class RasterTileSource extends performance$1.Evented {
                     else {
                         tile.texture = new Texture(context, img, gl.RGBA, { useMipmap: true });
                         tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
-                        if (context.extTextureFilterAnisotropic) {
-                            gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
-                        }
                     }
                     tile.state = 'loaded';
                 }
@@ -37787,7 +38718,7 @@ class RasterDEMTileSource extends RasterTileSource {
     loadTile(tile) {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
             const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme);
-            const request = this.map._requestManager.transformRequest(url, ResourceType.Tile);
+            const request = this.map._requestManager.transformRequest(url, "Tile" /* ResourceType.Tile */);
             tile.neighboringTiles = this._getNeighboringTiles(tile.tileID);
             tile.abortController = new AbortController();
             try {
@@ -37818,7 +38749,7 @@ class RasterDEMTileSource extends RasterTileSource {
                     if (!tile.actor || tile.state === 'expired') {
                         tile.actor = this.dispatcher.getActor();
                         /* eslint-disable require-atomic-updates */
-                        const data = yield tile.actor.sendAsync({ type: 'loadDEMTile', data: params });
+                        const data = yield tile.actor.sendAsync({ type: "LDT" /* MessageType.loadDEMTile */, data: params });
                         tile.dem = data;
                         tile.needsHillshadePrepare = true;
                         tile.needsTerrainPrepare = true;
@@ -37892,7 +38823,7 @@ class RasterDEMTileSource extends RasterTileSource {
             delete tile.neighboringTiles;
             tile.state = 'unloaded';
             if (tile.actor) {
-                yield tile.actor.sendAsync({ type: 'removeDEMTile', data: { type: this.type, uid: tile.uid, source: this.id } });
+                yield tile.actor.sendAsync({ type: "RDT" /* MessageType.removeDEMTile */, data: { type: this.type, uid: tile.uid, source: this.id } });
             }
         });
     }
@@ -37949,7 +38880,7 @@ class RasterDEMTileSource extends RasterTileSource {
  * ```
  * @see [Draw GeoJSON points](https://maplibre.org/maplibre-gl-js/docs/examples/geojson-markers/)
  * @see [Add a GeoJSON line](https://maplibre.org/maplibre-gl-js/docs/examples/geojson-line/)
- * @see [Create a heatmap from points](https://maplibre.org/maplibre-gl-js/docs/examples/heatmap/)
+ * @see [Create a heatmap from points](https://maplibre.org/maplibre-gl-js/docs/examples/heatmap-layer/)
  * @see [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/cluster/)
  */
 class GeoJSONSource extends performance$1.Evented {
@@ -38024,7 +38955,6 @@ class GeoJSONSource extends performance$1.Evented {
      * Sets the GeoJSON data and re-renders the map.
      *
      * @param data - A GeoJSON data object or a URL to one. The latter is preferable in the case of large GeoJSON files.
-     * @returns `this`
      */
     setData(data) {
         this._data = data;
@@ -38044,16 +38974,25 @@ class GeoJSONSource extends performance$1.Evented {
      * Updates are applied on a best-effort basis, updating an ID that does not exist will not result in an error.
      *
      * @param diff - The changes that need to be applied.
-     * @returns `this`
      */
     updateData(diff) {
         this._updateWorkerData(diff);
         return this;
     }
     /**
+     * Allows to get the source's actual GeoJSON data.
+     *
+     * @returns a promise which resolves to the source's actual GeoJSON data
+     */
+    getData() {
+        return performance$1.__awaiter(this, void 0, void 0, function* () {
+            const options = performance$1.extend({ type: this.type }, this.workerOptions);
+            return this.actor.sendAsync({ type: "GD" /* MessageType.getData */, data: options });
+        });
+    }
+    /**
      * To disable/enable clustering on the source options
      * @param options - The options to set
-     * @returns `this`
      * @example
      * ```ts
      * map.getSource('some id').setClusterOptions({cluster: false});
@@ -38078,7 +39017,7 @@ class GeoJSONSource extends performance$1.Evented {
      * @returns a promise that is resolved with the zoom number
      */
     getClusterExpansionZoom(clusterId) {
-        return this.actor.sendAsync({ type: 'getClusterExpansionZoom', data: { type: this.type, clusterId, source: this.id } });
+        return this.actor.sendAsync({ type: "GCEZ" /* MessageType.getClusterExpansionZoom */, data: { type: this.type, clusterId, source: this.id } });
     }
     /**
      * For clustered sources, fetches the children of the given cluster on the next zoom level (as an array of GeoJSON features).
@@ -38087,7 +39026,7 @@ class GeoJSONSource extends performance$1.Evented {
      * @returns a promise that is resolved when the features are retrieved
      */
     getClusterChildren(clusterId) {
-        return this.actor.sendAsync({ type: 'getClusterChildren', data: { type: this.type, clusterId, source: this.id } });
+        return this.actor.sendAsync({ type: "GCC" /* MessageType.getClusterChildren */, data: { type: this.type, clusterId, source: this.id } });
     }
     /**
      * For clustered sources, fetches the original points that belong to the cluster (as an array of GeoJSON features).
@@ -38095,7 +39034,7 @@ class GeoJSONSource extends performance$1.Evented {
      * @param clusterId - The value of the cluster's `cluster_id` property.
      * @param limit - The maximum number of features to return.
      * @param offset - The number of features to skip (e.g. for pagination).
-     * @returns a promise that is resolved when the features are retreived
+     * @returns a promise that is resolved when the features are retrieved
      * @example
      * Retrieve cluster leaves on click
      * ```ts
@@ -38108,14 +39047,14 @@ class GeoJSONSource extends performance$1.Evented {
      *   let pointCount = features[0].properties.point_count;
      *   let clusterSource = map.getSource('clusters');
      *
-     *   const features = await clusterSource.getClusterLeaves(clusterId, pointCount) 0, function(error, features) {
+     *   const features = await clusterSource.getClusterLeaves(clusterId, pointCount);
      *   // Print cluster leaves in the console
      *   console.log('Cluster leaves:', features);
      * });
      * ```
      */
     getClusterLeaves(clusterId, limit, offset) {
-        return this.actor.sendAsync({ type: 'getClusterLeaves', data: {
+        return this.actor.sendAsync({ type: "GCL" /* MessageType.getClusterLeaves */, data: {
                 type: this.type,
                 source: this.id,
                 clusterId,
@@ -38136,7 +39075,7 @@ class GeoJSONSource extends performance$1.Evented {
                 options.dataDiff = diff;
             }
             else if (typeof this._data === 'string') {
-                options.request = this.map._requestManager.transformRequest(browser.resolveURL(this._data), ResourceType.Source);
+                options.request = this.map._requestManager.transformRequest(browser.resolveURL(this._data), "Source" /* ResourceType.Source */);
                 options.request.collectResourceTiming = this._collectResourceTiming;
             }
             else {
@@ -38145,7 +39084,7 @@ class GeoJSONSource extends performance$1.Evented {
             this._pendingLoads++;
             this.fire(new performance$1.Event('dataloading', { dataType: 'source' }));
             try {
-                const result = yield this.actor.sendAsync({ type: 'loadData', data: options });
+                const result = yield this.actor.sendAsync({ type: "LD" /* MessageType.loadData */, data: options });
                 this._pendingLoads--;
                 if (this._removed || result.abandoned) {
                     this.fire(new performance$1.Event('dataabort', { dataType: 'source' }));
@@ -38179,7 +39118,7 @@ class GeoJSONSource extends performance$1.Evented {
     }
     loadTile(tile) {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
-            const message = !tile.actor ? 'loadTile' : 'reloadTile';
+            const message = !tile.actor ? "LT" /* MessageType.loadTile */ : "RT" /* MessageType.reloadTile */;
             tile.actor = this.actor;
             const params = {
                 type: this.type,
@@ -38198,7 +39137,7 @@ class GeoJSONSource extends performance$1.Evented {
             delete tile.abortController;
             tile.unloadVectorData();
             if (!tile.aborted) {
-                tile.loadVectorData(data, this.map.painter, message === 'reloadTile');
+                tile.loadVectorData(data, this.map.painter, message === "RT" /* MessageType.reloadTile */);
             }
         });
     }
@@ -38214,12 +39153,12 @@ class GeoJSONSource extends performance$1.Evented {
     unloadTile(tile) {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
             tile.unloadVectorData();
-            yield this.actor.sendAsync({ type: 'removeTile', data: { uid: tile.uid, type: this.type, source: this.id } });
+            yield this.actor.sendAsync({ type: "RMT" /* MessageType.removeTile */, data: { uid: tile.uid, type: this.type, source: this.id } });
         });
     }
     onRemove() {
         this._removed = true;
-        this.actor.sendAsync({ type: 'removeSource', data: { type: this.type, source: this.id } });
+        this.actor.sendAsync({ type: "RS" /* MessageType.removeSource */, data: { type: this.type, source: this.id } });
     }
     serialize() {
         return performance$1.extend({}, this._options, {
@@ -38303,7 +39242,7 @@ class ImageSource extends performance$1.Evented {
             this.url = this.options.url;
             this._request = new AbortController();
             try {
-                const image = yield ImageRequest.getImage(this.map._requestManager.transformRequest(this.url, ResourceType.Image), this._request);
+                const image = yield ImageRequest.getImage(this.map._requestManager.transformRequest(this.url, "Image" /* ResourceType.Image */), this._request);
                 this._request = null;
                 this._loaded = true;
                 if (image && image.data) {
@@ -38316,6 +39255,7 @@ class ImageSource extends performance$1.Evented {
             }
             catch (err) {
                 this._request = null;
+                this._loaded = true;
                 this.fire(new performance$1.ErrorEvent(err));
             }
         });
@@ -38328,7 +39268,6 @@ class ImageSource extends performance$1.Evented {
      * set the `raster-fade-duration` paint property on the raster layer to 0.
      *
      * @param options - The options object.
-     * @returns `this`
      */
     updateImage(options) {
         if (!options.url) {
@@ -38365,7 +39304,6 @@ class ImageSource extends performance$1.Evented {
      * represented as arrays of longitude and latitude numbers, which define the corners of the image.
      * The coordinates start at the top left corner of the image and proceed in clockwise order.
      * They do not have to represent a rectangle.
-     * @returns `this`
      */
     setCoordinates(coordinates) {
         this.coordinates = coordinates;
@@ -38531,7 +39469,7 @@ class VideoSource extends ImageSource {
             const options = this.options;
             this.urls = [];
             for (const url of options.urls) {
-                this.urls.push(this.map._requestManager.transformRequest(url, ResourceType.Source).url);
+                this.urls.push(this.map._requestManager.transformRequest(url, "Source" /* ResourceType.Source */).url);
             }
             try {
                 const video = yield performance$1.getVideo(this.urls);
@@ -38605,8 +39543,6 @@ class VideoSource extends ImageSource {
     }
     /**
      * Sets the video's coordinates and re-renders the map.
-     *
-     * @returns `this`
      */
     prepare() {
         if (Object.keys(this.tiles).length === 0 || this.video.readyState < 2) {
@@ -38859,10 +39795,9 @@ const setSourceType = (name, type) => {
     registeredSources[name] = type;
 };
 /**
- * Adds a [custom source type](#Custom Sources), making it available for use with
- * {@link Map#addSource}.
+ * Adds a custom source type, making it available for use with {@link Map#addSource}.
  * @param name - The name of the source type; source definition objects use this name in the `{type: ...}` field.
- * @param sourceType - A {@link SourceClass} - which is a constructor for the `Source` interface.
+ * @param SourceType - A {@link SourceClass} - which is a constructor for the `Source` interface.
  * @returns a promise that is resolved when the source type is ready or rejected with an error.
  */
 const addSourceType = (name, SourceType) => performance$1.__awaiter(void 0, void 0, void 0, function* () {
@@ -38898,64 +39833,77 @@ function deserialize(input, style) {
     return output;
 }
 
+const RTLPluginLoadedEventName = 'RTLPluginLoaded';
+
 class RTLMainThreadPlugin extends performance$1.Evented {
     constructor() {
         super(...arguments);
-        this.pluginStatus = 'unavailable';
-        this.pluginURL = null;
+        this.status = 'unavailable';
+        this.url = null;
         this.dispatcher = getGlobalDispatcher();
-        this.queue = [];
     }
-    _sendPluginStateToWorker() {
-        return performance$1.__awaiter(this, void 0, void 0, function* () {
-            yield this.dispatcher.broadcast('syncRTLPluginState', { pluginStatus: this.pluginStatus, pluginURL: this.pluginURL });
-            this.fire(new performance$1.Event('pluginStateChange', { pluginStatus: this.pluginStatus, pluginURL: this.pluginURL }));
+    /** Sync RTL plugin state by broadcasting a message to the worker */
+    _syncState(statusToSend) {
+        this.status = statusToSend;
+        return this.dispatcher.broadcast("SRPS" /* MessageType.syncRTLPluginState */, { pluginStatus: statusToSend, pluginURL: this.url })
+            .catch((e) => {
+            this.status = 'error';
+            throw e;
         });
     }
+    /** This one is exposed to outside */
     getRTLTextPluginStatus() {
-        return this.pluginStatus;
+        return this.status;
     }
     clearRTLTextPlugin() {
-        this.pluginStatus = 'unavailable';
-        this.pluginURL = null;
+        this.status = 'unavailable';
+        this.url = null;
     }
-    setRTLTextPlugin(url, deferred = false) {
-        return performance$1.__awaiter(this, void 0, void 0, function* () {
-            if (this.pluginStatus === 'deferred' || this.pluginStatus === 'loading' || this.pluginStatus === 'loaded') {
+    setRTLTextPlugin(url_1) {
+        return performance$1.__awaiter(this, arguments, void 0, function* (url, deferred = false) {
+            if (this.url) {
+                // error
                 throw new Error('setRTLTextPlugin cannot be called multiple times.');
             }
-            this.pluginURL = browser.resolveURL(url);
-            this.pluginStatus = 'deferred';
-            yield this._sendPluginStateToWorker();
-            if (!deferred) {
-                //Start downloading the plugin immediately if not intending to lazy-load
-                yield this._downloadRTLTextPlugin();
+            this.url = browser.resolveURL(url);
+            if (!this.url) {
+                throw new Error(`requested url ${url} is invalid`);
+            }
+            if (this.status === 'unavailable') {
+                // from initial state:
+                if (deferred) {
+                    this.status = 'deferred';
+                    // fire and forget: in this case it does not need wait for the broadcasting result
+                    // it is important to sync the deferred status once because
+                    // symbol_bucket will be checking it in worker
+                    this._syncState(this.status);
+                }
+                else {
+                    return this._requestImport();
+                }
+            }
+            else if (this.status === 'requested') {
+                return this._requestImport();
             }
         });
     }
-    _downloadRTLTextPlugin() {
+    /** Send a message to worker which will import the RTL plugin script */
+    _requestImport() {
         return performance$1.__awaiter(this, void 0, void 0, function* () {
-            if (this.pluginStatus !== 'deferred' || !this.pluginURL) {
-                throw new Error('rtl-text-plugin cannot be downloaded unless a pluginURL is specified');
-            }
-            try {
-                this.pluginStatus = 'loading';
-                yield this._sendPluginStateToWorker();
-                yield performance$1.getArrayBuffer({ url: this.pluginURL }, new AbortController());
-                this.pluginStatus = 'loaded';
-            }
-            catch (_a) {
-                this.pluginStatus = 'error';
-            }
-            yield this._sendPluginStateToWorker();
+            // all errors/exceptions will be handled by _syncState
+            yield this._syncState('loading');
+            this.status = 'loaded';
+            this.fire(new performance$1.Event(RTLPluginLoadedEventName));
         });
     }
-    lazyLoadRTLTextPlugin() {
-        return performance$1.__awaiter(this, void 0, void 0, function* () {
-            if (this.pluginStatus === 'deferred') {
-                yield this._downloadRTLTextPlugin();
-            }
-        });
+    /** Start a lazy loading process of RTL plugin */
+    lazyLoad() {
+        if (this.status === 'unavailable') {
+            this.status = 'requested';
+        }
+        else if (this.status === 'deferred') {
+            this._requestImport();
+        }
     }
 }
 let rtlMainThreadPlugin = null;
@@ -39068,7 +40016,7 @@ class Tile {
                 if (bucket instanceof performance$1.SymbolBucket) {
                     if (bucket.hasRTLText) {
                         this.hasRTLText = true;
-                        rtlMainThreadPluginFactory().lazyLoadRTLTextPlugin();
+                        rtlMainThreadPluginFactory().lazyLoad();
                         break;
                     }
                 }
@@ -39299,7 +40247,7 @@ class Tile {
 
 /**
  * @internal
- * A [least-recently-used cache](http://en.wikipedia.org/wiki/Cache_algorithms)
+ * A [least-recently-used cache](https://en.wikipedia.org/wiki/Cache_algorithms)
  * with hash lookup made possible by keeping a list of keys in parallel to
  * an array of dictionary of values
  */
@@ -39635,22 +40583,7 @@ class SourceCache extends performance$1.Evented {
         super();
         this.id = id;
         this.dispatcher = dispatcher;
-        this.on('data', (e) => {
-            // this._sourceLoaded signifies that the TileJSON is loaded if applicable.
-            // if the source type does not come with a TileJSON, the flag signifies the
-            // source data has loaded (i.e geojson has been tiled on the worker and is ready)
-            if (e.dataType === 'source' && e.sourceDataType === 'metadata')
-                this._sourceLoaded = true;
-            // for sources with mutable data, this event fires when the underlying data
-            // to a source is changed. (i.e. GeoJSONSource#setData and ImageSource#serCoordinates)
-            if (this._sourceLoaded && !this._paused && e.dataType === 'source' && e.sourceDataType === 'content') {
-                this.reload();
-                if (this.transform) {
-                    this.update(this.transform, this.terrain);
-                }
-                this._didEmitContent = true;
-            }
-        });
+        this.on('data', (e) => this._dataHandler(e));
         this.on('dataloading', () => {
             this._sourceErrored = false;
         });
@@ -39847,8 +40780,8 @@ class SourceCache extends performance$1.Evented {
         }
     }
     /**
-    * For raster terrain source, backfill DEM to eliminate visible tile boundaries
-    */
+     * For raster terrain source, backfill DEM to eliminate visible tile boundaries
+     */
     _backfillDEM(tile) {
         const renderables = this.getRenderableIds();
         for (let i = 0; i < renderables.length; i++) {
@@ -39954,6 +40887,13 @@ class SourceCache extends performance$1.Evented {
             }
         }
     }
+    /**
+     * Find a loaded sibling of the given tile
+     */
+    findLoadedSibling(tileID) {
+        // If a tile with this ID already exists, return it
+        return this._getLoadedTile(tileID);
+    }
     _getLoadedTile(tileID) {
         const tile = this._tiles[tileID.key];
         if (tile && tile.hasData()) {
@@ -40022,16 +40962,92 @@ class SourceCache extends performance$1.Evented {
             }
         }
     }
+    _updateCoveredAndRetainedTiles(retain, minCoveringZoom, maxCoveringZoom, zoom, idealTileIDs, terrain) {
+        const tilesForFading = {};
+        const fadingTiles = {};
+        const ids = Object.keys(retain);
+        const now = browser.now();
+        for (const id of ids) {
+            const tileID = retain[id];
+            const tile = this._tiles[id];
+            // when fadeEndTime is 0, the tile is created but registerFadeDuration
+            // has not been called, therefore must be kept in fadingTiles dictionary
+            // for next round of rendering
+            if (!tile || (tile.fadeEndTime !== 0 && tile.fadeEndTime <= now)) {
+                continue;
+            }
+            // if the tile is loaded but still fading in, find parents to cross-fade with it
+            const parentTile = this.findLoadedParent(tileID, minCoveringZoom);
+            const siblingTile = this.findLoadedSibling(tileID);
+            const fadeTileRef = parentTile || siblingTile || null;
+            if (fadeTileRef) {
+                this._addTile(fadeTileRef.tileID);
+                tilesForFading[fadeTileRef.tileID.key] = fadeTileRef.tileID;
+            }
+            fadingTiles[id] = tileID;
+        }
+        // for tiles that are still fading in, also find children to cross-fade with
+        this._retainLoadedChildren(fadingTiles, zoom, maxCoveringZoom, retain);
+        for (const id in tilesForFading) {
+            if (!retain[id]) {
+                // If a tile is only needed for fading, mark it as covered so that it isn't rendered on it's own.
+                this._coveredTiles[id] = true;
+                retain[id] = tilesForFading[id];
+            }
+        }
+        // disable fading logic in terrain3D mode to avoid rendering two tiles on the same place
+        if (terrain) {
+            const idealRasterTileIDs = {};
+            const missingTileIDs = {};
+            for (const tileID of idealTileIDs) {
+                if (this._tiles[tileID.key].hasData())
+                    idealRasterTileIDs[tileID.key] = tileID;
+                else
+                    missingTileIDs[tileID.key] = tileID;
+            }
+            // search for a complete set of children for each missing tile
+            for (const key in missingTileIDs) {
+                const children = missingTileIDs[key].children(this._source.maxzoom);
+                if (this._tiles[children[0].key] && this._tiles[children[1].key] && this._tiles[children[2].key] && this._tiles[children[3].key]) {
+                    idealRasterTileIDs[children[0].key] = retain[children[0].key] = children[0];
+                    idealRasterTileIDs[children[1].key] = retain[children[1].key] = children[1];
+                    idealRasterTileIDs[children[2].key] = retain[children[2].key] = children[2];
+                    idealRasterTileIDs[children[3].key] = retain[children[3].key] = children[3];
+                    delete missingTileIDs[key];
+                }
+            }
+            // search for parent or sibling for each missing tile
+            for (const key in missingTileIDs) {
+                const tileID = missingTileIDs[key];
+                const parentTile = this.findLoadedParent(tileID, this._source.minzoom);
+                const siblingTile = this.findLoadedSibling(tileID);
+                const fadeTileRef = parentTile || siblingTile || null;
+                if (fadeTileRef) {
+                    idealRasterTileIDs[fadeTileRef.tileID.key] = retain[fadeTileRef.tileID.key] = fadeTileRef.tileID;
+                    // remove idealTiles which would be rendered twice
+                    for (const key in idealRasterTileIDs) {
+                        if (idealRasterTileIDs[key].isChildOf(fadeTileRef.tileID))
+                            delete idealRasterTileIDs[key];
+                    }
+                }
+            }
+            // cover all tiles which are not needed
+            for (const key in this._tiles) {
+                if (!idealRasterTileIDs[key])
+                    this._coveredTiles[key] = true;
+            }
+        }
+    }
     /**
      * Removes tiles that are outside the viewport and adds new tiles that
      * are inside the viewport.
      */
     update(transform, terrain) {
-        this.transform = transform;
-        this.terrain = terrain;
         if (!this._sourceLoaded || this._paused) {
             return;
         }
+        this.transform = transform;
+        this.terrain = terrain;
         this.updateCacheSize(transform);
         this.handleWrapJump(this.transform.center.lng);
         // Covered is a list of retained tiles who's areas are fully covered by other,
@@ -40088,75 +41104,7 @@ class SourceCache extends performance$1.Evented {
         // parent or child tiles that are *already* loaded.
         const retain = this._updateRetainedTiles(idealTileIDs, zoom);
         if (isRasterType(this._source.type)) {
-            const parentsForFading = {};
-            const fadingTiles = {};
-            const ids = Object.keys(retain);
-            const now = browser.now();
-            for (const id of ids) {
-                const tileID = retain[id];
-                const tile = this._tiles[id];
-                // when fadeEndTime is 0, the tile is created but registerFadeDuration
-                // has not been called, therefore must be kept in fadingTiles dictionary
-                // for next round of rendering
-                if (!tile || (tile.fadeEndTime !== 0 && tile.fadeEndTime <= now)) {
-                    continue;
-                }
-                // if the tile is loaded but still fading in, find parents to cross-fade with it
-                const parentTile = this.findLoadedParent(tileID, minCoveringZoom);
-                if (parentTile) {
-                    this._addTile(parentTile.tileID);
-                    parentsForFading[parentTile.tileID.key] = parentTile.tileID;
-                }
-                fadingTiles[id] = tileID;
-            }
-            // for tiles that are still fading in, also find children to cross-fade with
-            this._retainLoadedChildren(fadingTiles, zoom, maxCoveringZoom, retain);
-            for (const id in parentsForFading) {
-                if (!retain[id]) {
-                    // If a tile is only needed for fading, mark it as covered so that it isn't rendered on it's own.
-                    this._coveredTiles[id] = true;
-                    retain[id] = parentsForFading[id];
-                }
-            }
-            // disable fading logic in terrain3D mode to avoid rendering two tiles on the same place
-            if (terrain) {
-                const idealRasterTileIDs = {};
-                const missingTileIDs = {};
-                for (const tileID of idealTileIDs) {
-                    if (this._tiles[tileID.key].hasData())
-                        idealRasterTileIDs[tileID.key] = tileID;
-                    else
-                        missingTileIDs[tileID.key] = tileID;
-                }
-                // search for a complete set of children for each missing tile
-                for (const key in missingTileIDs) {
-                    const children = missingTileIDs[key].children(this._source.maxzoom);
-                    if (this._tiles[children[0].key] && this._tiles[children[1].key] && this._tiles[children[2].key] && this._tiles[children[3].key]) {
-                        idealRasterTileIDs[children[0].key] = retain[children[0].key] = children[0];
-                        idealRasterTileIDs[children[1].key] = retain[children[1].key] = children[1];
-                        idealRasterTileIDs[children[2].key] = retain[children[2].key] = children[2];
-                        idealRasterTileIDs[children[3].key] = retain[children[3].key] = children[3];
-                        delete missingTileIDs[key];
-                    }
-                }
-                // search for parent for each missing tile
-                for (const key in missingTileIDs) {
-                    const parent = this.findLoadedParent(missingTileIDs[key], this._source.minzoom);
-                    if (parent) {
-                        idealRasterTileIDs[parent.tileID.key] = retain[parent.tileID.key] = parent.tileID;
-                        // remove idealTiles which would be rendered twice
-                        for (const key in idealRasterTileIDs) {
-                            if (idealRasterTileIDs[key].isChildOf(parent.tileID))
-                                delete idealRasterTileIDs[key];
-                        }
-                    }
-                }
-                // cover all tiles which are not needed
-                for (const key in this._tiles) {
-                    if (!idealRasterTileIDs[key])
-                        this._coveredTiles[key] = true;
-                }
-            }
+            this._updateCoveredAndRetainedTiles(retain, minCoveringZoom, maxCoveringZoom, zoom, idealTileIDs, terrain);
         }
         for (const retainedId in retain) {
             // Make sure retained tiles always clear any existing fade holds
@@ -40174,8 +41122,9 @@ class SourceCache extends performance$1.Evented {
                 this._removeTile(tileID);
             }
         }
-        // Construct a cache of loaded parents
+        // Construct caches of loaded parents & siblings
         this._updateLoadedParentTileCache();
+        this._updateLoadedSiblingTileCache();
     }
     releaseSymbolFadeTiles() {
         for (const id in this._tiles) {
@@ -40185,6 +41134,7 @@ class SourceCache extends performance$1.Evented {
         }
     }
     _updateRetainedTiles(idealTileIDs, zoom) {
+        var _a;
         const retain = {};
         const checked = {};
         const minCoveringZoom = Math.max(zoom - SourceCache.maxOverzooming, this._source.minzoom);
@@ -40244,7 +41194,7 @@ class SourceCache extends performance$1.Evented {
                 }
                 if (tile) {
                     const hasData = tile.hasData();
-                    if (parentWasRequested || hasData) {
+                    if (hasData || !((_a = this.map) === null || _a === void 0 ? void 0 : _a.cancelPendingTileRequestsWhileZooming) || parentWasRequested) {
                         retain[parentId.key] = parentId;
                     }
                     // Save the current values, since they're the parent of the next iteration
@@ -40284,6 +41234,22 @@ class SourceCache extends performance$1.Evented {
             for (const key of path) {
                 this._loadedParentTiles[key] = parentTile;
             }
+        }
+    }
+    /**
+     * Update the cache of loaded sibling tiles
+     *
+     * Sibling tiles are tiles that share the same zoom level and
+     * x/y position but have different wrap values
+     * Maintaining sibling tile cache allows fading from old to new tiles
+     * of the same position and zoom level
+     */
+    _updateLoadedSiblingTileCache() {
+        this._loadedSiblingTiles = {};
+        for (const tileKey in this._tiles) {
+            const currentId = this._tiles[tileKey].tileID;
+            const siblingTile = this._getLoadedTile(currentId);
+            this._loadedSiblingTiles[currentId.key] = siblingTile;
         }
     }
     /**
@@ -40352,6 +41318,22 @@ class SourceCache extends performance$1.Evented {
             tile.aborted = true;
             this._abortTile(tile);
             this._unloadTile(tile);
+        }
+    }
+    /** @internal */
+    _dataHandler(e) {
+        const eventSourceDataType = e.sourceDataType;
+        if (e.dataType === 'source' && eventSourceDataType === 'metadata') {
+            this._sourceLoaded = true;
+        }
+        // for sources with mutable data, this event fires when the underlying data
+        // to a source is changed. (i.e. GeoJSONSource#setData and ImageSource#serCoordinates)
+        if (this._sourceLoaded && !this._paused && e.dataType === 'source' && eventSourceDataType === 'content') {
+            this.reload();
+            if (this.transform) {
+                this.update(this.transform, this.terrain);
+            }
+            this._didEmitContent = true;
         }
     }
     /**
@@ -40924,26 +41906,25 @@ function project(point, matrix, getElevation) {
     const w = pos[3];
     return {
         point: new performance$1.Point(pos[0] / w, pos[1] / w),
-        signedDistanceFromCamera: w
+        signedDistanceFromCamera: w,
+        isOccluded: false
     };
 }
 function getPerspectiveRatio(cameraToCenterDistance, signedDistanceFromCamera) {
     return 0.5 + 0.5 * (cameraToCenterDistance / signedDistanceFromCamera);
 }
-function isVisible(anchorPos, clippingBuffer) {
-    const x = anchorPos[0] / anchorPos[3];
-    const y = anchorPos[1] / anchorPos[3];
-    const inPaddedViewport = (x >= -clippingBuffer[0] &&
-        x <= clippingBuffer[0] &&
-        y >= -clippingBuffer[1] &&
-        y <= clippingBuffer[1]);
+function isVisible(p, clippingBuffer) {
+    const inPaddedViewport = (p.x >= -clippingBuffer[0] &&
+        p.x <= clippingBuffer[0] &&
+        p.y >= -clippingBuffer[1] &&
+        p.y <= clippingBuffer[1]);
     return inPaddedViewport;
 }
 /*
  *  Update the `dynamicLayoutVertexBuffer` for the buffer with the correct glyph positions for the current map view.
  *  This is only run on labels that are aligned with lines. Horizontal labels are handled entirely in the shader.
  */
-function updateLineLabels(bucket, posMatrix, painter, isText, labelPlaneMatrix, glCoordMatrix, pitchWithMap, keepUpright, rotateToLine, getElevation) {
+function updateLineLabels(bucket, posMatrix, painter, isText, labelPlaneMatrix, glCoordMatrix, pitchWithMap, keepUpright, rotateToLine, projection, unwrappedTileID, viewportWidth, viewportHeight, translation, getElevation) {
     const sizeData = isText ? bucket.textSizeData : bucket.iconSizeData;
     const partiallyEvaluatedSize = performance$1.evaluateSizeForZoom(sizeData, painter.transform.zoom);
     const clippingBuffer = [256 / painter.width * 2 + 1, 256 / painter.height * 2 + 1];
@@ -40966,32 +41947,36 @@ function updateLineLabels(bucket, posMatrix, painter, isText, labelPlaneMatrix, 
         }
         // Awkward... but we're counting on the paired "vertical" symbol coming immediately after its horizontal counterpart
         useVertical = false;
-        let anchorPos;
-        if (getElevation) { // slow because of handle z-index
-            anchorPos = [symbol.anchorX, symbol.anchorY, getElevation(symbol.anchorX, symbol.anchorY), 1];
-            performance$1.transformMat4(anchorPos, anchorPos, posMatrix);
-        }
-        else { // fast because of ignore z-index
-            anchorPos = [symbol.anchorX, symbol.anchorY, 0, 1];
-            xyTransformMat4(anchorPos, anchorPos, posMatrix);
-        }
+        const anchorPos = project(new performance$1.Point(symbol.anchorX, symbol.anchorY), posMatrix, getElevation);
         // Don't bother calculating the correct point for invisible labels.
-        if (!isVisible(anchorPos, clippingBuffer)) {
+        if (!isVisible(anchorPos.point, clippingBuffer)) {
             hideGlyphs(symbol.numGlyphs, dynamicLayoutVertexArray);
             continue;
         }
-        const cameraToAnchorDistance = anchorPos[3];
+        const cameraToAnchorDistance = anchorPos.signedDistanceFromCamera;
         const perspectiveRatio = getPerspectiveRatio(painter.transform.cameraToCenterDistance, cameraToAnchorDistance);
         const fontSize = performance$1.evaluateSizeForFeature(sizeData, partiallyEvaluatedSize, symbol);
         const pitchScaledFontSize = pitchWithMap ? fontSize / perspectiveRatio : fontSize * perspectiveRatio;
         const tileAnchorPoint = new performance$1.Point(symbol.anchorX, symbol.anchorY);
-        const anchorPoint = project(tileAnchorPoint, labelPlaneMatrix, getElevation).point;
-        const projectionCache = { projections: {}, offsets: {} };
-        const placeUnflipped = placeGlyphsAlongLine(symbol, pitchScaledFontSize, false /*unflipped*/, keepUpright, posMatrix, labelPlaneMatrix, glCoordMatrix, bucket.glyphOffsetArray, lineVertexArray, dynamicLayoutVertexArray, anchorPoint, tileAnchorPoint, projectionCache, aspectRatio, rotateToLine, getElevation);
+        const projectionCache = { projections: {}, offsets: {}, cachedAnchorPoint: undefined, anyProjectionOccluded: false };
+        const projectionContext = {
+            getElevation,
+            labelPlaneMatrix,
+            lineVertexArray,
+            pitchWithMap,
+            projectionCache,
+            projection,
+            tileAnchorPoint,
+            unwrappedTileID,
+            width: viewportWidth,
+            height: viewportHeight,
+            translation
+        };
+        const placeUnflipped = placeGlyphsAlongLine(projectionContext, symbol, pitchScaledFontSize, false /*unflipped*/, keepUpright, posMatrix, glCoordMatrix, bucket.glyphOffsetArray, dynamicLayoutVertexArray, aspectRatio, rotateToLine);
         useVertical = placeUnflipped.useVertical;
         if (placeUnflipped.notEnoughRoom || useVertical ||
             (placeUnflipped.needsFlipping &&
-                placeGlyphsAlongLine(symbol, pitchScaledFontSize, true /*flipped*/, keepUpright, posMatrix, labelPlaneMatrix, glCoordMatrix, bucket.glyphOffsetArray, lineVertexArray, dynamicLayoutVertexArray, anchorPoint, tileAnchorPoint, projectionCache, aspectRatio, rotateToLine, getElevation).notEnoughRoom)) {
+                placeGlyphsAlongLine(projectionContext, symbol, pitchScaledFontSize, true /*flipped*/, keepUpright, posMatrix, glCoordMatrix, bucket.glyphOffsetArray, dynamicLayoutVertexArray, aspectRatio, rotateToLine).notEnoughRoom)) {
             hideGlyphs(symbol.numGlyphs, dynamicLayoutVertexArray);
         }
     }
@@ -41014,18 +41999,21 @@ function updateLineLabels(bucket, posMatrix, painter, isText, labelPlaneMatrix, 
  *
  * Returns null if the label can't fit on the geometry
  */
-function placeFirstAndLastGlyph(fontScale, glyphOffsetArray, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation) {
+function placeFirstAndLastGlyph(fontScale, glyphOffsetArray, lineOffsetX, lineOffsetY, flip, symbol, rotateToLine, projectionContext) {
     const glyphEndIndex = symbol.glyphStartIndex + symbol.numGlyphs;
     const lineStartIndex = symbol.lineStartIndex;
     const lineEndIndex = symbol.lineStartIndex + symbol.lineLength;
     const firstGlyphOffset = glyphOffsetArray.getoffsetX(symbol.glyphStartIndex);
     const lastGlyphOffset = glyphOffsetArray.getoffsetX(glyphEndIndex - 1);
-    const firstPlacedGlyph = placeGlyphAlongLine(fontScale * firstGlyphOffset, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment, lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation);
+    const firstPlacedGlyph = placeGlyphAlongLine(fontScale * firstGlyphOffset, lineOffsetX, lineOffsetY, flip, symbol.segment, lineStartIndex, lineEndIndex, projectionContext, rotateToLine);
     if (!firstPlacedGlyph)
         return null;
-    const lastPlacedGlyph = placeGlyphAlongLine(fontScale * lastGlyphOffset, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment, lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation);
+    const lastPlacedGlyph = placeGlyphAlongLine(fontScale * lastGlyphOffset, lineOffsetX, lineOffsetY, flip, symbol.segment, lineStartIndex, lineEndIndex, projectionContext, rotateToLine);
     if (!lastPlacedGlyph)
         return null;
+    if (projectionContext.projectionCache.anyProjectionOccluded) {
+        return null;
+    }
     return { first: firstPlacedGlyph, last: lastPlacedGlyph };
 }
 function requiresOrientationChange(writingMode, firstPoint, lastPoint, aspectRatio) {
@@ -41054,7 +42042,7 @@ function requiresOrientationChange(writingMode, firstPoint, lastPoint, aspectRat
 * Finally, add resulting glyph position calculations to dynamicLayoutVertexArray for
 * upload to the GPU
 */
-function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, labelPlaneMatrix, glCoordMatrix, glyphOffsetArray, lineVertexArray, dynamicLayoutVertexArray, anchorPoint, tileAnchorPoint, projectionCache, aspectRatio, rotateToLine, getElevation) {
+function placeGlyphsAlongLine(projectionContext, symbol, fontSize, flip, keepUpright, posMatrix, glCoordMatrix, glyphOffsetArray, dynamicLayoutVertexArray, aspectRatio, rotateToLine) {
     const fontScale = fontSize / 24;
     const lineOffsetX = symbol.lineOffsetX * fontScale;
     const lineOffsetY = symbol.lineOffsetY * fontScale;
@@ -41065,12 +42053,12 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
         const lineEndIndex = symbol.lineStartIndex + symbol.lineLength;
         // Place the first and the last glyph in the label first, so we can figure out
         // the overall orientation of the label and determine whether it needs to be flipped in keepUpright mode
-        const firstAndLastGlyph = placeFirstAndLastGlyph(fontScale, glyphOffsetArray, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation);
+        const firstAndLastGlyph = placeFirstAndLastGlyph(fontScale, glyphOffsetArray, lineOffsetX, lineOffsetY, flip, symbol, rotateToLine, projectionContext);
         if (!firstAndLastGlyph) {
             return { notEnoughRoom: true };
         }
-        const firstPoint = project(firstAndLastGlyph.first.point, glCoordMatrix, getElevation).point;
-        const lastPoint = project(firstAndLastGlyph.last.point, glCoordMatrix, getElevation).point;
+        const firstPoint = project(firstAndLastGlyph.first.point, glCoordMatrix, projectionContext.getElevation).point;
+        const lastPoint = project(firstAndLastGlyph.last.point, glCoordMatrix, projectionContext.getElevation).point;
         if (keepUpright && !flip) {
             const orientationChange = requiresOrientationChange(symbol.writingMode, firstPoint, lastPoint, aspectRatio);
             if (orientationChange) {
@@ -41080,7 +42068,7 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
         placedGlyphs = [firstAndLastGlyph.first];
         for (let glyphIndex = symbol.glyphStartIndex + 1; glyphIndex < glyphEndIndex - 1; glyphIndex++) {
             // Since first and last glyph fit on the line, we're sure that the rest of the glyphs can be placed
-            placedGlyphs.push(placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(glyphIndex), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment, lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation));
+            placedGlyphs.push(placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(glyphIndex), lineOffsetX, lineOffsetY, flip, symbol.segment, lineStartIndex, lineEndIndex, projectionContext, rotateToLine));
         }
         placedGlyphs.push(firstAndLastGlyph.last);
     }
@@ -41088,23 +42076,23 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
         // Only a single glyph to place
         // So, determine whether to flip based on projected angle of the line segment it's on
         if (keepUpright && !flip) {
-            const a = project(tileAnchorPoint, posMatrix, getElevation).point;
+            const a = project(projectionContext.tileAnchorPoint, posMatrix, projectionContext.getElevation).point;
             const tileVertexIndex = (symbol.lineStartIndex + symbol.segment + 1);
-            const tileSegmentEnd = new performance$1.Point(lineVertexArray.getx(tileVertexIndex), lineVertexArray.gety(tileVertexIndex));
-            const projectedVertex = project(tileSegmentEnd, posMatrix, getElevation);
+            const tileSegmentEnd = new performance$1.Point(projectionContext.lineVertexArray.getx(tileVertexIndex), projectionContext.lineVertexArray.gety(tileVertexIndex));
+            const projectedVertex = project(tileSegmentEnd, posMatrix, projectionContext.getElevation);
             // We know the anchor will be in the viewport, but the end of the line segment may be
             // behind the plane of the camera, in which case we can use a point at any arbitrary (closer)
             // point on the segment.
             const b = (projectedVertex.signedDistanceFromCamera > 0) ?
                 projectedVertex.point :
-                projectTruncatedLineSegment(tileAnchorPoint, tileSegmentEnd, a, 1, posMatrix, getElevation);
+                projectTruncatedLineSegmentToLabelPlane(projectionContext.tileAnchorPoint, tileSegmentEnd, a, 1, posMatrix, projectionContext);
             const orientationChange = requiresOrientationChange(symbol.writingMode, a, b, aspectRatio);
             if (orientationChange) {
                 return orientationChange;
             }
         }
-        const singleGlyph = placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(symbol.glyphStartIndex), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment, symbol.lineStartIndex, symbol.lineStartIndex + symbol.lineLength, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation);
-        if (!singleGlyph)
+        const singleGlyph = placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(symbol.glyphStartIndex), lineOffsetX, lineOffsetY, flip, symbol.segment, symbol.lineStartIndex, symbol.lineStartIndex + symbol.lineLength, projectionContext, rotateToLine);
+        if (!singleGlyph || projectionContext.projectionCache.anyProjectionOccluded)
             return { notEnoughRoom: true };
         placedGlyphs = [singleGlyph];
     }
@@ -41113,40 +42101,96 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
     }
     return {};
 }
-function projectTruncatedLineSegment(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, projectionMatrix, getElevation) {
+/**
+ * Takes a line and direction from `previousTilePoint` to `currentTilePoint`,
+ * projects it to *label plane*,
+ * and returns a projected point along this projected line that is `minimumLength` distance away from `previousProjectedPoint`.
+ * @param previousTilePoint - Line start point, in tile coordinates.
+ * @param currentTilePoint - Line end point, in tile coordinates.
+ * @param previousProjectedPoint - Projection of `previousTilePoint` into *label plane*.
+ * @param minimumLength - Distance in the projected space along the line for the returned point.
+ * @param projectionMatrix - Matrix to use during projection.
+ * @param projectionContext - Projection context, used only for terrain's `getElevation`.
+ */
+function projectTruncatedLineSegmentToLabelPlane(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, projectionMatrix, projectionContext) {
+    return _projectTruncatedLineSegment(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, projectionMatrix, projectionContext);
+}
+/**
+ * Takes a line and direction from `previousTilePoint` to `currentTilePoint`,
+ * projects it to *viewport*,
+ * and returns a projected point along this projected line that is `minimumLength` distance away from `previousProjectedPoint`.
+ * @param previousTilePoint - Line start point, in tile coordinates.
+ * @param currentTilePoint - Line end point, in tile coordinates.
+ * @param previousProjectedPoint - Projection of `previousTilePoint` into *viewport*.
+ * @param minimumLength - Distance in the projected space along the line for the returned point.
+ * @param projectionContext - Projection context, used for terrain's `getElevation`, and either the `labelPlaneMatrix` or the map's special projection (mostly for globe).
+ */
+function projectTruncatedLineSegmentToViewport(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, projectionContext) {
+    return _projectTruncatedLineSegment(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, undefined, projectionContext);
+}
+/**
+ * Do not use directly, use {@link projectTruncatedLineSegmentToLabelPlane} or {@link projectTruncatedLineSegmentToViewport} instead,
+ * depending on the target space.
+ *
+ * Projects a "virtual" vertex along a line segment.
+ * If `projectionMatrix` is not undefined, does a simple projection using this matrix.
+ * Otherwise, either projects to label plane using the `labelPlaneMatrix`
+ * or projects to viewport using the special map projection (mostly for globe) by calling {@link projectTileCoordinatesToViewport}.
+ */
+function _projectTruncatedLineSegment(previousTilePoint, currentTilePoint, previousProjectedPoint, minimumLength, projectionMatrix, projectionContext) {
     // We are assuming "previousTilePoint" won't project to a point within one unit of the camera plane
     // If it did, that would mean our label extended all the way out from within the viewport to a (very distant)
     // point near the plane of the camera. We wouldn't be able to render the label anyway once it crossed the
     // plane of the camera.
-    const projectedUnitVertex = project(previousTilePoint.add(previousTilePoint.sub(currentTilePoint)._unit()), projectionMatrix, getElevation).point;
+    const unitVertexToBeProjected = previousTilePoint.add(previousTilePoint.sub(currentTilePoint)._unit());
+    const projectedUnitVertex = projectionMatrix !== undefined ?
+        project(unitVertexToBeProjected, projectionMatrix, projectionContext.getElevation).point :
+        projectTileCoordinatesToViewport(unitVertexToBeProjected.x, unitVertexToBeProjected.y, projectionContext).point;
     const projectedUnitSegment = previousProjectedPoint.sub(projectedUnitVertex);
     return previousProjectedPoint.add(projectedUnitSegment._mult(minimumLength / projectedUnitSegment.mag()));
 }
 /**
  * Transform a vertex from tile coordinates to label plane coordinates
  * @param index - index of vertex to project
- * @param projectionArgs - necessary data to project a vertex
+ * @param projectionContext - necessary data to project a vertex
  * @returns the vertex projected to the label plane
  */
-function projectVertexToViewport(index, projectionArgs) {
-    const { projectionCache, lineVertexArray, labelPlaneMatrix, tileAnchorPoint, distanceFromAnchor, getElevation, previousVertex, direction, absOffsetX } = projectionArgs;
-    if (projectionCache.projections[index]) {
-        return projectionCache.projections[index];
+function projectLineVertexToViewport(index, projectionContext, syntheticVertexArgs) {
+    const cache = projectionContext.projectionCache;
+    if (cache.projections[index]) {
+        return cache.projections[index];
     }
-    const currentVertex = new performance$1.Point(lineVertexArray.getx(index), lineVertexArray.gety(index));
-    const projection = project(currentVertex, labelPlaneMatrix, getElevation);
+    const currentVertex = new performance$1.Point(projectionContext.lineVertexArray.getx(index), projectionContext.lineVertexArray.gety(index));
+    const projection = projectTileCoordinatesToViewport(currentVertex.x, currentVertex.y, projectionContext);
     if (projection.signedDistanceFromCamera > 0) {
-        projectionCache.projections[index] = projection.point;
+        cache.projections[index] = projection.point;
+        cache.anyProjectionOccluded = cache.anyProjectionOccluded || projection.isOccluded;
         return projection.point;
     }
     // The vertex is behind the plane of the camera, so we can't project it
     // Instead, we'll create a vertex along the line that's far enough to include the glyph
-    const previousLineVertexIndex = index - direction;
-    const previousTilePoint = distanceFromAnchor === 0 ?
-        tileAnchorPoint :
-        new performance$1.Point(lineVertexArray.getx(previousLineVertexIndex), lineVertexArray.gety(previousLineVertexIndex));
+    const previousLineVertexIndex = index - syntheticVertexArgs.direction;
+    const previousTilePoint = syntheticVertexArgs.distanceFromAnchor === 0 ?
+        projectionContext.tileAnchorPoint :
+        new performance$1.Point(projectionContext.lineVertexArray.getx(previousLineVertexIndex), projectionContext.lineVertexArray.gety(previousLineVertexIndex));
     // Don't cache because the new vertex might not be far enough out for future glyphs on the same segment
-    return projectTruncatedLineSegment(previousTilePoint, currentVertex, previousVertex, absOffsetX - distanceFromAnchor + 1, labelPlaneMatrix, getElevation);
+    const minimumLength = syntheticVertexArgs.absOffsetX - syntheticVertexArgs.distanceFromAnchor + 1;
+    return projectTruncatedLineSegmentToViewport(previousTilePoint, currentVertex, syntheticVertexArgs.previousVertex, minimumLength, projectionContext);
+}
+function projectTileCoordinatesToViewport(x, y, projectionContext) {
+    const translatedX = x + projectionContext.translation[0];
+    const translatedY = y + projectionContext.translation[1];
+    let projection;
+    if (!projectionContext.pitchWithMap && projectionContext.projection.useSpecialProjectionForSymbols) {
+        projection = projectionContext.projection.projectTileCoordinates(translatedX, translatedY, projectionContext.unwrappedTileID, projectionContext.getElevation);
+        projection.point.x = (projection.point.x * 0.5 + 0.5) * projectionContext.width;
+        projection.point.y = (-projection.point.y * 0.5 + 0.5) * projectionContext.height;
+    }
+    else {
+        projection = project(new performance$1.Point(translatedX, translatedY), projectionContext.labelPlaneMatrix, projectionContext.getElevation);
+        projection.isOccluded = false;
+    }
+    return projection;
 }
 /**
  * Calculate the normal vector for a line segment
@@ -41169,36 +42213,35 @@ function transformToOffsetNormal(segmentVector, offset, direction) {
  * @param lineEndIndex - End index for the line this label is on
  * @param offsetPreviousVertex - The previous vertex projected to the label plane, and then offset along the previous segments normal
  * @param lineOffsetY - Magnitude of the offset
- * @param projectionArgs - Necessary data for tile-to-label-plane projection
+ * @param projectionContext - Necessary data for tile-to-label-plane projection
  * @returns The point at which the current and next line segments intersect, once offset and extended/shrunk to their meeting point
  */
-function findOffsetIntersectionPoint(index, prevToCurrentOffsetNormal, currentVertex, lineStartIndex, lineEndIndex, offsetPreviousVertex, lineOffsetY, projectionArgs) {
-    const { projectionCache, direction } = projectionArgs;
-    if (projectionCache.offsets[index]) {
-        return projectionCache.offsets[index];
+function findOffsetIntersectionPoint(index, prevToCurrentOffsetNormal, currentVertex, lineStartIndex, lineEndIndex, offsetPreviousVertex, lineOffsetY, projectionContext, syntheticVertexArgs) {
+    if (projectionContext.projectionCache.offsets[index]) {
+        return projectionContext.projectionCache.offsets[index];
     }
     const offsetCurrentVertex = currentVertex.add(prevToCurrentOffsetNormal);
-    if (index + direction < lineStartIndex || index + direction >= lineEndIndex) {
+    if (index + syntheticVertexArgs.direction < lineStartIndex || index + syntheticVertexArgs.direction >= lineEndIndex) {
         // This is the end of the line, no intersection to calculate
-        projectionCache.offsets[index] = offsetCurrentVertex;
+        projectionContext.projectionCache.offsets[index] = offsetCurrentVertex;
         return offsetCurrentVertex;
     }
     // Offset the vertices for the next segment
-    const nextVertex = projectVertexToViewport(index + direction, projectionArgs);
-    const currentToNextOffsetNormal = transformToOffsetNormal(nextVertex.sub(currentVertex), lineOffsetY, direction);
+    const nextVertex = projectLineVertexToViewport(index + syntheticVertexArgs.direction, projectionContext, syntheticVertexArgs);
+    const currentToNextOffsetNormal = transformToOffsetNormal(nextVertex.sub(currentVertex), lineOffsetY, syntheticVertexArgs.direction);
     const offsetNextSegmentBegin = currentVertex.add(currentToNextOffsetNormal);
     const offsetNextSegmentEnd = nextVertex.add(currentToNextOffsetNormal);
     // find the intersection of these two lines
     // if the lines are parallel, offsetCurrent/offsetNextBegin will touch
-    projectionCache.offsets[index] = performance$1.findLineIntersection(offsetPreviousVertex, offsetCurrentVertex, offsetNextSegmentBegin, offsetNextSegmentEnd) || offsetCurrentVertex;
-    return projectionCache.offsets[index];
+    projectionContext.projectionCache.offsets[index] = performance$1.findLineIntersection(offsetPreviousVertex, offsetCurrentVertex, offsetNextSegmentBegin, offsetNextSegmentEnd) || offsetCurrentVertex;
+    return projectionContext.projectionCache.offsets[index];
 }
 /*
  * Place a single glyph along its line, projected into the label plane, by iterating outward
  * from the anchor point until the distance traversed in the label plane equals the glyph's
  * offsetX. Returns null if the glyph can't fit on the line geometry.
  */
-function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, anchorSegment, lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, rotateToLine, getElevation) {
+function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorSegment, lineStartIndex, lineEndIndex, projectionContext, rotateToLine) {
     const combinedOffsetX = flip ?
         offsetX - lineOffsetX :
         offsetX + lineOffsetX;
@@ -41215,6 +42258,15 @@ function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorPoin
     let currentIndex = direction > 0 ?
         lineStartIndex + anchorSegment :
         lineStartIndex + anchorSegment + 1;
+    // Project anchor point to proper label plane and cache it
+    let anchorPoint;
+    if (projectionContext.projectionCache.cachedAnchorPoint) {
+        anchorPoint = projectionContext.projectionCache.cachedAnchorPoint;
+    }
+    else {
+        anchorPoint = projectTileCoordinatesToViewport(projectionContext.tileAnchorPoint.x, projectionContext.tileAnchorPoint.y, projectionContext).point;
+        projectionContext.projectionCache.cachedAnchorPoint = anchorPoint;
+    }
     let currentVertex = anchorPoint;
     let previousVertex = anchorPoint;
     // offsetPrev and intersectionPoint are analogous to previousVertex and currentVertex
@@ -41235,19 +42287,14 @@ function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorPoin
         distanceFromAnchor += currentSegmentDistance;
         previousVertex = currentVertex;
         offsetPreviousVertex = offsetIntersectionPoint;
-        const projectionArgs = {
-            projectionCache,
-            lineVertexArray,
-            labelPlaneMatrix,
-            tileAnchorPoint,
-            distanceFromAnchor,
-            getElevation,
-            previousVertex,
+        const syntheticVertexArgs = {
+            absOffsetX,
             direction,
-            absOffsetX
+            distanceFromAnchor,
+            previousVertex
         };
         // find next vertex in viewport space
-        currentVertex = projectVertexToViewport(currentIndex, projectionArgs);
+        currentVertex = projectLineVertexToViewport(currentIndex, projectionContext, syntheticVertexArgs);
         if (lineOffsetY === 0) {
             // Store vertices for collision detection and update current segment geometry
             pathVertices.push(previousVertex);
@@ -41260,7 +42307,7 @@ function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorPoin
             if (prevToCurrent.mag() === 0) {
                 // We are starting with our anchor point directly on the vertex, so look one vertex ahead
                 // to calculate a normal
-                const nextVertex = projectVertexToViewport(currentIndex + direction, projectionArgs);
+                const nextVertex = projectLineVertexToViewport(currentIndex + direction, projectionContext, syntheticVertexArgs);
                 prevToCurrentOffsetNormal = transformToOffsetNormal(nextVertex.sub(currentVertex), lineOffsetY, direction);
             }
             else {
@@ -41269,7 +42316,7 @@ function placeGlyphAlongLine(offsetX, lineOffsetX, lineOffsetY, flip, anchorPoin
             // Initialize offsetPrev on our first iteration, after that it will be pre-calculated
             if (!offsetPreviousVertex)
                 offsetPreviousVertex = previousVertex.add(prevToCurrentOffsetNormal);
-            offsetIntersectionPoint = findOffsetIntersectionPoint(currentIndex, prevToCurrentOffsetNormal, currentVertex, lineStartIndex, lineEndIndex, offsetPreviousVertex, lineOffsetY, projectionArgs);
+            offsetIntersectionPoint = findOffsetIntersectionPoint(currentIndex, prevToCurrentOffsetNormal, currentVertex, lineStartIndex, lineEndIndex, offsetPreviousVertex, lineOffsetY, projectionContext, syntheticVertexArgs);
             pathVertices.push(offsetPreviousVertex);
             currentLineSegment = offsetIntersectionPoint.sub(offsetPreviousVertex);
         }
@@ -41327,50 +42374,63 @@ const viewportPadding = 100;
  * together even if they overlap.
  */
 class CollisionIndex {
-    constructor(transform, grid = new GridIndex(transform.width + 2 * viewportPadding, transform.height + 2 * viewportPadding, 25), ignoredGrid = new GridIndex(transform.width + 2 * viewportPadding, transform.height + 2 * viewportPadding, 25)) {
+    constructor(transform, projection, grid = new GridIndex(transform.width + 2 * viewportPadding, transform.height + 2 * viewportPadding, 25), ignoredGrid = new GridIndex(transform.width + 2 * viewportPadding, transform.height + 2 * viewportPadding, 25)) {
         this.transform = transform;
+        this.mapProjection = projection;
         this.grid = grid;
         this.ignoredGrid = ignoredGrid;
-        this.pitchfactor = Math.cos(transform._pitch) * transform.cameraToCenterDistance;
+        this.pitchFactor = Math.cos(transform._pitch) * transform.cameraToCenterDistance;
         this.screenRightBoundary = transform.width + viewportPadding;
         this.screenBottomBoundary = transform.height + viewportPadding;
         this.gridRightBoundary = transform.width + 2 * viewportPadding;
         this.gridBottomBoundary = transform.height + 2 * viewportPadding;
         this.perspectiveRatioCutoff = 0.6;
     }
-    placeCollisionBox(collisionBox, overlapMode, textPixelRatio, posMatrix, collisionGroupPredicate, getElevation) {
-        const projectedPoint = this.projectAndGetPerspectiveRatio(posMatrix, collisionBox.anchorPointX, collisionBox.anchorPointY, getElevation);
-        const tileToViewport = textPixelRatio * projectedPoint.perspectiveRatio;
-        const tlX = collisionBox.x1 * tileToViewport + projectedPoint.point.x;
-        const tlY = collisionBox.y1 * tileToViewport + projectedPoint.point.y;
-        const brX = collisionBox.x2 * tileToViewport + projectedPoint.point.x;
-        const brY = collisionBox.y2 * tileToViewport + projectedPoint.point.y;
-        if (!this.isInsideGrid(tlX, tlY, brX, brY) ||
-            (overlapMode !== 'always' && this.grid.hitTest(tlX, tlY, brX, brY, overlapMode, collisionGroupPredicate)) ||
-            projectedPoint.perspectiveRatio < this.perspectiveRatioCutoff) {
+    placeCollisionBox(collisionBox, overlapMode, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, collisionGroupPredicate, getElevation, shift) {
+        const x = collisionBox.anchorPointX + translation[0];
+        const y = collisionBox.anchorPointY + translation[1];
+        const projectedPoint = this.projectAndGetPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation);
+        const projectedBox = this._projectCollisionBox(collisionBox, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift);
+        const [tlX, tlY, brX, brY] = projectedBox.box;
+        const projectionOccluded = this.mapProjection.useSpecialProjectionForSymbols ? (pitchWithMap ? projectedBox.allPointsOccluded : this.mapProjection.isOccluded(x, y, unwrappedTileID)) : false;
+        if (projectionOccluded || projectedPoint.perspectiveRatio < this.perspectiveRatioCutoff || !this.isInsideGrid(tlX, tlY, brX, brY) ||
+            (overlapMode !== 'always' && this.grid.hitTest(tlX, tlY, brX, brY, overlapMode, collisionGroupPredicate))) {
             return {
-                box: [],
+                box: [tlX, tlY, brX, brY],
+                placeable: false,
                 offscreen: false
             };
         }
         return {
             box: [tlX, tlY, brX, brY],
+            placeable: true,
             offscreen: this.isOffscreen(tlX, tlY, brX, brY)
         };
     }
-    placeCollisionCircles(overlapMode, symbol, lineVertexArray, glyphOffsetArray, fontSize, posMatrix, labelPlaneMatrix, labelToScreenMatrix, showCollisionCircles, pitchWithMap, collisionGroupPredicate, circlePixelDiameter, textPixelPadding, getElevation) {
+    placeCollisionCircles(overlapMode, symbol, lineVertexArray, glyphOffsetArray, fontSize, posMatrix, unwrappedTileID, labelPlaneMatrix, labelToScreenMatrix, showCollisionCircles, pitchWithMap, collisionGroupPredicate, circlePixelDiameter, textPixelPadding, translation, getElevation) {
         const placedCollisionCircles = [];
         const tileUnitAnchorPoint = new performance$1.Point(symbol.anchorX, symbol.anchorY);
-        const screenAnchorPoint = project(tileUnitAnchorPoint, posMatrix, getElevation);
-        const perspectiveRatio = getPerspectiveRatio(this.transform.cameraToCenterDistance, screenAnchorPoint.signedDistanceFromCamera);
+        const perspectiveRatio = this.getPerspectiveRatio(posMatrix, tileUnitAnchorPoint.x, tileUnitAnchorPoint.y, unwrappedTileID, getElevation);
         const labelPlaneFontSize = pitchWithMap ? fontSize / perspectiveRatio : fontSize * perspectiveRatio;
         const labelPlaneFontScale = labelPlaneFontSize / performance$1.ONE_EM;
-        const labelPlaneAnchorPoint = project(tileUnitAnchorPoint, labelPlaneMatrix, getElevation).point;
-        const projectionCache = { projections: {}, offsets: {} };
+        const projectionCache = { projections: {}, offsets: {}, cachedAnchorPoint: undefined, anyProjectionOccluded: false };
         const lineOffsetX = symbol.lineOffsetX * labelPlaneFontScale;
         const lineOffsetY = symbol.lineOffsetY * labelPlaneFontScale;
+        const projectionContext = {
+            getElevation,
+            labelPlaneMatrix,
+            lineVertexArray,
+            pitchWithMap,
+            projectionCache,
+            projection: this.mapProjection,
+            tileAnchorPoint: tileUnitAnchorPoint,
+            unwrappedTileID,
+            width: this.transform.width,
+            height: this.transform.height,
+            translation
+        };
         const firstAndLastGlyph = placeFirstAndLastGlyph(labelPlaneFontScale, glyphOffsetArray, lineOffsetX, lineOffsetY,
-        /*flip*/ false, labelPlaneAnchorPoint, tileUnitAnchorPoint, symbol, lineVertexArray, labelPlaneMatrix, projectionCache, false, getElevation);
+        /*flip*/ false, symbol, false, projectionContext);
         let collisionDetected = false;
         let inGrid = false;
         let entirelyOffscreen = true;
@@ -41393,8 +42453,8 @@ class CollisionIndex {
             const circleDist = radius * 2.5;
             // The path might need to be converted into screen space if a pitched map is used as the label space
             if (labelToScreenMatrix) {
-                const screenSpacePath = projectedPath.map(p => project(p, labelToScreenMatrix, getElevation));
-                // Do not try to place collision circles if even of the points is behind the camera.
+                const screenSpacePath = this.projectPathToScreenSpace(projectedPath, projectionContext, labelToScreenMatrix);
+                // Do not try to place collision circles if even one of the points is behind the camera.
                 // This is a plausible scenario with big camera pitch angles
                 if (screenSpacePath.some(point => point.signedDistanceFromCamera <= 0)) {
                     projectedPath = [];
@@ -41473,6 +42533,9 @@ class CollisionIndex {
             collisionDetected
         };
     }
+    projectPathToScreenSpace(projectedPath, projectionContext, labelToScreenMatrix) {
+        return projectedPath.map(p => project(p, labelToScreenMatrix, projectionContext.getElevation));
+    }
     /**
      * Because the geometries in the CollisionIndex are an approximation of the shape of
      * symbols on the map, we use the CollisionIndex to look up the symbol part of
@@ -41542,24 +42605,26 @@ class CollisionIndex {
             grid.insertCircle(key, collisionCircles[k], collisionCircles[k + 1], collisionCircles[k + 2]);
         }
     }
-    projectAndGetPerspectiveRatio(posMatrix, x, y, getElevation) {
-        let p;
-        if (getElevation) { // slow because of handle z-index
-            p = [x, y, getElevation(x, y), 1];
-            performance$1.transformMat4(p, p, posMatrix);
-        }
-        else { // fast because of ignore z-index
-            p = [x, y, 0, 1];
-            xyTransformMat4(p, p, posMatrix);
-        }
-        const a = new performance$1.Point((((p[0] / p[3] + 1) / 2) * this.transform.width) + viewportPadding, (((-p[1] / p[3] + 1) / 2) * this.transform.height) + viewportPadding);
+    projectAndGetPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation) {
+        const projected = this.mapProjection.useSpecialProjectionForSymbols ?
+            this.mapProjection.projectTileCoordinates(x, y, unwrappedTileID, getElevation) :
+            project(new performance$1.Point(x, y), posMatrix, getElevation);
         return {
-            point: a,
+            point: new performance$1.Point((((projected.point.x + 1) / 2) * this.transform.width) + viewportPadding, (((-projected.point.y + 1) / 2) * this.transform.height) + viewportPadding),
             // See perspective ratio comment in symbol_sdf.vertex
             // We're doing collision detection in viewport space so we need
             // to scale down boxes in the distance
-            perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / p[3])
+            perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera),
+            isOccluded: projected.isOccluded,
+            signedDistanceFromCamera: projected.signedDistanceFromCamera
         };
+    }
+    getPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation) {
+        // We don't care about the actual projected point, just its W component.
+        const projected = this.mapProjection.useSpecialProjectionForSymbols ?
+            this.mapProjection.projectTileCoordinates(x, y, unwrappedTileID, getElevation) :
+            project(new performance$1.Point(x, y), posMatrix, getElevation);
+        return 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera);
     }
     isOffscreen(x1, y1, x2, y2) {
         return x2 < viewportPadding || x1 >= this.screenRightBoundary || y2 < viewportPadding || y1 > this.screenBottomBoundary;
@@ -41576,6 +42641,100 @@ class CollisionIndex {
         const m = performance$1.identity([]);
         performance$1.translate(m, m, [-viewportPadding, -viewportPadding, 0.0]);
         return m;
+    }
+    /**
+     * Applies all layout+paint properties of the given box in order to find as good approximation of its screen-space bounding box as possible.
+     */
+    _projectCollisionBox(collisionBox, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift) {
+        const tileToViewport = textPixelRatio * projectedPoint.perspectiveRatio;
+        // These vectors are valid both for screen space viewport-rotation-aligned texts and for pitch-align: map texts that are map-rotation-aligned.
+        let vecEast = new performance$1.Point(1, 0);
+        let vecSouth = new performance$1.Point(0, 1);
+        const translatedAnchor = new performance$1.Point(collisionBox.anchorPointX + translation[0], collisionBox.anchorPointY + translation[1]);
+        if (rotateWithMap && !pitchWithMap) {
+            // Handles screen space texts that are always aligned east-west.
+            const projectedEast = this.projectAndGetPerspectiveRatio(posMatrix, translatedAnchor.x + 1, translatedAnchor.y, unwrappedTileID, getElevation).point;
+            const toEast = projectedEast.sub(projectedPoint.point).unit();
+            const angle = Math.atan(toEast.y / toEast.x) + (toEast.x < 0 ? Math.PI : 0);
+            const sin = Math.sin(angle);
+            const cos = Math.cos(angle);
+            vecEast = new performance$1.Point(cos, sin);
+            vecSouth = new performance$1.Point(-sin, cos);
+        }
+        else if (!rotateWithMap && pitchWithMap) {
+            // Handles pitch-align: map texts that are always aligned with the viewport's X axis.
+            const angle = -this.transform.angle;
+            const sin = Math.sin(angle);
+            const cos = Math.cos(angle);
+            vecEast = new performance$1.Point(cos, sin);
+            vecSouth = new performance$1.Point(-sin, cos);
+        }
+        // Configuration for screen space offsets
+        let basePoint = projectedPoint.point;
+        let distanceMultiplier = tileToViewport;
+        if (pitchWithMap) {
+            // Configuration for tile space (map-pitch-aligned) offsets
+            basePoint = translatedAnchor;
+            const zoomFraction = this.transform.zoom - Math.floor(this.transform.zoom);
+            distanceMultiplier = Math.pow(2, -zoomFraction);
+            distanceMultiplier *= this.mapProjection.getPitchedTextCorrection(this.transform, translatedAnchor, unwrappedTileID);
+            // This next correction can't be applied when variable anchors are in use.
+            if (!shift) {
+                // Shader applies a perspective size correction, we need to apply the same correction.
+                // For non-pitchWithMap texts, this is handled above by multiplying `textPixelRatio` with `projectedPoint.perspectiveRatio`,
+                // which is equivalent to the non-pitchWithMap branch of the GLSL code.
+                // Here, we compute and apply the pitchWithMap branch.
+                // See the computation of `perspective_ratio` in the symbol vertex shaders for the GLSL code.
+                const distanceRatio = projectedPoint.signedDistanceFromCamera / this.transform.cameraToCenterDistance;
+                const perspectiveRatio = performance$1.clamp(0.5 + 0.5 * distanceRatio, 0.0, 4.0); // Same clamp as what is used in the shader.
+                distanceMultiplier *= perspectiveRatio;
+            }
+        }
+        if (shift) {
+            // Variable anchors are in use
+            basePoint = basePoint.add(vecEast.mult(shift.x * distanceMultiplier)).add(vecSouth.mult(shift.y * distanceMultiplier));
+        }
+        const offsetXmin = collisionBox.x1 * distanceMultiplier;
+        const offsetXmax = collisionBox.x2 * distanceMultiplier;
+        const offsetXhalf = (offsetXmin + offsetXmax) / 2;
+        const offsetYmin = collisionBox.y1 * distanceMultiplier;
+        const offsetYmax = collisionBox.y2 * distanceMultiplier;
+        const offsetYhalf = (offsetYmin + offsetYmax) / 2;
+        // 0--1--2
+        // |     |
+        // 7     3
+        // |     |
+        // 6--5--4
+        const offsetsArray = [
+            { offsetX: offsetXmin, offsetY: offsetYmin },
+            { offsetX: offsetXhalf, offsetY: offsetYmin },
+            { offsetX: offsetXmax, offsetY: offsetYmin },
+            { offsetX: offsetXmax, offsetY: offsetYhalf },
+            { offsetX: offsetXmax, offsetY: offsetYmax },
+            { offsetX: offsetXhalf, offsetY: offsetYmax },
+            { offsetX: offsetXmin, offsetY: offsetYmax },
+            { offsetX: offsetXmin, offsetY: offsetYhalf }
+        ];
+        let points = [];
+        for (const { offsetX, offsetY } of offsetsArray) {
+            points.push(new performance$1.Point(basePoint.x + vecEast.x * offsetX + vecSouth.x * offsetY, basePoint.y + vecEast.y * offsetX + vecSouth.y * offsetY));
+        }
+        // Is any point of the collision shape visible on the globe (on beyond horizon)?
+        let anyPointVisible = false;
+        if (pitchWithMap) {
+            const projected = points.map(p => this.projectAndGetPerspectiveRatio(posMatrix, p.x, p.y, unwrappedTileID, getElevation));
+            // Is at least one of the projected points NOT behind the horizon?
+            anyPointVisible = projected.some(p => !p.isOccluded);
+            points = projected.map(p => p.point);
+        }
+        else {
+            // Labels that are not pitchWithMap cannot ever hide behind the horizon.
+            anyPointVisible = true;
+        }
+        return {
+            box: performance$1.getAABB(points),
+            allPointsOccluded: !anyPointVisible
+        };
     }
 }
 
@@ -41673,27 +42832,11 @@ function calculateVariableLayoutShift(anchor, width, height, textOffset, textBox
     const shiftY = -(verticalAlign - 0.5) * height;
     return new performance$1.Point(shiftX + textOffset[0] * textBoxScale, shiftY + textOffset[1] * textBoxScale);
 }
-function shiftVariableCollisionBox(collisionBox, shiftX, shiftY, rotateWithMap, pitchWithMap, angle) {
-    const { x1, x2, y1, y2, anchorPointX, anchorPointY } = collisionBox;
-    const rotatedOffset = new performance$1.Point(shiftX, shiftY);
-    if (rotateWithMap) {
-        rotatedOffset._rotate(pitchWithMap ? angle : -angle);
-    }
-    return {
-        x1: x1 + rotatedOffset.x,
-        y1: y1 + rotatedOffset.y,
-        x2: x2 + rotatedOffset.x,
-        y2: y2 + rotatedOffset.y,
-        // symbol anchor point stays the same regardless of text-anchor
-        anchorPointX,
-        anchorPointY
-    };
-}
 class Placement {
-    constructor(transform, terrain, fadeDuration, crossSourceCollisions, prevPlacement) {
+    constructor(transform, projection, terrain, fadeDuration, crossSourceCollisions, prevPlacement) {
         this.transform = transform.clone();
         this.terrain = terrain;
-        this.collisionIndex = new CollisionIndex(this.transform);
+        this.collisionIndex = new CollisionIndex(this.transform, projection);
         this.placements = {};
         this.opacities = {};
         this.variableOffsets = {};
@@ -41703,11 +42846,16 @@ class Placement {
         this.retainedQueryData = {};
         this.collisionGroups = new CollisionGroups(crossSourceCollisions);
         this.collisionCircleArrays = {};
+        this.collisionBoxArrays = new Map();
         this.prevPlacement = prevPlacement;
         if (prevPlacement) {
             prevPlacement.prevPlacement = undefined; // Only hold on to one placement back
         }
         this.placedOrientations = {};
+    }
+    _getTerrainElevationFunc(tileID) {
+        const terrain = this.terrain;
+        return terrain ? (x, y) => terrain.getElevation(tileID, x, y) : null;
     }
     getBucketParts(results, styleLayer, tile, sortAcrossTiles) {
         const symbolBucket = tile.getBucket(styleLayer);
@@ -41716,12 +42864,16 @@ class Placement {
             return;
         const collisionBoxArray = tile.collisionBoxArray;
         const layout = symbolBucket.layers[0].layout;
+        const paint = symbolBucket.layers[0].paint;
         const scale = Math.pow(2, this.transform.zoom - tile.tileID.overscaledZ);
         const textPixelRatio = tile.tileSize / performance$1.EXTENT;
-        const posMatrix = this.transform.calculatePosMatrix(tile.tileID.toUnwrapped());
+        const unwrappedTileID = tile.tileID.toUnwrapped();
+        const posMatrix = this.transform.calculatePosMatrix(unwrappedTileID);
         const pitchWithMap = layout.get('text-pitch-alignment') === 'map';
         const rotateWithMap = layout.get('text-rotation-alignment') === 'map';
         const pixelsToTiles = pixelsToTileUnits(tile, 1, this.transform.zoom);
+        const translationText = this.collisionIndex.mapProjection.translatePosition(this.transform, tile, paint.get('text-translate'), paint.get('text-translate-anchor'));
+        const translationIcon = this.collisionIndex.mapProjection.translatePosition(this.transform, tile, paint.get('icon-translate'), paint.get('icon-translate-anchor'));
         const textLabelPlaneMatrix = getLabelPlaneMatrix(posMatrix, pitchWithMap, rotateWithMap, this.transform, pixelsToTiles);
         let labelToScreenMatrix = null;
         if (pitchWithMap) {
@@ -41734,7 +42886,10 @@ class Placement {
         const parameters = {
             bucket: symbolBucket,
             layout,
+            translationText,
+            translationIcon,
             posMatrix,
+            unwrappedTileID,
             textLabelPlaneMatrix,
             labelToScreenMatrix,
             scale,
@@ -41758,17 +42913,17 @@ class Placement {
             });
         }
     }
-    attemptAnchorPlacement(textAnchorOffset, textBox, width, height, textBoxScale, rotateWithMap, pitchWithMap, textPixelRatio, posMatrix, collisionGroup, textOverlapMode, symbolInstance, bucket, orientation, iconBox, getElevation) {
+    attemptAnchorPlacement(textAnchorOffset, textBox, width, height, textBoxScale, rotateWithMap, pitchWithMap, textPixelRatio, posMatrix, unwrappedTileID, collisionGroup, textOverlapMode, symbolInstance, bucket, orientation, translationText, translationIcon, iconBox, getElevation) {
         const anchor = performance$1.TextAnchorEnum[textAnchorOffset.textAnchor];
         const textOffset = [textAnchorOffset.textOffset0, textAnchorOffset.textOffset1];
         const shift = calculateVariableLayoutShift(anchor, width, height, textOffset, textBoxScale);
-        const placedGlyphBoxes = this.collisionIndex.placeCollisionBox(shiftVariableCollisionBox(textBox, shift.x, shift.y, rotateWithMap, pitchWithMap, this.transform.angle), textOverlapMode, textPixelRatio, posMatrix, collisionGroup.predicate, getElevation);
+        const placedGlyphBoxes = this.collisionIndex.placeCollisionBox(textBox, textOverlapMode, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translationText, collisionGroup.predicate, getElevation, shift);
         if (iconBox) {
-            const placedIconBoxes = this.collisionIndex.placeCollisionBox(shiftVariableCollisionBox(iconBox, shift.x, shift.y, rotateWithMap, pitchWithMap, this.transform.angle), textOverlapMode, textPixelRatio, posMatrix, collisionGroup.predicate, getElevation);
-            if (placedIconBoxes.box.length === 0)
+            const placedIconBoxes = this.collisionIndex.placeCollisionBox(iconBox, textOverlapMode, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translationIcon, collisionGroup.predicate, getElevation, shift);
+            if (!placedIconBoxes.placeable)
                 return;
         }
-        if (placedGlyphBoxes.box.length > 0) {
+        if (placedGlyphBoxes.placeable) {
             let prevAnchor;
             // If this label was placed in the previous placement, record the anchor position
             // to allow us to animate the transition
@@ -41797,7 +42952,7 @@ class Placement {
         }
     }
     placeLayerBucketPart(bucketPart, seenCrossTileIDs, showCollisionBoxes) {
-        const { bucket, layout, posMatrix, textLabelPlaneMatrix, labelToScreenMatrix, textPixelRatio, holdingForFade, collisionBoxArray, partiallyEvaluatedTextSize, collisionGroup } = bucketPart.parameters;
+        const { bucket, layout, translationText, translationIcon, posMatrix, unwrappedTileID, textLabelPlaneMatrix, labelToScreenMatrix, textPixelRatio, holdingForFade, collisionBoxArray, partiallyEvaluatedTextSize, collisionGroup } = bucketPart.parameters;
         const textOptional = layout.get('text-optional');
         const iconOptional = layout.get('icon-optional');
         const textOverlapMode = performance$1.getOverlapMode(layout, 'text-overlap', 'text-allow-overlap');
@@ -41828,8 +42983,8 @@ class Placement {
             bucket.deserializeCollisionBoxes(collisionBoxArray);
         }
         const tileID = this.retainedQueryData[bucket.bucketInstanceId].tileID;
-        const getElevation = this.terrain ? (x, y) => this.terrain.getElevation(tileID, x, y) : null;
-        const placeSymbol = (symbolInstance, collisionArrays) => {
+        const getElevation = this._getTerrainElevationFunc(tileID);
+        const placeSymbol = (symbolInstance, collisionArrays, symbolIndex) => {
             var _a, _b;
             if (seenCrossTileIDs[symbolInstance.crossTileID])
                 return;
@@ -41843,8 +42998,8 @@ class Placement {
             let placeIcon = false;
             let offscreen = true;
             let shift = null;
-            let placed = { box: null, offscreen: null };
-            let placedVerticalText = { box: null, offscreen: null };
+            let placed = { box: null, placeable: false, offscreen: null };
+            let placedVerticalText = { box: null, placeable: false, offscreen: null };
             let placedGlyphBoxes = null;
             let placedGlyphCircles = null;
             let placedIconBoxes = null;
@@ -41884,7 +43039,7 @@ class Placement {
                             else {
                                 placed = placeHorizontalFn();
                             }
-                            if (placed && placed.box && placed.box.length)
+                            if (placed && placed.placeable)
                                 break;
                         }
                     }
@@ -41897,8 +43052,8 @@ class Placement {
                 // If start+end indices match, text-variable-anchor is not in play.
                 if (textAnchorOffsetEnd === textAnchorOffsetStart) {
                     const placeBox = (collisionTextBox, orientation) => {
-                        const placedFeature = this.collisionIndex.placeCollisionBox(collisionTextBox, textOverlapMode, textPixelRatio, posMatrix, collisionGroup.predicate, getElevation);
-                        if (placedFeature && placedFeature.box && placedFeature.box.length) {
+                        const placedFeature = this.collisionIndex.placeCollisionBox(collisionTextBox, textOverlapMode, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translationText, collisionGroup.predicate, getElevation);
+                        if (placedFeature && placedFeature.placeable) {
                             this.markUsedOrientation(bucket, orientation, symbolInstance);
                             this.placedOrientations[symbolInstance.crossTileID] = orientation;
                         }
@@ -41915,7 +43070,7 @@ class Placement {
                         return { box: null, offscreen: null };
                     };
                     placeTextForPlacementModes(placeHorizontal, placeVertical);
-                    updatePreviousOrientationIfNotPlaced(placed && placed.box && placed.box.length);
+                    updatePreviousOrientationIfNotPlaced(placed && placed.placeable);
                 }
                 else {
                     // If this symbol was in the last placement, prefer placement using same anchor, if it's still available
@@ -41925,7 +43080,7 @@ class Placement {
                         const height = collisionTextBox.y2 - collisionTextBox.y1;
                         const textBoxScale = symbolInstance.textBoxScale;
                         const variableIconBox = hasIconTextFit && (iconOverlapMode === 'never') ? collisionIconBox : null;
-                        let placedBox = { box: [], offscreen: false };
+                        let placedBox = null;
                         let placementPasses = (textOverlapMode === 'never') ? 1 : 2;
                         let overlapMode = 'never';
                         if (prevAnchor) {
@@ -41937,10 +43092,10 @@ class Placement {
                                 if (prevAnchor && textAnchorOffset.textAnchor !== prevAnchor) {
                                     continue;
                                 }
-                                const result = this.attemptAnchorPlacement(textAnchorOffset, collisionTextBox, width, height, textBoxScale, rotateWithMap, pitchWithMap, textPixelRatio, posMatrix, collisionGroup, overlapMode, symbolInstance, bucket, orientation, variableIconBox, getElevation);
+                                const result = this.attemptAnchorPlacement(textAnchorOffset, collisionTextBox, width, height, textBoxScale, rotateWithMap, pitchWithMap, textPixelRatio, posMatrix, unwrappedTileID, collisionGroup, overlapMode, symbolInstance, bucket, orientation, translationText, translationIcon, variableIconBox, getElevation);
                                 if (result) {
                                     placedBox = result.placedGlyphBoxes;
-                                    if (placedBox && placedBox.box && placedBox.box.length) {
+                                    if (placedBox && placedBox.placeable) {
                                         placeText = true;
                                         shift = result.shift;
                                         return placedBox;
@@ -41954,6 +43109,17 @@ class Placement {
                                 overlapMode = textOverlapMode;
                             }
                         }
+                        if (showCollisionBoxes && !placedBox) {
+                            // No box was successfully placed
+                            // Generate bounds for a fake centered box, so that we can at least display something for collision debug.
+                            const placedFakeGlyphBox = this.collisionIndex.placeCollisionBox(textBox, 'always', // Skips expensive collision check with already placed boxes
+                            textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translationText, collisionGroup.predicate, getElevation, new performance$1.Point(0, 0));
+                            placedBox = {
+                                box: placedFakeGlyphBox.box,
+                                offscreen: false,
+                                placeable: false
+                            };
+                        }
                         return placedBox;
                     };
                     const placeHorizontal = () => {
@@ -41961,18 +43127,18 @@ class Placement {
                     };
                     const placeVertical = () => {
                         const verticalTextBox = collisionArrays.verticalTextBox;
-                        const wasPlaced = placed && placed.box && placed.box.length;
+                        const wasPlaced = placed && placed.placeable;
                         if (bucket.allowVerticalPlacement && !wasPlaced && symbolInstance.numVerticalGlyphVertices > 0 && verticalTextBox) {
                             return placeBoxForVariableAnchors(verticalTextBox, collisionArrays.verticalIconBox, performance$1.WritingMode.vertical);
                         }
-                        return { box: null, offscreen: null };
+                        return { box: null, occluded: true, offscreen: null };
                     };
                     placeTextForPlacementModes(placeHorizontal, placeVertical);
                     if (placed) {
-                        placeText = placed.box;
+                        placeText = placed.placeable;
                         offscreen = placed.offscreen;
                     }
-                    const prevOrientation = updatePreviousOrientationIfNotPlaced(placed && placed.box);
+                    const prevOrientation = updatePreviousOrientationIfNotPlaced(placed && placed.placeable);
                     // If we didn't get placed, we still need to copy our position from the last placement for
                     // fade animations
                     if (!placeText && this.prevPlacement) {
@@ -41985,14 +43151,14 @@ class Placement {
                 }
             }
             placedGlyphBoxes = placed;
-            placeText = placedGlyphBoxes && placedGlyphBoxes.box && placedGlyphBoxes.box.length > 0;
+            placeText = placedGlyphBoxes && placedGlyphBoxes.placeable;
             offscreen = placedGlyphBoxes && placedGlyphBoxes.offscreen;
             if (symbolInstance.useRuntimeCollisionCircles) {
                 const placedSymbol = bucket.text.placedSymbolArray.get(symbolInstance.centerJustifiedTextSymbolIndex);
                 const fontSize = performance$1.evaluateSizeForFeature(bucket.textSizeData, partiallyEvaluatedTextSize, placedSymbol);
                 const textPixelPadding = layout.get('text-padding');
                 const circlePixelDiameter = symbolInstance.collisionCircleDiameter;
-                placedGlyphCircles = this.collisionIndex.placeCollisionCircles(textOverlapMode, placedSymbol, bucket.lineVertexArray, bucket.glyphOffsetArray, fontSize, posMatrix, textLabelPlaneMatrix, labelToScreenMatrix, showCollisionBoxes, pitchWithMap, collisionGroup.predicate, circlePixelDiameter, textPixelPadding, getElevation);
+                placedGlyphCircles = this.collisionIndex.placeCollisionCircles(textOverlapMode, placedSymbol, bucket.lineVertexArray, bucket.glyphOffsetArray, fontSize, posMatrix, unwrappedTileID, textLabelPlaneMatrix, labelToScreenMatrix, showCollisionBoxes, pitchWithMap, collisionGroup.predicate, circlePixelDiameter, textPixelPadding, translationText, getElevation);
                 if (placedGlyphCircles.circles.length && placedGlyphCircles.collisionDetected && !showCollisionBoxes) {
                     performance$1.warnOnce('Collisions detected, but collision boxes are not shown');
                 }
@@ -42008,18 +43174,15 @@ class Placement {
             }
             if (collisionArrays.iconBox) {
                 const placeIconFeature = iconBox => {
-                    const shiftedIconBox = hasIconTextFit && shift ?
-                        shiftVariableCollisionBox(iconBox, shift.x, shift.y, rotateWithMap, pitchWithMap, this.transform.angle) :
-                        iconBox;
-                    return this.collisionIndex.placeCollisionBox(shiftedIconBox, iconOverlapMode, textPixelRatio, posMatrix, collisionGroup.predicate, getElevation);
+                    return this.collisionIndex.placeCollisionBox(iconBox, iconOverlapMode, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translationIcon, collisionGroup.predicate, getElevation, (hasIconTextFit && shift) ? shift : undefined);
                 };
-                if (placedVerticalText && placedVerticalText.box && placedVerticalText.box.length && collisionArrays.verticalIconBox) {
+                if (placedVerticalText && placedVerticalText.placeable && collisionArrays.verticalIconBox) {
                     placedIconBoxes = placeIconFeature(collisionArrays.verticalIconBox);
-                    placeIcon = placedIconBoxes.box.length > 0;
+                    placeIcon = placedIconBoxes.placeable;
                 }
                 else {
                     placedIconBoxes = placeIconFeature(collisionArrays.iconBox);
-                    placeIcon = placedIconBoxes.box.length > 0;
+                    placeIcon = placedIconBoxes.placeable;
                 }
                 offscreen = offscreen && placedIconBoxes.offscreen;
             }
@@ -42036,35 +43199,26 @@ class Placement {
             else if (!iconWithoutText) {
                 placeIcon = placeIcon && placeText;
             }
-            if (placeText && placedGlyphBoxes && placedGlyphBoxes.box) {
-                if (placedVerticalText && placedVerticalText.box && verticalTextFeatureIndex) {
+            const hasTextBox = placeText && placedGlyphBoxes.placeable;
+            const hasIconBox = placeIcon && placedIconBoxes.placeable;
+            if (hasTextBox) {
+                if (placedVerticalText && placedVerticalText.placeable && verticalTextFeatureIndex) {
                     this.collisionIndex.insertCollisionBox(placedGlyphBoxes.box, textOverlapMode, layout.get('text-ignore-placement'), bucket.bucketInstanceId, verticalTextFeatureIndex, collisionGroup.ID);
                 }
                 else {
                     this.collisionIndex.insertCollisionBox(placedGlyphBoxes.box, textOverlapMode, layout.get('text-ignore-placement'), bucket.bucketInstanceId, textFeatureIndex, collisionGroup.ID);
                 }
             }
-            if (placeIcon && placedIconBoxes) {
+            if (hasIconBox) {
                 this.collisionIndex.insertCollisionBox(placedIconBoxes.box, iconOverlapMode, layout.get('icon-ignore-placement'), bucket.bucketInstanceId, iconFeatureIndex, collisionGroup.ID);
             }
             if (placedGlyphCircles) {
                 if (placeText) {
                     this.collisionIndex.insertCollisionCircles(placedGlyphCircles.circles, textOverlapMode, layout.get('text-ignore-placement'), bucket.bucketInstanceId, textFeatureIndex, collisionGroup.ID);
                 }
-                if (showCollisionBoxes) {
-                    const id = bucket.bucketInstanceId;
-                    let circleArray = this.collisionCircleArrays[id];
-                    // Group collision circles together by bucket. Circles can't be pushed forward for rendering yet as the symbol placement
-                    // for a bucket is not guaranteed to be complete before the commit-function has been called
-                    if (circleArray === undefined)
-                        circleArray = this.collisionCircleArrays[id] = new CollisionCircleArray();
-                    for (let i = 0; i < placedGlyphCircles.circles.length; i += 4) {
-                        circleArray.circles.push(placedGlyphCircles.circles[i + 0]); // x
-                        circleArray.circles.push(placedGlyphCircles.circles[i + 1]); // y
-                        circleArray.circles.push(placedGlyphCircles.circles[i + 2]); // radius
-                        circleArray.circles.push(placedGlyphCircles.collisionDetected ? 1 : 0); // collisionDetected-flag
-                    }
-                }
+            }
+            if (showCollisionBoxes) {
+                this.storeCollisionData(bucket.bucketInstanceId, symbolIndex, collisionArrays, placedGlyphBoxes, placedIconBoxes, placedGlyphCircles);
             }
             if (symbolInstance.crossTileID === 0)
                 throw new Error('symbolInstance.crossTileID can\'t be 0');
@@ -42079,12 +43233,12 @@ class Placement {
             const symbolIndexes = bucket.getSortedSymbolIndexes(this.transform.angle);
             for (let i = symbolIndexes.length - 1; i >= 0; --i) {
                 const symbolIndex = symbolIndexes[i];
-                placeSymbol(bucket.symbolInstances.get(symbolIndex), bucket.collisionArrays[symbolIndex]);
+                placeSymbol(bucket.symbolInstances.get(symbolIndex), bucket.collisionArrays[symbolIndex], symbolIndex);
             }
         }
         else {
             for (let i = bucketPart.symbolInstanceStart; i < bucketPart.symbolInstanceEnd; i++) {
-                placeSymbol(bucket.symbolInstances.get(i), bucket.collisionArrays[i]);
+                placeSymbol(bucket.symbolInstances.get(i), bucket.collisionArrays[i], i);
             }
         }
         if (showCollisionBoxes && bucket.bucketInstanceId in this.collisionCircleArrays) {
@@ -42094,6 +43248,49 @@ class Placement {
             circleArray.viewportMatrix = this.collisionIndex.getViewportMatrix();
         }
         bucket.justReloaded = false;
+    }
+    storeCollisionData(bucketInstanceId, symbolIndex, collisionArrays, placedGlyphBoxes, placedIconBoxes, placedGlyphCircles) {
+        if (collisionArrays.textBox || collisionArrays.iconBox) {
+            // Store the actually used collision box for debug draw
+            let boxArray;
+            if (this.collisionBoxArrays.has(bucketInstanceId)) {
+                boxArray = this.collisionBoxArrays.get(bucketInstanceId);
+            }
+            else {
+                boxArray = new Map();
+                this.collisionBoxArrays.set(bucketInstanceId, boxArray);
+            }
+            let realCollisionBox;
+            if (boxArray.has(symbolIndex)) {
+                realCollisionBox = boxArray.get(symbolIndex);
+            }
+            else {
+                realCollisionBox = {
+                    text: null,
+                    icon: null
+                };
+                boxArray.set(symbolIndex, realCollisionBox);
+            }
+            if (collisionArrays.textBox) {
+                realCollisionBox.text = placedGlyphBoxes.box;
+            }
+            if (collisionArrays.iconBox) {
+                realCollisionBox.icon = placedIconBoxes.box;
+            }
+        }
+        if (placedGlyphCircles) {
+            let circleArray = this.collisionCircleArrays[bucketInstanceId];
+            // Group collision circles together by bucket. Circles can't be pushed forward for rendering yet as the symbol placement
+            // for a bucket is not guaranteed to be complete before the commit-function has been called
+            if (circleArray === undefined)
+                circleArray = this.collisionCircleArrays[bucketInstanceId] = new CollisionCircleArray();
+            for (let i = 0; i < placedGlyphCircles.circles.length; i += 4) {
+                circleArray.circles.push(placedGlyphCircles.circles[i + 0]); // x
+                circleArray.circles.push(placedGlyphCircles.circles[i + 1]); // y
+                circleArray.circles.push(placedGlyphCircles.circles[i + 2]); // radius
+                circleArray.circles.push(placedGlyphCircles.collisionDetected ? 1 : 0); // collisionDetected-flag
+            }
+        }
     }
     markUsedJustification(bucket, placedAnchor, symbolInstance, orientation) {
         const justifications = {
@@ -42206,11 +43403,11 @@ class Placement {
         for (const tile of tiles) {
             const symbolBucket = tile.getBucket(styleLayer);
             if (symbolBucket && tile.latestFeatureIndex && styleLayer.id === symbolBucket.layerIds[0]) {
-                this.updateBucketOpacities(symbolBucket, seenCrossTileIDs, tile.collisionBoxArray);
+                this.updateBucketOpacities(symbolBucket, tile.tileID, seenCrossTileIDs, tile.collisionBoxArray);
             }
         }
     }
-    updateBucketOpacities(bucket, seenCrossTileIDs, collisionBoxArray) {
+    updateBucketOpacities(bucket, tileID, seenCrossTileIDs, collisionBoxArray) {
         if (bucket.hasTextData()) {
             bucket.text.opacityVertexArray.clear();
             bucket.text.hasVisibleVertices = false;
@@ -42246,6 +43443,7 @@ class Placement {
             }
             iconOrText.hasVisibleVertices = iconOrText.hasVisibleVertices || (opacity !== PACKED_HIDDEN_OPACITY);
         };
+        const boxArrays = this.collisionBoxArrays.get(bucket.bucketInstanceId);
         for (let s = 0; s < bucket.symbolInstances.length; s++) {
             const symbolInstance = bucket.symbolInstances.get(s);
             const { numHorizontalGlyphVertices, numVerticalGlyphVertices, crossTileID } = symbolInstance;
@@ -42316,6 +43514,10 @@ class Placement {
                         opacityState.icon.isHidden();
                 }
             }
+            const realBoxes = (boxArrays && boxArrays.has(s)) ? boxArrays.get(s) : {
+                text: null,
+                icon: null
+            };
             if (bucket.hasIconCollisionBoxData() || bucket.hasTextCollisionBoxData()) {
                 const collisionArrays = bucket.collisionArrays[s];
                 if (collisionArrays) {
@@ -42341,19 +43543,27 @@ class Placement {
                                 used = false;
                             }
                         }
-                        if (collisionArrays.textBox) {
-                            updateCollisionVertices(bucket.textCollisionBox.collisionVertexArray, opacityState.text.placed, !used || horizontalHidden, shift.x, shift.y);
-                        }
-                        if (collisionArrays.verticalTextBox) {
-                            updateCollisionVertices(bucket.textCollisionBox.collisionVertexArray, opacityState.text.placed, !used || verticalHidden, shift.x, shift.y);
+                        if (collisionArrays.textBox || collisionArrays.verticalTextBox) {
+                            let hidden;
+                            if (collisionArrays.textBox) {
+                                hidden = horizontalHidden;
+                            }
+                            if (collisionArrays.verticalTextBox) {
+                                hidden = verticalHidden;
+                            }
+                            updateCollisionVertices(bucket.textCollisionBox.collisionVertexArray, opacityState.text.placed, !used || hidden, realBoxes.text, shift.x, shift.y);
                         }
                     }
-                    const verticalIconUsed = Boolean(!verticalHidden && collisionArrays.verticalIconBox);
-                    if (collisionArrays.iconBox) {
-                        updateCollisionVertices(bucket.iconCollisionBox.collisionVertexArray, opacityState.icon.placed, verticalIconUsed, hasIconTextFit ? shift.x : 0, hasIconTextFit ? shift.y : 0);
-                    }
-                    if (collisionArrays.verticalIconBox) {
-                        updateCollisionVertices(bucket.iconCollisionBox.collisionVertexArray, opacityState.icon.placed, !verticalIconUsed, hasIconTextFit ? shift.x : 0, hasIconTextFit ? shift.y : 0);
+                    if (collisionArrays.iconBox || collisionArrays.verticalIconBox) {
+                        const verticalIconUsed = Boolean(!verticalHidden && collisionArrays.verticalIconBox);
+                        let hidden;
+                        if (collisionArrays.iconBox) {
+                            hidden = verticalIconUsed;
+                        }
+                        if (collisionArrays.verticalIconBox) {
+                            hidden = !verticalIconUsed;
+                        }
+                        updateCollisionVertices(bucket.iconCollisionBox.collisionVertexArray, opacityState.icon.placed, hidden, realBoxes.icon, hasIconTextFit ? shift.x : 0, hasIconTextFit ? shift.y : 0);
                     }
                 }
             }
@@ -42417,11 +43627,18 @@ class Placement {
         this.stale = true;
     }
 }
-function updateCollisionVertices(collisionVertexArray, placed, notUsed, shiftX, shiftY) {
-    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0);
-    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0);
-    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0);
-    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0);
+function updateCollisionVertices(collisionVertexArray, placed, notUsed, realBox, shiftX, shiftY) {
+    if (!realBox || realBox.length === 0) {
+        realBox = [0, 0, 0, 0];
+    }
+    const tlX = realBox[0] - viewportPadding;
+    const tlY = realBox[1] - viewportPadding;
+    const brX = realBox[2] - viewportPadding;
+    const brY = realBox[3] - viewportPadding;
+    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0, tlX, tlY);
+    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0, brX, tlY);
+    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0, brX, brY);
+    collisionVertexArray.emplaceBack(placed ? 1 : 0, notUsed ? 1 : 0, shiftX || 0, shiftY || 0, tlX, brY);
 }
 // All four vertices for a glyph will have the same opacity state
 // So we pack the opacity into a uint8, and then repeat it four times
@@ -42449,6 +43666,53 @@ function packOpacity(opacityState) {
         opacityBits * shift1 + targetBit;
 }
 const PACKED_HIDDEN_OPACITY = 0;
+
+function createProjection() {
+    return {
+        isOccluded(_x, _y, _t) {
+            return false;
+        },
+        getPitchedTextCorrection(_transform, _anchor, _tile) {
+            return 1.0;
+        },
+        get useSpecialProjectionForSymbols() { return false; },
+        projectTileCoordinates(_x, _y, _t, _ele) {
+            // This function should only be used when useSpecialProjectionForSymbols is set to true.
+            throw new Error('Not implemented.');
+        },
+        translatePosition(transform, tile, translate, translateAnchor) {
+            return translatePosition(transform, tile, translate, translateAnchor);
+        },
+        getCircleRadiusCorrection(_) {
+            return 1.0;
+        }
+    };
+}
+/**
+ * Returns a translation in tile units that correctly incorporates the view angle and the *-translate and *-translate-anchor properties.
+ * @param inViewportPixelUnitsUnits - True when the units accepted by the matrix are in viewport pixels instead of tile units.
+ *
+ * Temporarily imported from globe branch.
+ */
+function translatePosition(transform, tile, translate, translateAnchor, inViewportPixelUnitsUnits = false) {
+    if (!translate[0] && !translate[1])
+        return [0, 0];
+    const angle = inViewportPixelUnitsUnits ?
+        (translateAnchor === 'map' ? transform.angle : 0) :
+        (translateAnchor === 'viewport' ? -transform.angle : 0);
+    if (angle) {
+        const sinA = Math.sin(angle);
+        const cosA = Math.cos(angle);
+        translate = [
+            translate[0] * cosA - translate[1] * sinA,
+            translate[0] * sinA + translate[1] * cosA
+        ];
+    }
+    return [
+        inViewportPixelUnitsUnits ? translate[0] : pixelsToTileUnits(tile, translate[0], transform.zoom),
+        inViewportPixelUnitsUnits ? translate[1] : pixelsToTileUnits(tile, translate[1], transform.zoom)
+    ];
+}
 
 class LayerPlacement {
     constructor(styleLayer) {
@@ -42486,7 +43750,7 @@ class LayerPlacement {
 }
 class PauseablePlacement {
     constructor(transform, terrain, order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, prevPlacement) {
-        this.placement = new Placement(transform, terrain, fadeDuration, crossSourceCollisions, prevPlacement);
+        this.placement = new Placement(transform, createProjection(), terrain, fadeDuration, crossSourceCollisions, prevPlacement);
         this._currentPlacementIndex = order.length - 1;
         this._forceFullPlacement = forceFullPlacement;
         this._showCollisionBoxes = showCollisionBoxes;
@@ -42828,7 +44092,7 @@ const empty = performance$1.emptyStyle();
 class Style extends performance$1.Evented {
     constructor(map, options = {}) {
         super();
-        this._rtlTextPluginStateChange = () => {
+        this._rtlPluginLoaded = () => {
             for (const id in this.sourceCaches) {
                 const sourceType = this.sourceCaches[id].getSource().type;
                 if (sourceType === 'vector' || sourceType === 'geojson') {
@@ -42841,10 +44105,10 @@ class Style extends performance$1.Evented {
         };
         this.map = map;
         this.dispatcher = new Dispatcher(getGlobalWorkerPool(), map._getMapId());
-        this.dispatcher.registerMessageHandler('getGlyphs', (mapId, params) => {
+        this.dispatcher.registerMessageHandler("GG" /* MessageType.getGlyphs */, (mapId, params) => {
             return this.getGlyphs(mapId, params);
         });
-        this.dispatcher.registerMessageHandler('getImages', (mapId, params) => {
+        this.dispatcher.registerMessageHandler("GI" /* MessageType.getImages */, (mapId, params) => {
             return this.getImages(mapId, params);
         });
         this.imageManager = new ImageManager();
@@ -42860,8 +44124,8 @@ class Style extends performance$1.Evented {
         this._loaded = false;
         this._availableImages = [];
         this._resetUpdates();
-        this.dispatcher.broadcast('setReferrer', performance$1.getReferrer());
-        rtlMainThreadPluginFactory().on('pluginStateChange', this._rtlTextPluginStateChange);
+        this.dispatcher.broadcast("SR" /* MessageType.setReferrer */, performance$1.getReferrer());
+        rtlMainThreadPluginFactory().on(RTLPluginLoadedEventName, this._rtlPluginLoaded);
         this.on('data', (event) => {
             if (event.dataType !== 'source' || event.sourceDataType !== 'metadata') {
                 return;
@@ -42886,14 +44150,15 @@ class Style extends performance$1.Evented {
         this.fire(new performance$1.Event('dataloading', { dataType: 'style' }));
         options.validate = typeof options.validate === 'boolean' ?
             options.validate : true;
-        const request = this.map._requestManager.transformRequest(url, ResourceType.Style);
+        const request = this.map._requestManager.transformRequest(url, "Style" /* ResourceType.Style */);
         this._loadStyleRequest = new AbortController();
+        const abortController = this._loadStyleRequest;
         performance$1.getJSON(request, this._loadStyleRequest).then((response) => {
             this._loadStyleRequest = null;
             this._load(response.data, options, previousStyle);
         }).catch((error) => {
             this._loadStyleRequest = null;
-            if (error) {
+            if (error && !abortController.signal.aborted) { // ignore abort
                 this.fire(new performance$1.ErrorEvent(error));
             }
         });
@@ -42931,6 +44196,7 @@ class Style extends performance$1.Evented {
         this.glyphManager.setURL(nextState.glyphs);
         this._createLayers();
         this.light = new Light(this.stylesheet.light);
+        this.sky = new Sky(this.stylesheet.sky);
         this.map.setTerrain((_a = this.stylesheet.terrain) !== null && _a !== void 0 ? _a : null);
         this.fire(new performance$1.Event('data', { dataType: 'style' }));
         this.fire(new performance$1.Event('style.load'));
@@ -42939,7 +44205,7 @@ class Style extends performance$1.Evented {
         const dereferencedLayers = performance$1.derefLayers(this.stylesheet.layers);
         // Broadcast layers to workers first, so that expensive style processing (createStyleLayer)
         // can happen in parallel on both main and worker threads.
-        this.dispatcher.broadcast('setLayers', dereferencedLayers);
+        this.dispatcher.broadcast("SL" /* MessageType.setLayers */, dereferencedLayers);
         this._order = dereferencedLayers.map((layer) => layer.id);
         this._layers = {};
         // reset serialization field, to be populated only when needed
@@ -42992,7 +44258,7 @@ class Style extends performance$1.Evented {
             if (isUpdate) {
                 this._changed = true;
             }
-            this.dispatcher.broadcast('setImages', this._availableImages);
+            this.dispatcher.broadcast("SI" /* MessageType.setImages */, this._availableImages);
             this.fire(new performance$1.Event('data', { dataType: 'style' }));
             if (completion) {
                 completion(err);
@@ -43007,7 +44273,7 @@ class Style extends performance$1.Evented {
         this._spritesImagesIds = {};
         this._availableImages = this.imageManager.listImages();
         this._changed = true;
-        this.dispatcher.broadcast('setImages', this._availableImages);
+        this.dispatcher.broadcast("SI" /* MessageType.setImages */, this._availableImages);
         this.fire(new performance$1.Event('data', { dataType: 'style' }));
     }
     _validateLayer(layer) {
@@ -43039,6 +44305,7 @@ class Style extends performance$1.Evented {
         return true;
     }
     /**
+     * @hidden
      * take an array of string IDs, and based on this._layers, generate an array of LayerSpecification
      * @param ids - an array of string IDs, for which serialized layers will be generated. If omitted, all serialized layers will be returned
      * @returns generated result
@@ -43058,6 +44325,7 @@ class Style extends performance$1.Evented {
         return serializedLayers;
     }
     /**
+     * @hidden
      * Lazy initialization of this._serializedLayers dictionary and return it
      * @returns this._serializedLayers dictionary
      */
@@ -43078,6 +44346,9 @@ class Style extends performance$1.Evented {
     }
     hasTransitions() {
         if (this.light && this.light.hasTransition()) {
+            return true;
+        }
+        if (this.sky && this.sky.hasTransition()) {
             return true;
         }
         for (const id in this.sourceCaches) {
@@ -43106,7 +44377,7 @@ class Style extends performance$1.Evented {
             return;
         }
         const changed = this._changed;
-        if (this._changed) {
+        if (changed) {
             const updatedIds = Object.keys(this._updatedLayers);
             const removedIds = Object.keys(this._removedLayers);
             if (updatedIds.length || removedIds.length) {
@@ -43130,14 +44401,19 @@ class Style extends performance$1.Evented {
                 this._layers[id].updateTransitions(parameters);
             }
             this.light.updateTransitions(parameters);
+            this.sky.updateTransitions(parameters);
             this._resetUpdates();
         }
         const sourcesUsedBefore = {};
-        for (const sourceId in this.sourceCaches) {
-            const sourceCache = this.sourceCaches[sourceId];
-            sourcesUsedBefore[sourceId] = sourceCache.used;
+        // save 'used' status to sourcesUsedBefore object and reset all sourceCaches 'used' field to false
+        for (const sourceCacheId in this.sourceCaches) {
+            const sourceCache = this.sourceCaches[sourceCacheId];
+            // sourceCache.used could be undefined, and sourcesUsedBefore[sourceCacheId] is also 'undefined'
+            sourcesUsedBefore[sourceCacheId] = sourceCache.used;
             sourceCache.used = false;
         }
+        // loop all layers and find layers that are not hidden at parameters.zoom
+        // and set used to true in sourceCaches dictionary for the sources of these layers
         for (const layerId of this._order) {
             const layer = this._layers[layerId];
             layer.recalculate(parameters, this._availableImages);
@@ -43145,13 +44421,22 @@ class Style extends performance$1.Evented {
                 this.sourceCaches[layer.source].used = true;
             }
         }
-        for (const sourceId in sourcesUsedBefore) {
-            const sourceCache = this.sourceCaches[sourceId];
-            if (sourcesUsedBefore[sourceId] !== sourceCache.used) {
-                sourceCache.fire(new performance$1.Event('data', { sourceDataType: 'visibility', dataType: 'source', sourceId }));
+        // cross check sourcesUsedBefore against updated this.sourceCaches dictionary
+        // if "used" field is different fire visibility event
+        for (const sourcesUsedBeforeId in sourcesUsedBefore) {
+            const sourceCache = this.sourceCaches[sourcesUsedBeforeId];
+            // (undefine !== false) will evaluate to true and fire an useless visibility event
+            // need force "falsy" values to boolean to avoid the case above
+            if (!!sourcesUsedBefore[sourcesUsedBeforeId] !== !!sourceCache.used) {
+                sourceCache.fire(new performance$1.Event('data', {
+                    sourceDataType: 'visibility',
+                    dataType: 'source',
+                    sourceId: sourcesUsedBeforeId
+                }));
             }
         }
         this.light.recalculate(parameters);
+        this.sky.recalculate(parameters);
         this.z = parameters.zoom;
         if (changed) {
             this.fire(new performance$1.Event('data', { dataType: 'style' }));
@@ -43178,7 +44463,7 @@ class Style extends performance$1.Evented {
         }
     }
     _updateWorkerLayers(updatedIds, removedIds) {
-        this.dispatcher.broadcast('updateLayers', {
+        this.dispatcher.broadcast("UL" /* MessageType.updateLayers */, {
             layers: this._serializeByIds(updatedIds),
             removedIds
         });
@@ -43273,6 +44558,9 @@ class Style extends performance$1.Evented {
                 case 'setSprite':
                     operations.push(() => this.setSprite.apply(this, op.args));
                     break;
+                case 'setSky':
+                    operations.push(() => this.setSky.apply(this, op.args));
+                    break;
                 case 'setTerrain':
                     operations.push(() => this.map.setTerrain.apply(this, op.args));
                     break;
@@ -43313,7 +44601,7 @@ class Style extends performance$1.Evented {
         this._availableImages = this.imageManager.listImages();
         this._changedImages[id] = true;
         this._changed = true;
-        this.dispatcher.broadcast('setImages', this._availableImages);
+        this.dispatcher.broadcast("SI" /* MessageType.setImages */, this._availableImages);
         this.fire(new performance$1.Event('data', { dataType: 'style' }));
     }
     listImages() {
@@ -43348,7 +44636,6 @@ class Style extends performance$1.Evented {
      * Remove a source from this stylesheet, given its id.
      * @param id - id of the source to remove
      * @throws if no source is found with the given ID
-     * @returns `this`.
      */
     removeSource(id) {
         this._checkLoaded();
@@ -43397,7 +44684,6 @@ class Style extends performance$1.Evented {
      * @param layerObject - The style layer to add.
      * @param before - ID of an existing layer to insert before
      * @param options - Style setter options.
-     * @returns `this`.
      */
     addLayer(layerObject, before, options = {}) {
         this._checkLoaded();
@@ -43485,11 +44771,9 @@ class Style extends performance$1.Evented {
     }
     /**
      * Remove the layer with the given id from the style.
-     *
-     * If no such layer exists, an `error` event is fired.
+     * A {@link ErrorEvent} event will be fired if no such layer exists.
      *
      * @param id - id of the layer to remove
-     * @event `error` - Fired if the layer does not exist
      */
     removeLayer(id) {
         this._checkLoaded();
@@ -43627,6 +44911,8 @@ class Style extends performance$1.Evented {
         }
         this._changed = true;
         this._updatedPaintProps[layerId] = true;
+        // reset serialization field, to be populated only when needed
+        this._serializedLayers = null;
     }
     getPaintProperty(layer, name) {
         return this.getLayer(layer).getPaintProperty(name);
@@ -43712,6 +44998,7 @@ class Style extends performance$1.Evented {
             name: myStyleSheet.name,
             metadata: myStyleSheet.metadata,
             light: myStyleSheet.light,
+            sky: myStyleSheet.sky,
             center: myStyleSheet.center,
             zoom: myStyleSheet.zoom,
             bearing: myStyleSheet.bearing,
@@ -43732,7 +45019,7 @@ class Style extends performance$1.Evented {
             this._updatedSources[layer.source] = 'reload';
             this.sourceCaches[layer.source].pause();
         }
-        // upon updating, serilized layer dictionary should be reset.
+        // upon updating, serialized layer dictionary should be reset.
         // When needed, it will be populated with the correct copy again.
         this._serializedLayers = null;
         this._changed = true;
@@ -43868,6 +45155,37 @@ class Style extends performance$1.Evented {
         this.light.setLight(lightOptions, options);
         this.light.updateTransitions(parameters);
     }
+    getSky() {
+        var _a;
+        return (_a = this.stylesheet) === null || _a === void 0 ? void 0 : _a.sky;
+    }
+    setSky(skyOptions, options = {}) {
+        const sky = this.sky.getSky();
+        let update = false;
+        if (!skyOptions) {
+            if (sky) {
+                update = true;
+            }
+        }
+        for (const key in skyOptions) {
+            if (!performance$1.deepEqual(skyOptions[key], sky[key])) {
+                update = true;
+                break;
+            }
+        }
+        if (!update)
+            return;
+        const parameters = {
+            now: browser.now(),
+            transition: performance$1.extend({
+                duration: 300,
+                delay: 0
+            }, this.stylesheet.transition)
+        };
+        this.stylesheet.sky = skyOptions;
+        this.sky.setSky(skyOptions, options);
+        this.sky.updateTransitions(parameters);
+    }
     _validate(validate, key, value, props, options = {}) {
         if (options && options.validate === false) {
             return false;
@@ -43892,7 +45210,7 @@ class Style extends performance$1.Evented {
             this._spriteRequest.abort();
             this._spriteRequest = null;
         }
-        rtlMainThreadPluginFactory().off('pluginStateChange', this._rtlTextPluginStateChange);
+        rtlMainThreadPluginFactory().off(RTLPluginLoadedEventName, this._rtlPluginLoaded);
         for (const layerId in this._layers) {
             const layer = this._layers[layerId];
             layer.setEventedParent(null);
@@ -43904,6 +45222,9 @@ class Style extends performance$1.Evented {
         }
         this.imageManager.setEventedParent(null);
         this.setEventedParent(null);
+        if (mapRemoved) {
+            this.dispatcher.broadcast("RM" /* MessageType.removeMap */, undefined);
+        }
         this.dispatcher.remove(mapRemoved);
     }
     _clearSource(id) {
@@ -44078,7 +45399,7 @@ class Style extends performance$1.Evented {
         delete this._spritesImagesIds[id];
         this._availableImages = this.imageManager.listImages();
         this._changed = true;
-        this.dispatcher.broadcast('setImages', this._availableImages);
+        this.dispatcher.broadcast("SI" /* MessageType.setImages */, this._availableImages);
         this.fire(new performance$1.Event('data', { dataType: 'style' }));
     }
     /**
@@ -44164,7 +45485,7 @@ var heatmapTextureVert = 'uniform mat4 u_matrix;uniform vec2 u_world;attribute v
 var collisionBoxFrag = 'varying float v_placed;varying float v_notUsed;void main() {float alpha=0.5;gl_FragColor=vec4(1.0,0.0,0.0,1.0)*alpha;if (v_placed > 0.5) {gl_FragColor=vec4(0.0,0.0,1.0,0.5)*alpha;}if (v_notUsed > 0.5) {gl_FragColor*=.1;}}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var collisionBoxVert = 'attribute vec2 a_pos;attribute vec2 a_anchor_pos;attribute vec2 a_extrude;attribute vec2 a_placed;attribute vec2 a_shift;uniform mat4 u_matrix;uniform vec2 u_extrude_scale;uniform float u_camera_to_center_distance;varying float v_placed;varying float v_notUsed;void main() {vec4 projectedPoint=u_matrix*vec4(a_anchor_pos,0,1);highp float camera_to_anchor_distance=projectedPoint.w;highp float collision_perspective_ratio=clamp(0.5+0.5*(u_camera_to_center_distance/camera_to_anchor_distance),0.0,4.0);gl_Position=u_matrix*vec4(a_pos,get_elevation(a_pos),1.0);gl_Position.xy+=(a_extrude+a_shift)*u_extrude_scale*gl_Position.w*collision_perspective_ratio;v_placed=a_placed.x;v_notUsed=a_placed.y;}';
+var collisionBoxVert = 'attribute vec2 a_anchor_pos;attribute vec2 a_placed;attribute vec2 a_box_real;uniform mat4 u_matrix;uniform vec2 u_pixel_extrude_scale;varying float v_placed;varying float v_notUsed;vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return u_matrix*vec4(posInTile,elevation,1.0);}void main() {gl_Position=projectTileWithElevation(a_anchor_pos,get_elevation(a_anchor_pos));gl_Position.xy=((a_box_real+0.5)*u_pixel_extrude_scale*2.0-1.0)*vec2(1.0,-1.0)*gl_Position.w;if (gl_Position.z/gl_Position.w < 1.1) {gl_Position.z=0.5;}v_placed=a_placed.x;v_notUsed=a_placed.y;}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
 var collisionCircleFrag = 'varying float v_radius;varying vec2 v_extrude;varying float v_perspective_ratio;varying float v_collision;void main() {float alpha=0.5*min(v_perspective_ratio,1.0);float stroke_radius=0.9*max(v_perspective_ratio,1.0);float distance_to_center=length(v_extrude);float distance_to_edge=abs(distance_to_center-v_radius);float opacity_t=smoothstep(-stroke_radius,0.0,-distance_to_edge);vec4 color=mix(vec4(0.0,0.0,1.0,0.5),vec4(1.0,0.0,0.0,1.0),v_collision);gl_FragColor=color*alpha*opacity_t;}';
@@ -44260,19 +45581,19 @@ var rasterVert = 'uniform mat4 u_matrix;uniform vec2 u_tl_parent;uniform float u
 var symbolIconFrag = 'uniform sampler2D u_texture;varying vec2 v_tex;varying float v_fade_opacity;\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\nlowp float alpha=opacity*v_fade_opacity;gl_FragColor=texture2D(u_texture,v_tex)*alpha;\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(1.0);\n#endif\n}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var symbolIconVert = 'const float PI=3.141592653589793;attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec4 a_pixeloffset;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform highp float u_camera_to_center_distance;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform float u_fade_change;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform vec2 u_texsize;varying vec2 v_tex;varying float v_fade_opacity;\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;vec2 a_minFontScale=a_pixeloffset.zw/256.0;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec4 projectedPoint=u_matrix*vec4(a_pos,ele,1);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=u_matrix*vec4(a_pos+vec2(1,0),ele,1);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy,ele,1.0);float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;gl_Position=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*max(a_minFontScale,fontScale)+a_pxoffset/16.0),z,1.0);v_tex=a_tex/u_texsize;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float visibility=calculate_visibility(projectedPoint);v_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));}';
+var symbolIconVert = 'attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec4 a_pixeloffset;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform highp float u_camera_to_center_distance;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform float u_fade_change;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform vec2 u_texsize;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform vec2 u_translation;uniform float u_pitched_scale;varying vec2 v_tex;varying float v_fade_opacity;vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return u_matrix*vec4(posInTile,elevation,1.0);}\n#pragma mapbox: define lowp float opacity\nvoid main() {\n#pragma mapbox: initialize lowp float opacity\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;vec2 a_minFontScale=a_pixeloffset.zw/256.0;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;vec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*max(a_minFontScale,fontScale)+a_pxoffset/16.0)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}gl_Position=finalPos;v_tex=a_tex/u_texsize;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float visibility=calculate_visibility(projectedPoint);v_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
 var symbolSDFFrag = '#define SDF_PX 8.0\nuniform bool u_is_halo;uniform sampler2D u_texture;uniform highp float u_gamma_scale;uniform lowp float u_device_pixel_ratio;uniform bool u_is_text;varying vec2 v_data0;varying vec3 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nfloat EDGE_GAMMA=0.105/u_device_pixel_ratio;vec2 tex=v_data0.xy;float gamma_scale=v_data1.x;float size=v_data1.y;float fade_opacity=v_data1[2];float fontScale=u_is_text ? size/24.0 : size;lowp vec4 color=fill_color;highp float gamma=EDGE_GAMMA/(fontScale*u_gamma_scale);lowp float inner_edge=(256.0-64.0)/256.0;if (u_is_halo) {color=halo_color;gamma=(halo_blur*1.19/SDF_PX+EDGE_GAMMA)/(fontScale*u_gamma_scale);inner_edge=inner_edge+gamma*gamma_scale;}lowp float dist=texture2D(u_texture,tex).a;highp float gamma_scaled=gamma*gamma_scale;highp float alpha=smoothstep(inner_edge-gamma_scaled,inner_edge+gamma_scaled,dist);if (u_is_halo) {lowp float halo_edge=(6.0-halo_width/fontScale)/SDF_PX;alpha=min(smoothstep(halo_edge-gamma_scaled,halo_edge+gamma_scaled,dist),1.0-alpha);}gl_FragColor=color*(alpha*opacity*fade_opacity);\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(1.0);\n#endif\n}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var symbolSDFVert = 'const float PI=3.141592653589793;attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec4 a_pixeloffset;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;varying vec2 v_data0;varying vec3 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec4 projectedPoint=u_matrix*vec4(a_pos,ele,1);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=u_matrix*vec4(a_pos+vec2(1,0),ele,1);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy,ele,1.0);float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;gl_Position=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale+a_pxoffset),z,1.0);float gamma_scale=gl_Position.w;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0=a_tex/u_texsize;v_data1=vec3(gamma_scale,size,interpolated_fade_opacity);}';
+var symbolSDFVert = 'attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec4 a_pixeloffset;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;uniform vec2 u_translation;uniform float u_pitched_scale;varying vec2 v_data0;varying vec3 v_data1;vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return u_matrix*vec4(posInTile,elevation,1.0);}\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);vec2 a_pxoffset=a_pixeloffset.xy;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=u_is_text ? size/24.0 : size;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;vec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale+a_pxoffset)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}float gamma_scale=finalPos.w;gl_Position=finalPos;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0=a_tex/u_texsize;v_data1=vec3(gamma_scale,size,interpolated_fade_opacity);}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
 var symbolTextAndIconFrag = '#define SDF_PX 8.0\n#define SDF 1.0\n#define ICON 0.0\nuniform bool u_is_halo;uniform sampler2D u_texture;uniform sampler2D u_texture_icon;uniform highp float u_gamma_scale;uniform lowp float u_device_pixel_ratio;varying vec4 v_data0;varying vec4 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nfloat fade_opacity=v_data1[2];if (v_data1.w==ICON) {vec2 tex_icon=v_data0.zw;lowp float alpha=opacity*fade_opacity;gl_FragColor=texture2D(u_texture_icon,tex_icon)*alpha;\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(1.0);\n#endif\nreturn;}vec2 tex=v_data0.xy;float EDGE_GAMMA=0.105/u_device_pixel_ratio;float gamma_scale=v_data1.x;float size=v_data1.y;float fontScale=size/24.0;lowp vec4 color=fill_color;highp float gamma=EDGE_GAMMA/(fontScale*u_gamma_scale);lowp float buff=(256.0-64.0)/256.0;if (u_is_halo) {color=halo_color;gamma=(halo_blur*1.19/SDF_PX+EDGE_GAMMA)/(fontScale*u_gamma_scale);buff=(6.0-halo_width/fontScale)/SDF_PX;}lowp float dist=texture2D(u_texture,tex).a;highp float gamma_scaled=gamma*gamma_scale;highp float alpha=smoothstep(buff-gamma_scaled,buff+gamma_scaled,dist);gl_FragColor=color*(alpha*opacity*fade_opacity);\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(1.0);\n#endif\n}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var symbolTextAndIconVert = 'const float PI=3.141592653589793;attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;uniform vec2 u_texsize_icon;varying vec4 v_data0;varying vec4 v_data1;\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);float is_sdf=a_size[0]-2.0*a_size_min;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec4 projectedPoint=u_matrix*vec4(a_pos,ele,1);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=size/24.0;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=u_matrix*vec4(a_pos+vec2(1,0),ele,1);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy,ele,1.0);float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;gl_Position=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale),z,1.0);float gamma_scale=gl_Position.w;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0.xy=a_tex/u_texsize;v_data0.zw=a_tex/u_texsize_icon;v_data1=vec4(gamma_scale,size,interpolated_fade_opacity,is_sdf);}';
+var symbolTextAndIconVert = 'attribute vec4 a_pos_offset;attribute vec4 a_data;attribute vec3 a_projected_pos;attribute float a_fade_opacity;uniform bool u_is_size_zoom_constant;uniform bool u_is_size_feature_constant;uniform highp float u_size_t;uniform highp float u_size;uniform mat4 u_matrix;uniform mat4 u_label_plane_matrix;uniform mat4 u_coord_matrix;uniform bool u_is_text;uniform bool u_pitch_with_map;uniform highp float u_pitch;uniform bool u_rotate_symbol;uniform highp float u_aspect_ratio;uniform highp float u_camera_to_center_distance;uniform float u_fade_change;uniform vec2 u_texsize;uniform vec2 u_texsize_icon;uniform bool u_is_along_line;uniform bool u_is_variable_anchor;uniform vec2 u_translation;uniform float u_pitched_scale;varying vec4 v_data0;varying vec4 v_data1;vec4 projectTileWithElevation(vec2 posInTile,float elevation) {return u_matrix*vec4(posInTile,elevation,1.0);}\n#pragma mapbox: define highp vec4 fill_color\n#pragma mapbox: define highp vec4 halo_color\n#pragma mapbox: define lowp float opacity\n#pragma mapbox: define lowp float halo_width\n#pragma mapbox: define lowp float halo_blur\nvoid main() {\n#pragma mapbox: initialize highp vec4 fill_color\n#pragma mapbox: initialize highp vec4 halo_color\n#pragma mapbox: initialize lowp float opacity\n#pragma mapbox: initialize lowp float halo_width\n#pragma mapbox: initialize lowp float halo_blur\nvec2 a_pos=a_pos_offset.xy;vec2 a_offset=a_pos_offset.zw;vec2 a_tex=a_data.xy;vec2 a_size=a_data.zw;float a_size_min=floor(a_size[0]*0.5);float is_sdf=a_size[0]-2.0*a_size_min;float ele=get_elevation(a_pos);highp float segment_angle=-a_projected_pos[2];float size;if (!u_is_size_zoom_constant && !u_is_size_feature_constant) {size=mix(a_size_min,a_size[1],u_size_t)/128.0;} else if (u_is_size_zoom_constant && !u_is_size_feature_constant) {size=a_size_min/128.0;} else {size=u_size;}vec2 translated_a_pos=a_pos+u_translation;vec4 projectedPoint=projectTileWithElevation(translated_a_pos,ele);highp float camera_to_anchor_distance=projectedPoint.w;highp float distance_ratio=u_pitch_with_map ?\ncamera_to_anchor_distance/u_camera_to_center_distance :\nu_camera_to_center_distance/camera_to_anchor_distance;highp float perspective_ratio=clamp(0.5+0.5*distance_ratio,0.0,4.0);size*=perspective_ratio;float fontScale=size/24.0;highp float symbol_rotation=0.0;if (u_rotate_symbol) {vec4 offsetProjectedPoint=projectTileWithElevation(translated_a_pos+vec2(1,0),ele);vec2 a=projectedPoint.xy/projectedPoint.w;vec2 b=offsetProjectedPoint.xy/offsetProjectedPoint.w;symbol_rotation=atan((b.y-a.y)/u_aspect_ratio,b.x-a.x);}highp float angle_sin=sin(segment_angle+symbol_rotation);highp float angle_cos=cos(segment_angle+symbol_rotation);mat2 rotation_matrix=mat2(angle_cos,-1.0*angle_sin,angle_sin,angle_cos);vec4 projected_pos;if (u_is_along_line || u_is_variable_anchor) {projected_pos=vec4(a_projected_pos.xy,ele,1.0);} else if (u_pitch_with_map) {projected_pos=u_label_plane_matrix*vec4(a_projected_pos.xy+u_translation,ele,1.0);} else {projected_pos=u_label_plane_matrix*projectTileWithElevation(a_projected_pos.xy+u_translation,ele);}float z=float(u_pitch_with_map)*projected_pos.z/projected_pos.w;float projectionScaling=1.0;vec4 finalPos=u_coord_matrix*vec4(projected_pos.xy/projected_pos.w+rotation_matrix*(a_offset/32.0*fontScale)*projectionScaling,z,1.0);if(u_pitch_with_map) {finalPos=projectTileWithElevation(finalPos.xy,finalPos.z);}float gamma_scale=finalPos.w;gl_Position=finalPos;vec2 fade_opacity=unpack_opacity(a_fade_opacity);float visibility=calculate_visibility(projectedPoint);float fade_change=fade_opacity[1] > 0.5 ? u_fade_change :-u_fade_change;float interpolated_fade_opacity=max(0.0,min(visibility,fade_opacity[0]+fade_change));v_data0.xy=a_tex/u_texsize;v_data0.zw=a_tex/u_texsize_icon;v_data1=vec4(gamma_scale,size,interpolated_fade_opacity,is_sdf);}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
 var terrainDepthFrag = 'varying float v_depth;const highp vec4 bitSh=vec4(256.*256.*256.,256.*256.,256.,1.);const highp vec4 bitMsk=vec4(0.,vec3(1./256.0));highp vec4 pack(highp float value) {highp vec4 comp=fract(value*bitSh);comp-=comp.xxyz*bitMsk;return comp;}void main() {gl_FragColor=pack(v_depth);}';
@@ -44281,10 +45602,22 @@ var terrainDepthFrag = 'varying float v_depth;const highp vec4 bitSh=vec4(256.*2
 var terrainCoordsFrag = 'precision mediump float;uniform sampler2D u_texture;uniform float u_terrain_coords_id;varying vec2 v_texture_pos;void main() {vec4 rgba=texture2D(u_texture,v_texture_pos);gl_FragColor=vec4(rgba.r,rgba.g,rgba.b,u_terrain_coords_id);}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var terrainFrag = 'uniform sampler2D u_texture;varying vec2 v_texture_pos;void main() {gl_FragColor=texture2D(u_texture,v_texture_pos);}';
+var terrainFrag = 'uniform sampler2D u_texture;uniform vec4 u_fog_color;uniform vec4 u_horizon_color;uniform float u_fog_ground_blend;uniform float u_fog_ground_blend_opacity;uniform float u_horizon_fog_blend;varying vec2 v_texture_pos;varying float v_fog_depth;const float gamma=2.2;vec4 gammaToLinear(vec4 color) {return pow(color,vec4(gamma));}vec4 linearToGamma(vec4 color) {return pow(color,vec4(1.0/gamma));}void main() {vec4 surface_color=texture2D(u_texture,v_texture_pos);if (v_fog_depth > u_fog_ground_blend) {vec4 surface_color_linear=gammaToLinear(surface_color);float blend_color=smoothstep(0.0,1.0,max((v_fog_depth-u_horizon_fog_blend)/(1.0-u_horizon_fog_blend),0.0));vec4 fog_horizon_color_linear=mix(gammaToLinear(u_fog_color),gammaToLinear(u_horizon_color),blend_color);float factor_fog=max(v_fog_depth-u_fog_ground_blend,0.0)/(1.0-u_fog_ground_blend);gl_FragColor=linearToGamma(mix(surface_color_linear,fog_horizon_color_linear,pow(factor_fog,2.0)*u_fog_ground_blend_opacity));} else {gl_FragColor=surface_color;}}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var terrainVert = 'attribute vec3 a_pos3d;uniform mat4 u_matrix;uniform float u_ele_delta;varying vec2 v_texture_pos;varying float v_depth;void main() {float extent=8192.0;float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;v_texture_pos=a_pos3d.xy/extent;gl_Position=u_matrix*vec4(a_pos3d.xy,get_elevation(a_pos3d.xy)-ele_delta,1.0);v_depth=gl_Position.z/gl_Position.w;}';
+var terrainDepthVert = 'attribute vec3 a_pos3d;uniform mat4 u_matrix;uniform float u_ele_delta;varying float v_depth;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;gl_Position=u_matrix*vec4(a_pos3d.xy,ele-ele_delta,1.0);v_depth=gl_Position.z/gl_Position.w;}';
+
+// This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
+var terrainCoordsVert = 'attribute vec3 a_pos3d;uniform mat4 u_matrix;uniform float u_ele_delta;varying vec2 v_texture_pos;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;v_texture_pos=a_pos3d.xy/8192.0;gl_Position=u_matrix*vec4(a_pos3d.xy,ele-ele_delta,1.0);}';
+
+// This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
+var terrainVert = 'attribute vec3 a_pos3d;uniform mat4 u_matrix;uniform mat4 u_fog_matrix;uniform float u_ele_delta;varying vec2 v_texture_pos;varying float v_fog_depth;void main() {float ele=get_elevation(a_pos3d.xy);float ele_delta=a_pos3d.z==1.0 ? u_ele_delta : 0.0;v_texture_pos=a_pos3d.xy/8192.0;gl_Position=u_matrix*vec4(a_pos3d.xy,ele-ele_delta,1.0);vec4 pos=u_fog_matrix*vec4(a_pos3d.xy,ele,1.0);v_fog_depth=pos.z/pos.w*0.5+0.5;}';
+
+// This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
+var skyFrag = 'uniform vec4 u_sky_color;uniform vec4 u_horizon_color;uniform float u_horizon;uniform float u_sky_horizon_blend;void main() {float y=gl_FragCoord.y;if (y > u_horizon) {float blend=y-u_horizon;if (blend < u_sky_horizon_blend) {gl_FragColor=mix(u_sky_color,u_horizon_color,pow(1.0-blend/u_sky_horizon_blend,2.0));} else {gl_FragColor=u_sky_color;}}}';
+
+// This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
+var skyVert = 'attribute vec2 a_pos;void main() {gl_Position=vec4(a_pos,1.0,1.0);}';
 
 // Disable Flow annotations here because Flow doesn't support importing GLSL files
 const shaders = {
@@ -44315,8 +45648,9 @@ const shaders = {
     symbolSDF: compile(symbolSDFFrag, symbolSDFVert),
     symbolTextAndIcon: compile(symbolTextAndIconFrag, symbolTextAndIconVert),
     terrain: compile(terrainFrag, terrainVert),
-    terrainDepth: compile(terrainDepthFrag, terrainVert),
-    terrainCoords: compile(terrainCoordsFrag, terrainVert)
+    terrainDepth: compile(terrainDepthFrag, terrainDepthVert),
+    terrainCoords: compile(terrainCoordsFrag, terrainCoordsVert),
+    sky: compile(skyFrag, skyVert)
 };
 // Expand #pragmas to #ifdefs.
 function compile(fragmentSource, vertexSource) {
@@ -44542,7 +45876,13 @@ const terrainPreludeUniforms = (context, locations) => ({
 const terrainUniforms = (context, locations) => ({
     'u_matrix': new performance$1.UniformMatrix4f(context, locations.u_matrix),
     'u_texture': new performance$1.Uniform1i(context, locations.u_texture),
-    'u_ele_delta': new performance$1.Uniform1f(context, locations.u_ele_delta)
+    'u_ele_delta': new performance$1.Uniform1f(context, locations.u_ele_delta),
+    'u_fog_matrix': new performance$1.UniformMatrix4f(context, locations.u_fog_matrix),
+    'u_fog_color': new performance$1.UniformColor(context, locations.u_fog_color),
+    'u_fog_ground_blend': new performance$1.Uniform1f(context, locations.u_fog_ground_blend),
+    'u_fog_ground_blend_opacity': new performance$1.Uniform1f(context, locations.u_fog_ground_blend_opacity),
+    'u_horizon_color': new performance$1.UniformColor(context, locations.u_horizon_color),
+    'u_horizon_fog_blend': new performance$1.Uniform1f(context, locations.u_horizon_fog_blend)
 });
 const terrainDepthUniforms = (context, locations) => ({
     'u_matrix': new performance$1.UniformMatrix4f(context, locations.u_matrix),
@@ -44554,10 +45894,16 @@ const terrainCoordsUniforms = (context, locations) => ({
     'u_terrain_coords_id': new performance$1.Uniform1f(context, locations.u_terrain_coords_id),
     'u_ele_delta': new performance$1.Uniform1f(context, locations.u_ele_delta)
 });
-const terrainUniformValues = (matrix, eleDelta) => ({
+const terrainUniformValues = (matrix, eleDelta, fogMatrix, sky, pitch) => ({
     'u_matrix': matrix,
     'u_texture': 0,
-    'u_ele_delta': eleDelta
+    'u_ele_delta': eleDelta,
+    'u_fog_matrix': fogMatrix,
+    'u_fog_color': sky ? sky.properties.get('fog-color') : performance$1.Color.white,
+    'u_fog_ground_blend': sky ? sky.properties.get('fog-ground-blend') : 1,
+    'u_fog_ground_blend_opacity': sky ? sky.calculateFogBlendOpacity(pitch) : 0,
+    'u_horizon_color': sky ? sky.properties.get('horizon-color') : performance$1.Color.white,
+    'u_horizon_fog_blend': sky ? sky.properties.get('horizon-fog-blend') : 1
 });
 const terrainDepthUniformValues = (matrix, eleDelta) => ({
     'u_matrix': matrix,
@@ -44868,10 +46214,7 @@ const circleUniformValues = (painter, coord, tile, layer) => {
 
 const collisionUniforms = (context, locations) => ({
     'u_matrix': new performance$1.UniformMatrix4f(context, locations.u_matrix),
-    'u_camera_to_center_distance': new performance$1.Uniform1f(context, locations.u_camera_to_center_distance),
-    'u_pixels_to_tile_units': new performance$1.Uniform1f(context, locations.u_pixels_to_tile_units),
-    'u_extrude_scale': new performance$1.Uniform2f(context, locations.u_extrude_scale),
-    'u_overscale_factor': new performance$1.Uniform1f(context, locations.u_overscale_factor)
+    'u_pixel_extrude_scale': new performance$1.Uniform2f(context, locations.u_pixel_extrude_scale)
 });
 const collisionCircleUniforms = (context, locations) => ({
     'u_matrix': new performance$1.UniformMatrix4f(context, locations.u_matrix),
@@ -44879,17 +46222,10 @@ const collisionCircleUniforms = (context, locations) => ({
     'u_camera_to_center_distance': new performance$1.Uniform1f(context, locations.u_camera_to_center_distance),
     'u_viewport_size': new performance$1.Uniform2f(context, locations.u_viewport_size)
 });
-const collisionUniformValues = (matrix, transform, tile) => {
-    const pixelRatio = pixelsToTileUnits(tile, 1, transform.zoom);
-    const scale = Math.pow(2, transform.zoom - tile.tileID.overscaledZ);
-    const overscaleFactor = tile.tileID.overscaleFactor();
+const collisionUniformValues = (transform, matrix) => {
     return {
         'u_matrix': matrix,
-        'u_camera_to_center_distance': transform.cameraToCenterDistance,
-        'u_pixels_to_tile_units': pixelRatio,
-        'u_extrude_scale': [transform.pixelsToGLUnits[0] / (pixelRatio * scale),
-            transform.pixelsToGLUnits[1] / (pixelRatio * scale)],
-        'u_overscale_factor': overscaleFactor
+        'u_pixel_extrude_scale': [1.0 / transform.width, 1.0 / transform.height],
     };
 };
 const collisionCircleUniformValues = (matrix, invMatrix, transform) => {
@@ -45176,8 +46512,12 @@ const symbolIconUniforms = (context, locations) => ({
     'u_coord_matrix': new performance$1.UniformMatrix4f(context, locations.u_coord_matrix),
     'u_is_text': new performance$1.Uniform1i(context, locations.u_is_text),
     'u_pitch_with_map': new performance$1.Uniform1i(context, locations.u_pitch_with_map),
+    'u_is_along_line': new performance$1.Uniform1i(context, locations.u_is_along_line),
+    'u_is_variable_anchor': new performance$1.Uniform1i(context, locations.u_is_variable_anchor),
     'u_texsize': new performance$1.Uniform2f(context, locations.u_texsize),
-    'u_texture': new performance$1.Uniform1i(context, locations.u_texture)
+    'u_texture': new performance$1.Uniform1i(context, locations.u_texture),
+    'u_translation': new performance$1.Uniform2f(context, locations.u_translation),
+    'u_pitched_scale': new performance$1.Uniform1f(context, locations.u_pitched_scale),
 });
 const symbolSDFUniforms = (context, locations) => ({
     'u_is_size_zoom_constant': new performance$1.Uniform1i(context, locations.u_is_size_zoom_constant),
@@ -45194,11 +46534,15 @@ const symbolSDFUniforms = (context, locations) => ({
     'u_coord_matrix': new performance$1.UniformMatrix4f(context, locations.u_coord_matrix),
     'u_is_text': new performance$1.Uniform1i(context, locations.u_is_text),
     'u_pitch_with_map': new performance$1.Uniform1i(context, locations.u_pitch_with_map),
+    'u_is_along_line': new performance$1.Uniform1i(context, locations.u_is_along_line),
+    'u_is_variable_anchor': new performance$1.Uniform1i(context, locations.u_is_variable_anchor),
     'u_texsize': new performance$1.Uniform2f(context, locations.u_texsize),
     'u_texture': new performance$1.Uniform1i(context, locations.u_texture),
     'u_gamma_scale': new performance$1.Uniform1f(context, locations.u_gamma_scale),
     'u_device_pixel_ratio': new performance$1.Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_is_halo': new performance$1.Uniform1i(context, locations.u_is_halo)
+    'u_is_halo': new performance$1.Uniform1i(context, locations.u_is_halo),
+    'u_translation': new performance$1.Uniform2f(context, locations.u_translation),
+    'u_pitched_scale': new performance$1.Uniform1f(context, locations.u_pitched_scale),
 });
 const symbolTextAndIconUniforms = (context, locations) => ({
     'u_is_size_zoom_constant': new performance$1.Uniform1i(context, locations.u_is_size_zoom_constant),
@@ -45215,15 +46559,19 @@ const symbolTextAndIconUniforms = (context, locations) => ({
     'u_coord_matrix': new performance$1.UniformMatrix4f(context, locations.u_coord_matrix),
     'u_is_text': new performance$1.Uniform1i(context, locations.u_is_text),
     'u_pitch_with_map': new performance$1.Uniform1i(context, locations.u_pitch_with_map),
+    'u_is_along_line': new performance$1.Uniform1i(context, locations.u_is_along_line),
+    'u_is_variable_anchor': new performance$1.Uniform1i(context, locations.u_is_variable_anchor),
     'u_texsize': new performance$1.Uniform2f(context, locations.u_texsize),
     'u_texsize_icon': new performance$1.Uniform2f(context, locations.u_texsize_icon),
     'u_texture': new performance$1.Uniform1i(context, locations.u_texture),
     'u_texture_icon': new performance$1.Uniform1i(context, locations.u_texture_icon),
     'u_gamma_scale': new performance$1.Uniform1f(context, locations.u_gamma_scale),
     'u_device_pixel_ratio': new performance$1.Uniform1f(context, locations.u_device_pixel_ratio),
-    'u_is_halo': new performance$1.Uniform1i(context, locations.u_is_halo)
+    'u_is_halo': new performance$1.Uniform1i(context, locations.u_is_halo),
+    'u_translation': new performance$1.Uniform2f(context, locations.u_translation),
+    'u_pitched_scale': new performance$1.Uniform1f(context, locations.u_pitched_scale),
 });
-const symbolIconUniformValues = (functionType, size, rotateInShader, pitchWithMap, painter, matrix, labelPlaneMatrix, glCoordMatrix, isText, texSize) => {
+const symbolIconUniformValues = (functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, matrix, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, pitchedScale) => {
     const transform = painter.transform;
     return {
         'u_is_size_zoom_constant': +(functionType === 'constant' || functionType === 'source'),
@@ -45240,20 +46588,24 @@ const symbolIconUniformValues = (functionType, size, rotateInShader, pitchWithMa
         'u_coord_matrix': glCoordMatrix,
         'u_is_text': +isText,
         'u_pitch_with_map': +pitchWithMap,
+        'u_is_along_line': isAlongLine,
+        'u_is_variable_anchor': isVariableAnchor,
         'u_texsize': texSize,
-        'u_texture': 0
+        'u_texture': 0,
+        'u_translation': translation,
+        'u_pitched_scale': pitchedScale
     };
 };
-const symbolSDFUniformValues = (functionType, size, rotateInShader, pitchWithMap, painter, matrix, labelPlaneMatrix, glCoordMatrix, isText, texSize, isHalo) => {
+const symbolSDFUniformValues = (functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, matrix, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, isHalo, pitchedScale) => {
     const transform = painter.transform;
-    return performance$1.extend(symbolIconUniformValues(functionType, size, rotateInShader, pitchWithMap, painter, matrix, labelPlaneMatrix, glCoordMatrix, isText, texSize), {
+    return performance$1.extend(symbolIconUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, matrix, labelPlaneMatrix, glCoordMatrix, translation, isText, texSize, pitchedScale), {
         'u_gamma_scale': (pitchWithMap ? Math.cos(transform._pitch) * transform.cameraToCenterDistance : 1),
         'u_device_pixel_ratio': painter.pixelRatio,
         'u_is_halo': +isHalo
     });
 };
-const symbolTextAndIconUniformValues = (functionType, size, rotateInShader, pitchWithMap, painter, matrix, labelPlaneMatrix, glCoordMatrix, texSizeSDF, texSizeIcon) => {
-    return performance$1.extend(symbolSDFUniformValues(functionType, size, rotateInShader, pitchWithMap, painter, matrix, labelPlaneMatrix, glCoordMatrix, true, texSizeSDF, true), {
+const symbolTextAndIconUniformValues = (functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, matrix, labelPlaneMatrix, glCoordMatrix, translation, texSizeSDF, texSizeIcon, pitchedScale) => {
+    return performance$1.extend(symbolSDFUniformValues(functionType, size, rotateInShader, pitchWithMap, isAlongLine, isVariableAnchor, painter, matrix, labelPlaneMatrix, glCoordMatrix, translation, true, texSizeSDF, true, pitchedScale), {
         'u_texsize_icon': texSizeIcon,
         'u_texture_icon': 1
     });
@@ -45292,6 +46644,19 @@ const backgroundPatternUniformValues = (matrix, opacity, painter, image, tile, c
     'u_opacity': opacity
 });
 
+const skyUniforms = (context, locations) => ({
+    'u_sky_color': new performance$1.UniformColor(context, locations.u_sky_color),
+    'u_horizon_color': new performance$1.UniformColor(context, locations.u_horizon_color),
+    'u_horizon': new performance$1.Uniform1f(context, locations.u_horizon),
+    'u_sky_horizon_blend': new performance$1.Uniform1f(context, locations.u_sky_horizon_blend),
+});
+const skyUniformValues = (sky, transform, pixelRatio) => ({
+    'u_sky_color': sky.properties.get('sky-color'),
+    'u_horizon_color': sky.properties.get('horizon-color'),
+    'u_horizon': (transform.height / 2 + transform.getHorizon()) * pixelRatio,
+    'u_sky_horizon_blend': (sky.properties.get('sky-horizon-blend') * transform.height / 2) * pixelRatio,
+});
+
 const programUniforms = {
     fillExtrusion: fillExtrusionUniforms,
     fillExtrusionPattern: fillExtrusionPatternUniforms,
@@ -45320,7 +46685,8 @@ const programUniforms = {
     backgroundPattern: backgroundPatternUniforms,
     terrain: terrainUniforms,
     terrainDepth: terrainDepthUniforms,
-    terrainCoords: terrainCoordsUniforms
+    terrainCoords: terrainCoordsUniforms,
+    sky: skyUniforms
 };
 
 /**
@@ -45473,7 +46839,7 @@ class BaseValue {
         // overridden in child classes;
     }
     getDefault() {
-        return this.default; // overriden in child classes
+        return this.default; // overridden in child classes
     }
     setDefault() {
         this.set(this.default);
@@ -46274,7 +47640,7 @@ CullFaceMode.disabled = new CullFaceMode(false, BACK, CCW);
 CullFaceMode.backCCW = new CullFaceMode(true, BACK, CCW);
 
 let quadTriangles;
-function drawCollisionDebug(painter, sourceCache, layer, coords, translate, translateAnchor, isText) {
+function drawCollisionDebug(painter, sourceCache, layer, coords, isText) {
     const context = painter.context;
     const gl = context.gl;
     const program = painter.useProgram('collisionBox');
@@ -46287,10 +47653,6 @@ function drawCollisionDebug(painter, sourceCache, layer, coords, translate, tran
         const bucket = tile.getBucket(layer);
         if (!bucket)
             continue;
-        let posMatrix = coord.posMatrix;
-        if (translate[0] !== 0 || translate[1] !== 0) {
-            posMatrix = painter.translatePosMatrix(coord.posMatrix, tile, translate, translateAnchor);
-        }
         const buffers = isText ? bucket.textCollisionBox : bucket.iconCollisionBox;
         // Get collision circle data of this bucket
         const circleArray = bucket.collisionCircleArray;
@@ -46299,22 +47661,23 @@ function drawCollisionDebug(painter, sourceCache, layer, coords, translate, tran
             // This might vary between buckets as the symbol placement is a continuous process. This matrix is
             // required for transforming points from previous screen space to the current one
             const invTransform = performance$1.create();
-            const transform = posMatrix;
             performance$1.mul(invTransform, bucket.placementInvProjMatrix, painter.transform.glCoordMatrix);
             performance$1.mul(invTransform, invTransform, bucket.placementViewportMatrix);
             tileBatches.push({
                 circleArray,
                 circleOffset,
-                transform,
+                transform: coord.posMatrix, // Ignore translation
                 invTransform,
                 coord
             });
             circleCount += circleArray.length / 4; // 4 values per circle
             circleOffset = circleCount;
         }
-        if (!buffers)
+        // Draw collision boxes
+        if (!buffers) {
             continue;
-        program.draw(context, gl.LINES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, collisionUniformValues(posMatrix, painter.transform, tile), painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord), layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer, buffers.segments, null, painter.transform.zoom, null, null, buffers.collisionVertexBuffer);
+        }
+        program.draw(context, gl.LINES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, collisionUniformValues(painter.transform, coord.posMatrix), painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord), layer.id, buffers.layoutVertexBuffer, buffers.indexBuffer, buffers.segments, null, painter.transform.zoom, null, null, buffers.collisionVertexBuffer);
     }
     if (!isText || !tileBatches.length) {
         return;
@@ -46382,7 +47745,7 @@ function drawSymbols(painter, sourceCache, layer, coords, variableOffsets) {
     //Compute variable-offsets before painting since icons and text data positioning
     //depend on each other in this case.
     if (hasVariablePlacement) {
-        updateVariableAnchors(coords, painter, layer, sourceCache, layer.layout.get('text-rotation-alignment'), layer.layout.get('text-pitch-alignment'), variableOffsets);
+        updateVariableAnchors(coords, painter, layer, sourceCache, layer.layout.get('text-rotation-alignment'), layer.layout.get('text-pitch-alignment'), layer.paint.get('text-translate'), layer.paint.get('text-translate-anchor'), variableOffsets);
     }
     if (layer.paint.get('icon-opacity').constantOr(1) !== 0) {
         drawLayerSymbols(painter, sourceCache, layer, coords, false, layer.paint.get('icon-translate'), layer.paint.get('icon-translate-anchor'), layer.layout.get('icon-rotation-alignment'), layer.layout.get('icon-pitch-alignment'), layer.layout.get('icon-keep-upright'), stencilMode, colorMode);
@@ -46391,8 +47754,8 @@ function drawSymbols(painter, sourceCache, layer, coords, variableOffsets) {
         drawLayerSymbols(painter, sourceCache, layer, coords, true, layer.paint.get('text-translate'), layer.paint.get('text-translate-anchor'), layer.layout.get('text-rotation-alignment'), layer.layout.get('text-pitch-alignment'), layer.layout.get('text-keep-upright'), stencilMode, colorMode);
     }
     if (sourceCache.map.showCollisionBoxes) {
-        drawCollisionDebug(painter, sourceCache, layer, coords, layer.paint.get('text-translate'), layer.paint.get('text-translate-anchor'), true);
-        drawCollisionDebug(painter, sourceCache, layer, coords, layer.paint.get('icon-translate'), layer.paint.get('icon-translate-anchor'), false);
+        drawCollisionDebug(painter, sourceCache, layer, coords, true);
+        drawCollisionDebug(painter, sourceCache, layer, coords, false);
     }
 }
 function calculateVariableRenderShift(anchor, width, height, textOffset, textBoxScale, renderTextSize) {
@@ -46401,8 +47764,9 @@ function calculateVariableRenderShift(anchor, width, height, textOffset, textBox
     const shiftY = -(verticalAlign - 0.5) * height;
     return new performance$1.Point((shiftX / textBoxScale + textOffset[0]) * renderTextSize, (shiftY / textBoxScale + textOffset[1]) * renderTextSize);
 }
-function updateVariableAnchors(coords, painter, layer, sourceCache, rotationAlignment, pitchAlignment, variableOffsets) {
-    const tr = painter.transform;
+function updateVariableAnchors(coords, painter, layer, sourceCache, rotationAlignment, pitchAlignment, translate, translateAnchor, variableOffsets) {
+    const transform = painter.transform;
+    const projection = createProjection();
     const rotateWithMap = rotationAlignment === 'map';
     const pitchWithMap = pitchAlignment === 'map';
     for (const coord of coords) {
@@ -46411,18 +47775,46 @@ function updateVariableAnchors(coords, painter, layer, sourceCache, rotationAlig
         if (!bucket || !bucket.text || !bucket.text.segments.get().length)
             continue;
         const sizeData = bucket.textSizeData;
-        const size = performance$1.evaluateSizeForZoom(sizeData, tr.zoom);
+        const size = performance$1.evaluateSizeForZoom(sizeData, transform.zoom);
         const pixelToTileScale = pixelsToTileUnits(tile, 1, painter.transform.zoom);
         const labelPlaneMatrix = getLabelPlaneMatrix(coord.posMatrix, pitchWithMap, rotateWithMap, painter.transform, pixelToTileScale);
         const updateTextFitIcon = layer.layout.get('icon-text-fit') !== 'none' && bucket.hasIconData();
         if (size) {
-            const tileScale = Math.pow(2, tr.zoom - tile.tileID.overscaledZ);
+            const tileScale = Math.pow(2, transform.zoom - tile.tileID.overscaledZ);
             const getElevation = painter.style.map.terrain ? (x, y) => painter.style.map.terrain.getElevation(coord, x, y) : null;
-            updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets, tr, labelPlaneMatrix, coord.posMatrix, tileScale, size, updateTextFitIcon, getElevation);
+            const translation = projection.translatePosition(transform, tile, translate, translateAnchor);
+            updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets, transform, labelPlaneMatrix, coord.posMatrix, tileScale, size, updateTextFitIcon, projection, translation, coord.toUnwrapped(), getElevation);
         }
     }
 }
-function updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets, transform, labelPlaneMatrix, posMatrix, tileScale, size, updateTextFitIcon, getElevation) {
+function getShiftedAnchor(projectedAnchorPoint, projectionContext, rotateWithMap, shift, transformAngle, pitchedTextShiftCorrection) {
+    // Usual case is that we take the projected anchor and add the pixel-based shift
+    // calculated earlier. In the (somewhat weird) case of pitch-aligned text, we add an equivalent
+    // tile-unit based shift to the anchor before projecting to the label plane.
+    const translatedAnchor = projectionContext.tileAnchorPoint.add(new performance$1.Point(projectionContext.translation[0], projectionContext.translation[1]));
+    if (projectionContext.pitchWithMap) {
+        let adjustedShift = shift.mult(pitchedTextShiftCorrection);
+        if (!rotateWithMap) {
+            adjustedShift = adjustedShift.rotate(-transformAngle);
+        }
+        const tileAnchorShifted = translatedAnchor.add(adjustedShift);
+        return project(tileAnchorShifted, projectionContext.labelPlaneMatrix, projectionContext.getElevation).point;
+    }
+    else {
+        if (rotateWithMap) {
+            // Compute the angle with which to rotate the anchor, so that it is aligned with
+            // the map's actual east-west axis. Very similar to what is done in the shader.
+            const projectedAnchorRight = projectTileCoordinatesToViewport(projectionContext.tileAnchorPoint.x + 1, projectionContext.tileAnchorPoint.y, projectionContext);
+            const east = projectedAnchorRight.point.sub(projectedAnchorPoint);
+            const angle = Math.atan(east.y / east.x) + (east.x < 0 ? Math.PI : 0);
+            return projectedAnchorPoint.add(shift.rotate(angle));
+        }
+        else {
+            return projectedAnchorPoint.add(shift);
+        }
+    }
+}
+function updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, variableOffsets, transform, labelPlaneMatrix, posMatrix, tileScale, size, updateTextFitIcon, projection, translation, unwrappedTileID, getElevation) {
     const placedSymbols = bucket.text.placedSymbolArray;
     const dynamicTextLayoutVertexArray = bucket.text.dynamicLayoutVertexArray;
     const dynamicIconLayoutVertexArray = bucket.icon.dynamicLayoutVertexArray;
@@ -46439,7 +47831,22 @@ function updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, var
         }
         else {
             const tileAnchor = new performance$1.Point(symbol.anchorX, symbol.anchorY);
-            const projectedAnchor = project(tileAnchor, pitchWithMap ? posMatrix : labelPlaneMatrix, getElevation);
+            const projectionContext = {
+                getElevation,
+                width: transform.width,
+                height: transform.height,
+                labelPlaneMatrix,
+                lineVertexArray: null,
+                pitchWithMap,
+                projection,
+                projectionCache: null,
+                tileAnchorPoint: tileAnchor,
+                translation,
+                unwrappedTileID
+            };
+            const projectedAnchor = pitchWithMap ?
+                project(tileAnchor, posMatrix, getElevation) :
+                projectTileCoordinatesToViewport(tileAnchor.x, tileAnchor.y, projectionContext);
             const perspectiveRatio = getPerspectiveRatio(transform.cameraToCenterDistance, projectedAnchor.signedDistanceFromCamera);
             let renderTextSize = performance$1.evaluateSizeForFeature(bucket.textSizeData, size, symbol) * perspectiveRatio / performance$1.ONE_EM;
             if (pitchWithMap) {
@@ -46448,14 +47855,8 @@ function updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, var
             }
             const { width, height, anchor, textOffset, textBoxScale } = variableOffset;
             const shift = calculateVariableRenderShift(anchor, width, height, textOffset, textBoxScale, renderTextSize);
-            // Usual case is that we take the projected anchor and add the pixel-based shift
-            // calculated above. In the (somewhat weird) case of pitch-aligned text, we add an equivalent
-            // tile-unit based shift to the anchor before projecting to the label plane.
-            const shiftedAnchor = pitchWithMap ?
-                project(tileAnchor.add(shift), labelPlaneMatrix, getElevation).point :
-                projectedAnchor.point.add(rotateWithMap ?
-                    shift.rotate(-transform.angle) :
-                    shift);
+            const pitchedTextCorrection = projection.getPitchedTextCorrection(transform, tileAnchor.add(new performance$1.Point(translation[0], translation[1])), unwrappedTileID);
+            const shiftedAnchor = getShiftedAnchor(projectedAnchor.point, projectionContext, rotateWithMap, shift, transform.angle, pitchedTextCorrection);
             const angle = (bucket.allowVerticalPlacement && symbol.placedOrientation === performance$1.WritingMode.vertical) ? Math.PI / 2 : 0;
             for (let g = 0; g < symbol.numGlyphs; g++) {
                 performance$1.addDynamicAttributes(dynamicTextLayoutVertexArray, shiftedAnchor, angle);
@@ -46505,6 +47906,7 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
     const context = painter.context;
     const gl = context.gl;
     const tr = painter.transform;
+    const projection = createProjection();
     const rotateWithMap = rotationAlignment === 'map';
     const pitchWithMap = pitchAlignment === 'map';
     const alongLine = rotationAlignment !== 'viewport' && layer.layout.get('symbol-placement') !== 'point';
@@ -46512,11 +47914,13 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
     // Pitched point labels are automatically rotated by the labelPlaneMatrix projection
     // Unpitched point labels need to have their rotation applied after projection
     const rotateInShader = rotateWithMap && !pitchWithMap && !alongLine;
+    const isViewportLine = !pitchWithMap && alongLine;
     const hasSortKey = !layer.layout.get('symbol-sort-key').isConstant();
     let sortFeaturesByKey = false;
     const depthMode = painter.depthModeForSublayer(0, DepthMode.ReadOnly);
     const hasVariablePlacement = layer._unevaluatedLayout.hasValue('text-variable-anchor') || layer._unevaluatedLayout.hasValue('text-variable-anchor-offset');
     const tileRenderState = [];
+    const pitchedTextRescaling = projection.getCircleRadiusCorrection(tr);
     for (const coord of coords) {
         const tile = sourceCache.getTile(coord);
         const bucket = tile.getBucket(layer);
@@ -46558,8 +47962,11 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
             texSize = tile.imageAtlasTexture.size;
         }
         const s = pixelsToTileUnits(tile, 1, painter.transform.zoom);
-        const labelPlaneMatrix = getLabelPlaneMatrix(coord.posMatrix, pitchWithMap, rotateWithMap, painter.transform, s);
-        const glCoordMatrix = getGlCoordMatrix(coord.posMatrix, pitchWithMap, rotateWithMap, painter.transform, s);
+        const baseMatrix = isViewportLine ? coord.posMatrix : identityMat4;
+        const labelPlaneMatrix = getLabelPlaneMatrix(baseMatrix, pitchWithMap, rotateWithMap, painter.transform, s);
+        const glCoordMatrixForShader = getGlCoordMatrix(baseMatrix, pitchWithMap, rotateWithMap, painter.transform, s);
+        const glCoordMatrixForSymbolPlacement = getGlCoordMatrix(coord.posMatrix, pitchWithMap, rotateWithMap, painter.transform, s);
+        const translation = projection.translatePosition(painter.transform, tile, translate, translateAnchor);
         const hasVariableAnchors = hasVariablePlacement && bucket.hasTextData();
         const updateTextFitIcon = layer.layout.get('icon-text-fit') !== 'none' &&
             hasVariableAnchors &&
@@ -46567,21 +47974,25 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
         if (alongLine) {
             const getElevation = painter.style.map.terrain ? (x, y) => painter.style.map.terrain.getElevation(coord, x, y) : null;
             const rotateToLine = layer.layout.get('text-rotation-alignment') === 'map';
-            updateLineLabels(bucket, coord.posMatrix, painter, isText, labelPlaneMatrix, glCoordMatrix, pitchWithMap, keepUpright, rotateToLine, getElevation);
+            updateLineLabels(bucket, coord.posMatrix, painter, isText, labelPlaneMatrix, glCoordMatrixForSymbolPlacement, pitchWithMap, keepUpright, rotateToLine, projection, coord.toUnwrapped(), tr.width, tr.height, translation, getElevation);
         }
-        const matrix = painter.translatePosMatrix(coord.posMatrix, tile, translate, translateAnchor), uLabelPlaneMatrix = (alongLine || (isText && hasVariablePlacement) || updateTextFitIcon) ? identityMat4 : labelPlaneMatrix, uglCoordMatrix = painter.translatePosMatrix(glCoordMatrix, tile, translate, translateAnchor, true);
+        const matrix = coord.posMatrix; // formerly also incorporated translate and translate-anchor
+        const shaderVariableAnchor = (isText && hasVariablePlacement) || updateTextFitIcon;
+        const noLabelPlane = (alongLine || shaderVariableAnchor);
+        const uLabelPlaneMatrix = noLabelPlane ? identityMat4 : labelPlaneMatrix;
+        const uglCoordMatrix = glCoordMatrixForShader; // formerly also incorporated translate and translate-anchor
         const hasHalo = isSDF && layer.paint.get(isText ? 'text-halo-width' : 'icon-halo-width').constantOr(1) !== 0;
         let uniformValues;
         if (isSDF) {
             if (!bucket.iconsInText) {
-                uniformValues = symbolSDFUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, isText, texSize, true);
+                uniformValues = symbolSDFUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, translation, isText, texSize, true, pitchedTextRescaling);
             }
             else {
-                uniformValues = symbolTextAndIconUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, texSize, texSizeIcon);
+                uniformValues = symbolTextAndIconUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, translation, texSize, texSizeIcon, pitchedTextRescaling);
             }
         }
         else {
-            uniformValues = symbolIconUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, isText, texSize);
+            uniformValues = symbolIconUniformValues(sizeData.kind, size, rotateInShader, pitchWithMap, alongLine, shaderVariableAnchor, painter, matrix, uLabelPlaneMatrix, uglCoordMatrix, translation, isText, texSize, pitchedTextRescaling);
         }
         const state = {
             program,
@@ -46621,12 +48032,10 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
     for (const segmentState of tileRenderState) {
         const state = segmentState.state;
         context.activeTexture.set(gl.TEXTURE0);
-        // @ts-ignore
         state.atlasTexture.bind(state.atlasInterpolation, gl.CLAMP_TO_EDGE);
         if (state.atlasTextureIcon) {
             context.activeTexture.set(gl.TEXTURE1);
             if (state.atlasTextureIcon) {
-                // @ts-ignore
                 state.atlasTextureIcon.bind(state.atlasInterpolationIcon, gl.CLAMP_TO_EDGE);
             }
         }
@@ -46898,7 +48307,7 @@ function drawLine(painter, sourceCache, layer, coords) {
 
 /**
  * A simple helper shared by draw_fill and draw_fill_extrusions to find the correct pattern positions AND update program.
- * For transtionable properties, especially 'fill-pattern' and 'fill-extrusion-pattern', while rendering certain frames
+ * For transitionable properties, especially 'fill-pattern' and 'fill-extrusion-pattern', while rendering certain frames
  * tile.imageAtlas has been updated by worker to hold the new pattern only, but rendering code is still looking for the previous image.
  * The mismatch was causing setConstantPatternPositions method not being called and pixelRatio was always the
  * default of 1, instead of actual values set by original map.addImage.
@@ -47162,7 +48571,11 @@ function drawRaster(painter, sourceCache, layer, tileIDs) {
         const depthMode = painter.depthModeForSublayer(coord.overscaledZ - minTileZ, layer.paint.get('raster-opacity') === 1 ? DepthMode.ReadWrite : DepthMode.ReadOnly, gl.LESS);
         const tile = sourceCache.getTile(coord);
         tile.registerFadeDuration(layer.paint.get('raster-fade-duration'));
-        const parentTile = sourceCache.findLoadedParent(coord, 0), fade = getFadeValues(tile, parentTile, sourceCache, layer, painter.transform, painter.style.map.terrain);
+        const parentTile = sourceCache.findLoadedParent(coord, 0);
+        const siblingTile = sourceCache.findLoadedSibling(coord);
+        // Prefer parent tile if present
+        const fadeTileReference = parentTile || siblingTile || null;
+        const fade = getFadeValues(tile, fadeTileReference, sourceCache, layer, painter.transform, painter.style.map.terrain);
         let parentScaleBy, parentTL;
         const textureFilter = layer.paint.get('raster-resampling') === 'nearest' ? gl.NEAREST : gl.LINEAR;
         context.activeTexture.set(gl.TEXTURE0);
@@ -47175,6 +48588,11 @@ function drawRaster(painter, sourceCache, layer, tileIDs) {
         }
         else {
             tile.texture.bind(textureFilter, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+        }
+        // Enable anisotropic filtering only when the pitch is greater than 20 degrees
+        // to preserve image sharpness on flat or slightly tilted maps.
+        if (tile.texture.useMipmap && context.extTextureFilterAnisotropic && painter.transform.pitch > 20) {
+            gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
         }
         const terrainData = painter.style.map.terrain && painter.style.map.terrain.getTerrainData(coord);
         const terrainCoord = terrainData ? coord : null;
@@ -47402,7 +48820,7 @@ function drawCustom(painter, sourceCache, layer) {
             new DepthMode(painter.context.gl.LEQUAL, DepthMode.ReadWrite, painter.depthRangeFor3D) :
             painter.depthModeForSublayer(0, DepthMode.ReadOnly);
         context.setDepthMode(depthMode);
-        implementation.render(context.gl, painter.transform.customLayerMatrix());
+        implementation.render(context.gl, painter.transform.customLayerMatrix(), { farZ: painter.transform.farZ, nearZ: painter.transform.nearZ, fov: painter.transform._fov, modelViewProjectionMatrix: painter.transform.modelViewProjectionMatrix, projectionMatrix: painter.transform.projectionMatrix });
         context.setDirty();
         painter.setBaseState();
         context.bindFramebuffer.set(null);
@@ -47480,9 +48898,49 @@ function drawTerrain(painter, terrain, tiles) {
         context.activeTexture.set(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture.texture);
         const posMatrix = painter.transform.calculatePosMatrix(tile.tileID.toUnwrapped());
-        const uniformValues = terrainUniformValues(posMatrix, terrain.getMeshFrameDelta(painter.transform.zoom));
+        const eleDelta = terrain.getMeshFrameDelta(painter.transform.zoom);
+        const fogMatrix = painter.transform.calculateFogMatrix(tile.tileID.toUnwrapped());
+        const uniformValues = terrainUniformValues(posMatrix, eleDelta, fogMatrix, painter.style.sky, painter.transform.pitch);
         program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, colorMode, CullFaceMode.backCCW, uniformValues, terrainData, 'terrain', mesh.vertexBuffer, mesh.indexBuffer, mesh.segments);
     }
+}
+
+class Mesh {
+    constructor(vertexBuffer, indexBuffer, segments) {
+        this.vertexBuffer = vertexBuffer;
+        this.indexBuffer = indexBuffer;
+        this.segments = segments;
+    }
+    destroy() {
+        this.vertexBuffer.destroy();
+        this.indexBuffer.destroy();
+        this.segments.destroy();
+        this.vertexBuffer = null;
+        this.indexBuffer = null;
+        this.segments = null;
+    }
+}
+
+function drawSky(painter, sky) {
+    const context = painter.context;
+    const gl = context.gl;
+    const skyUniforms = skyUniformValues(sky, painter.style.map.transform, painter.pixelRatio);
+    const depthMode = new DepthMode(gl.LEQUAL, DepthMode.ReadWrite, [0, 1]);
+    const stencilMode = StencilMode.disabled;
+    const colorMode = painter.colorModeForRenderPass();
+    const program = painter.useProgram('sky');
+    if (!sky.mesh) {
+        const vertexArray = new performance$1.PosArray();
+        vertexArray.emplaceBack(-1, -1);
+        vertexArray.emplaceBack(1, -1);
+        vertexArray.emplaceBack(1, 1);
+        vertexArray.emplaceBack(-1, 1);
+        const indexArray = new performance$1.TriangleIndexArray();
+        indexArray.emplaceBack(0, 1, 2);
+        indexArray.emplaceBack(0, 2, 3);
+        sky.mesh = new Mesh(context.createVertexBuffer(vertexArray, posAttributes.members), context.createIndexBuffer(indexArray), performance$1.SegmentVector.simpleSegment(0, 0, vertexArray.length, indexArray.length));
+    }
+    program.draw(context, gl.TRIANGLES, depthMode, stencilMode, colorMode, CullFaceMode.disabled, skyUniforms, undefined, 'sky', sky.mesh.vertexBuffer, sky.mesh.indexBuffer, sky.mesh.segments);
 }
 
 /**
@@ -47494,7 +48952,7 @@ class Painter {
         this.context = new Context(gl);
         this.transform = transform;
         this._tileTextures = {};
-        this.terrainFacilitator = { dirty: true, matrix: performance$1.create(), renderTime: 0 };
+        this.terrainFacilitator = { dirty: true, matrix: performance$1.identity(new Float64Array(16)), renderTime: 0 };
         this.setup();
         // Within each layer there are multiple distinct z-planes that can be drawn to.
         // This is implemented using the WebGL depth buffer.
@@ -47674,6 +49132,7 @@ class Painter {
         return this.currentLayer < this.opaquePassCutoff;
     }
     render(style, options) {
+        var _a;
         this.style = style;
         this.options = options;
         this.lineAtlas = style.lineAtlas;
@@ -47703,19 +49162,11 @@ class Painter {
                 break;
             }
         }
+        this.maybeDrawDepthAndCoords(false);
         if (this.renderToTexture) {
             this.renderToTexture.prepareForRender(this.style, this.transform.zoom);
             // this is disabled, because render-to-texture is rendering all layers from bottom to top.
             this.opaquePassCutoff = 0;
-            // update coords/depth-framebuffer on camera movement, or tile reloading
-            const newTiles = this.style.map.terrain.sourceCache.tilesAfterTime(this.terrainFacilitator.renderTime);
-            if (this.terrainFacilitator.dirty || !performance$1.equals(this.terrainFacilitator.matrix, this.transform.projMatrix) || newTiles.length) {
-                performance$1.copy(this.terrainFacilitator.matrix, this.transform.projMatrix);
-                this.terrainFacilitator.renderTime = Date.now();
-                this.terrainFacilitator.dirty = false;
-                drawDepth(this, this.style.map.terrain);
-                drawCoords(this, this.style.map.terrain);
-            }
         }
         // Offscreen pass ===============================================
         // We first do all rendering that requires rendering to a separate
@@ -47736,6 +49187,9 @@ class Painter {
         // Clear buffers in preparation for drawing to the main framebuffer
         this.context.clear({ color: options.showOverdrawInspector ? performance$1.Color.black : performance$1.Color.transparent, depth: 1 });
         this.clearStencil();
+        // draw sky first to not overwrite symbols
+        if ((_a = this.style.stylesheet) === null || _a === void 0 ? void 0 : _a.sky)
+            drawSky(this, this.style.sky);
         this._showOverdrawInspector = options.showOverdrawInspector;
         this.depthRangeFor3D = [0, 1 - ((style._order.length + 2) * this.numSublayers * this.depthEpsilon)];
         // Opaque pass ===============================================
@@ -47777,6 +49231,30 @@ class Painter {
         // Set defaults for most GL values so that anyone using the state after the render
         // encounters more expected values.
         this.context.setDefault();
+    }
+    /**
+     * Update the depth and coords framebuffers, if the contents of those frame buffers is out of date.
+     * If requireExact is false, then the contents of those frame buffers is not updated if it is close
+     * to accurate (that is, the camera has not moved much since it was updated last).
+     */
+    maybeDrawDepthAndCoords(requireExact) {
+        if (!this.style || !this.style.map || !this.style.map.terrain) {
+            return;
+        }
+        const prevMatrix = this.terrainFacilitator.matrix;
+        const currMatrix = this.transform.modelViewProjectionMatrix;
+        // Update coords/depth-framebuffer on camera movement, or tile reloading
+        let doUpdate = this.terrainFacilitator.dirty;
+        doUpdate || (doUpdate = requireExact ? !performance$1.exactEquals(prevMatrix, currMatrix) : !performance$1.equals(prevMatrix, currMatrix));
+        doUpdate || (doUpdate = this.style.map.terrain.sourceCache.tilesAfterTime(this.terrainFacilitator.renderTime).length > 0);
+        if (!doUpdate) {
+            return;
+        }
+        performance$1.copy(prevMatrix, currMatrix);
+        this.terrainFacilitator.renderTime = Date.now();
+        this.terrainFacilitator.dirty = false;
+        drawDepth(this, this.style.map.terrain);
+        drawCoords(this, this.style.map.terrain);
     }
     renderLayer(painter, sourceCache, layer, coords) {
         if (layer.isHidden(this.transform.zoom))
@@ -48125,6 +49603,7 @@ class EdgeInsets {
     }
 }
 
+const MAX_VALID_LATITUDE = 85.051129;
 /**
  * @internal
  * A single transform, generally used for a single tile to be
@@ -48133,7 +49612,6 @@ class EdgeInsets {
 class Transform {
     constructor(minZoom, maxZoom, minPitch, maxPitch, renderWorldCopies) {
         this.tileSize = 512; // constant
-        this.maxValidLatitude = 85.051129; // constant
         this._renderWorldCopies = renderWorldCopies === undefined ? true : !!renderWorldCopies;
         this._minZoom = minZoom || 0;
         this._maxZoom = maxZoom || 22;
@@ -48152,6 +49630,7 @@ class Transform {
         this._edgeInsets = new EdgeInsets();
         this._posMatrixCache = {};
         this._alignedPosMatrixCache = {};
+        this._fogMatrixCache = {};
         this.minElevationForCurrentTile = 0;
     }
     clone() {
@@ -48279,6 +49758,9 @@ class Transform {
         this._constrain();
         this._calcMatrices();
     }
+    /**
+     * Elevation at current center point, meters above sea level
+     */
     get elevation() { return this._elevation; }
     set elevation(elevation) {
         if (elevation === this._elevation)
@@ -48292,7 +49774,7 @@ class Transform {
         if (this._edgeInsets.equals(padding))
             return;
         this._unmodified = false;
-        //Update edge-insets inplace
+        //Update edge-insets in place
         this._edgeInsets.interpolate(this._edgeInsets, padding, 1);
         this._calcMatrices();
     }
@@ -48379,7 +49861,7 @@ class Transform {
         const numTiles = Math.pow(2, z);
         const cameraPoint = [numTiles * cameraCoord.x, numTiles * cameraCoord.y, 0];
         const centerPoint = [numTiles * centerCoord.x, numTiles * centerCoord.y, 0];
-        const cameraFrustum = Frustum.fromInvProjectionMatrix(this.invProjMatrix, this.worldSize, z);
+        const cameraFrustum = Frustum.fromInvProjectionMatrix(this.invModelViewProjectionMatrix, this.worldSize, z);
         // No change of LOD behavior for pitch lower than 60 and when there is no top padding: return only tile ids from the requested zoom level
         let minZoom = options.minzoom || 0;
         // Use 0.1 as an epsilon to avoid for explicit == 0.0 floating point checks
@@ -48476,7 +49958,7 @@ class Transform {
      * @returns Point
      */
     project(lnglat) {
-        const lat = performance$1.clamp(lnglat.lat, -this.maxValidLatitude, this.maxValidLatitude);
+        const lat = performance$1.clamp(lnglat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE);
         return new performance$1.Point(performance$1.mercatorXfromLng(lnglat.lng) * this.worldSize, performance$1.mercatorYfromLat(lat) * this.worldSize);
     }
     /**
@@ -48499,25 +49981,29 @@ class Transform {
     }
     /**
      * This method works in combination with freezeElevation activated.
-     * freezeElevtion is enabled during map-panning because during this the camera should sit in constant height.
+     * freezeElevation is enabled during map-panning because during this the camera should sit in constant height.
      * After panning finished, call this method to recalculate the zoomlevel for the current camera-height in current terrain.
      * @param terrain - the terrain
      */
     recalculateZoom(terrain) {
+        const origElevation = this.elevation;
+        const origAltitude = Math.cos(this._pitch) * this.cameraToCenterDistance / this._pixelPerMeter;
         // find position the camera is looking on
         const center = this.pointLocation(this.centerPoint, terrain);
         const elevation = terrain.getElevationForLngLatZoom(center, this.tileZoom);
         const deltaElevation = this.elevation - elevation;
         if (!deltaElevation)
             return;
-        // calculate mercator distance between camera & target
-        const cameraPosition = this.getCameraPosition();
-        const camera = performance$1.MercatorCoordinate.fromLngLat(cameraPosition.lngLat, cameraPosition.altitude);
-        const target = performance$1.MercatorCoordinate.fromLngLat(center, elevation);
-        const dx = camera.x - target.x, dy = camera.y - target.y, dz = camera.z - target.z;
-        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        // from this distance we calculate the new zoomlevel
-        const zoom = this.scaleZoom(this.cameraToCenterDistance / distance / this.tileSize);
+        // The camera's altitude off the ground + the ground's elevation = a constant:
+        // this means the camera stays at the same total height.
+        const requiredAltitude = origAltitude + origElevation - elevation;
+        // Since altitude = Math.cos(this._pitch) * this.cameraToCenterDistance / pixelPerMeter:
+        const requiredPixelPerMeter = Math.cos(this._pitch) * this.cameraToCenterDistance / requiredAltitude;
+        // Since pixelPerMeter = mercatorZfromAltitude(1, center.lat) * worldSize:
+        const requiredWorldSize = requiredPixelPerMeter / performance$1.mercatorZfromAltitude(1, center.lat);
+        // Since worldSize = this.tileSize * scale:
+        const requiredScale = requiredWorldSize / this.tileSize;
+        const zoom = this.scaleZoom(requiredScale);
         // update matrices
         this._elevation = elevation;
         this._center = center;
@@ -48660,8 +50146,17 @@ class Transform {
         }
         else {
             this.lngRange = null;
-            this.latRange = [-this.maxValidLatitude, this.maxValidLatitude];
+            this.latRange = [-MAX_VALID_LATITUDE, MAX_VALID_LATITUDE];
         }
+    }
+    calculateTileMatrix(unwrappedTileID) {
+        const canonical = unwrappedTileID.canonical;
+        const scale = this.worldSize / this.zoomScale(canonical.z);
+        const unwrappedX = canonical.x + Math.pow(2, canonical.z) * unwrappedTileID.wrap;
+        const worldMatrix = performance$1.identity(new Float64Array(16));
+        performance$1.translate(worldMatrix, worldMatrix, [unwrappedX * scale, canonical.y * scale, 0]);
+        performance$1.scale(worldMatrix, worldMatrix, [scale / performance$1.EXTENT, scale / performance$1.EXTENT, 1]);
+        return worldMatrix;
     }
     /**
      * Calculate the posMatrix that, given a tile coordinate, would be used to display the tile on a map.
@@ -48673,73 +50168,116 @@ class Transform {
         if (cache[posMatrixKey]) {
             return cache[posMatrixKey];
         }
-        const canonical = unwrappedTileID.canonical;
-        const scale = this.worldSize / this.zoomScale(canonical.z);
-        const unwrappedX = canonical.x + Math.pow(2, canonical.z) * unwrappedTileID.wrap;
-        const posMatrix = performance$1.identity(new Float64Array(16));
-        performance$1.translate(posMatrix, posMatrix, [unwrappedX * scale, canonical.y * scale, 0]);
-        performance$1.scale(posMatrix, posMatrix, [scale / performance$1.EXTENT, scale / performance$1.EXTENT, 1]);
-        performance$1.multiply(posMatrix, aligned ? this.alignedProjMatrix : this.projMatrix, posMatrix);
+        const posMatrix = this.calculateTileMatrix(unwrappedTileID);
+        performance$1.multiply(posMatrix, aligned ? this.alignedModelViewProjectionMatrix : this.modelViewProjectionMatrix, posMatrix);
         cache[posMatrixKey] = new Float32Array(posMatrix);
+        return cache[posMatrixKey];
+    }
+    /**
+     * Calculate the fogMatrix that, given a tile coordinate, would be used to calculate fog on the map.
+     * @param unwrappedTileID - the tile ID
+     * @private
+     */
+    calculateFogMatrix(unwrappedTileID) {
+        const posMatrixKey = unwrappedTileID.key;
+        const cache = this._fogMatrixCache;
+        if (cache[posMatrixKey]) {
+            return cache[posMatrixKey];
+        }
+        const fogMatrix = this.calculateTileMatrix(unwrappedTileID);
+        performance$1.multiply(fogMatrix, this.fogMatrix, fogMatrix);
+        cache[posMatrixKey] = new Float32Array(fogMatrix);
         return cache[posMatrixKey];
     }
     customLayerMatrix() {
         return this.mercatorMatrix.slice();
     }
+    /**
+     * Get center lngLat and zoom to ensure that
+     * 1) everything beyond the bounds is excluded
+     * 2) a given lngLat is as near the center as possible
+     * Bounds are those set by maxBounds or North & South "Poles" and, if only 1 globe is displayed, antimeridian.
+     */
+    getConstrained(lngLat, zoom) {
+        zoom = performance$1.clamp(+zoom, this.minZoom, this.maxZoom);
+        const result = {
+            center: new performance$1.LngLat(lngLat.lng, lngLat.lat),
+            zoom
+        };
+        let lngRange = this.lngRange;
+        if (!this._renderWorldCopies && lngRange === null) {
+            const almost180 = 180 - 1e-10;
+            lngRange = [-almost180, almost180];
+        }
+        const worldSize = this.tileSize * this.zoomScale(result.zoom); // A world size for the requested zoom level, not the current world size
+        let minY = 0;
+        let maxY = worldSize;
+        let minX = 0;
+        let maxX = worldSize;
+        let scaleY = 0;
+        let scaleX = 0;
+        const { x: screenWidth, y: screenHeight } = this.size;
+        if (this.latRange) {
+            const latRange = this.latRange;
+            minY = performance$1.mercatorYfromLat(latRange[1]) * worldSize;
+            maxY = performance$1.mercatorYfromLat(latRange[0]) * worldSize;
+            const shouldZoomIn = maxY - minY < screenHeight;
+            if (shouldZoomIn)
+                scaleY = screenHeight / (maxY - minY);
+        }
+        if (lngRange) {
+            minX = performance$1.wrap(performance$1.mercatorXfromLng(lngRange[0]) * worldSize, 0, worldSize);
+            maxX = performance$1.wrap(performance$1.mercatorXfromLng(lngRange[1]) * worldSize, 0, worldSize);
+            if (maxX < minX)
+                maxX += worldSize;
+            const shouldZoomIn = maxX - minX < screenWidth;
+            if (shouldZoomIn)
+                scaleX = screenWidth / (maxX - minX);
+        }
+        const { x: originalX, y: originalY } = this.project.call({ worldSize }, lngLat);
+        let modifiedX, modifiedY;
+        const scale = Math.max(scaleX || 0, scaleY || 0);
+        if (scale) {
+            // zoom in to exclude all beyond the given lng/lat ranges
+            const newPoint = new performance$1.Point(scaleX ? (maxX + minX) / 2 : originalX, scaleY ? (maxY + minY) / 2 : originalY);
+            result.center = this.unproject.call({ worldSize }, newPoint).wrap();
+            result.zoom += this.scaleZoom(scale);
+            return result;
+        }
+        if (this.latRange) {
+            const h2 = screenHeight / 2;
+            if (originalY - h2 < minY)
+                modifiedY = minY + h2;
+            if (originalY + h2 > maxY)
+                modifiedY = maxY - h2;
+        }
+        if (lngRange) {
+            const centerX = (minX + maxX) / 2;
+            let wrappedX = originalX;
+            if (this._renderWorldCopies) {
+                wrappedX = performance$1.wrap(originalX, centerX - worldSize / 2, centerX + worldSize / 2);
+            }
+            const w2 = screenWidth / 2;
+            if (wrappedX - w2 < minX)
+                modifiedX = minX + w2;
+            if (wrappedX + w2 > maxX)
+                modifiedX = maxX - w2;
+        }
+        // pan the map if the screen goes off the range
+        if (modifiedX !== undefined || modifiedY !== undefined) {
+            const newPoint = new performance$1.Point(modifiedX !== null && modifiedX !== void 0 ? modifiedX : originalX, modifiedY !== null && modifiedY !== void 0 ? modifiedY : originalY);
+            result.center = this.unproject.call({ worldSize }, newPoint).wrap();
+        }
+        return result;
+    }
     _constrain() {
         if (!this.center || !this.width || !this.height || this._constraining)
             return;
         this._constraining = true;
-        let minY = -90;
-        let maxY = 90;
-        let minX = -180;
-        let maxX = 180;
-        let sy, sx, x2, y2;
-        const size = this.size, unmodified = this._unmodified;
-        if (this.latRange) {
-            const latRange = this.latRange;
-            minY = performance$1.mercatorYfromLat(latRange[1]) * this.worldSize;
-            maxY = performance$1.mercatorYfromLat(latRange[0]) * this.worldSize;
-            sy = maxY - minY < size.y ? size.y / (maxY - minY) : 0;
-        }
-        if (this.lngRange) {
-            const lngRange = this.lngRange;
-            minX = performance$1.wrap(performance$1.mercatorXfromLng(lngRange[0]) * this.worldSize, 0, this.worldSize);
-            maxX = performance$1.wrap(performance$1.mercatorXfromLng(lngRange[1]) * this.worldSize, 0, this.worldSize);
-            if (maxX < minX)
-                maxX += this.worldSize;
-            sx = maxX - minX < size.x ? size.x / (maxX - minX) : 0;
-        }
-        const point = this.point;
-        // how much the map should scale to fit the screen into given latitude/longitude ranges
-        const s = Math.max(sx || 0, sy || 0);
-        if (s) {
-            this.center = this.unproject(new performance$1.Point(sx ? (maxX + minX) / 2 : point.x, sy ? (maxY + minY) / 2 : point.y));
-            this.zoom += this.scaleZoom(s);
-            this._unmodified = unmodified;
-            this._constraining = false;
-            return;
-        }
-        if (this.latRange) {
-            const y = point.y, h2 = size.y / 2;
-            if (y - h2 < minY)
-                y2 = minY + h2;
-            if (y + h2 > maxY)
-                y2 = maxY - h2;
-        }
-        if (this.lngRange) {
-            const centerX = (minX + maxX) / 2;
-            const x = performance$1.wrap(point.x, centerX - this.worldSize / 2, centerX + this.worldSize / 2);
-            const w2 = size.x / 2;
-            if (x - w2 < minX)
-                x2 = minX + w2;
-            if (x + w2 > maxX)
-                x2 = maxX - w2;
-        }
-        // pan the map if the screen goes off the range
-        if (x2 !== undefined || y2 !== undefined) {
-            this.center = this.unproject(new performance$1.Point(x2 !== undefined ? x2 : point.x, y2 !== undefined ? y2 : point.y)).wrap();
-        }
+        const unmodified = this._unmodified;
+        const { center, zoom } = this.getConstrained(this.center, this.zoom);
+        this.center = center;
+        this.zoom = zoom;
         this._unmodified = unmodified;
         this._constraining = false;
     }
@@ -48781,21 +50319,22 @@ class Transform {
         // Calculate z distance of the farthest fragment that should be rendered.
         // Add a bit extra to avoid precision problems when a fragment's distance is exactly `furthestDistance`
         const topHalfMinDistance = Math.min(topHalfSurfaceDistance, topHalfSurfaceDistanceHorizon);
-        const farZ = (Math.cos(Math.PI / 2 - this._pitch) * topHalfMinDistance + lowestPlane) * 1.01;
+        this.farZ = (Math.cos(Math.PI / 2 - this._pitch) * topHalfMinDistance + lowestPlane) * 1.01;
         // The larger the value of nearZ is
         // - the more depth precision is available for features (good)
         // - clipping starts appearing sooner when the camera is close to 3d features (bad)
         //
-        // Other values work for mapbox-gl-js but deckgl was encountering precision issues
+        // Other values work for mapbox-gl-js but deck.gl was encountering precision issues
         // when rendering custom layers. This value was experimentally chosen and
-        // seems to solve z-fighting issues in deckgl while not clipping buildings too close to the camera.
-        const nearZ = this.height / 50;
+        // seems to solve z-fighting issues in deck.gl while not clipping buildings too close to the camera.
+        this.nearZ = this.height / 50;
         // matrix for conversion from location to clip space(-1 .. 1)
         m = new Float64Array(16);
-        performance$1.perspective(m, this._fov, this.width / this.height, nearZ, farZ);
+        performance$1.perspective(m, this._fov, this.width / this.height, this.nearZ, this.farZ);
         // Apply center of perspective offset
         m[8] = -offset.x * 2 / this.width;
         m[9] = offset.y * 2 / this.height;
+        this.projectionMatrix = performance$1.clone(m);
         performance$1.scale(m, m, [1, -1, 1]);
         performance$1.translate(m, m, [0, 0, -this.cameraToCenterDistance]);
         performance$1.rotateX(m, m, this._pitch);
@@ -48810,8 +50349,21 @@ class Transform {
         this.pixelMatrix = performance$1.multiply(new Float64Array(16), this.labelPlaneMatrix, m);
         // matrix for conversion from world space to clip space (-1 .. 1)
         performance$1.translate(m, m, [0, 0, -this.elevation]); // elevate camera over terrain
-        this.projMatrix = m;
-        this.invProjMatrix = performance$1.invert([], m);
+        this.modelViewProjectionMatrix = m;
+        this.invModelViewProjectionMatrix = performance$1.invert([], m);
+        // create a fog matrix, same es proj-matrix but with near clipping-plane in mapcenter
+        // needed to calculate a correct z-value for fog calculation, because projMatrix z value is not
+        this.fogMatrix = new Float64Array(16);
+        performance$1.perspective(this.fogMatrix, this._fov, this.width / this.height, cameraToSeaLevelDistance, this.farZ);
+        this.fogMatrix[8] = -offset.x * 2 / this.width;
+        this.fogMatrix[9] = offset.y * 2 / this.height;
+        performance$1.scale(this.fogMatrix, this.fogMatrix, [1, -1, 1]);
+        performance$1.translate(this.fogMatrix, this.fogMatrix, [0, 0, -this.cameraToCenterDistance]);
+        performance$1.rotateX(this.fogMatrix, this.fogMatrix, this._pitch);
+        performance$1.rotateZ(this.fogMatrix, this.fogMatrix, this.angle);
+        performance$1.translate(this.fogMatrix, this.fogMatrix, [-x, -y, 0]);
+        performance$1.scale(this.fogMatrix, this.fogMatrix, [1, 1, this._pixelPerMeter]);
+        performance$1.translate(this.fogMatrix, this.fogMatrix, [0, 0, -this.elevation]); // elevate camera over terrain
         // matrix for conversion from world space to screen coordinates in 3D
         this.pixelMatrix3D = performance$1.multiply(new Float64Array(16), this.labelPlaneMatrix, m);
         // Make a second projection matrix that is aligned to a pixel grid for rendering raster tiles.
@@ -48823,7 +50375,7 @@ class Transform {
         const xShift = (this.width % 2) / 2, yShift = (this.height % 2) / 2, angleCos = Math.cos(this.angle), angleSin = Math.sin(this.angle), dx = x - Math.round(x) + angleCos * xShift + angleSin * yShift, dy = y - Math.round(y) + angleCos * yShift + angleSin * xShift;
         const alignedM = new Float64Array(m);
         performance$1.translate(alignedM, alignedM, [dx > 0.5 ? dx - 1 : dx, dy > 0.5 ? dy - 1 : dy, 0]);
-        this.alignedProjMatrix = alignedM;
+        this.alignedModelViewProjectionMatrix = alignedM;
         // inverse matrix for conversion from screen coordinates to location
         m = performance$1.invert(new Float64Array(16), this.pixelMatrix);
         if (!m)
@@ -48831,6 +50383,7 @@ class Transform {
         this.pixelMatrixInverse = m;
         this._posMatrixCache = {};
         this._alignedPosMatrixCache = {};
+        this._fogMatrixCache = {};
     }
     maxPitchScaleFactor() {
         // calcMatrices hasn't run yet
@@ -48903,7 +50456,7 @@ class Transform {
     lngLatToCameraDepth(lngLat, elevation) {
         const coord = this.locationCoordinate(lngLat);
         const p = [coord.x * this.worldSize, coord.y * this.worldSize, elevation, 1];
-        performance$1.transformMat4(p, p, this.projMatrix);
+        performance$1.transformMat4(p, p, this.modelViewProjectionMatrix);
         return (p[2] / p[3]);
     }
 }
@@ -48975,14 +50528,31 @@ class Hash {
         this._updateHashUnthrottled = () => {
             // Replace if already present, else append the updated hash string
             const location = window.location.href.replace(/(#.+)?$/, this.getHashString());
-            try {
-                window.history.replaceState(window.history.state, null, location);
+            window.history.replaceState(window.history.state, null, location);
+        };
+        this._removeHash = () => {
+            const currentHash = this._getCurrentHash();
+            if (currentHash.length === 0) {
+                return;
             }
-            catch (SecurityError) {
-                // IE11 does not allow this if the page is within an iframe created
-                // with iframe.contentWindow.document.write(...).
-                // https://github.com/mapbox/mapbox-gl-js/issues/7410
+            const baseHash = currentHash.join('/');
+            let targetHash = baseHash;
+            if (targetHash.split('&').length > 0) {
+                targetHash = targetHash.split('&')[0]; // #3/1/2&foo=bar -> #3/1/2
             }
+            if (this._hashName) {
+                targetHash = `${this._hashName}=${baseHash}`;
+            }
+            let replaceString = window.location.hash.replace(targetHash, '');
+            if (replaceString.startsWith('#&')) {
+                replaceString = replaceString.slice(0, 1) + replaceString.slice(2);
+            }
+            else if (replaceString === '#') {
+                replaceString = '';
+            }
+            let location = window.location.href.replace(/(#.+)?$/, replaceString);
+            location = location.replace('&&', '&');
+            window.history.replaceState(window.history.state, null, location);
         };
         /**
          * Mobile Safari doesn't allow updating the hash more than 100 times per 30 seconds.
@@ -48994,7 +50564,6 @@ class Hash {
      * Map element to listen for coordinate changes
      *
      * @param map - The map object
-     * @returns `this`
      */
     addTo(map) {
         this._map = map;
@@ -49004,13 +50573,12 @@ class Hash {
     }
     /**
      * Removes hash
-     *
-     * @returns `this`
      */
     remove() {
         removeEventListener('hashchange', this._onHashChange, false);
         this._map.off('moveend', this._updateHash);
         clearTimeout(this._updateHash());
+        this._removeHash();
         delete this._map;
         return this;
     }
@@ -49174,7 +50742,7 @@ function calculateEasing(amount, inertiaDuration, inertiaOptions) {
  * ```ts
  * // The `click` event is an example of a `MapMouseEvent`.
  * // Set up an event listener on the map.
- * map.on('click', function(e) {
+ * map.on('click', (e) => {
  *   // The event object (e) contains information like the
  *   // coordinates of the point on the map that was clicked.
  *   console.log('A click event has occurred at ' + e.lngLat);
@@ -49400,8 +50968,9 @@ class BlockableMapEventHandler {
 /**
  * @internal
  * Shared utilities for the Handler classes to access the correct camera state.
- * If Camera.transformCameraUpdate is specified, the "desired state" of camera may differ from the state used for rendering.
- * The handlers need the "desired state" to track accumulated changes.
+ * If Camera.transformCameraUpdate is specified or terrain is enabled, the
+ * "desired state" of camera may differ from the state used for rendering. The
+ * handlers need the "desired state" to track accumulated changes.
  */
 class TransformProvider {
     constructor(map) {
@@ -49891,7 +51460,7 @@ const assignEvents$1 = (handler) => {
     handler.mousedown = handler.dragStart;
     handler.mousemoveWindow = handler.dragMove;
     handler.mouseup = handler.dragEnd;
-    handler.contextmenu = function (e) {
+    handler.contextmenu = (e) => {
         e.preventDefault();
     };
 };
@@ -49953,21 +51522,26 @@ class TouchPanHandler {
         this._touches = {};
         this._sum = new performance$1.Point(0, 0);
     }
-    minTouchs() {
-        return this._map.cooperativeGestures.isEnabled() ? 2 : 1;
+    _shouldBePrevented(touchesCount) {
+        const minTouches = this._map.cooperativeGestures.isEnabled() ? 2 : 1;
+        return touchesCount < minTouches;
     }
     touchstart(e, points, mapTouches) {
         return this._calculateTransform(e, points, mapTouches);
     }
     touchmove(e, points, mapTouches) {
-        if (!this._active || mapTouches.length < this.minTouchs())
+        if (!this._active)
             return;
+        if (this._shouldBePrevented(mapTouches.length)) {
+            this._map.cooperativeGestures.notifyGestureBlocked('touch_pan', e);
+            return;
+        }
         e.preventDefault();
         return this._calculateTransform(e, points, mapTouches);
     }
     touchend(e, points, mapTouches) {
         this._calculateTransform(e, points, mapTouches);
-        if (this._active && mapTouches.length < this.minTouchs()) {
+        if (this._active && this._shouldBePrevented(mapTouches.length)) {
             this.reset();
         }
     }
@@ -49992,7 +51566,7 @@ class TouchPanHandler {
             }
         }
         this._touches = touches;
-        if (touchDeltaCount < this.minTouchs() || !touchDeltaSum.mag())
+        if (this._shouldBePrevented(touchDeltaCount) || !touchDeltaSum.mag())
             return;
         const panDelta = touchDeltaSum.div(touchDeltaCount);
         this._sum._add(panDelta);
@@ -50565,10 +52139,22 @@ class ScrollZoomHandler {
             return;
         this._enabled = false;
     }
+    /**
+     * Determines whether or not the gesture is blocked due to cooperativeGestures.
+     */
+    _shouldBePrevented(e) {
+        if (!this._map.cooperativeGestures.isEnabled()) {
+            return false;
+        }
+        const isTrackpadPinch = e.ctrlKey;
+        const isBypassed = isTrackpadPinch || this._map.cooperativeGestures.isBypassed(e);
+        return !isBypassed;
+    }
     wheel(e) {
         if (!this.isEnabled())
             return;
-        if (this._map.cooperativeGestures.isEnabled() && !e[this._map.cooperativeGestures._bypassKey]) {
+        if (this._shouldBePrevented(e)) {
+            this._map.cooperativeGestures.notifyGestureBlocked('wheel_zoom', e);
             return;
         }
         let value = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY * 40 : e.deltaY;
@@ -50586,7 +52172,7 @@ class ScrollZoomHandler {
             // This is likely a new scroll action.
             this._type = null;
             this._lastValue = value;
-            // Start a timeout in case this was a singular event, and dely it by up to 40ms.
+            // Start a timeout in case this was a singular event, and delay it by up to 40ms.
             this._timeout = setTimeout(this._onTimeout, 40, e);
         }
         else if (!this._type) {
@@ -50678,8 +52264,9 @@ class ScrollZoomHandler {
         const easing = this._easing;
         let finished = false;
         let zoom;
-        if (this._type === 'wheel' && startZoom && easing) {
-            const t = Math.min((browser.now() - this._lastWheelEventTime) / 200, 1);
+        const lastWheelEventTimeDiff = browser.now() - this._lastWheelEventTime;
+        if (this._type === 'wheel' && startZoom && easing && lastWheelEventTimeDiff) {
+            const t = Math.min(lastWheelEventTimeDiff / 200, 1);
             const k = easing(t);
             zoom = performance$1.interpolate.number(startZoom, targetZoom, k);
             if (t < 1) {
@@ -51146,6 +52733,8 @@ class TwoFingersTouchZoomRotateHandler {
 /**
  * A `CooperativeGestureHandler` is a control that adds cooperative gesture info when user tries to zoom in/out.
  *
+ * When the CooperativeGestureHandler blocks a gesture, it will emit a `cooperativegestureprevented` event.
+ *
  * @group Handlers
  *
  * @example
@@ -51154,7 +52743,7 @@ class TwoFingersTouchZoomRotateHandler {
  *   cooperativeGestures: true
  * });
  * ```
- * @see [Example: cooperative gestures](https://maplibre.org/maplibre-gl-js-docs/example/cooperative-gestures/)
+ * @see [Example: cooperative gestures](https://maplibre.org/maplibre-gl-js/docs/examples/cooperative-gestures/)
  **/
 class CooperativeGesturesHandler {
     constructor(map, options) {
@@ -51195,7 +52784,7 @@ class CooperativeGesturesHandler {
         // Remove cooperative gesture screen from the accessibility tree since screenreaders cannot interact with the map using gestures
         this._container.setAttribute('aria-hidden', 'true');
     }
-    _destoryUI() {
+    _destroyUI() {
         if (this._container) {
             DOM.remove(this._container);
             const mapCanvasContainer = this._map.getCanvasContainer();
@@ -51209,23 +52798,19 @@ class CooperativeGesturesHandler {
     }
     disable() {
         this._enabled = false;
-        this._destoryUI();
+        this._destroyUI();
     }
     isEnabled() {
         return this._enabled;
     }
-    touchmove(e) {
-        this._onCooperativeGesture(e.touches.length === 1);
+    isBypassed(event) {
+        return event[this._bypassKey];
     }
-    wheel(e) {
-        if (!this._map.scrollZoom.isEnabled()) {
+    notifyGestureBlocked(gestureType, originalEvent) {
+        if (!this._enabled)
             return;
-        }
-        this._onCooperativeGesture(!e[this._bypassKey]);
-    }
-    _onCooperativeGesture(showNotification) {
-        if (!this._enabled || !showNotification)
-            return;
+        // notify subscribers that a cooperative gesture was prevented
+        this._map.fire(new performance$1.Event('cooperativegestureprevented', { gestureType, originalEvent }));
         // Alert user how to scroll/pan
         this._container.classList.add('maplibregl-show');
         setTimeout(() => {
@@ -51234,7 +52819,7 @@ class CooperativeGesturesHandler {
     }
 }
 
-const isMoving = p => p.zoom || p.drag || p.pitch || p.rotate;
+const isMoving = (p) => p.zoom || p.drag || p.pitch || p.rotate;
 class RenderFrameEvent extends performance$1.Event {
 }
 function hasChange(result) {
@@ -51556,11 +53141,6 @@ class HandlerManager {
                 this._terrainMovement = true;
                 this._map._elevationFreeze = true;
                 tr.setLocationAtPoint(loc, around);
-                this._map.once('moveend', () => {
-                    this._map._elevationFreeze = false;
-                    this._terrainMovement = false;
-                    tr.recalculateZoom(map.terrain);
-                });
             }
             else if (combinedEventsInProgress.drag && this._terrainMovement) {
                 // drag map
@@ -51615,7 +53195,15 @@ class HandlerManager {
             this._fireEvent(name, endEvents[name]);
         }
         const stillMoving = isMoving(this._eventsInProgress);
-        if (allowEndAnimation && (wasMoving || nowMoving) && !stillMoving) {
+        const finishedMoving = (wasMoving || nowMoving) && !stillMoving;
+        if (finishedMoving && this._terrainMovement) {
+            this._map._elevationFreeze = false;
+            this._terrainMovement = false;
+            const tr = this._map._getTransformForUpdate();
+            tr.recalculateZoom(this._map.terrain);
+            this._map._applyUpdatedTransform(tr);
+        }
+        if (allowEndAnimation && finishedMoving) {
             this._updatingCamera = true;
             const inertialEase = this._inertia._onMoveEnd(this._map.dragPan._inertiaOptions);
             const shouldSnapToNorth = bearing => bearing !== 0 && -this._bearingSnap < bearing && bearing < this._bearingSnap;
@@ -51696,7 +53284,6 @@ class Camera extends performance$1.Evented {
      *
      * @param center - The centerpoint to set.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * map.setCenter([-74, 38]);
@@ -51713,7 +53300,6 @@ class Camera extends performance$1.Evented {
      * @param offset - `x` and `y` coordinates by which to pan the map.
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @see [Navigate the map with game-like controls](https://maplibre.org/maplibre-gl-js/docs/examples/game-controls/)
      */
     panBy(offset, options, eventData) {
@@ -51728,7 +53314,6 @@ class Camera extends performance$1.Evented {
      * @param lnglat - The location to pan the map to.
      * @param options - Options describing the destination and animation of the transition.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * map.panTo([-74, 38]);
@@ -51759,7 +53344,6 @@ class Camera extends performance$1.Evented {
      *
      * @param zoom - The zoom level to set (0-20).
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * Zoom to the zoom level 5 without an animated transition
      * ```ts
@@ -51778,7 +53362,6 @@ class Camera extends performance$1.Evented {
      * @param zoom - The zoom level to transition to.
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * // Zoom to the zoom level 5 without an animated transition
@@ -51802,7 +53385,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * Zoom the map in one level with a custom animation duration
      * ```ts
@@ -51820,7 +53402,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * Zoom the map out one level with a custom animation offset
      * ```ts
@@ -51849,7 +53430,6 @@ class Camera extends performance$1.Evented {
      *
      * @param bearing - The desired bearing.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * Rotate the map to 90 degrees
      * ```ts
@@ -51875,7 +53455,6 @@ class Camera extends performance$1.Evented {
      *
      * @param padding - The desired padding.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * Sets a left padding of 300px, and a top padding of 50px
      * ```ts
@@ -51895,7 +53474,6 @@ class Camera extends performance$1.Evented {
      * @param bearing - The desired bearing.
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      */
     rotateTo(bearing, options, eventData) {
         return this.easeTo(performance$1.extend({
@@ -51909,7 +53487,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      */
     resetNorth(options, eventData) {
         this.rotateTo(0, performance$1.extend({ duration: 1000 }, options), eventData);
@@ -51922,7 +53499,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      */
     resetNorthPitch(options, eventData) {
         this.easeTo(performance$1.extend({
@@ -51940,7 +53516,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      */
     snapToNorth(options, eventData) {
         if (Math.abs(this.getBearing()) < this._bearingSnap) {
@@ -51961,7 +53536,6 @@ class Camera extends performance$1.Evented {
      *
      * @param pitch - The pitch to set, measured in degrees away from the plane of the screen (0-60).
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      */
     setPitch(pitch, eventData) {
         this.jumpTo({ pitch }, eventData);
@@ -52082,7 +53656,6 @@ class Camera extends performance$1.Evented {
      * zoom level up to and including `Map#getMaxZoom()` that fits them in the viewport.
      * @param options - Options supports all properties from {@link AnimationOptions} and {@link CameraOptions} in addition to the fields below.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * let bbox = [[-79, 43], [-73, 45]];
@@ -52107,7 +53680,6 @@ class Camera extends performance$1.Evented {
      * @param bearing - Desired map bearing at end of animation, in degrees
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * let p0 = [220, 400];
@@ -52142,7 +53714,6 @@ class Camera extends performance$1.Evented {
      *
      * @param options - Options object
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * // jump to coordinates at current zoom
@@ -52245,10 +53816,10 @@ class Camera extends performance$1.Evented {
      * @param options - Options describing the destination and animation of the transition.
      * Accepts {@link CameraOptions} and {@link AnimationOptions}.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @see [Navigate the map with game-like controls](https://maplibre.org/maplibre-gl-js/docs/examples/game-controls/)
      */
     easeTo(options, eventData) {
+        var _a;
         this._stop(false, options.easeId);
         options = performance$1.extend({
             offset: [0, 0],
@@ -52257,12 +53828,12 @@ class Camera extends performance$1.Evented {
         }, options);
         if (options.animate === false || (!options.essential && browser.prefersReducedMotion))
             options.duration = 0;
-        const tr = this._getTransformForUpdate(), startZoom = this.getZoom(), startBearing = this.getBearing(), startPitch = this.getPitch(), startPadding = this.getPadding(), zoom = 'zoom' in options ? +options.zoom : startZoom, bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing, pitch = 'pitch' in options ? +options.pitch : startPitch, padding = 'padding' in options ? options.padding : tr.padding;
+        const tr = this._getTransformForUpdate(), startZoom = tr.zoom, startBearing = tr.bearing, startPitch = tr.pitch, startPadding = tr.padding, bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing, pitch = 'pitch' in options ? +options.pitch : startPitch, padding = 'padding' in options ? options.padding : tr.padding;
         const offsetAsPoint = performance$1.Point.convert(options.offset);
         let pointAtOffset = tr.centerPoint.add(offsetAsPoint);
         const locationAtOffset = tr.pointLocation(pointAtOffset);
-        const center = performance$1.LngLat.convert(options.center || locationAtOffset);
-        this._normalizeCenter(center);
+        const { center, zoom } = tr.getConstrained(performance$1.LngLat.convert(options.center || locationAtOffset), (_a = options.zoom) !== null && _a !== void 0 ? _a : startZoom);
+        this._normalizeCenter(center, tr);
         const from = tr.project(locationAtOffset);
         const delta = tr.project(center).sub(from);
         const finalScale = tr.zoomScale(zoom - startZoom);
@@ -52318,7 +53889,7 @@ class Camera extends performance$1.Evented {
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
         }, (interruptingEaseId) => {
-            if (this.terrain)
+            if (this.terrain && options.freezeElevation)
                 this._finalizeElevation();
             this._afterEase(eventData, interruptingEaseId);
         }, options);
@@ -52364,13 +53935,14 @@ class Camera extends performance$1.Evented {
     /**
      * @internal
      * Called when the camera is about to be manipulated.
-     * If `transformCameraUpdate` is specified, a copy of the current transform is created to track the accumulated changes.
+     * If `transformCameraUpdate` is specified or terrain is enabled, a copy of
+     * the current transform is created to track the accumulated changes.
      * This underlying transform represents the "desired state" proposed by input handlers / animations / UI controls.
      * It may differ from the state used for rendering (`this.transform`).
      * @returns Transform to apply changes to
      */
     _getTransformForUpdate() {
-        if (!this.transformCameraUpdate)
+        if (!this.transformCameraUpdate && !this.terrain)
             return this.transform;
         if (!this._requestedCameraState) {
             this._requestedCameraState = this.transform.clone();
@@ -52379,26 +53951,62 @@ class Camera extends performance$1.Evented {
     }
     /**
      * @internal
+     * Checks the given transform for the camera being below terrain surface and
+     * returns new pitch and zoom to fix that.
+     *
+     * With the new pitch and zoom, the camera will be at the same ground
+     * position but at higher altitude. It will still point to the same spot on
+     * the map.
+     *
+     * @param tr - The transform to check.
+     */
+    _elevateCameraIfInsideTerrain(tr) {
+        const camera = tr.getCameraPosition();
+        const minAltitude = this.terrain.getElevationForLngLatZoom(camera.lngLat, tr.zoom);
+        if (camera.altitude < minAltitude) {
+            const newCamera = this.calculateCameraOptionsFromTo(camera.lngLat, minAltitude, tr.center, tr.elevation);
+            return {
+                pitch: newCamera.pitch,
+                zoom: newCamera.zoom,
+            };
+        }
+        return {};
+    }
+    /**
+     * @internal
      * Called after the camera is done being manipulated.
      * @param tr - the requested camera end state
+     * If the camera is inside terrain, it gets elevated.
      * Call `transformCameraUpdate` if present, and then apply the "approved" changes.
      */
     _applyUpdatedTransform(tr) {
-        if (!this.transformCameraUpdate)
+        const modifiers = [];
+        if (this.terrain) {
+            modifiers.push(tr => this._elevateCameraIfInsideTerrain(tr));
+        }
+        if (this.transformCameraUpdate) {
+            modifiers.push(tr => this.transformCameraUpdate(tr));
+        }
+        if (!modifiers.length) {
             return;
-        const nextTransform = tr.clone();
-        const { center, zoom, pitch, bearing, elevation } = this.transformCameraUpdate(nextTransform);
-        if (center)
-            nextTransform.center = center;
-        if (zoom !== undefined)
-            nextTransform.zoom = zoom;
-        if (pitch !== undefined)
-            nextTransform.pitch = pitch;
-        if (bearing !== undefined)
-            nextTransform.bearing = bearing;
-        if (elevation !== undefined)
-            nextTransform.elevation = elevation;
-        this.transform.apply(nextTransform);
+        }
+        const finalTransform = tr.clone();
+        for (const modifier of modifiers) {
+            const nextTransform = finalTransform.clone();
+            const { center, zoom, pitch, bearing, elevation } = modifier(nextTransform);
+            if (center)
+                nextTransform.center = center;
+            if (zoom !== undefined)
+                nextTransform.zoom = zoom;
+            if (pitch !== undefined)
+                nextTransform.pitch = pitch;
+            if (bearing !== undefined)
+                nextTransform.bearing = bearing;
+            if (elevation !== undefined)
+                nextTransform.elevation = elevation;
+            finalTransform.apply(nextTransform);
+        }
+        this.transform.apply(finalTransform);
     }
     _fireMoveEvents(eventData) {
         this.fire(new performance$1.Event('move', eventData));
@@ -52454,7 +54062,6 @@ class Camera extends performance$1.Evented {
      * Accepts {@link CameraOptions}, {@link AnimationOptions},
      * and the following additional options.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
-     * @returns `this`
      * @example
      * ```ts
      * // fly with default options to null island
@@ -52475,6 +54082,7 @@ class Camera extends performance$1.Evented {
      * @see [Fly to a location based on scroll position](https://maplibre.org/maplibre-gl-js/docs/examples/scroll-fly-to/)
      */
     flyTo(options, eventData) {
+        var _a;
         // Fall through to jumpTo if user has set prefers-reduced-motion
         if (!options.essential && browser.prefersReducedMotion) {
             const coercedOptions = performance$1.pick(options, ['center', 'zoom', 'bearing', 'pitch', 'around']);
@@ -52494,17 +54102,16 @@ class Camera extends performance$1.Evented {
             curve: 1.42,
             easing: performance$1.defaultEasing
         }, options);
-        const tr = this._getTransformForUpdate(), startZoom = this.getZoom(), startBearing = this.getBearing(), startPitch = this.getPitch(), startPadding = this.getPadding();
-        const zoom = 'zoom' in options ? performance$1.clamp(+options.zoom, tr.minZoom, tr.maxZoom) : startZoom;
+        const tr = this._getTransformForUpdate(), startZoom = tr.zoom, startBearing = tr.bearing, startPitch = tr.pitch, startPadding = tr.padding;
         const bearing = 'bearing' in options ? this._normalizeBearing(options.bearing, startBearing) : startBearing;
         const pitch = 'pitch' in options ? +options.pitch : startPitch;
         const padding = 'padding' in options ? options.padding : tr.padding;
-        const scale = tr.zoomScale(zoom - startZoom);
         const offsetAsPoint = performance$1.Point.convert(options.offset);
         let pointAtOffset = tr.centerPoint.add(offsetAsPoint);
         const locationAtOffset = tr.pointLocation(pointAtOffset);
-        const center = performance$1.LngLat.convert(options.center || locationAtOffset);
-        this._normalizeCenter(center);
+        const { center, zoom } = tr.getConstrained(performance$1.LngLat.convert(options.center || locationAtOffset), (_a = options.zoom) !== null && _a !== void 0 ? _a : startZoom);
+        this._normalizeCenter(center, tr);
+        const scale = tr.zoomScale(zoom - startZoom);
         const from = tr.project(locationAtOffset);
         const delta = tr.project(center).sub(from);
         let rho = options.curve;
@@ -52557,8 +54164,8 @@ class Camera extends performance$1.Evented {
                 return this.easeTo(options, eventData);
             const k = w1 < w0 ? -1 : 1;
             S = Math.abs(Math.log(w1 / w0)) / rho;
-            u = function () { return 0; };
-            w = function (s) { return Math.exp(k * rho * s); };
+            u = () => 0;
+            w = (s) => Math.exp(k * rho * s);
         }
         if ('duration' in options) {
             options.duration = +options.duration;
@@ -52601,7 +54208,7 @@ class Camera extends performance$1.Evented {
             this._applyUpdatedTransform(tr);
             this._fireMoveEvents(eventData);
         }, () => {
-            if (this.terrain)
+            if (this.terrain && options.freezeElevation)
                 this._finalizeElevation();
             this._afterEase(eventData);
         }, options);
@@ -52612,13 +54219,12 @@ class Camera extends performance$1.Evented {
     }
     /**
      * Stops any animated transition underway.
-     *
-     * @returns `this`
      */
     stop() {
         return this._stop();
     }
     _stop(allowGestures, easeId) {
+        var _a;
         if (this._easeFrameId) {
             this._cancelRenderFrame(this._easeFrameId);
             delete this._easeFrameId;
@@ -52633,9 +54239,7 @@ class Camera extends performance$1.Evented {
             onEaseEnd.call(this, easeId);
         }
         if (!allowGestures) {
-            const handlers = this.handlers;
-            if (handlers)
-                handlers.stop(false);
+            (_a = this.handlers) === null || _a === void 0 ? void 0 : _a.stop(false);
         }
         return this;
     }
@@ -52664,8 +54268,7 @@ class Camera extends performance$1.Evented {
     }
     // If a path crossing the antimeridian would be shorter, extend the final coordinate so that
     // interpolating between the two endpoints will cross it.
-    _normalizeCenter(center) {
-        const tr = this.transform;
+    _normalizeCenter(center, tr) {
         if (!tr.renderWorldCopies || tr.lngRange)
             return;
         const delta = center.lng - tr.center.lng;
@@ -52674,26 +54277,24 @@ class Camera extends performance$1.Evented {
                 delta < -180 ? 360 : 0;
     }
     /**
-     * Query the current elevation of location. Returns `null` if terrain is not enabled. Elevation is in meters relative to mean sea-level.
+     * Get the elevation difference between a given point
+     * and a point that is currently in the middle of the screen.
+     * This method should be used for proper positioning of custom 3d objects, as explained [here](https://maplibre.org/maplibre-gl-js/docs/examples/add-3d-model-with-terrain/)
+     * Returns null if terrain is not enabled.
+     * This method is subject to change in Maplibre GL JS v5.
      * @param lngLatLike - [x,y] or LngLat coordinates of the location
-     * @returns elevation in meters
+     * @returns elevation offset in meters
      */
     queryTerrainElevation(lngLatLike) {
         if (!this.terrain) {
             return null;
         }
         const elevation = this.terrain.getElevationForLngLatZoom(performance$1.LngLat.convert(lngLatLike), this.transform.tileZoom);
-        /**
-         * Different zoomlevels with different terrain-tiles the elevation-values are not the same.
-         * map.transform.elevation variable with the center-altitude.
-         * In maplibre the proj-matrix is translated by this value in negative z-direction.
-         * So we need to add this value to the elevation to get the correct value.
-         */
         return elevation - this.transform.elevation;
     }
 }
 
-const defaultAtributionControlOptions = {
+const defaultAttributionControlOptions = {
     compact: true,
     customAttribution: '<a href="https://maplibre.org/" target="_blank">MapLibre</a>'
 };
@@ -52712,7 +54313,7 @@ class AttributionControl {
     /**
      * @param options - the attribution options
      */
-    constructor(options = defaultAtributionControlOptions) {
+    constructor(options = defaultAttributionControlOptions) {
         this._toggleAttribution = () => {
             if (this._container.classList.contains('maplibregl-compact')) {
                 if (this._container.classList.contains('maplibregl-compact-show')) {
@@ -52867,6 +54468,9 @@ class AttributionControl {
  * ```
  **/
 class LogoControl {
+    /**
+     * @param options - the control's options
+     */
     constructor(options = {}) {
         this._updateCompact = () => {
             const containerChildren = this._container.children;
@@ -52968,11 +54572,12 @@ var pos3dAttributes = performance$1.createLayout([
 /**
  * @internal
  * This class is a helper for the Terrain-class, it:
- *   - loads raster-dem tiles
- *   - manages all renderToTexture tiles.
- *   - caches previous rendered tiles.
- *   - finds all necessary renderToTexture tiles for a OverscaledTileID area
- *   - finds the corresponding raster-dem tile for OverscaledTileID
+ *
+ * - loads raster-dem tiles
+ * - manages all renderToTexture tiles.
+ * - caches previous rendered tiles.
+ * - finds all necessary renderToTexture tiles for a OverscaledTileID area
+ * - finds the corresponding raster-dem tile for OverscaledTileID
  */
 class TerrainSourceCache extends performance$1.Evented {
     constructor(sourceCache) {
@@ -53094,7 +54699,7 @@ class TerrainSourceCache extends performance$1.Evented {
     /**
      * find the covering raster-dem tile
      * @param tileID - the tile to look for
-     * @param searchForDEM - Optinal parameter to search for (parent) souretiles with loaded dem.
+     * @param searchForDEM - Optional parameter to search for (parent) sourcetiles with loaded dem.
      * @returns the tile
      */
     getSourceTile(tileID, searchForDEM) {
@@ -53127,29 +54732,35 @@ class TerrainSourceCache extends performance$1.Evented {
 /**
  * @internal
  * This is the main class which handles most of the 3D Terrain logic. It has the following topics:
- *    1) loads raster-dem tiles via the internal sourceCache this.sourceCache
- *    2) creates a depth-framebuffer, which is used to calculate the visibility of coordinates
- *    3) creates a coords-framebuffer, which is used the get to tile-coordinate for a screen-pixel
- *    4) stores all render-to-texture tiles in the this.sourceCache._tiles
- *    5) calculates the elevation for a specific tile-coordinate
- *    6) creates a terrain-mesh
  *
- *    A note about the GPU resource-usage:
- *    Framebuffers:
- *       - one for the depth & coords framebuffer with the size of the map-div.
- *       - one for rendering a tile to texture with the size of tileSize (= 512x512).
- *    Textures:
- *       - one texture for an empty raster-dem tile with size 1x1
- *       - one texture for an empty depth-buffer, when terrain is disabled with size 1x1
- *       - one texture for an each loaded raster-dem with size of the source.tileSize
- *       - one texture for the coords-framebuffer with the size of the map-div.
- *       - one texture for the depth-framebuffer with the size of the map-div.
- *       - one texture for the encoded tile-coords with the size 2*tileSize (=1024x1024)
- *       - finally for each render-to-texture tile (= this._tiles) a set of textures
- *         for each render stack (The stack-concept is documented in painter.ts).
- *         Normally there exists 1-3 Textures per tile, depending on the stylesheet.
- *         Each Textures has the size 2*tileSize (= 1024x1024). Also there exists a
- *         cache of the last 150 newest rendered tiles.
+ * 1. loads raster-dem tiles via the internal sourceCache this.sourceCache
+ * 2. creates a depth-framebuffer, which is used to calculate the visibility of coordinates
+ * 3. creates a coords-framebuffer, which is used the get to tile-coordinate for a screen-pixel
+ * 4. stores all render-to-texture tiles in the this.sourceCache._tiles
+ * 5. calculates the elevation for a specific tile-coordinate
+ * 6. creates a terrain-mesh
+ *
+ * A note about the GPU resource-usage:
+ *
+ * Framebuffers:
+ *
+ * - one for the depth & coords framebuffer with the size of the map-div.
+ * - one for rendering a tile to texture with the size of tileSize (= 512x512).
+ *
+ * Textures:
+ *
+ * - one texture for an empty raster-dem tile with size 1x1
+ * - one texture for an empty depth-buffer, when terrain is disabled with size 1x1
+ * - one texture for an each loaded raster-dem with size of the source.tileSize
+ * - one texture for the coords-framebuffer with the size of the map-div.
+ * - one texture for the depth-framebuffer with the size of the map-div.
+ * - one texture for the encoded tile-coords with the size 2*tileSize (=1024x1024)
+ * - finally for each render-to-texture tile (= this._tiles) a set of textures
+ * for each render stack (The stack-concept is documented in painter.ts).
+ *
+ * Normally there exists 1-3 Textures per tile, depending on the stylesheet.
+ * Each Textures has the size 2*tileSize (= 1024x1024). Also there exists a
+ * cache of the last 150 newest rendered tiles.
  *
  */
 class Terrain {
@@ -53335,11 +54946,16 @@ class Terrain {
      * @returns mercator coordinate for a screen pixel
      */
     pointCoordinate(p) {
+        // First, ensure the coords framebuffer is up to date.
+        this.painter.maybeDrawDepthAndCoords(true);
         const rgba = new Uint8Array(4);
         const context = this.painter.context, gl = context.gl;
+        const px = Math.round(p.x * this.painter.pixelRatio / devicePixelRatio);
+        const py = Math.round(p.y * this.painter.pixelRatio / devicePixelRatio);
+        const fbHeight = Math.round(this.painter.height / devicePixelRatio);
         // grab coordinate pixel from coordinates framebuffer
         context.bindFramebuffer.set(this.getFramebuffer('coords').framebuffer);
-        gl.readPixels(p.x, this.painter.height / devicePixelRatio - p.y - 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+        gl.readPixels(px, fbHeight - py - 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
         context.bindFramebuffer.set(null);
         // decode coordinates (encoding see getCoordsTexture)
         const x = rgba[0] + ((rgba[2] >> 4) << 8);
@@ -53412,11 +55028,7 @@ class Terrain {
             indexArray.emplaceBack(offsetRight + y, offsetRight + y + 3, offsetRight + y + 1);
             indexArray.emplaceBack(offsetRight + y, offsetRight + y + 2, offsetRight + y + 3);
         }
-        this._mesh = {
-            indexBuffer: context.createIndexBuffer(indexArray),
-            vertexBuffer: context.createVertexBuffer(vertexArray, pos3dAttributes.members),
-            segments: performance$1.SegmentVector.simpleSegment(0, 0, vertexArray.length, indexArray.length)
-        };
+        this._mesh = new Mesh(context.createVertexBuffer(vertexArray, pos3dAttributes.members), context.createIndexBuffer(indexArray), performance$1.SegmentVector.simpleSegment(0, 0, vertexArray.length, indexArray.length));
         return this._mesh;
     }
     /**
@@ -53682,9 +55294,12 @@ const defaultLocale = {
     'GeolocateControl.FindMyLocation': 'Find my location',
     'GeolocateControl.LocationNotAvailable': 'Location not available',
     'LogoControl.Title': 'MapLibre logo',
+    'Map.Title': 'Map',
+    'Marker.Title': 'Map marker',
     'NavigationControl.ResetBearing': 'Reset bearing to north',
     'NavigationControl.ZoomIn': 'Zoom in',
     'NavigationControl.ZoomOut': 'Zoom out',
+    'Popup.Close': 'Close popup',
     'ScaleControl.Feet': 'ft',
     'ScaleControl.Meters': 'm',
     'ScaleControl.Kilometers': 'km',
@@ -53706,16 +55321,19 @@ const defaultMaxPitch = 60;
 // use this variable to check maxPitch for validity
 const maxPitchThreshold = 85;
 const defaultOptions$4 = {
-    center: [0, 0],
-    zoom: 0,
-    bearing: 0,
-    pitch: 0,
+    hash: false,
+    interactive: true,
+    bearingSnap: 7,
+    attributionControl: defaultAttributionControlOptions,
+    maplibreLogo: false,
+    failIfMajorPerformanceCaveat: false,
+    preserveDrawingBuffer: false,
+    refreshExpiredTiles: true,
+    scrollZoom: true,
     minZoom: defaultMinZoom,
     maxZoom: defaultMaxZoom,
     minPitch: defaultMinPitch,
     maxPitch: defaultMaxPitch,
-    interactive: true,
-    scrollZoom: true,
     boxZoom: true,
     dragRotate: true,
     dragPan: true,
@@ -53724,27 +55342,25 @@ const defaultOptions$4 = {
     touchZoomRotate: true,
     touchPitch: true,
     cooperativeGestures: false,
-    bearingSnap: 7,
-    clickTolerance: 3,
-    pitchWithRotate: true,
-    hash: false,
-    attributionControl: defaultAtributionControlOptions,
-    maplibreLogo: false,
-    failIfMajorPerformanceCaveat: false,
-    preserveDrawingBuffer: false,
     trackResize: true,
+    center: [0, 0],
+    zoom: 0,
+    bearing: 0,
+    pitch: 0,
     renderWorldCopies: true,
-    refreshExpiredTiles: true,
     maxTileCacheSize: null,
     maxTileCacheZoomLevels: performance$1.config.MAX_TILE_CACHE_ZOOM_LEVELS,
-    localIdeographFontFamily: 'sans-serif',
     transformRequest: null,
     transformCameraUpdate: null,
     fadeDuration: 300,
     crossSourceCollisions: true,
+    clickTolerance: 3,
+    localIdeographFontFamily: 'sans-serif',
+    pitchWithRotate: true,
     validateStyle: true,
     /**Because GL MAX_TEXTURE_SIZE is usually at least 4096px. */
-    maxCanvasSize: [4096, 4096]
+    maxCanvasSize: [4096, 4096],
+    cancelPendingTileRequestsWhileZooming: true
 };
 /**
  * The `Map` object represents the map on your page. It exposes methods
@@ -53780,21 +55396,26 @@ const defaultOptions$4 = {
 let Map$1 = class Map extends Camera {
     constructor(options) {
         performance$1.PerformanceUtils.mark(performance$1.PerformanceMarkers.create);
-        options = performance$1.extend({}, defaultOptions$4, options);
-        if (options.minZoom != null && options.maxZoom != null && options.minZoom > options.maxZoom) {
+        const resolvedOptions = Object.assign(Object.assign({}, defaultOptions$4), options);
+        if (resolvedOptions.minZoom != null && resolvedOptions.maxZoom != null && resolvedOptions.minZoom > resolvedOptions.maxZoom) {
             throw new Error('maxZoom must be greater than or equal to minZoom');
         }
-        if (options.minPitch != null && options.maxPitch != null && options.minPitch > options.maxPitch) {
+        if (resolvedOptions.minPitch != null && resolvedOptions.maxPitch != null && resolvedOptions.minPitch > resolvedOptions.maxPitch) {
             throw new Error('maxPitch must be greater than or equal to minPitch');
         }
-        if (options.minPitch != null && options.minPitch < defaultMinPitch) {
+        if (resolvedOptions.minPitch != null && resolvedOptions.minPitch < defaultMinPitch) {
             throw new Error(`minPitch must be greater than or equal to ${defaultMinPitch}`);
         }
-        if (options.maxPitch != null && options.maxPitch > maxPitchThreshold) {
+        if (resolvedOptions.maxPitch != null && resolvedOptions.maxPitch > maxPitchThreshold) {
             throw new Error(`maxPitch must be less than or equal to ${maxPitchThreshold}`);
         }
-        const transform = new Transform(options.minZoom, options.maxZoom, options.minPitch, options.maxPitch, options.renderWorldCopies);
-        super(transform, { bearingSnap: options.bearingSnap });
+        const transform = new Transform(resolvedOptions.minZoom, resolvedOptions.maxZoom, resolvedOptions.minPitch, resolvedOptions.maxPitch, resolvedOptions.renderWorldCopies);
+        super(transform, { bearingSnap: resolvedOptions.bearingSnap });
+        this._idleTriggered = false;
+        this._crossFadingFactor = 1;
+        this._renderTaskQueue = new TaskQueue();
+        this._controls = [];
+        this._mapId = performance$1.uniqueId();
         this._contextLost = (event) => {
             event.preventDefault();
             if (this._frameRequest) {
@@ -53820,54 +55441,51 @@ let Map$1 = class Map extends Camera {
         this._onWindowOnline = () => {
             this._update();
         };
-        this._interactive = options.interactive;
-        this._maxTileCacheSize = options.maxTileCacheSize;
-        this._maxTileCacheZoomLevels = options.maxTileCacheZoomLevels;
-        this._failIfMajorPerformanceCaveat = options.failIfMajorPerformanceCaveat;
-        this._preserveDrawingBuffer = options.preserveDrawingBuffer;
-        this._antialias = options.antialias;
-        this._trackResize = options.trackResize;
-        this._bearingSnap = options.bearingSnap;
-        this._refreshExpiredTiles = options.refreshExpiredTiles;
-        this._fadeDuration = options.fadeDuration;
-        this._crossSourceCollisions = options.crossSourceCollisions;
-        this._crossFadingFactor = 1;
-        this._collectResourceTiming = options.collectResourceTiming;
-        this._renderTaskQueue = new TaskQueue();
-        this._controls = [];
-        this._mapId = performance$1.uniqueId();
-        this._locale = performance$1.extend({}, defaultLocale, options.locale);
-        this._clickTolerance = options.clickTolerance;
-        this._overridePixelRatio = options.pixelRatio;
-        this._maxCanvasSize = options.maxCanvasSize;
-        this.transformCameraUpdate = options.transformCameraUpdate;
+        this._interactive = resolvedOptions.interactive;
+        this._maxTileCacheSize = resolvedOptions.maxTileCacheSize;
+        this._maxTileCacheZoomLevels = resolvedOptions.maxTileCacheZoomLevels;
+        this._failIfMajorPerformanceCaveat = resolvedOptions.failIfMajorPerformanceCaveat === true;
+        this._preserveDrawingBuffer = resolvedOptions.preserveDrawingBuffer === true;
+        this._antialias = resolvedOptions.antialias === true;
+        this._trackResize = resolvedOptions.trackResize === true;
+        this._bearingSnap = resolvedOptions.bearingSnap;
+        this._refreshExpiredTiles = resolvedOptions.refreshExpiredTiles === true;
+        this._fadeDuration = resolvedOptions.fadeDuration;
+        this._crossSourceCollisions = resolvedOptions.crossSourceCollisions === true;
+        this._collectResourceTiming = resolvedOptions.collectResourceTiming === true;
+        this._locale = Object.assign(Object.assign({}, defaultLocale), resolvedOptions.locale);
+        this._clickTolerance = resolvedOptions.clickTolerance;
+        this._overridePixelRatio = resolvedOptions.pixelRatio;
+        this._maxCanvasSize = resolvedOptions.maxCanvasSize;
+        this.transformCameraUpdate = resolvedOptions.transformCameraUpdate;
+        this.cancelPendingTileRequestsWhileZooming = resolvedOptions.cancelPendingTileRequestsWhileZooming === true;
         this._imageQueueHandle = ImageRequest.addThrottleControl(() => this.isMoving());
-        this._requestManager = new RequestManager(options.transformRequest);
-        if (typeof options.container === 'string') {
-            this._container = document.getElementById(options.container);
+        this._requestManager = new RequestManager(resolvedOptions.transformRequest);
+        if (typeof resolvedOptions.container === 'string') {
+            this._container = document.getElementById(resolvedOptions.container);
             if (!this._container) {
-                throw new Error(`Container '${options.container}' not found.`);
+                throw new Error(`Container '${resolvedOptions.container}' not found.`);
             }
         }
-        else if (options.container instanceof HTMLElement) {
-            this._container = options.container;
+        else if (resolvedOptions.container instanceof HTMLElement) {
+            this._container = resolvedOptions.container;
         }
         else {
             throw new Error('Invalid type: \'container\' must be a String or HTMLElement.');
         }
-        if (options.maxBounds) {
-            this.setMaxBounds(options.maxBounds);
+        if (resolvedOptions.maxBounds) {
+            this.setMaxBounds(resolvedOptions.maxBounds);
         }
         this._setupContainer();
         this._setupPainter();
-        this.on('move', () => this._update(false));
-        this.on('moveend', () => this._update(false));
-        this.on('zoom', () => this._update(true));
-        this.on('terrain', () => {
+        this.on('move', () => this._update(false))
+            .on('moveend', () => this._update(false))
+            .on('zoom', () => this._update(true))
+            .on('terrain', () => {
             this.painter.terrainFacilitator.dirty = true;
             this._update(true);
-        });
-        this.once('idle', () => { this._idleTriggered = true; });
+        })
+            .once('idle', () => { this._idleTriggered = true; });
         if (typeof window !== 'undefined') {
             addEventListener('online', this._onWindowOnline, false);
             let initialResizeEventCaptured = false;
@@ -53885,31 +55503,31 @@ let Map$1 = class Map extends Camera {
             });
             this._resizeObserver.observe(this._container);
         }
-        this.handlers = new HandlerManager(this, options);
-        const hashName = (typeof options.hash === 'string' && options.hash) || undefined;
-        this._hash = options.hash && (new Hash(hashName)).addTo(this);
+        this.handlers = new HandlerManager(this, resolvedOptions);
+        const hashName = (typeof resolvedOptions.hash === 'string' && resolvedOptions.hash) || undefined;
+        this._hash = resolvedOptions.hash && (new Hash(hashName)).addTo(this);
         // don't set position from options if set through hash
         if (!this._hash || !this._hash._onHashChange()) {
             this.jumpTo({
-                center: options.center,
-                zoom: options.zoom,
-                bearing: options.bearing,
-                pitch: options.pitch
+                center: resolvedOptions.center,
+                zoom: resolvedOptions.zoom,
+                bearing: resolvedOptions.bearing,
+                pitch: resolvedOptions.pitch
             });
-            if (options.bounds) {
+            if (resolvedOptions.bounds) {
                 this.resize();
-                this.fitBounds(options.bounds, performance$1.extend({}, options.fitBoundsOptions, { duration: 0 }));
+                this.fitBounds(resolvedOptions.bounds, performance$1.extend({}, resolvedOptions.fitBoundsOptions, { duration: 0 }));
             }
         }
         this.resize();
-        this._localIdeographFontFamily = options.localIdeographFontFamily;
-        this._validateStyle = options.validateStyle;
-        if (options.style)
-            this.setStyle(options.style, { localIdeographFontFamily: options.localIdeographFontFamily });
-        if (options.attributionControl)
-            this.addControl(new AttributionControl(typeof options.attributionControl === 'boolean' ? undefined : options.attributionControl));
-        if (options.maplibreLogo)
-            this.addControl(new LogoControl(), options.logoPosition);
+        this._localIdeographFontFamily = resolvedOptions.localIdeographFontFamily;
+        this._validateStyle = resolvedOptions.validateStyle;
+        if (resolvedOptions.style)
+            this.setStyle(resolvedOptions.style, { localIdeographFontFamily: resolvedOptions.localIdeographFontFamily });
+        if (resolvedOptions.attributionControl)
+            this.addControl(new AttributionControl(typeof resolvedOptions.attributionControl === 'boolean' ? undefined : resolvedOptions.attributionControl));
+        if (resolvedOptions.maplibreLogo)
+            this.addControl(new LogoControl(), resolvedOptions.logoPosition);
         this.on('style.load', () => {
             if (this.transform.unmodified) {
                 this.jumpTo(this.style.stylesheet);
@@ -53943,7 +55561,6 @@ let Map$1 = class Map extends Camera {
      * @param control - The {@link IControl} to add.
      * @param position - position on the map to which the control will be added.
      * Valid values are `'top-left'`, `'top-right'`, `'bottom-left'`, and `'bottom-right'`. Defaults to `'top-right'`.
-     * @returns `this`
      * @example
      * Add zoom and rotation controls to the map.
      * ```ts
@@ -53980,7 +55597,6 @@ let Map$1 = class Map extends Camera {
      * An {@link ErrorEvent} will be fired if the image parameter is invald.
      *
      * @param control - The {@link IControl} to remove.
-     * @returns `this`
      * @example
      * ```ts
      * // Define a new navigation control.
@@ -54038,7 +55654,6 @@ let Map$1 = class Map extends Camera {
      * @param eventData - Additional properties to be passed to `movestart`, `move`, `resize`, and `moveend`
      * events that get triggered as a result of resize. This can be useful for differentiating the
      * source of an event (for example, user-initiated or programmatically-triggered events).
-     * @returns `this`
      * @example
      * Resize the map when the map container is shown after being initially hidden with CSS.
      * ```ts
@@ -54145,7 +55760,6 @@ let Map$1 = class Map extends Camera {
      * remaining within the bounds.
      *
      * @param bounds - The maximum bounds to set. If `null` or `undefined` is provided, the function removes the map's maximum bounds.
-     * @returns `this`
      * @example
      * Define bounds that conform to the `LngLatBoundsLike` object as set the max bounds.
      * ```ts
@@ -54174,7 +55788,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param minZoom - The minimum zoom level to set (-2 - 24).
      * If `null` or `undefined` is provided, the function removes the current minimum zoom (i.e. sets it to -2).
-     * @returns `this`
      * @example
      * ```ts
      * map.setMinZoom(12.25);
@@ -54211,7 +55824,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param maxZoom - The maximum zoom level to set.
      * If `null` or `undefined` is provided, the function removes the current maximum zoom (sets it to 22).
-     * @returns `this`
      * @example
      * ```ts
      * map.setMaxZoom(18.75);
@@ -54248,7 +55860,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param minPitch - The minimum pitch to set (0-85). Values greater than 60 degrees are experimental and may result in rendering issues. If you encounter any, please raise an issue with details in the MapLibre project.
      * If `null` or `undefined` is provided, the function removes the current minimum pitch (i.e. sets it to 0).
-     * @returns `this`
      */
     setMinPitch(minPitch) {
         minPitch = minPitch === null || minPitch === undefined ? defaultMinPitch : minPitch;
@@ -54280,7 +55891,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param maxPitch - The maximum pitch to set (0-85). Values greater than 60 degrees are experimental and may result in rendering issues. If you encounter any, please raise an issue with details in the MapLibre project.
      * If `null` or `undefined` is provided, the function removes the current maximum pitch (sets it to 60).
-     * @returns `this`
      */
     setMaxPitch(maxPitch) {
         maxPitch = maxPitch === null || maxPitch === undefined ? defaultMaxPitch : maxPitch;
@@ -54329,7 +55939,6 @@ let Map$1 = class Map extends Camera {
      * map and the other on the left edge of the map) at every zoom level.
      *
      * `undefined` is treated as `true`, `null` is treated as `false`.
-     * @returns `this`
      * @example
      * ```ts
      * map.setRenderWorldCopies(true);
@@ -54363,7 +55972,7 @@ let Map$1 = class Map extends Camera {
      * @returns The {@link LngLat} corresponding to `point`.
      * @example
      * ```ts
-     * map.on('click', function(e) {
+     * map.on('click', (e) => {
      *   // When the map is clicked, get the geographic coordinate.
      *   let coordinate = map.unproject(e.point);
      * });
@@ -54647,7 +56256,6 @@ let Map$1 = class Map extends Camera {
      * @param style - A JSON object conforming to the schema described in the
      * [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/), or a URL to such JSON.
      * @param options - The options object.
-     * @returns `this`
      *
      * @example
      * ```ts
@@ -54701,8 +56309,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param transformRequest - A callback run before the Map makes a request for an external URL. The callback can be used to modify the url, set headers, or set the credentials property for cross-origin requests.
      * Expected to return an object with a `url` property and optionally `headers` and `credentials` properties
-     *
-     * @returns `this`
      *
      * @example
      * ```ts
@@ -54758,7 +56364,7 @@ let Map$1 = class Map extends Camera {
     _diffStyle(style, options) {
         if (typeof style === 'string') {
             const url = style;
-            const request = this._requestManager.transformRequest(url, ResourceType.Style);
+            const request = this._requestManager.transformRequest(url, "Style" /* ResourceType.Style */);
             performance$1.getJSON(request, new AbortController()).then((response) => {
                 this._updateDiff(response.data, options);
             }).catch((error) => {
@@ -54824,7 +56430,6 @@ let Map$1 = class Map extends Camera {
      * @param source - The source object, conforming to the
      * MapLibre Style Specification's [source definition](https://maplibre.org/maplibre-style-spec/sources) or
      * {@link CanvasSourceSpecification}.
-     * @returns `this`
      * @example
      * ```ts
      * map.addSource('my-data', {
@@ -54883,7 +56488,6 @@ let Map$1 = class Map extends Camera {
      * Triggers the `terrain` event.
      *
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.setTerrain({ source: 'terrain' });
@@ -54980,7 +56584,6 @@ let Map$1 = class Map extends Camera {
      * Removes a source from the map's style.
      *
      * @param id - The ID of the source to remove.
-     * @returns `this`
      * @example
      * ```ts
      * map.removeSource('bathymetry-data');
@@ -54994,7 +56597,7 @@ let Map$1 = class Map extends Camera {
      * Returns the source with the specified ID in the map's style.
      *
      * This method is often used to update a source using the instance members for the relevant
-     * source type as defined in [Sources](#sources).
+     * source type as defined in classes that derive from {@link Source}.
      * For example, setting the `data` for a GeoJSON source or updating the `url` and `coordinates`
      * of an image source.
      *
@@ -55029,39 +56632,33 @@ let Map$1 = class Map extends Camera {
      * @param image - The image as an `HTMLImageElement`, `ImageData`, `ImageBitmap` or object with `width`, `height`, and `data`
      * properties with the same format as `ImageData`.
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * // If the style's sprite does not already contain an image with ID 'cat',
      * // add the image 'cat-icon.png' to the style's sprite with the ID 'cat'.
-     * map.loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Cat_silhouette.svg/400px-Cat_silhouette.svg.png', function(error, image) {
-     *    if (error) throw error;
-     *    if (!map.hasImage('cat')) map.addImage('cat', image);
-     * });
+     * const image = await map.loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Cat_silhouette.svg/400px-Cat_silhouette.svg.png');
+     * if (!map.hasImage('cat')) map.addImage('cat', image.data);
      *
      * // Add a stretchable image that can be used with `icon-text-fit`
      * // In this example, the image is 600px wide by 400px high.
-     * map.loadImage('https://upload.wikimedia.org/wikipedia/commons/8/89/Black_and_White_Boxed_%28bordered%29.png', function(error, image) {
-     *    if (error) throw error;
-     *    if (!map.hasImage('border-image')) {
-     *      map.addImage('border-image', image, {
-     *          content: [16, 16, 300, 384], // place text over left half of image, avoiding the 16px border
-     *          stretchX: [[16, 584]], // stretch everything horizontally except the 16px border
-     *          stretchY: [[16, 384]], // stretch everything vertically except the 16px border
-     *      });
-     *    }
+     * const image = await map.loadImage('https://upload.wikimedia.org/wikipedia/commons/8/89/Black_and_White_Boxed_%28bordered%29.png');
+     * if (map.hasImage('border-image')) return;
+     * map.addImage('border-image', image.data, {
+     *     content: [16, 16, 300, 384], // place text over left half of image, avoiding the 16px border
+     *     stretchX: [[16, 584]], // stretch everything horizontally except the 16px border
+     *     stretchY: [[16, 384]], // stretch everything vertically except the 16px border
      * });
      * ```
      * @see Use `HTMLImageElement`: [Add an icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-image/)
      * @see Use `ImageData`: [Add a generated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-image-generated/)
      */
     addImage(id, image, options = {}) {
-        const { pixelRatio = 1, sdf = false, stretchX, stretchY, content } = options;
+        const { pixelRatio = 1, sdf = false, stretchX, stretchY, content, textFitWidth, textFitHeight } = options;
         this._lazyInitEmptyStyle();
         const version = 0;
         if (image instanceof HTMLImageElement || performance$1.isImageBitmap(image)) {
             const { width, height, data } = browser.getImageData(image);
-            this.style.addImage(id, { data: new performance$1.RGBAImage({ width, height }, data), pixelRatio, stretchX, stretchY, content, sdf, version });
+            this.style.addImage(id, { data: new performance$1.RGBAImage({ width, height }, data), pixelRatio, stretchX, stretchY, content, textFitWidth, textFitHeight, sdf, version });
         }
         else if (image.width === undefined || image.height === undefined) {
             return this.fire(new performance$1.ErrorEvent(new Error('Invalid arguments to map.addImage(). The second argument must be an `HTMLImageElement`, `ImageData`, `ImageBitmap`, ' +
@@ -55076,6 +56673,8 @@ let Map$1 = class Map extends Camera {
                 stretchX,
                 stretchY,
                 content,
+                textFitWidth,
+                textFitHeight,
                 sdf,
                 version,
                 userImage
@@ -55099,7 +56698,6 @@ let Map$1 = class Map extends Camera {
      * @param id - The ID of the image.
      * @param image - The image as an `HTMLImageElement`, `ImageData`, `ImageBitmap` or object with `width`, `height`, and `data`
      * properties with the same format as `ImageData`.
-     * @returns `this`
      * @example
      * ```ts
      * // If an image with the ID 'cat' already exists in the style's sprite,
@@ -55194,14 +56792,14 @@ let Map$1 = class Map extends Camera {
      * @example
      * Load an image from an external URL.
      * ```ts
-     * const response = await map.loadImage('http://placekitten.com/50/50');
-     * // Add the loaded image to the style's sprite with the ID 'kitten'.
-     * map.addImage('kitten', response.data);
+     * const response = await map.loadImage('https://picsum.photos/50/50');
+     * // Add the loaded image to the style's sprite with the ID 'photo'.
+     * map.addImage('photo', response.data);
      * ```
      * @see [Add an icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-image/)
      */
     loadImage(url) {
-        return ImageRequest.getImage(this._requestManager.transformRequest(url, ResourceType.Image), new AbortController());
+        return ImageRequest.getImage(this._requestManager.transformRequest(url, "Image" /* ResourceType.Image */), new AbortController());
     }
     /**
      * Returns an Array of strings containing the IDs of all images currently available in the map.
@@ -55234,8 +56832,6 @@ let Map$1 = class Map extends Camera {
      * resulting in the new layer appearing visually beneath the existing layer.
      * If this argument is not specified, the layer will be appended to the end of the layers array
      * and appear visually above all other layers.
-     *
-     * @returns `this`
      *
      * @example
      * Add a circle layer with a vector source
@@ -55309,7 +56905,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param id - The ID of the layer to move.
      * @param beforeId - The ID of an existing layer to insert the new layer before. When viewing the map, the `id` layer will appear beneath the `beforeId` layer. If `beforeId` is omitted, the layer will be appended to the end of the layers array and appear above all other layers on the map.
-     * @returns `this`
      *
      * @example
      * Move a layer with ID 'polygon' before the layer with ID 'country-label'. The `polygon` layer will appear beneath the `country-label` layer on the map.
@@ -55327,7 +56922,6 @@ let Map$1 = class Map extends Camera {
      * An {@link ErrorEvent} will be fired if the image parameter is invald.
      *
      * @param id - The ID of the layer to remove
-     * @returns `this`
      *
      * @example
      * If a layer with ID 'state-data' exists, remove it.
@@ -55383,7 +56977,6 @@ let Map$1 = class Map extends Camera {
      * @param layerId - The ID of the layer to which the zoom extent will be applied.
      * @param minzoom - The minimum zoom to set (0-24).
      * @param maxzoom - The maximum zoom to set (0-24).
-     * @returns `this`
      *
      * @example
      * ```ts
@@ -55409,7 +57002,6 @@ let Map$1 = class Map extends Camera {
      * @param filter - The filter, conforming to the MapLibre Style Specification's
      * [filter definition](https://maplibre.org/maplibre-style-spec/layers/#filter).  If `null` or `undefined` is provided, the function removes any existing filter from the layer.
      * @param options - Options object.
-     * @returns `this`
      *
      * @example
      * Display only features with the 'name' property 'USA'
@@ -55450,7 +57042,6 @@ let Map$1 = class Map extends Camera {
      * Must be of a type appropriate for the property, as defined in the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/).
      * Pass `null` to unset the existing value.
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.setPaintProperty('my-layer', 'fill-color', '#faafee');
@@ -55479,7 +57070,6 @@ let Map$1 = class Map extends Camera {
      * @param name - The name of the layout property to set.
      * @param value - The value of the layout property. Must be of a type appropriate for the property, as defined in the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/).
      * @param options - The options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.setLayoutProperty('my-layer', 'visibility', 'none');
@@ -55504,7 +57094,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param glyphsUrl - Glyph URL to set. Must conform to the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/glyphs/).
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
@@ -55529,7 +57118,6 @@ let Map$1 = class Map extends Camera {
      * @param id - The ID of the sprite to add. Must not conflict with existing sprites.
      * @param url - The URL to load the sprite from
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.addSprite('sprite-two', 'http://example.com/sprite-two');
@@ -55548,7 +57136,6 @@ let Map$1 = class Map extends Camera {
      * Removes the sprite from the map's style. Fires the `style` event.
      *
      * @param id - The ID of the sprite to remove. If the sprite is declared as a single URL, the ID must be "default".
-     * @returns `this`
      * @example
      * ```ts
      * map.removeSprite('sprite-two');
@@ -55573,7 +57160,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param spriteUrl - Sprite URL to set.
      * @param options - Options object.
-     * @returns `this`
      * @example
      * ```ts
      * map.setSprite('YOUR_SPRITE_URL');
@@ -55593,7 +57179,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param light - Light properties to set. Must conform to the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/light).
      * @param options - Options object.
-     * @returns `this`
      *
      * @example
      * ```ts
@@ -55614,6 +57199,29 @@ let Map$1 = class Map extends Camera {
         return this.style.getLight();
     }
     /**
+     * Loads sky and fog defined by {@link SkySpecification} onto the map.
+     * Note: The fog only shows when using the terrain 3D feature.
+     * @param sky - Sky properties to set. Must conform to the [MapLibre Style Specification](https://maplibre.org/maplibre-gl-js-docs/style-spec/#sky).
+     * @returns `this`
+     * @example
+     * ```ts
+     * map.setSky({ 'sky-color': '#00f' });
+     * ```
+     */
+    setSky(sky) {
+        this._lazyInitEmptyStyle();
+        this.style.setSky(sky);
+        return this._update(true);
+    }
+    /**
+     * Returns the value of the sky object.
+     *
+     * @returns sky Sky properties of the style.
+     */
+    getSky() {
+        return this.style.getSky();
+    }
+    /**
      * Sets the `state` of a feature.
      * A feature's `state` is a set of user-defined key-value pairs that are assigned to a feature at runtime.
      * When using this method, the `state` object is merged with any existing key-value pairs in the feature's state.
@@ -55630,13 +57238,12 @@ let Map$1 = class Map extends Camera {
      * @param feature - Feature identifier. Feature objects returned from
      * {@link Map#queryRenderedFeatures} or event handlers can be used as feature identifiers.
      * @param state - A set of key-value pairs. The values should be valid JSON types.
-     * @returns `this`
      *
      * @example
      * ```ts
      * // When the mouse moves over the `my-layer` layer, update
      * // the feature state for the feature under the mouse
-     * map.on('mousemove', 'my-layer', function(e) {
+     * map.on('mousemove', 'my-layer', (e) => {
      *   if (e.features.length > 0) {
      *     map.setFeatureState({
      *       source: 'my-source',
@@ -55664,7 +57271,6 @@ let Map$1 = class Map extends Camera {
      * @param target - Identifier of where to remove state. It can be a source, a feature, or a specific key of feature.
      * Feature objects returned from {@link Map#queryRenderedFeatures} or event handlers can be used as feature identifiers.
      * @param key - (optional) The key in the feature state to reset.
-     * @returns `this`
      * @example
      * Reset the entire state object for all features in the `my-source` source
      * ```ts
@@ -55678,7 +57284,7 @@ let Map$1 = class Map extends Camera {
      * reset the entire state object for the
      * feature under the mouse
      * ```ts
-     * map.on('mouseleave', 'my-layer', function(e) {
+     * map.on('mouseleave', 'my-layer', (e) => {
      *   map.removeFeatureState({
      *     source: 'my-source',
      *     sourceLayer: 'my-source-layer',
@@ -55692,7 +57298,7 @@ let Map$1 = class Map extends Camera {
      * reset only the `hover` key-value pair in the
      * state for the feature under the mouse
      * ```ts
-     * map.on('mouseleave', 'my-layer', function(e) {
+     * map.on('mouseleave', 'my-layer', (e) => {
      *   map.removeFeatureState({
      *     source: 'my-source',
      *     sourceLayer: 'my-source-layer',
@@ -55720,7 +57326,7 @@ let Map$1 = class Map extends Camera {
      * When the mouse moves over the `my-layer` layer,
      * get the feature state for the feature under the mouse
      * ```ts
-     * map.on('mousemove', 'my-layer', function(e) {
+     * map.on('mousemove', 'my-layer', (e) => {
      *   if (e.features.length > 0) {
      *     map.getFeatureState({
      *       source: 'my-source',
@@ -55787,8 +57393,8 @@ let Map$1 = class Map extends Camera {
         this._canvas = DOM.create('canvas', 'maplibregl-canvas', canvasContainer);
         this._canvas.addEventListener('webglcontextlost', this._contextLost, false);
         this._canvas.addEventListener('webglcontextrestored', this._contextRestored, false);
-        this._canvas.setAttribute('tabindex', '0');
-        this._canvas.setAttribute('aria-label', 'Map');
+        this._canvas.setAttribute('tabindex', this._interactive ? '0' : '-1');
+        this._canvas.setAttribute('aria-label', this._getUIString('Map.Title'));
         this._canvas.setAttribute('role', 'region');
         const dimensions = this._containerDimensions();
         const clampedPixelRatio = this._getClampedPixelRatio(dimensions[0], dimensions[1]);
@@ -55858,7 +57464,6 @@ let Map$1 = class Map extends Camera {
      *
      * @param updateStyle - mark the map's style for reprocessing as
      * well as its sources
-     * @returns `this`
      */
     _update(updateStyle) {
         if (!this.style || !this.style._loaded)
@@ -55892,8 +57497,6 @@ let Map$1 = class Map extends Camera {
      * - A transition is in progress
      *
      * @param paintStartTimeStamp - The time when the animation frame began executing.
-     *
-     * @returns `this`
      */
     _render(paintStartTimeStamp) {
         const fadeDuration = this._idleTriggered ? this._fadeDuration : 0;
@@ -55991,7 +57594,6 @@ let Map$1 = class Map extends Camera {
     }
     /**
      * Force a synchronous redraw of the map.
-     * @returns `this`
      * @example
      * ```ts
      * map.redraw();
@@ -56039,7 +57641,7 @@ let Map$1 = class Map extends Camera {
         ImageRequest.removeThrottleControl(this._imageQueueHandle);
         (_a = this._resizeObserver) === null || _a === void 0 ? void 0 : _a.disconnect();
         const extension = this.painter.context.gl.getExtension('WEBGL_lose_context');
-        if (extension)
+        if (extension === null || extension === void 0 ? void 0 : extension.loseContext)
             extension.loseContext();
         this._canvas.removeEventListener('webglcontextrestored', this._contextRestored, false);
         this._canvas.removeEventListener('webglcontextlost', this._contextLost, false);
@@ -56428,8 +58030,8 @@ class MouseRotateWrapper {
 }
 
 let supportsGeolocation;
-function checkGeolocationSupport(forceRecalculation = false) {
-    return performance$1.__awaiter(this, void 0, void 0, function* () {
+function checkGeolocationSupport() {
+    return performance$1.__awaiter(this, arguments, void 0, function* (forceRecalculation = false) {
         if (supportsGeolocation !== undefined && !forceRecalculation) {
             return supportsGeolocation;
         }
@@ -56438,7 +58040,7 @@ function checkGeolocationSupport(forceRecalculation = false) {
             return supportsGeolocation;
         }
         // navigator.permissions has incomplete browser support
-        // http://caniuse.com/#feat=permissions-api
+        // https://caniuse.com/#feat=permissions-api
         // Test for the case where a browser disables Geolocation because of an
         // insecure origin
         try {
@@ -56548,13 +58150,13 @@ function applyAnchorClass(element, anchor, prefix) {
  * @see [Add custom icons with Markers](https://maplibre.org/maplibre-gl-js/docs/examples/custom-marker-icons/)
  * @see [Create a draggable Marker](https://maplibre.org/maplibre-gl-js/docs/examples/drag-a-marker/)
  *
- * ### Events
+ * ## Events
  *
- * @event `dragstart` Fired when dragging starts, `marker` object that is being dragged
+ * **Event** `dragstart` of type {@link Event} will be fired when dragging starts.
  *
- * @event `drag` Fired while dragging. `marker` object that is being dragged
+ * **Event** `drag` of type {@link Event} will be fired while dragging.
  *
- * @event `dragend` Fired when the marker is finished being dragged, `marker` object that was dragged
+ * **Event** `dragend` of type {@link Event} will be fired when the marker is finished being dragged.
  */
 class Marker extends performance$1.Evented {
     /**
@@ -56579,6 +58181,7 @@ class Marker extends performance$1.Evented {
             }
         };
         this._update = (e) => {
+            var _a;
             if (!this._map)
                 return;
             const isFullyLoaded = this._map.loaded() && !this._map.isMoving();
@@ -56587,6 +58190,9 @@ class Marker extends performance$1.Evented {
             }
             if (this._map.transform.renderWorldCopies) {
                 this._lngLat = smartWrap(this._lngLat, this._flatPos, this._map.transform);
+            }
+            else {
+                this._lngLat = (_a = this._lngLat) === null || _a === void 0 ? void 0 : _a.wrap();
             }
             this._flatPos = this._pos = this._map.project(this._lngLat)._add(this._offset);
             if (this._map.terrain) {
@@ -56610,7 +58216,7 @@ class Marker extends performance$1.Evented {
             // because rounding the coordinates at every `move` event causes stuttered zooming
             // we only round them when _update is called with `moveend` or when its called with
             // no arguments (when the Marker is initialized or Marker#setLngLat is invoked).
-            if (!e || e.type === 'moveend') {
+            if (!this._subpixelPositioning && (!e || e.type === 'moveend')) {
                 this._pos = this._pos.round();
             }
             DOM.setTransform(this._element, `${anchorTranslate[this._anchor]} translate(${this._pos.x}px, ${this._pos.y}px) ${pitch} ${rotation}`);
@@ -56676,6 +58282,7 @@ class Marker extends performance$1.Evented {
         this._scale = options && options.scale || 1;
         this._draggable = options && options.draggable || false;
         this._clickTolerance = options && options.clickTolerance || 0;
+        this._subpixelPositioning = options && options.subpixelPositioning || false;
         this._isDragging = false;
         this._state = 'inactive';
         this._rotation = options && options.rotation || 0;
@@ -56686,7 +58293,6 @@ class Marker extends performance$1.Evented {
         if (!options || !options.element) {
             this._defaultMarker = true;
             this._element = DOM.create('div');
-            this._element.setAttribute('aria-label', 'Map marker');
             // create default map marker SVG
             const svg = DOM.createNS('http://www.w3.org/2000/svg', 'svg');
             const defaultHeight = 41;
@@ -56794,7 +58400,6 @@ class Marker extends performance$1.Evented {
     /**
      * Attaches the `Marker` to a `Map` object.
      * @param map - The MapLibre GL JS map to add the marker to.
-     * @returns `this`
      * @example
      * ```ts
      * let marker = new Marker()
@@ -56805,6 +58410,7 @@ class Marker extends performance$1.Evented {
     addTo(map) {
         this.remove();
         this._map = map;
+        this._element.setAttribute('aria-label', map._getUIString('Marker.Title'));
         map.getCanvasContainer().appendChild(this._element);
         map.on('move', this._update);
         map.on('moveend', this._update);
@@ -56824,7 +58430,6 @@ class Marker extends performance$1.Evented {
      * let marker = new Marker().addTo(map);
      * marker.remove();
      * ```
-     * @returns `this`
      */
     remove() {
         if (this._opacityTimeout) {
@@ -56835,6 +58440,7 @@ class Marker extends performance$1.Evented {
             this._map.off('click', this._onMapClick);
             this._map.off('move', this._update);
             this._map.off('moveend', this._update);
+            this._map.off('terrain', this._update);
             this._map.off('mousedown', this._addDragHandler);
             this._map.off('touchstart', this._addDragHandler);
             this._map.off('mouseup', this._onUp);
@@ -56871,7 +58477,6 @@ class Marker extends performance$1.Evented {
     /**
      * Set the marker's geographical position and move it.
      * @param lnglat - A {@link LngLat} describing where the marker should be located.
-     * @returns `this`
      * @example
      * Create a new marker, set the longitude and latitude, and add it to the map
      * ```ts
@@ -56901,7 +58506,6 @@ class Marker extends performance$1.Evented {
      * Binds a {@link Popup} to the {@link Marker}.
      * @param popup - An instance of the {@link Popup} class. If undefined or null, any popup
      * set on this {@link Marker} instance is unset.
-     * @returns `this`
      * @example
      * ```ts
      * let marker = new Marker()
@@ -56937,14 +58541,27 @@ class Marker extends performance$1.Evented {
                 } : this._offset;
             }
             this._popup = popup;
-            if (this._lngLat)
-                this._popup.setLngLat(this._lngLat);
             this._originalTabIndex = this._element.getAttribute('tabindex');
             if (!this._originalTabIndex) {
                 this._element.setAttribute('tabindex', '0');
             }
             this._element.addEventListener('keypress', this._onKeyPress);
         }
+        return this;
+    }
+    /**
+      * Set the option to allow subpixel positioning of the marker by passing a boolean
+      *
+      * @param value - when set to `true`, subpixel positioning is enabled for the marker.
+      *
+      * @example
+      * ```ts
+      * let marker = new Marker()
+      * marker.setSubpixelPositioning(true);
+      * ```
+      */
+    setSubpixelPositioning(value) {
+        this._subpixelPositioning = value;
         return this;
     }
     /**
@@ -56965,7 +58582,6 @@ class Marker extends performance$1.Evented {
     }
     /**
      * Opens or closes the {@link Popup} instance that is bound to the {@link Marker}, depending on the current state of the {@link Popup}.
-     * @returns `this`
      * @example
      * ```ts
      * let marker = new Marker()
@@ -56978,16 +58594,20 @@ class Marker extends performance$1.Evented {
      */
     togglePopup() {
         const popup = this._popup;
+        if (this._element.style.opacity === this._opacityWhenCovered)
+            return this;
         if (!popup)
             return this;
         else if (popup.isOpen())
             popup.remove();
-        else
+        else {
+            popup.setLngLat(this._lngLat);
             popup.addTo(this._map);
+        }
         return this;
     }
     _updateOpacity(force = false) {
-        var _a;
+        var _a, _b;
         const terrain = (_a = this._map) === null || _a === void 0 ? void 0 : _a.terrain;
         if (!terrain) {
             if (this._element.style.opacity !== this._opacity) {
@@ -57024,6 +58644,8 @@ class Marker extends performance$1.Evented {
         const markerDistanceCenter = map.transform.lngLatToCameraDepth(this._lngLat, elevation + elevationToCenter);
         // Display at full opacity if center is visible.
         const centerIsInvisible = markerDistanceCenter - terrainDistanceCenter > forgiveness;
+        if (((_b = this._popup) === null || _b === void 0 ? void 0 : _b.isOpen()) && centerIsInvisible)
+            this._popup.remove();
         this._element.style.opacity = centerIsInvisible ? this._opacityWhenCovered : this._opacity;
     }
     /**
@@ -57036,7 +58658,6 @@ class Marker extends performance$1.Evented {
     /**
      * Sets the offset of the marker
      * @param offset - The offset in pixels as a {@link PointLike} object to apply relative to the element's center. Negatives indicate left and up.
-     * @returns `this`
      */
     setOffset(offset) {
         this._offset = performance$1.Point.convert(offset);
@@ -57090,7 +58711,6 @@ class Marker extends performance$1.Evented {
     /**
      * Sets the `draggable` property and functionality of the marker
      * @param shouldBeDraggable - Turns drag functionality on/off
-     * @returns `this`
      */
     setDraggable(shouldBeDraggable) {
         this._draggable = !!shouldBeDraggable; // convert possible undefined value to false
@@ -57118,7 +58738,6 @@ class Marker extends performance$1.Evented {
     /**
      * Sets the `rotation` property of the marker.
      * @param rotation - The rotation angle of the marker (clockwise, in degrees), relative to its respective {@link Marker#setRotationAlignment} setting.
-     * @returns `this`
      */
     setRotation(rotation) {
         this._rotation = rotation || 0;
@@ -57135,7 +58754,6 @@ class Marker extends performance$1.Evented {
     /**
      * Sets the `rotationAlignment` property of the marker.
      * @param alignment - Sets the `rotationAlignment` property of the marker. defaults to 'auto'
-     * @returns `this`
      */
     setRotationAlignment(alignment) {
         this._rotationAlignment = alignment || 'auto';
@@ -57152,7 +58770,6 @@ class Marker extends performance$1.Evented {
     /**
      * Sets the `pitchAlignment` property of the marker.
      * @param alignment - Sets the `pitchAlignment` property of the marker. If alignment is 'auto', it will automatically match `rotationAlignment`.
-     * @returns `this`
      */
     setPitchAlignment(alignment) {
         this._pitchAlignment = alignment && alignment !== 'auto' ? alignment : this._rotationAlignment;
@@ -57171,7 +58788,6 @@ class Marker extends performance$1.Evented {
      * When called without arguments, resets opacity and opacityWhenCovered to defaults
      * @param opacity - Sets the `opacity` property of the marker.
      * @param opacityWhenCovered - Sets the `opacityWhenCovered` property of the marker.
-     * @returns `this`
      */
     setOpacity(opacity, opacityWhenCovered) {
         if (opacity === undefined && opacityWhenCovered === undefined) {
@@ -57224,6 +58840,10 @@ let noTimeout = false;
  * * disabled - occurs if Geolocation is not available, disabled or denied.
  *
  * These interaction states can't be controlled programmatically, rather they are set based on user interactions.
+ *
+ * ## State Diagram
+ * ![GeolocateControl state diagram](https://github.com/maplibre/maplibre-gl-js/assets/3269297/78e720e5-d781-4da8-9803-a7a0e6aaaa9f)
+ *
  * @group Markers and Controls
  *
  * @example
@@ -57237,19 +58857,23 @@ let noTimeout = false;
  * ```
  * @see [Locate the user](https://maplibre.org/maplibre-gl-js/docs/examples/locate-user/)
  *
- * ### Events
+ * ## Events
  *
- * @event `trackuserlocationend` - Fired when the `GeolocateControl` changes to the background state, which happens when a user changes the camera during an active position lock. This only applies when `trackUserLocation` is `true`. In the background state, the dot on the map will update with location updates but the camera will not.
+ * **Event** `trackuserlocationend` of type {@link Event} will be fired when the `GeolocateControl` changes to the background state, which happens when a user changes the camera during an active position lock. This only applies when `trackUserLocation` is `true`. In the background state, the dot on the map will update with location updates but the camera will not.
  *
- * @event `trackuserlocationstart` - Fired when the `GeolocateControl` changes to the active lock state, which happens either upon first obtaining a successful Geolocation API position for the user (a `geolocate` event will follow), or the user clicks the geolocate button when in the background state which uses the last known position to recenter the map and enter active lock state (no `geolocate` event will follow unless the users's location changes).
+ * **Event** `trackuserlocationstart` of type {@link Event} will be fired when the `GeolocateControl` changes to the active lock state, which happens either upon first obtaining a successful Geolocation API position for the user (a `geolocate` event will follow), or the user clicks the geolocate button when in the background state which uses the last known position to recenter the map and enter active lock state (no `geolocate` event will follow unless the users's location changes).
  *
- * @event `geolocate` - Fired on each Geolocation API position update which returned as success.
+ * **Event** `userlocationlostfocus` of type {@link Event} will be fired when the `GeolocateControl` changes to the background state, which happens when a user changes the camera during an active position lock. This only applies when `trackUserLocation` is `true`. In the background state, the dot on the map will update with location updates but the camera will not.
+ *
+ * **Event** `userlocationfocus` of type {@link Event} will be fired when the `GeolocateControl` changes to the active lock state, which happens upon the user clicks the geolocate button when in the background state which uses the last known position to recenter the map and enter active lock state.
+ *
+ * **Event** `geolocate` of type {@link Event} will be fired on each Geolocation API position update which returned as success.
  * `data` - The returned [Position](https://developer.mozilla.org/en-US/docs/Web/API/Position) object from the callback in [Geolocation.getCurrentPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) or [Geolocation.watchPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition).
  *
- * @event `error` - Fired on each Geolocation API position update which returned as an error.
+ * **Event** `error` of type {@link Event} will be fired on each Geolocation API position update which returned as an error.
  * `data` - The returned [PositionError](https://developer.mozilla.org/en-US/docs/Web/API/PositionError) object from the callback in [Geolocation.getCurrentPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) or [Geolocation.watchPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition).
  *
- * @event `outofmaxbounds` Fired on each Geolocation API position update which returned as success but user position is out of map `maxBounds`.
+ * **Event** `outofmaxbounds` of type {@link Event} will be fired on each Geolocation API position update which returned as success but user position is out of map `maxBounds`.
  * `data` - The returned [Position](https://developer.mozilla.org/en-US/docs/Web/API/Position) object from the callback in [Geolocation.getCurrentPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) or [Geolocation.watchPosition()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition).
  *
  * @example
@@ -57265,7 +58889,7 @@ let noTimeout = false;
  * map.addControl(geolocate);
  * // Set an event listener that fires
  * // when a trackuserlocationend event occurs.
- * geolocate.on('trackuserlocationend', function() {
+ * geolocate.on('trackuserlocationend', () => {
  *   console.log('A trackuserlocationend event has occurred.')
  * });
  * ```
@@ -57283,7 +58907,7 @@ let noTimeout = false;
  * map.addControl(geolocate);
  * // Set an event listener that fires
  * // when a trackuserlocationstart event occurs.
- * geolocate.on('trackuserlocationstart', function() {
+ * geolocate.on('trackuserlocationstart', () => {
  *   console.log('A trackuserlocationstart event has occurred.')
  * });
  * ```
@@ -57300,8 +58924,44 @@ let noTimeout = false;
  * // Add the control to the map.
  * map.addControl(geolocate);
  * // Set an event listener that fires
+ * // when an userlocationlostfocus event occurs.
+ * geolocate.on('userlocationlostfocus', function() {
+ *   console.log('An userlocationlostfocus event has occurred.')
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Initialize the geolocate control.
+ * let geolocate = new GeolocateControl({
+ *   positionOptions: {
+ *       enableHighAccuracy: true
+ *   },
+ *   trackUserLocation: true
+ * });
+ * // Add the control to the map.
+ * map.addControl(geolocate);
+ * // Set an event listener that fires
+ * // when an userlocationfocus event occurs.
+ * geolocate.on('userlocationfocus', function() {
+ *   console.log('An userlocationfocus event has occurred.')
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Initialize the geolocate control.
+ * let geolocate = new GeolocateControl({
+ *   positionOptions: {
+ *       enableHighAccuracy: true
+ *   },
+ *   trackUserLocation: true
+ * });
+ * // Add the control to the map.
+ * map.addControl(geolocate);
+ * // Set an event listener that fires
  * // when a geolocate event occurs.
- * geolocate.on('geolocate', function() {
+ * geolocate.on('geolocate', () => {
  *   console.log('A geolocate event has occurred.')
  * });
  * ```
@@ -57319,7 +58979,7 @@ let noTimeout = false;
  * map.addControl(geolocate);
  * // Set an event listener that fires
  * // when an error event occurs.
- * geolocate.on('error', function() {
+ * geolocate.on('error', () => {
  *   console.log('An error event has occurred.')
  * });
  * ```
@@ -57337,12 +58997,15 @@ let noTimeout = false;
  * map.addControl(geolocate);
  * // Set an event listener that fires
  * // when an outofmaxbounds event occurs.
- * geolocate.on('outofmaxbounds', function() {
+ * geolocate.on('outofmaxbounds', () => {
  *   console.log('An outofmaxbounds event has occurred.')
  * });
  * ```
  */
 class GeolocateControl extends performance$1.Evented {
+    /**
+     * @param options - the control's options
+     */
     constructor(options) {
         super();
         /**
@@ -57487,8 +59150,7 @@ class GeolocateControl extends performance$1.Evented {
             }
             this._timeoutId = undefined;
         };
-        this._setupUI = (supported) => {
-            // this method is called asynchronously during onAdd
+        this._setupUI = () => {
             // the control could have been removed before reaching here
             if (!this._map) {
                 return;
@@ -57497,6 +59159,14 @@ class GeolocateControl extends performance$1.Evented {
             this._geolocateButton = DOM.create('button', 'maplibregl-ctrl-geolocate', this._container);
             DOM.create('span', 'maplibregl-ctrl-icon', this._geolocateButton).setAttribute('aria-hidden', 'true');
             this._geolocateButton.type = 'button';
+            this._geolocateButton.disabled = true;
+        };
+        this._finishSetupUI = (supported) => {
+            // this method is called asynchronously during onAdd
+            if (!this._map) {
+                // control has since been removed
+                return;
+            }
             if (supported === false) {
                 performance$1.warnOnce('Geolocation support is not available so the GeolocateControl will be disabled.');
                 const title = this._map._getUIString('GeolocateControl.LocationNotAvailable');
@@ -57506,6 +59176,7 @@ class GeolocateControl extends performance$1.Evented {
             }
             else {
                 const title = this._map._getUIString('GeolocateControl.FindMyLocation');
+                this._geolocateButton.disabled = false;
                 this._geolocateButton.title = title;
                 this._geolocateButton.setAttribute('aria-label', title);
             }
@@ -57535,6 +59206,7 @@ class GeolocateControl extends performance$1.Evented {
                         this._geolocateButton.classList.add('maplibregl-ctrl-geolocate-background');
                         this._geolocateButton.classList.remove('maplibregl-ctrl-geolocate-active');
                         this.fire(new performance$1.Event('trackuserlocationend'));
+                        this.fire(new performance$1.Event('userlocationlostfocus'));
                     }
                 });
             }
@@ -57545,7 +59217,8 @@ class GeolocateControl extends performance$1.Evented {
     onAdd(map) {
         this._map = map;
         this._container = DOM.create('div', 'maplibregl-ctrl maplibregl-ctrl-group');
-        checkGeolocationSupport().then((supported) => this._setupUI(supported));
+        this._setupUI();
+        checkGeolocationSupport().then((supported) => this._finishSetupUI(supported));
         return this._container;
     }
     /** {@inheritDoc IControl.onRemove} */
@@ -57634,7 +59307,7 @@ class GeolocateControl extends performance$1.Evented {
      * });
      * // Add the control to the map.
      * map.addControl(geolocate);
-     * map.on('load', function() {
+     * map.on('load', () => {
      *   geolocate.trigger();
      * });
      * ```
@@ -57674,6 +59347,7 @@ class GeolocateControl extends performance$1.Evented {
                     if (this._lastKnownPosition)
                         this._updateCamera(this._lastKnownPosition);
                     this.fire(new performance$1.Event('trackuserlocationstart'));
+                    this.fire(new performance$1.Event('userlocationfocus'));
                     break;
                 default:
                     throw new Error(`Unexpected watchState ${this._watchState}`);
@@ -57754,6 +59428,9 @@ const defaultOptions$1 = {
  * ```
  */
 class ScaleControl {
+    /**
+     * @param options - the control's options
+     */
     constructor(options) {
         this._onMove = () => {
             updateScale(this._map, this._container, this.options);
@@ -57767,7 +59444,7 @@ class ScaleControl {
             this.options.unit = unit;
             updateScale(this._map, this._container, this.options);
         };
-        this.options = performance$1.extend({}, defaultOptions$1, options);
+        this.options = Object.assign(Object.assign({}, defaultOptions$1), options);
     }
     getDefaultPosition() {
         return 'bottom-left';
@@ -57857,20 +59534,27 @@ function getRoundNum(num) {
  * ```
  * @see [View a fullscreen map](https://maplibre.org/maplibre-gl-js/docs/examples/fullscreen/)
  *
- * ### Events
+ * ## Events
  *
- * @event `fullscreenstart` - Fired when fullscreen mode has started
+ * **Event** `fullscreenstart` of type {@link Event} will be fired when fullscreen mode has started.
  *
- * @event `fullscreenend` - Fired when fullscreen mode has ended
+ * **Event** `fullscreenend` of type {@link Event} will be fired when fullscreen mode has ended.
  */
 class FullscreenControl extends performance$1.Evented {
+    /**
+     * @param options - the control's options
+     */
     constructor(options = {}) {
         super();
         this._onFullscreenChange = () => {
-            const fullscreenElement = window.document.fullscreenElement ||
+            var _a;
+            let fullscreenElement = window.document.fullscreenElement ||
                 window.document.mozFullScreenElement ||
                 window.document.webkitFullscreenElement ||
                 window.document.msFullscreenElement;
+            while ((_a = fullscreenElement === null || fullscreenElement === void 0 ? void 0 : fullscreenElement.shadowRoot) === null || _a === void 0 ? void 0 : _a.fullscreenElement) {
+                fullscreenElement = fullscreenElement.shadowRoot.fullscreenElement;
+            }
             if ((fullscreenElement === this._container) !== this._fullscreen) {
                 this._handleFullscreenChange();
             }
@@ -58011,6 +59695,9 @@ class FullscreenControl extends performance$1.Evented {
  * ```
  */
 class TerrainControl {
+    /**
+     * @param options - the control's options
+     */
     constructor(options) {
         this._toggleTerrain = () => {
             if (this._map.getTerrain()) {
@@ -58060,7 +59747,8 @@ const defaultOptions = {
     closeOnClick: true,
     focusAfterOpen: true,
     className: '',
-    maxWidth: '240px'
+    maxWidth: '240px',
+    subpixelPositioning: false
 };
 const focusQuerySelector = [
     'a[href]',
@@ -58083,7 +59771,7 @@ const focusQuerySelector = [
  * let popup = new Popup();
  * // Set an event listener that will fire
  * // any time the popup is opened
- * popup.on('open', function(){
+ * popup.on('open', () => {
  *   console.log('popup was opened');
  * });
  * ```
@@ -58094,7 +59782,7 @@ const focusQuerySelector = [
  * let popup = new Popup();
  * // Set an event listener that will fire
  * // any time the popup is closed
- * popup.on('close', function(){
+ * popup.on('close', () => {
  *   console.log('popup was closed');
  * });
  * ```
@@ -58123,13 +59811,16 @@ const focusQuerySelector = [
  * @see [Display a popup on click](https://maplibre.org/maplibre-gl-js/docs/examples/popup-on-click/)
  * @see [Attach a popup to a marker instance](https://maplibre.org/maplibre-gl-js/docs/examples/set-popup/)
  *
- * ### Events
+ * ## Events
  *
- * @event `open` Fired when the popup is opened manually or programmatically. `popup` object that was opened
+ * **Event** `open` of type {@link Event} will be fired when the popup is opened manually or programmatically.
  *
- * @event `close` Fired when the popup is closed manually or programmatically. `popup` object that was closed
+ * **Event** `close` of type {@link Event} will be fired when the popup is closed manually or programmatically.
  */
 class Popup extends performance$1.Evented {
+    /**
+     * @param options - the options
+     */
     constructor(options) {
         super();
         /**
@@ -58140,7 +59831,6 @@ class Popup extends performance$1.Evented {
          * let popup = new Popup().addTo(map);
          * popup.remove();
          * ```
-         * @returns `this`
          */
         this.remove = () => {
             if (this._content) {
@@ -58160,8 +59850,8 @@ class Popup extends performance$1.Evented {
                 this._map.off('drag', this._onDrag);
                 this._map._canvasContainer.classList.remove('maplibregl-track-pointer');
                 delete this._map;
+                this.fire(new performance$1.Event('close'));
             }
-            this.fire(new performance$1.Event('close'));
             return this;
         };
         this._onMouseUp = (event) => {
@@ -58174,6 +59864,7 @@ class Popup extends performance$1.Evented {
             this._update(event.point);
         };
         this._update = (cursor) => {
+            var _a;
             const hasPosition = this._lngLat || this._trackPointer;
             if (!this._map || !hasPosition || !this._content) {
                 return;
@@ -58187,6 +59878,9 @@ class Popup extends performance$1.Evented {
                         this._container.classList.add(name);
                     }
                 }
+                if (this._closeButton) {
+                    this._closeButton.setAttribute('aria-label', this._map._getUIString('Popup.Close'));
+                }
                 if (this._trackPointer) {
                     this._container.classList.add('maplibregl-popup-track-pointer');
                 }
@@ -58196,6 +59890,9 @@ class Popup extends performance$1.Evented {
             }
             if (this._map.transform.renderWorldCopies && !this._trackPointer) {
                 this._lngLat = smartWrap(this._lngLat, this._flatPos, this._map.transform);
+            }
+            else {
+                this._lngLat = (_a = this._lngLat) === null || _a === void 0 ? void 0 : _a.wrap();
             }
             if (this._trackPointer && !cursor)
                 return;
@@ -58232,7 +59929,10 @@ class Popup extends performance$1.Evented {
                     anchor = anchorComponents.join('-');
                 }
             }
-            const offsetedPos = pos.add(offset[anchor]).round();
+            let offsetedPos = pos.add(offset[anchor]);
+            if (!this.options.subpixelPositioning) {
+                offsetedPos = offsetedPos.round();
+            }
             DOM.setTransform(this._container, `${anchorTranslate[anchor]} translate(${offsetedPos.x}px,${offsetedPos.y}px)`);
             applyAnchorClass(this._container, anchor, 'popup');
         };
@@ -58245,7 +59945,6 @@ class Popup extends performance$1.Evented {
      * Adds the popup to a map.
      *
      * @param map - The MapLibre GL JS map to add the popup to.
-     * @returns `this`
      * @example
      * ```ts
      * new Popup()
@@ -58307,11 +60006,11 @@ class Popup extends performance$1.Evented {
      * Sets the geographical location of the popup's anchor, and moves the popup to it. Replaces trackPointer() behavior.
      *
      * @param lnglat - The geographical location to set as the popup's anchor.
-     * @returns `this`
      */
     setLngLat(lnglat) {
         this._lngLat = performance$1.LngLat.convert(lnglat);
         this._pos = null;
+        this._flatPos = null;
         this._trackPointer = false;
         this._update();
         if (this._map) {
@@ -58334,11 +60033,11 @@ class Popup extends performance$1.Evented {
      *   .trackPointer()
      *   .addTo(map);
      * ```
-     * @returns `this`
      */
     trackPointer() {
         this._trackPointer = true;
         this._pos = null;
+        this._flatPos = null;
         this._update();
         if (this._map) {
             this._map.off('move', this._update);
@@ -58376,7 +60075,6 @@ class Popup extends performance$1.Evented {
      * if the popup content is user-provided.
      *
      * @param text - Textual content for the popup.
-     * @returns `this`
      * @example
      * ```ts
      * let popup = new Popup()
@@ -58396,7 +60094,6 @@ class Popup extends performance$1.Evented {
      * the content is an untrusted text string.
      *
      * @param html - A string representing HTML content for the popup.
-     * @returns `this`
      * @example
      * ```ts
      * let popup = new Popup()
@@ -58436,7 +60133,6 @@ class Popup extends performance$1.Evented {
      * Available values can be found here: https://developer.mozilla.org/en-US/docs/Web/CSS/max-width
      *
      * @param maxWidth - A string representing the value for the maximum width.
-     * @returns `this`
      */
     setMaxWidth(maxWidth) {
         this.options.maxWidth = maxWidth;
@@ -58447,7 +60143,6 @@ class Popup extends performance$1.Evented {
      * Sets the popup's content to the element provided as a DOM node.
      *
      * @param htmlNode - A DOM node to be used as content for the popup.
-     * @returns `this`
      * @example
      * Create an element with the popup content
      * ```ts
@@ -58493,6 +60188,7 @@ class Popup extends performance$1.Evented {
         if (this._container) {
             this._container.classList.add(className);
         }
+        return this;
     }
     /**
      * Removes a CSS class from the popup container element.
@@ -58509,12 +60205,12 @@ class Popup extends performance$1.Evented {
         if (this._container) {
             this._container.classList.remove(className);
         }
+        return this;
     }
     /**
      * Sets the popup's offset.
      *
      * @param offset - Sets the popup's offset.
-     * @returns `this`
      */
     setOffset(offset) {
         this.options.offset = offset;
@@ -58539,11 +60235,24 @@ class Popup extends performance$1.Evented {
             return this._container.classList.toggle(className);
         }
     }
+    /**
+     * Set the option to allow subpixel positioning of the popup by passing a boolean
+     *
+     * @param value - When boolean is true, subpixel positioning is enabled for the popup.
+     *
+     * @example
+     * ```ts
+     * let popup = new Popup()
+     * popup.setSubpixelPositioning(true);
+     * ```
+     */
+    setSubpixelPositioning(value) {
+        this.options.subpixelPositioning = value;
+    }
     _createCloseButton() {
         if (this.options.closeButton) {
             this._closeButton = DOM.create('button', 'maplibregl-popup-close-button', this._content);
             this._closeButton.type = 'button';
-            this._closeButton.setAttribute('aria-label', 'Close popup');
             this._closeButton.innerHTML = '&#215;';
             this._closeButton.addEventListener('click', this._onClose);
         }
@@ -58612,7 +60321,7 @@ const version = packageJSON.version;
  * Necessary for supporting the Arabic and Hebrew languages, which are written right-to-left.
  *
  * @param pluginURL - URL pointing to the Mapbox RTL text plugin source.
- * @param lazy - If set to `true`, mapboxgl will defer loading the plugin until rtl text is encountered,
+ * @param lazy - If set to `true`, maplibre will defer loading the plugin until rtl text is encountered,
  * rtl text will then be rendered only after the plugin finishes loading.
  * @example
  * ```ts
@@ -58620,7 +60329,9 @@ const version = packageJSON.version;
  * ```
  * @see [Add support for right-to-left scripts](https://maplibre.org/maplibre-gl-js/docs/examples/mapbox-gl-rtl-text/)
  */
-function setRTLTextPlugin(pluginURL, lazy) { return rtlMainThreadPluginFactory().setRTLTextPlugin(pluginURL, lazy); }
+function setRTLTextPlugin(pluginURL, lazy) {
+    return rtlMainThreadPluginFactory().setRTLTextPlugin(pluginURL, lazy);
+}
 /**
  * Gets the map's [RTL text plugin](https://www.mapbox.com/mapbox-gl-js/plugins/#mapbox-gl-rtl-text) status.
  * The status can be `unavailable` (i.e. not requested or removed), `loading`, `loaded` or `error`.
@@ -58631,7 +60342,9 @@ function setRTLTextPlugin(pluginURL, lazy) { return rtlMainThreadPluginFactory()
  * const pluginStatus = getRTLTextPluginStatus();
  * ```
  */
-function getRTLTextPluginStatus() { return rtlMainThreadPluginFactory().getRTLTextPluginStatus(); }
+function getRTLTextPluginStatus() {
+    return rtlMainThreadPluginFactory().getRTLTextPluginStatus();
+}
 /**
  * Returns the package version of the library
  * @returns Package version of the library
@@ -58696,7 +60409,7 @@ function setWorkerUrl(value) { performance$1.config.WORKER_URL = value; }
  *
  * It can be useful for the following examples:
  * 1. Using `self.addProtocol` in the worker thread - note that you might need to also register the protocol on the main thread.
- * 2. Using `self.registerWorkerSource(workerSource: WorkerSource)` to register a worker source, which sould come with `addSourceType` usually.
+ * 2. Using `self.registerWorkerSource(workerSource: WorkerSource)` to register a worker source, which should come with `addSourceType` usually.
  * 3. using `self.actor.registerMessageHandler` to override some internal worker operations
  * @param workerUrl - the worker url e.g. a url of a javascript file to load in the worker
  * @returns
@@ -58715,13 +60428,13 @@ function setWorkerUrl(value) { performance$1.config.WORKER_URL = value; }
  *         throw new Error(`Tile fetch error: ${t.statusText}`);
  *     }
  * }
- * self.addPRotocol('custom', loadFn);
+ * self.addProtocol('custom', loadFn);
  *
  * // main.js
  * importScriptInWorkers('add-protocol-worker.js');
  * ```
  */
-function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast('importScript', workerUrl); }
+function importScriptInWorkers(workerUrl) { return getGlobalDispatcher().broadcast("IS" /* MessageType.importScript */, workerUrl); }
 
 exports.AJAXError = performance$1.AJAXError;
 exports.Evented = performance$1.Evented;

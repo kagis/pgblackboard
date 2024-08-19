@@ -5,13 +5,13 @@ import { createApp, reactive, computed, watchEffect, h } from './_lib/vue.js';
 import root_component from './app/app.js';
 import { Store } from './store.js';
 
-window.MonacoEnvironment = {
+globalThis.MonacoEnvironment = {
   getWorker(_module_id, label) {
     switch (label) {
       case 'json': return monaco_json_worker();
       default: return monaco_editor_worker();
     }
-	}
+	},
 };
 
 editor.defineTheme('pgbb-dark', {
@@ -53,4 +53,4 @@ watchEffect(_ => {
 
 app.mount('body');
 
-window.debug_store = store;
+globalThis.debug_store = store;

@@ -1,5 +1,10 @@
 .datum {
   font-stretch: initial;
+
+  border: 1px solid transparent;
+  &:focus-within {
+    border-color: hsl(210, 100%, 60%);
+  }
 }
 
 .datum .monaco-editor {
@@ -10,4 +15,12 @@
     --vscode-editor-background: hsl(0, 0%, 95%);
     --vscode-editorGutter-background: hsl(0 0% 95%);
   }
+}
+
+.datum-null {
+  width: max-content;
+  pointer-events: none;
+  font-style: italic !important;
+  font-weight: 300 !important;
+  opacity: .5;
 }

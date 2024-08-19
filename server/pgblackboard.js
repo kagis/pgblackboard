@@ -1,7 +1,7 @@
-import { parse_flags, http_serve_dir, pgconnect } from './deps.js';
+import { parse_args, pgconnection } from './deps.js';
 
 async function main(args) {
-  const flags = parse_flags(args, {
+  const flags = parse_args(args, {
     default: {
       'listen-port': '7890',
       // 'listen-addr': '0.0.0.0',
@@ -17,15 +17,15 @@ async function main(args) {
     hostname: flags['listen-addr'],
     port: Number(flags['listen-port']),
     handler: app.handle_req.bind(app),
+    onListen() {
+      console.log('{"event":"start"}');
+    },
+    // TODO onError json log
   });
 
   await server.finished;
 }
 
-// POST /?api=login&u=v.nezhutin&tz=Asia/Almaty
-// POST /?api=tree&u=v.nezhutin&tz=Asia/Almaty&db=postgres&node=db.postgres&key=cafebabe
-// POST /?api=defn&u=v.nezhutin&tz=Asia/Almaty&db=postgres&node=db.postgres&key=cafebabe
-// POST /?api=exec&u=v.nezhutin&tz=
 
 class App {
   // pg_conn_defaults = {
@@ -45,35 +45,46 @@ class App {
 
   handle_req(/** @type {Request} */ req) {
     const url = new URL(req.url);
-    console.log(req.method, url.pathname, url.search);
+    console.log(JSON.stringify({
+      event: 'request',
+      method: req.method,
+      path: url.pathname,
+      qs: url.search || undefined,
+    }));
     if (req.method == 'POST' && url.pathname == '/') {
       return this._handle_api(req, url);
     }
-    return http_serve_dir(req, { fsRoot: 'ui', quiet: true });
+    return serve_static(req);
   }
 
   async _handle_api(/** @type {Request} */ req, url) {
     const qs = Object.fromEntries(url.searchParams);
     const { api } = qs;
     switch (api) {
-      case 'login': return this._api_login(req, qs);
+      case 'auth': return this._api_auth(req, qs);
       case 'tree': return this._api_tree(req, qs);
       case 'defn': return this._api_defn(req, qs);
-      case 'exec': return this._api_exec(req, qs);
+      case 'wake': return this._api_wake(req, qs);
+      case 'run': return this._api_run(req, qs);
     }
     return Response.json({ error: 'uknown api' }, { status: 404 });
   }
 
-  async _api_login(req, { u }) {
+  async _api_auth(req, { u }) {
+    // TODO rate limit
+    // TODO body size limit
     const { password } = await req.json(); // base64 ?
-    let pg;
+    const pg = pgconnection({ password, user: u, _debug: false }, this.pg_uri, { database: 'postgres' });
     try {
-      pg = await pgconnect({ password, user: u, _debug: true }, this.pg_uri, { database: 'postgres' });
+      await pg.query();
     } catch (err) {
-      console.error(err);
-      return Response.json({ ok: false, reason: err.message });
+      // console.error(err);
+      // TODO respond network_error or postgres_auth_error,
+      // do not expose string message
+      return Response.json({ ok: false, reason: String(err) });
+    } finally {
+      await pg.end();
     }
-    await pg.end();
     const key = await this._encrypt_pwd(password);
     return Response.json({ ok: true, key });
   }
@@ -95,17 +106,16 @@ class App {
     return new TextDecoder().decode(utf8);
   }
 
-  async _api_tree(/** @type {Request} */ _req, { key, u, db, node }) {
+  async _api_tree(/** @type {Request} */ _req, { key, u: user, db: database, node }) {
     const password = await this._decrypt_pwd(key);
-    const conn_opts = {
-      default_transaction_read_only: 'on',
-      user: u,
-      password,
-      database: db,
-      search_path: 'pg_catalog',
-    };
     const node_arr = node?.split('.')?.map(decodeURIComponent);
-    const pg = await pgconnect(conn_opts, this.pg_uri, {
+    const pg = pgconnection({
+      user,
+      password,
+      database,
+      default_transaction_read_only: 'on',
+      search_path: 'pg_catalog',
+    }, this.pg_uri, {
       database: 'postgres',
       statement_timeout: '10s',
     });
@@ -115,13 +125,8 @@ class App {
         params: [{ type: 'text[]', value: node_arr }],
       });
       const result = rows.map(([db, id, type, name, comment, badge, expandable]) => ({
-        type,
         id: id.map(encodeURIComponent).map(x => x.replace(/\./g, '%2e')).join('.'),
-        db,
-        name,
-        comment,
-        badge,
-        expandable,
+        type, db, name, comment, badge, expandable,
       }));
       return Response.json({ result });
     } finally {
@@ -129,15 +134,14 @@ class App {
     }
   }
 
-  async _api_defn(/** @type {Request} */ _req, { key, u, db, node }) {
+  async _api_defn(/** @type {Request} */ _req, { key, u: user, db: database, node }) {
     const password = await this._decrypt_pwd(key);
-
     const node_arr = node.split('.').map(decodeURIComponent);
-    const pg = await pgconnect({
-      default_transaction_read_only: 'on',
-      user: u,
+    const pg = pgconnection({
+      user,
       password,
-      database: db,
+      database,
+      default_transaction_read_only: 'on',
       search_path: 'pg_catalog',
     }, this.pg_uri, {
       statement_timeout: '10s',
@@ -153,88 +157,102 @@ class App {
     }
   }
 
-  async _api_exec(/** @type {Request} */ req, { key, u, db }) {
+  async _api_run(/** @type {Request} */ req, { key, u: user, db: database }) {
     const password = await this._decrypt_pwd(key);
-
-    // TODO kill previous connection -
-    // prevent connections leak in case of abort lag
-
+    // TODO kill previous connection - prevent connections leak in case of abort lag
+    const { signal } = req;
     const { sql, tz, rw } = await req.json();
-    const body = (
-      ReadableStream.from(this._api_exec_body(sql, u, password, db, tz, rw))
-      .pipeThrough(new TransformStream({ // ndjson transform
-        async transform(chunk, ctl) {
-          ctl.enqueue(JSON.stringify(chunk) + '\n');
-        },
-      }))
-      .pipeThrough(new TextEncoderStream())
-    );
-    return new Response(body, {
+    const resp_init = {
       headers: {
-        'content-type': 'text/plain; charset=utf-8', // TODO application/json
+        'content-type': 'text/x-ndjson; charset=utf-8', // TODO application/json
         'x-accel-buffering': 'no', // disable nginx buffering
         'cache-control': 'no-transform', // prevent gzip buffering
       },
-    });
+    };
+    const resp_body = ReadableStream.from(this._api_run_body({
+      sql, user, password, database, tz, rw, signal,
+    }));
+    return new Response(resp_body, resp_init);
   }
 
-  async * _api_exec_body(sql, user, password, database, tz, rw) {
+  _wakers = new Map();
+
+  async * _api_run_body({ sql, user, password, database, tz, rw, signal }) {
+    const wake_token = crypto.randomUUID();
+    const ctl = { wake() { } };
     let pg;
     try {
       const rowdescrs = [];
       const timeline = [];
+      this._wakers.set(wake_token, ctl);
 
-      try {
-        pg = await pgconnect(
-          { user, database, password },
-          this.pg_uri,
-          {
-            _debug: true,
-            TimeZone: tz,
-            statement_timeout: '10s',
-            default_transaction_read_only: String(!rw),
+      pg = pgconnection(
+        { user, database, password },
+        this.pg_uri,
+        {
+          // _debug: true,
+          _maxReadBuf: 10 << 20,
+          // TODO _wakeInterval: 0
+          TimeZone: tz,
+          statement_timeout: '1min',
+          default_transaction_read_only: String(!rw),
 
-            // notices flush rows after each statement
-            client_min_messages: 'LOG',
-            // debug_print_plan: 'on',
-            // debug_pretty_print: 'off',
-            // debug_print_parse: 'on',
-            // debug_print_rewritten: 'on',
-          },
-        );
+          // notices flush rows after each statement
+          client_min_messages: 'LOG',
+          // debug_print_plan: 'on',
+          // debug_print_parse: 'on',
+          // debug_print_rewritten: 'on',
+          // debug_pretty_print: 'off',
+        },
+      );
 
-        const stream = pg.stream(sql);
-        for await (const chunk of stream) {
-          switch (chunk.tag) {
-            case 'ReadyForQuery':
-              timeline.push(performance.now());
-              break;
-            case 'RowDescription':
-              for (const col of chunk.payload) {
-                col.type = resolve_typename(col.typeOid);
-              }
-              rowdescrs.push(chunk.payload);
-              break;
-          }
-          // TODO pgwire should emit ErrorResponse chunk
-          yield chunk;
-          // console.log(chunk);
+      let nbytes = 0;
+      let nrows = 0;
+      const pg_stream = no_pgerror(pg.stream(sql, { signal }));
+      for await (const { tag, payload, rows } of pg_stream) {
+        if (
+          nbytes >= (10 << 20) || // any chunk received when traffic limit is already reached
+          rows.length && nrows >= 1000 // or new rows chunk received when rows limit is already reached
+        ) {
+          // TODO epilog not received when aborted
+          // so partially loaded table is not editable
+          yield * suspend_stream('traffic_limit_exceeded');
+          nbytes = 0;
+          nrows = 0;
         }
-      } catch (err) {
-        // TODO should not expose all errors, console.error only ?
-        const pgerr = err?.[Symbol.for('pg.ErrorResponse')];
-        if (!pgerr) throw err;
-        yield { tag: 'ErrorResponse', payload: pgerr };
+        switch (tag) {
+          case 'ReadyForQuery':
+            timeline.push(performance.now());
+            break;
+          case 'RowDescription':
+            rowdescrs.push(payload);
+            break;
+        }
+        const out_chunk = jsonl_enc({
+          tag,
+          payload,
+          rows: rows.map(it => it.raw),
+        });
+        nbytes += out_chunk.length;
+        nrows += rows.length;
+        yield out_chunk;
       }
 
+      // TODO duration is not usable,
+      // suspended stream affects duration.
+      // Measure time to first message only?
       const [start_ts, end_ts] = timeline;
       const duration = end_ts - start_ts;
-      yield { tag: 'duration', payload: duration };
+      yield jsonl_enc({ tag: 'duration', payload: duration });
+
+      if (!pg.queryable) return;
 
       // TODO continue in separate connection?
       if (pg.inTransaction == 0x45) {
         await pg.query(/*sql*/ `rollback`);
       }
+      // TODO do single statement simple query protocol to be more portable (replication=database)
+      // TODO abort by signal?
       const [epilog] = await pg.query({
         statement: /*sql*/ `set search_path = 'pg_catalog'`,
       }, {
@@ -245,7 +263,7 @@ class App {
           left join lateral (
             select "tableOid", conkey
             from jsonb_to_recordset(rowdescr) _ ("tableOid" oid, "tableColumn" int2)
-            join pg_class on pg_class.oid = "tableOid"
+            -- join pg_class on pg_class.oid = "tableOid"
             join pg_constraint on conrelid = "tableOid" and contype = 'p'
             group by "tableOid", conkey
             having conkey <@ array_agg("tableColumn") filter (where "tableColumn" > 0)
@@ -269,24 +287,102 @@ class App {
         `,
       });
 
-      yield { tag: 'epilog', payload: epilog };
+      yield jsonl_enc({ tag: 'epilog', payload: epilog });
 
       if (pg.inTransaction) {
-        // TODO pause until user confirmation
+        yield * suspend_stream('idle_in_transaction');
+        // TODO handle ErrorResponse case, but err.position will not point to user sql
+        await pg.query('commit');
+        // TODO create special message tag for succeded commit
+        yield jsonl_enc({ tag: 'CommandComplete', payload: 'COMMIT' });
       }
-    } catch (err) {
-      // TODO do not catch errors from yields
-      yield {
+    } catch (ex) {
+      console.error(ex); // TODO? if (signal.aborted)
+      // TODO create dedicated message tag for client error
+      yield jsonl_enc({
         tag: 'ErrorResponse',
         payload: {
           severity: 'client error',
-          message: `${err.name}: ${err.message}`,
+          message: String(ex),
+          // TODO fix err.cause not exposed (too big message)
+          // details: Deno.inspect(err),
         },
-      };
+      });
     } finally {
       console.log('ending connection');
+      this._wakers.delete(wake_token);
       await pg?.end();
     }
+
+    function jsonl_enc(data) {
+      const utf8enc = new TextEncoder();
+      return utf8enc.encode(JSON.stringify(data) + '\n');
+    }
+
+    async function * no_pgerror(stream) {
+      try {
+        yield * stream;
+      } catch (err) {
+        if (!/^PgError\b/.test(err)) {
+          throw err;
+        }
+      }
+    }
+
+    async function * suspend_stream(reason) {
+      signal.throwIfAborted();
+      const { promise, resolve, reject } = Promise.withResolvers();
+      ctl.wake = resolve;
+      const payload = { wake_token, reason };
+      const onabort = _ => reject(signal.reason);
+      signal.addEventListener('abort', onabort);
+      try {
+        yield jsonl_enc({ tag: 'suspended', payload });
+        await promise;
+      } finally {
+        signal.removeEventListener('abort', onabort);
+      }
+    }
+
+    // async function abortable_promise(/** @type {Promise} */ p, /** @type {AbortSignal} */ signal) {
+    //   signal.throwIfAborted();
+    //   const { promise, reject } = Promise.withResolvers();
+    //   const onabort = _ => reject(signal.reason);
+    //   signal.addEventListener('abort', onabort);
+    //   try {
+    //     return await Promise.race([promise, p]);
+    //   } finally {
+    //     signal.removeEventListener('abort', onabort);
+    //   }
+    // }
+  }
+
+  _api_wake(_req, { token }) {
+    const ctl = this._wakers.get(token);
+    ctl?.wake();
+    // TODO ratelimit - sleep 1 sec
+    return Response.json({ ok: true });
+  }
+}
+
+async function serve_static(req) {
+  if (req.method != 'GET') {
+    return Response.json('method not allowed', { status: 405 });
+  }
+  const url = new URL(req.url);
+  const pathname = url.pathname.replace(/^[/]$/g, '/index.html');
+  // TODO fix parent traverse
+  const file_url = import.meta.resolve('../ui' + pathname);
+  const file_res = await fetch(file_url);
+  return new Response(file_res.body, {
+    headers: { 'content-type': get_content_type(file_url) },
+  });
+  function get_content_type(fname) {
+    if (/\.html$/.test(fname)) return 'text/html; charset=utf-8';
+    if (/\.css$/.test(fname)) return 'text/css; charset=utf-8';
+    if (/\.js$/.test(fname)) return 'text/javascript; charset=utf-8';
+    if (/\.svg$/.test(fname)) return 'image/svg+xml; charset=utf-8';
+    if (/\.ico$/.test(fname)) return 'image/vnd.microsoft.icon';
   }
 }
 
@@ -334,7 +430,7 @@ const tree_sql = /*sql*/  `
   select currdb, array['fn', pg_proc.oid]::text[]
     , case when pg_aggregate is null then 'func' else 'agg' end
     , format(
-      '%s (%s) → %s'
+      e'%s (%s) \u2022 %s'
       , proname
       , pg_get_function_identity_arguments(pg_proc.oid)
       -- TODO fix no result type when procedure
@@ -448,6 +544,7 @@ const tree_sql = /*sql*/  `
     , 2
   from arg
   where $1 is null
+  -- TODO: and current_setting('is_superuser')
 
   -- dir
   union all
@@ -474,7 +571,7 @@ const tree_sql = /*sql*/  `
     , false
     , 2
   from arg
-  , pg_ls_dir(a2) fname
+  , pg_ls_dir(a2) fname -- TODO not permitted for reqular user
   , concat(a2, '/', fname) fpath
   , pg_stat_file(fpath) stat
   where 'dir' = a1 and not stat.isdir
@@ -512,7 +609,7 @@ from arg, lateral (
     , format('FROM %I.%I', nspname, relname)
     , format('-- WHERE (%s) = ('''')', orderby_cols)
     , 'ORDER BY ' || orderby_cols
-    , 'LIMIT 1000', 'OFFSET 0'
+    , 'LIMIT 10000', 'OFFSET 0'
     , ';', '', '/*'
     , (
       case relkind
@@ -632,74 +729,74 @@ from arg, lateral (
 ) _(def)
 `;
 
-function resolve_typename(type_oid) {
-  switch (type_oid) {
-    case 16: return 'boolean'; case 1000: return 'boolean[]';
-    case 18: return '"char"'; case 1002: return '"char"[]';
-    case 19: return 'name'; case 1003: return 'name[]';
-    case 20: return 'bigint'; case 1016: return 'bigint[]';
-    case 21: return 'smallint'; case 1005: return 'smallint[]';
-    case 23: return 'integer'; case 1007: return 'integer[]';
-    case 24: return 'regproc'; case 1008: return 'regproc[]';
-    case 25: return 'text'; case 1009: return 'text[]';
-    case 26: return 'oid'; case 1028: return 'oid[]';
-    case 600: return 'point'; case 1017: return 'point[]';
-    case 601: return 'lseg'; case 1018: return 'lseg[]';
-    case 602: return 'path'; case 1019: return 'path[]';
-    case 603: return 'box'; case 1020: return 'box[]';
-    case 604: return 'polygon'; case 1027: return 'polygon[]';
-    case 628: return 'line'; case 629: return 'line[]';
-    case 700: return 'real'; case 1021: return 'real[]';
-    case 701: return 'double precision'; case 1022: return 'double precision[]';
-    case 702: return 'abstime'; case 1023: return 'abstime[]';
-    case 703: return 'reltime'; case 1024: return 'reltime[]';
-    case 704: return 'tinterval'; case 1025: return 'tinterval[]';
-    case 718: return 'circle'; case 719: return 'circle[]';
-    case 790: return 'money'; case 791: return 'money[]';
-    case 869: return 'inet'; case 1041: return 'inet[]';
-    case 650: return 'cidr'; case 651: return 'cidr[]';
-    case 1042: return 'character'; case 1014: return 'character[]';
-    case 1043: return 'character varying'; case 1015: return 'character varying[]';
-    case 1082: return 'date'; case 1182: return 'date[]';
-    case 1083: return 'time without time zone'; case 1183: return 'time without time zone[]';
-    case 1114: return 'timestamp without time zone'; case 1115: return 'timestamp without time zone[]';
-    case 1184: return 'timestamp with time zone'; case 1185: return 'timestamp with time zone[]';
-    case 1186: return 'interval'; case 1187: return 'interval[]';
-    case 1266: return 'time with time zone'; case 1270: return 'time with time zone[]';
-    case 1560: return 'bit'; case 1561: return 'bit[]';
-    case 1562: return 'bit varying'; case 1563: return 'bit varying[]';
-    case 1700: return 'numeric'; case 1231: return 'numeric[]';
-    case 2202: return 'regprocedure'; case 2207: return 'regprocedure[]';
-    case 2203: return 'regoper'; case 2208: return 'regoper[]';
-    case 2204: return 'regoperator'; case 2209: return 'regoperator[]';
-    case 2205: return 'regclass'; case 2210: return 'regclass[]';
-    case 2206: return 'regtype'; case 2211: return 'regtype[]';
-    case 4096: return 'regrole'; case 4097: return 'regrole[]';
-    case 4089: return 'regnamespace'; case 4090: return 'regnamespace[]';
-    case 3734: return 'regconfig'; case 3735: return 'regconfig[]';
-    case 3769: return 'regdictionary'; case 3770: return 'regdictionary[]';
-    case 3904: return 'int4range'; case 3905: return 'int4range[]';
-    case 3906: return 'numrange'; case 3907: return 'numrange[]';
-    case 3908: return 'tsrange'; case 3909: return 'tsrange[]';
-    case 3910: return 'tstzrange'; case 3911: return 'tstzrange[]';
-    case 3912: return 'daterange'; case 3913: return 'daterange[]';
-    case 3926: return 'int8range'; case 3927: return 'int8range[]';
-    case 2249: return 'record'; case 2287: return 'record[]';
-    case 2275: return 'cstring'; case 1263: return 'cstring[]';
-    case 2276: return '"any"';
-    case 2277: return 'anyarray';
-    case 2278: return 'void';
-    case 2279: return 'trigger';
-    case 3838: return 'event_trigger';
-    case 2280: return 'language_handler';
-    case 2281: return 'internal';
-    case 2282: return 'opaque';
-    case 2283: return 'anyelement';
-    case 2776: return 'anynonarray';
-    case 3500: return 'anyenum';
-    case 3831: return 'anyrange';
-  }
-}
+// function resolve_builtin_typename(type_oid) {
+//   switch (type_oid) {
+//     case 16: return 'boolean'; case 1000: return 'boolean[]';
+//     case 18: return '"char"'; case 1002: return '"char"[]';
+//     case 19: return 'name'; case 1003: return 'name[]';
+//     case 20: return 'bigint'; case 1016: return 'bigint[]';
+//     case 21: return 'smallint'; case 1005: return 'smallint[]';
+//     case 23: return 'integer'; case 1007: return 'integer[]';
+//     case 24: return 'regproc'; case 1008: return 'regproc[]';
+//     case 25: return 'text'; case 1009: return 'text[]';
+//     case 26: return 'oid'; case 1028: return 'oid[]';
+//     case 600: return 'point'; case 1017: return 'point[]';
+//     case 601: return 'lseg'; case 1018: return 'lseg[]';
+//     case 602: return 'path'; case 1019: return 'path[]';
+//     case 603: return 'box'; case 1020: return 'box[]';
+//     case 604: return 'polygon'; case 1027: return 'polygon[]';
+//     case 628: return 'line'; case 629: return 'line[]';
+//     case 700: return 'real'; case 1021: return 'real[]';
+//     case 701: return 'double precision'; case 1022: return 'double precision[]';
+//     case 702: return 'abstime'; case 1023: return 'abstime[]';
+//     case 703: return 'reltime'; case 1024: return 'reltime[]';
+//     case 704: return 'tinterval'; case 1025: return 'tinterval[]';
+//     case 718: return 'circle'; case 719: return 'circle[]';
+//     case 790: return 'money'; case 791: return 'money[]';
+//     case 869: return 'inet'; case 1041: return 'inet[]';
+//     case 650: return 'cidr'; case 651: return 'cidr[]';
+//     case 1042: return 'character'; case 1014: return 'character[]';
+//     case 1043: return 'character varying'; case 1015: return 'character varying[]';
+//     case 1082: return 'date'; case 1182: return 'date[]';
+//     case 1083: return 'time without time zone'; case 1183: return 'time without time zone[]';
+//     case 1114: return 'timestamp without time zone'; case 1115: return 'timestamp without time zone[]';
+//     case 1184: return 'timestamp with time zone'; case 1185: return 'timestamp with time zone[]';
+//     case 1186: return 'interval'; case 1187: return 'interval[]';
+//     case 1266: return 'time with time zone'; case 1270: return 'time with time zone[]';
+//     case 1560: return 'bit'; case 1561: return 'bit[]';
+//     case 1562: return 'bit varying'; case 1563: return 'bit varying[]';
+//     case 1700: return 'numeric'; case 1231: return 'numeric[]';
+//     case 2202: return 'regprocedure'; case 2207: return 'regprocedure[]';
+//     case 2203: return 'regoper'; case 2208: return 'regoper[]';
+//     case 2204: return 'regoperator'; case 2209: return 'regoperator[]';
+//     case 2205: return 'regclass'; case 2210: return 'regclass[]';
+//     case 2206: return 'regtype'; case 2211: return 'regtype[]';
+//     case 4096: return 'regrole'; case 4097: return 'regrole[]';
+//     case 4089: return 'regnamespace'; case 4090: return 'regnamespace[]';
+//     case 3734: return 'regconfig'; case 3735: return 'regconfig[]';
+//     case 3769: return 'regdictionary'; case 3770: return 'regdictionary[]';
+//     case 3904: return 'int4range'; case 3905: return 'int4range[]';
+//     case 3906: return 'numrange'; case 3907: return 'numrange[]';
+//     case 3908: return 'tsrange'; case 3909: return 'tsrange[]';
+//     case 3910: return 'tstzrange'; case 3911: return 'tstzrange[]';
+//     case 3912: return 'daterange'; case 3913: return 'daterange[]';
+//     case 3926: return 'int8range'; case 3927: return 'int8range[]';
+//     case 2249: return 'record'; case 2287: return 'record[]';
+//     case 2275: return 'cstring'; case 1263: return 'cstring[]';
+//     case 2276: return '"any"';
+//     case 2277: return 'anyarray';
+//     case 2278: return 'void';
+//     case 2279: return 'trigger';
+//     case 3838: return 'event_trigger';
+//     case 2280: return 'language_handler';
+//     case 2281: return 'internal';
+//     case 2282: return 'opaque';
+//     case 2283: return 'anyelement';
+//     case 2776: return 'anynonarray';
+//     case 3500: return 'anyenum';
+//     case 3831: return 'anyrange';
+//   }
+// }
 
 if (import.meta.main) {
   await main(Deno.args);

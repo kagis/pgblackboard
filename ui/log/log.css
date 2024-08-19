@@ -1,6 +1,6 @@
 .log {
   position: sticky;
-  left: 0;
+  inset: auto 0;
   background: linear-gradient(to right,
     transparent 0 3rem,
     hsl(0 0% 0% / .08) 3rem,
@@ -9,12 +9,14 @@
 }
 
 .log-header {
+  margin: 0;
   padding-inline: 4rem 0;
-  line-height: 2.5rem;
+  line-height: 2.5;
   position: sticky;
   top: 0;
   z-index: 1;
-  color: hsl(0 0% 50%);
+  /* display: flex; */
+  /* align-items: center; */
   background: linear-gradient(to right,
     transparent 0 3rem,
     hsl(0 0% 0% / .08) 3rem,
@@ -31,15 +33,60 @@
   -webkit-mask: url('./icon_ellipsis.svg') center / 1rem no-repeat;
 }
 
-.log-status_icon_succeeded {
-  mask: url('./icon_success.svg') center / 1rem no-repeat;
-  -webkit-mask: url('./icon_succeeded.svg') center / 1rem no-repeat;
+.log-status_icon_ok {
+  mask: url('./icon_ok.svg') center / 1rem no-repeat;
+  -webkit-mask: url('./icon_ok.svg') center / 1rem no-repeat;
 }
 
 .log-status_icon_failed {
   color: hsl(330 80% 60%);
   mask-image: url('./icon_failed.svg');
   -webkit-mask-image: url('./icon_failed.svg');
+}
+
+.log-status_icon_suspended {
+  mask: url('./icon_suspended.svg') center / 1rem no-repeat;
+  -webkit-mask: url('./icon_suspended.svg') center / 1rem no-repeat;
+}
+
+.log-status_text {
+  color: hsl(0 0% 50%);
+}
+
+.log-wake_more {
+  all: unset;
+  position: absolute;
+  inset: 0 0 0 auto;
+  margin: .5rem 1rem;
+  min-width: 5rem;
+  line-height: 2;
+  font-size: .75rem;
+  font-weight: 500;
+  font-stretch: normal;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  background: hsl(0 0% 90%);
+  color: hsl(0 0% 20%);
+}
+
+.log-wake_commit {
+  all: unset;
+  position: absolute;
+  inset: 0 0 0 auto;
+  margin: .5rem 1rem;
+  min-width: 5rem;
+  line-height: 2;
+  font-size: .75rem;
+  font-weight: 500;
+  font-stretch: normal;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  background: hsl(330 80% 30%);
+  /* color: hsl(0 0% 20%); */
 }
 
 .log-msg {
@@ -73,7 +120,7 @@
       -webkit-mask-image: url('./icon_ellipsis.svg');
     }
   }
-  &[data-tag=ErrorResponse]  {
+  &[data-tag=ErrorResponse] {
     background-color: hsl(330 80% 60% / .1);
     &::before {
       /* opacity: 1; */

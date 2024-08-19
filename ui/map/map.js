@@ -17,7 +17,12 @@ const style = {
     duration: 0, // instant theme switch
   },
   sources: {
-    'ne_land': {
+    'sat': {
+      type: 'raster',
+      tileSize: 256,
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    },
+    'ne_land': { // TODO land -> coastlines
       type: 'geojson',
       data: URL.createObjectURL(ne_land_blob),
       tolerance: .2,
@@ -51,6 +56,14 @@ const style = {
         },
       },
     },
+    // {
+    //   id: 'sat',
+    //   type: 'raster',
+    //   source: 'sat',
+    //   paint: {
+    //     'raster-opacity': .5,
+    //   },
+    // },
     {
       id: 'out_fill',
       type: 'fill',
@@ -260,7 +273,7 @@ export default {
   },
   methods: {
     _mounted() {
-      this._ml = window.debug_map = new MaplibreMap({
+      this._ml = globalThis.debug_map = new MaplibreMap({
         style,
         container: this.$el,
         attributionControl: false, // TODO ?
@@ -373,7 +386,7 @@ export default {
         this._ml.queryRenderedFeatures(qbox, { layers: ['out_point', 'out_collapsed', 'out_line'] })[0] ||
         this._ml.queryRenderedFeatures(point, { layers: ['out_fill'] })[0]
       );
-      if (!feature) return;
+      if (!feature) return; // TODO clear highlight
       const { frame_idx, row_idx } = feature.properties;
       const detail = { frame_idx, row_idx };
       this.$root.$el.dispatchEvent(new CustomEvent('req_row_focus', { detail }));

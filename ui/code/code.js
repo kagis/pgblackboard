@@ -22,10 +22,13 @@ export default {
         fontFamily: 'Roboto Mono',
         fontWeight: '400',
         minimap: { enabled: false },
+        stickyScroll: { enabled: false },
         renderLineHighlight: 'none',
         useShadowDOM: true,
         overviewRulerLanes: 0,
+        // https://github.com/microsoft/monaco-editor/issues/3829
         // bracketPairColorization: { enabled: false },
+        'bracketPairColorization.enabled': false,
         padding: { top: 16, bottom: 16 },
         scrollbar: {
           horizontalScrollbarSize: 8,
@@ -66,7 +69,6 @@ export default {
     watch_model_uri(uri) {
       if (!uri) return this._editor.setModel(null);
       const model = editor.getModel(uri);
-      model.updateOptions({ bracketColorizationOptions: { enabled: false } });
       this._editor.setModel(model);
     },
 
