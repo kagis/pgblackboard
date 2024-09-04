@@ -264,7 +264,6 @@ const style = {
 // `;
 
 export default {
-  template: /*html*/ `<div class="map"></div>`,
   computed: {
     curr_frame_idx: vm => vm.$store.out.curr_frame_idx,
     curr_row_idx: vm => vm.$store.out.curr_row_idx,
@@ -272,6 +271,9 @@ export default {
     features: vm => vm._compute_features(),
   },
   methods: {
+    _render() {
+      return { tag: 'div', class: 'map' };
+    },
     _mounted() {
       this._ml = globalThis.debug_map = new MaplibreMap({
         style,
@@ -411,12 +413,6 @@ export default {
       // TODO if point then use box of the point and nearest point from dataset
       // this._ml.fitBounds(geom.bbox, { padding: 20 });
     },
-  },
-  mounted() {
-    return this._mounted();
-  },
-  unmounted() { // beforeUnmount?
-    return this._unmounted();
   },
 };
 

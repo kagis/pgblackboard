@@ -1,38 +1,100 @@
-export default {
-  template: /*html*/ `
-    <div class="auth">
-      <form class="auth-form" v-on:submit.prevent="submit">
-        <input class="auth-user"
-          type="text"
-          name="user"
-          placeholder="user" />
+const methods = {
+  _render() {
+    const { pending, error } = this.$store.auth;
 
-        <input class="auth-password"
-          type="password"
-          name="password"
-          placeholder="password"
-          autocomplete="current-password" />
+    return {
+      tag: 'div',
+      class: 'auth',
+      inner: [
+        {
+          tag: 'form',
+          class: 'auth-form',
+          onSubmit: this.on_submit,
+          inner: [
+            {
+              tag: 'input',
+              class: 'auth-user',
+              type: 'text',
+              name: 'user',
+              placeholder: 'user',
+            },
 
-        <button class="auth-submit"
-          :disabled="login_pending"
-          :data-pending="login_pending || null">
-          login
-        </button>
+            {
+              tag: 'input',
+              class: 'auth-password',
+              type: 'password',
+              name: 'password',
+              placeholder: 'password',
+              autocomplete: 'current-password',
+            },
 
-        <output class="auth-error"
-          v-text="login_error">
-        </output>
-      </form>
-    </div>
-  `,
-  computed: {
-    login_pending: vm => vm.$store.login_pending,
-    login_error: vm => vm.$store.login_error,
+            {
+              tag: 'button',
+              class: 'auth-submit',
+              disabled: pending,
+              inner: 'Login',
+            },
+
+            {
+              tag: 'output',
+              class: 'auth-error',
+              inner: error,
+            },
+          ],
+        },
+      ],
+    };
   },
-  methods: {
-    submit({ target }) {
-      const form = new FormData(target);
-      this.$store.login(form.get('user'), form.get('password'));
-    },
+  /** @param {SubmitEvent} e */
+  on_submit(e) {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    this.$store.auth_submit(form.get('user'), form.get('password'));
   },
 };
+
+export default { methods };
+
+
+// const methods = {
+//   _render(h) {
+//     const { pending, error } = this.$store.auth;
+
+//     return h('div', { class: 'auth' }, [
+//       h('form', { class: 'auth-form', onSubmit: this.on_submit }, [
+//         h('input', {
+//           class: 'auth-user',
+//           type: 'text',
+//           name: 'user',
+//           placeholder: 'user',
+//         }),
+
+//         h('input', {
+//           class: 'auth-password',
+//           type: 'password',
+//           name: 'password',
+//           placeholder: 'password',
+//           autocomplete: 'current-password',
+//         }),
+
+//         h('button', {
+//           class: 'auth-submit',
+//           disabled: pending,
+//         }, 'Login'),
+
+//         h('output', { class: 'auth-error' }, error),
+//       ]),
+//     ]);
+//   },
+//   /** @param {SubmitEvent} e */
+//   on_submit(e) {
+//     e.preventDefault();
+//     const form = new FormData(e.target);
+//     this.$store.auth_submit(form.get('user'), form.get('password'));
+//   },
+// };
+
+// export default {
+//   methods,
+//   render: vm => vm._render(vm.$h),
+// };

@@ -39,16 +39,16 @@
   cursor: pointer;
   transition: opacity 200ms ease;
   text-align: center;
-}
-.auth-submit[data-pending] {
-  background-image: linear-gradient(to right, #fff0 0%, #fff2 50%, #fff0 100%);
-  background-repeat: no-repeat;
-  animation: 2s infinite auth-submit_pending;
-}
-.auth-submit:disabled {
-  cursor: initial;
-  opacity: .5;
-  /* background-color: #333; */
+
+  &:disabled {
+    cursor: initial;
+    opacity: .5;
+    /* background-color: #333; */
+
+    background-image: linear-gradient(to right, #fff0 0%, #fff2 50%, #fff0 100%);
+    background-repeat: no-repeat;
+    animation: 2s infinite auth-submit_pending;
+  }
 }
 
 @keyframes auth-submit_pending {

@@ -17,7 +17,7 @@
   margin-block-end: 2rem;
 }
 
-.out-head {
+.out-thead {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -80,7 +80,6 @@
   width: 1em;
   height: 1em;
   mask: url('./icon_key.svg') center / 1rem no-repeat;
-  -webkit-mask: url('./icon_key.svg') center / 1rem no-repeat;
 } */
 
 .out-colh_name {

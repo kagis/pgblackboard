@@ -1,14 +1,17 @@
 import { editor, Uri } from './_lib/monaco.js';
 
 export class Store {
-
   light_theme = false;
   panes = { left: .2, right: .6, out: 1, map: 0 };
+  auth = {
+    pending: false,
+    done: false,
+    error: '',
+    u: '',
+    key: '',
+  };
   tree = {};
   curr_treenode_path = null;
-  login_pending = false;
-  login_done = false;
-  login_error = '';
   // TODO track run_count for drafts, gc least used
   drafts_kv = {};
   stored_draft_ids = [];
@@ -16,7 +19,7 @@ export class Store {
   curr_draft_id = null;
   datum_focused = false;
   out = {
-    frames: [{
+    frames: [].map(_ => ({
       curr_col_idx: -1,
       geom_col_idx: -1,
       cols: [],
@@ -26,18 +29,23 @@ export class Store {
         will_insert: false,
         will_delete: false,
       }],
-    }].slice(0, 0),
+    })),
     messages: [],
     curr_frame_idx: null,
     curr_row_idx: null,
     // TODO draft_ver: null,
-    error_pos: null,
     aborter: null,
     loading: false,
     suspended: null,
     db: null,
-    took_msec: 0,
+    // took_msec: 0,
   };
+
+  get_out_errors() {
+    return this.out.messages
+      .filter((m) => m.tag == 'error')
+      .map((m) => m.payload);
+  }
 
   resize_panes(update) {
     Object.assign(this.panes, update);
@@ -47,42 +55,54 @@ export class Store {
     this.datum_focused = value;
   }
 
-  async login(u, password) { // TODO login->auth
-    // TODO cancel previous pending req
-    this.login_pending = true;
-    this.login_error = '';
+  async auth_submit(u, password) {
+    this.auth = {
+      pending: true,
+      ok: false,
+      error: null,
+      u,
+      key: null,
+    };
+    const auth = this.auth;
     try {
       // await new Promise(resolve => setTimeout(resolve, 3000));
-      const { ok, reason, key } = await this._api('auth', { u }, { password });
-      if (!ok) return this.login_error = reason;
-      this._key = key;
-      this._user = u;
-      // this.drafts = this._load_drafts();
-      await this.tree_toggle([]);
+      const { ok, error, key } = await this._api('auth', { u }, { password });
+      if (!ok) {
+        auth.error = error;
+        return;
+      }
+      auth.key = key;
+      // TODO concurent store mutation if multiple parallel .auth() called
+      await this._load_tree_and_drafts();
 
-      const initial_draft_id = this._add_draft(
-        `\\connect postgres\n\n` +
-        `SELECT * FROM pg_stat_activity;\n`,
-      );
-      this._unset_curr_draft();
-      this.curr_draft_id = initial_draft_id;
-
-      this._load_drafts();
-      setInterval(_ => this._flush_drafts(), 10e3);
-      globalThis.addEventListener('unload', _ => this._flush_drafts());
-
-      this.login_done = true;
-    } catch (err) {
-      this.login_error = String(err);
+      auth.ok = true;
+    } catch (ex) {
+      auth.error = String(ex);
     } finally {
-      this.login_pending = false;
+      auth.pending = false;
     }
   }
 
+  async _load_tree_and_drafts() {
+    // this.drafts = this._load_drafts();
+    await this.tree_toggle([]);
+
+    const initial_draft_id = this._add_draft(
+      `\\connect postgres\n\n` +
+      `SELECT * FROM pg_stat_activity;\n`,
+    );
+    this._unset_curr_draft();
+    this.curr_draft_id = initial_draft_id;
+
+    this._load_drafts();
+    setInterval((_) => this._flush_drafts(), 10e3);
+    globalThis.addEventListener('unload', (_) => this._flush_drafts());
+  }
+
   _load_drafts() {
-    const storage = localStorage;
+    const storage = globalThis.localStorage; // TODO dry dep injection
     // TODO validate array
-    this.stored_draft_ids = JSON.parse(storage.getItem('pgbb:draft:_ids')) || [];;
+    this.stored_draft_ids = JSON.parse(storage.getItem('pgbb:draft:_ids')) || [];
     for (const id of this.stored_draft_ids) {
       this._add_draft(storage.getItem(id), id);
     }
@@ -91,13 +111,14 @@ export class Store {
   _flush_drafts() {
     // TODO gc drafts
     if (!this.dirty_draft_ids) return;
-    localStorage.setItem('pgbb:draft:_ids', JSON.stringify(this.stored_draft_ids));
+    const storage = globalThis.localStorage; // TODO dry dep injection
+    storage.setItem('pgbb:draft:_ids', JSON.stringify(this.stored_draft_ids));
     for (const id in this.dirty_draft_ids) {
       if (this.stored_draft_ids.includes(id)) {
         // TODO handle QuotaExceededError
-        localStorage.setItem(id, editor.getModel(id).getValue());
+        storage.setItem(id, editor.getModel(id).getValue());
       } else {
-        localStorage.removeItem(id);
+        storage.removeItem(id);
       }
     }
     this.dirty_draft_ids = null;
@@ -113,7 +134,7 @@ export class Store {
       cursor_pos: 0,
       cursor_len: 0,
     };
-    const draft =  this.drafts_kv[draft_id];
+    const draft = this.drafts_kv[draft_id];
     editor_model.onDidChangeContent(update_caption);
     update_caption();
     return draft_id;
@@ -139,8 +160,9 @@ export class Store {
     }
     node.children = { value: null, loading: true };
     const { db, children, id } = node;
+    const { u, key } = this.auth;
     try {
-      const { result } = await this._api('tree', { u: this._user, db, node: id, key: this._key });
+      const { result } = await this._api('tree', { u, db, node: id, key });
       // TODO what if no children?
       children.value = result;
     } finally {
@@ -157,13 +179,17 @@ export class Store {
     this._unset_curr_draft();
     this.curr_draft_id = draft_id;
     this.curr_treenode_path = path;
-    const node = path.reduce(({ children }, idx) => children.value[idx], this.tree);
-    const { db, id } = node;
-    const content = await (
-      this._api('defn', { u: this._user, db, node: id, key: this._key })
-      .then(({ result }) => result || '', err => `/* ${err} */\n`)
-      // TODO indicate dead treenode when treenode not found
+    const node = path.reduce(
+      ({ children }, idx) => children.value[idx],
+      this.tree,
     );
+    const { db, id } = node;
+    const { u, key } = this.auth;
+    const content = await this._api('defn', { u, db, node: id, key }).then(
+      ({ result }) => result || '',
+      (err) => `/* ${err} */\n`,
+    );
+    // TODO indicate dead treenode when treenode not found
     if (!editor_model.isDisposed()) {
       editor_model.setValue(content);
     }
@@ -282,6 +308,8 @@ export class Store {
       will_delete: false,
     };
     const row = rows[row_idx];
+    // TODO same column can be selected multiple times
+    // so att_name should be used instead of col_idx to identify updated datum
     row.updates[col_idx] = new_value;
   }
 
@@ -310,15 +338,23 @@ export class Store {
     let script = `\\connect ${this.out.db}\n\nBEGIN READ WRITE;\n\n`;
 
     for (const frame of this.out.frames) {
-      const key_idxs = frame.cols.map((col, i) => col.att_key && i).filter(Number.isInteger);
-      const key_names = tuple_expr(key_idxs.map(i => frame.cols[i].att_name));
+      const key_idxs = frame.cols
+        .map((col, i) => col.att_key && i)
+        .filter(Number.isInteger);
+      const key_names = tuple_expr(key_idxs.map((i) => frame.cols[i].att_name));
 
       const delete_keys = [];
       const update_keys = [];
       const update_stmts = [];
       const insert_stmts = [];
-      for (const { will_insert, will_delete, dirty, tuple, updates } of frame.rows) {
-        const key_vals = tuple_expr(key_idxs.map(i => literal(tuple[i])));
+      for (const {
+        will_insert,
+        will_delete,
+        dirty,
+        tuple,
+        updates,
+      } of frame.rows) {
+        const key_vals = tuple_expr(key_idxs.map((i) => literal(tuple[i])));
         if (will_delete) {
           delete_keys.push(key_vals);
           continue;
@@ -334,7 +370,7 @@ export class Store {
           }
           insert_stmts.push(
             `INSERT INTO ${frame.rel_name} (${cols.join(', ')})\n` +
-            `VALUES (${vals.join(', ')});\n\n`
+            `VALUES (${vals.join(', ')});\n\n`,
           );
           continue;
         }
@@ -348,7 +384,7 @@ export class Store {
           update_stmts.push(
             `UPDATE ${frame.rel_name}\n` +
             `SET ${set_entries.join('\n  , ')}\n` +
-            `WHERE ${key_names} = ${key_vals};\n\n`
+            `WHERE ${key_names} = ${key_vals};\n\n`,
           );
           update_keys.push(key_vals);
           continue;
@@ -362,7 +398,7 @@ export class Store {
       }
       if (update_stmts.length) {
         script += update_stmts.join('');
-        script +=  (
+        script += (
           `SELECT * FROM ${frame.rel_name}\n` +
           `WHERE ${key_names} IN (\n  ${update_keys.join(',\n  ')}\n);\n\n`
         );
@@ -415,7 +451,7 @@ export class Store {
     const draft = this.curr_draft;
     const { cursor_pos, cursor_len } = draft;
     const editor_model = editor.getModel(this.curr_draft_id);
-    let sql = editor_model.getValue()
+    let sql = editor_model.getValue();
 
     const m = /^\s*\\connect\s+(\w+|("[^"]*")+)/.exec(sql);
     const [, db] = m;
@@ -435,8 +471,6 @@ export class Store {
       messages: [],
       curr_frame_idx: null,
       curr_row_idx: null,
-      error_pos: null,
-      took_msec: 0,
       aborter,
       loading: true,
       suspended: null,
@@ -444,7 +478,8 @@ export class Store {
     const out = this.out;
 
     try {
-      const qs = new URLSearchParams({ api: 'run', u: this._user, db, key: this._key });
+      const { u, key } = this.auth;
+      const qs = new URLSearchParams({ api: 'run', u, db, key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const body = JSON.stringify({ sql, tz, rw });
       const resp = await fetch('?' + qs, {
@@ -454,71 +489,57 @@ export class Store {
         body,
       });
       if (!resp.ok) throw Error('HTTP Error', { cause: await resp.text() });
-      const msg_stream = (
+      const msg_stream = iter_stream(
         resp.body
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new JSONDecodeStream())
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(new JSONDecodeStream()),
       );
       let frame = null;
-      for await (const msg of iter_stream(msg_stream)) {
+      for await (const [tag, payload] of msg_stream) {
         out.suspended = null;
-
-        const { tag, payload, rows } = msg;
         switch (tag) {
-          case 'RowDescription':
+          case 'head':
             out.frames.push({
-              cols: payload.map(col => ({ ...col, width: 150 })),
-              curr_col_idx: Boolean(payload.length) - 1,
-              geom_col_idx: payload.findIndex(col => /^st_asgeojson$/i.test(col.name)),
+              rel_name: payload.rel_name,
+              cols: payload.cols.map((col) => ({ ...col, width: 150 })),
+              curr_col_idx: Boolean(payload.cols.length) - 1,
+              geom_col_idx: payload.cols.findIndex((col) =>
+                /^st_asgeojson$/i.test(col.name),
+              ),
               rows: [],
             });
             frame = out.frames.at(-1);
             break;
           // TODO CopyData
-          case 'DataRow':
+          case 'rows':
             // TODO set selected frame_idx/row_idx/col_idx
-            frame.rows.push(...rows.map(tuple => ({
-              tuple,
-              updates: [],
-              will_insert: false,
-              will_delete: false,
-            })));
+            frame.rows.push(
+              ...payload.map((tuple) => ({
+                tuple,
+                updates: [],
+                will_insert: false,
+                will_delete: false,
+              })),
+            );
             break;
-          case 'NoticeResponse':
-          case 'ErrorResponse':
-            out.error_pos = payload.position && payload.position - 1;
-            out.messages.push(msg)
-            break;
-          case 'PortalSuspended': // TODO impossible in simple query
-          case 'EmptyQueryResponse':
-          case 'CommandComplete':
-            out.messages.push(msg);
+          case 'complete':
+          case 'error':
+          case 'notice':
+            out.messages.push({ tag, payload });
             break;
           case 'suspended':
-            out.suspended = msg.payload;
-            break;
-          case 'duration':
-            out.took_msec = msg.payload;
-            break;
-          case 'epilog':
-            for (const [frame_idx, { cols, rel_name }] of payload.entries()) {
-              const frame = out.frames[frame_idx];
-              Object.assign(frame, { rel_name });
-              for (const [col_idx, col] of cols.entries()) {
-                Object.assign(frame.cols[col_idx], col);
-              }
-            }
+            out.suspended = payload;
             break;
         }
       }
     } catch (err) {
-      // out.messages.push({ message: err });
       out.messages.push({
-        tag: 'ErrorResponse',
+        tag: 'error',
         payload: {
-          severity: 'client error',
-          code: '00000',
+          severity: 'ERROR', // TODO non localized
+          code: 'E_PGBB_FRONTEND',
           message: String(err),
+          detail: err?.stack, // TODO .cause
         },
       });
     } finally {
@@ -527,8 +548,6 @@ export class Store {
       out.suspended = null;
     }
   }
-
-  // TODO show COMMIT/ROLLBACK button if connection is left in transaction
 }
 
 class JSONDecodeStream extends TransformStream {
@@ -551,7 +570,7 @@ class JSONDecodeStream extends TransformStream {
 }
 
 // chrome 118 polyfill
-async function * iter_stream(stream) {
+async function* iter_stream(stream) {
   const reader = stream.getReader();
   try {
     for (;;) {

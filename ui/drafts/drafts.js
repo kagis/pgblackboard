@@ -1,39 +1,50 @@
 // TODO drafts hover preview
 
+const methods = {
+  _render() {
+    const { curr_draft_id, stored_draft_ids, drafts_kv } = this.$store;
+    return {
+      tag: 'div',
+      class: 'drafts',
+      inner: stored_draft_ids.map(draft_id => ({
+        tag: 'div',
+        class: 'drafts-item',
+        key: draft_id,
+        'data-selected': draft_id == curr_draft_id || null,
+        onClick: _ => this.set_curr_draft(draft_id),
+        inner: [
+          {
+            tag: 'span',
+            class: 'drafts-marker',
+            // TODO aria
+          },
+          {
+            tag: 'span',
+            class: 'drafts-caption',
+            inner: drafts_kv[draft_id].caption,
+          },
+          {
+            tag: 'button',
+            class: 'drafts-delete',
+            type: 'button',
+            'aria-label': 'Delete draft',
+            onClick: e => this.on_rm_click(e, draft_id),
+          },
+        ],
+      })),
+    };
+  },
+  set_curr_draft(draft_id) {
+    this.$store.set_curr_draft(draft_id);
+  },
+  /** @param {MouseEvent} e */
+  on_rm_click(e, draft_id, button_el) {
+    e.stopPropagation();
+    this.$store.rm_draft(draft_id);
+    // console.log('focused', document.activeElement == button_el);
+  },
+};
+
 export default {
-  template: String.raw /*html*/ `
-    <div class="drafts">
-      <div class="drafts-item"
-        v-for="id in stored_draft_ids"
-        :key="id"
-        :data-selected="id == curr_draft_id || null"
-        v-on:click="set_curr_draft(id)">
-        <span class="drafts-marker" v-on:click.stop="bump(id)"></span>
-        <span class="drafts-caption" v-text="get_caption(id)"></span>
-        <button class="drafts-delete"
-          type="button"
-          aria-label="delete draft"
-          xv-on:pointerdown="on_rm_down"
-          v-on:click.stop="on_rm_click(id, $event.target)">
-        </button>
-      </div>
-    </div>
-  `,
-  computed: {
-    curr_draft_id: vm => vm.$store.curr_draft_id,
-    stored_draft_ids: vm => vm.$store.stored_draft_ids,
-    drafts_kv: vm => vm.$store.drafts_kv,
-    set_curr_draft: vm => vm.$store.set_curr_draft.bind(vm.$store),
-    rm_draft: vm => vm.$store.rm_draft.bind(vm.$store),
-  },
-  methods: {
-    get_caption(draft_id) {
-      const { caption } = this.drafts_kv[draft_id];
-      return caption;
-    },
-    on_rm_click(draft_id, button_el) {
-      this.rm_draft(draft_id);
-      // console.log('focused', document.activeElement == button_el);
-    },
-  },
+  methods,
 };

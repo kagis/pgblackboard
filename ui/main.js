@@ -1,7 +1,7 @@
+import monaco_worker from './_lib/monaco_worker.js';
 import monaco_json_worker from './_lib/monaco_json_worker.js';
-import monaco_editor_worker from './_lib/monaco_editor_worker.js';
 import { editor } from './_lib/monaco.js';
-import { createApp, reactive, computed, watchEffect, h } from './_lib/vue.js';
+import { createApp, reactive, watchEffect, h } from './_lib/vue.js';
 import root_component from './app/app.js';
 import { Store } from './store.js';
 
@@ -9,7 +9,7 @@ globalThis.MonacoEnvironment = {
   getWorker(_module_id, label) {
     switch (label) {
       case 'json': return monaco_json_worker();
-      default: return monaco_editor_worker();
+      default: return monaco_worker();
     }
 	},
 };
@@ -35,21 +35,34 @@ editor.defineTheme('pgbb-light', {
 });
 
 const store = reactive(new Store());
-const app = createApp(root_component);
+const app = createApp({
+  // TODO createApp(root_component) does not render by mixin
+  render() { return h(root_component); },
+});
 app.config.globalProperties.$store = store;
 app.config.globalProperties.$h = h;
-app.config.globalProperties.$computed = computed;
 
 watchEffect(_ => {
   editor.setTheme(store.light_theme ? 'pgbb-light' : 'pgbb-dark');
 });
 
-// app.mixin({
-//   beforeCreate() {
-//     // TODO map_getters, map_actions,
-//     console.log('beforeCreate', this.$options);
-//   },
-// });
+app.mixin({
+  render() {
+    return transform_vdom(this._render());
+  },
+  mounted() {
+    this._mounted?.();
+  },
+  unmounted() {
+    this._unmounted?.();
+  },
+});
+
+function transform_vdom(def) {
+  const { tag, inner, ...props } = def || 0;
+  if (!tag) return def;
+  return h(tag, props, Array.isArray(inner) ? inner.map(transform_vdom) : inner);
+};
 
 app.mount('body');
 

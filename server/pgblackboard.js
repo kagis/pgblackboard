@@ -67,7 +67,7 @@ class App {
       case 'wake': return this._api_wake(req, qs);
       case 'run': return this._api_run(req, qs);
     }
-    return Response.json({ error: 'uknown api' }, { status: 404 });
+    return Response.json({ error: 'uknown api' }, { status: 400 });
   }
 
   async _api_auth(req, { u }) {
@@ -81,7 +81,7 @@ class App {
       // console.error(err);
       // TODO respond network_error or postgres_auth_error,
       // do not expose string message
-      return Response.json({ ok: false, reason: String(err) });
+      return Response.json({ ok: false, error: String(err) });
     } finally {
       await pg.end();
     }
@@ -180,11 +180,53 @@ class App {
   async * _api_run_body({ sql, user, password, database, tz, rw, signal }) {
     const wake_token = crypto.randomUUID();
     const ctl = { wake() { } };
-    let pg;
+    let pg, pg0;
     try {
-      const rowdescrs = [];
-      const timeline = [];
       this._wakers.set(wake_token, ctl);
+
+      pg0 = pgconnection(
+        {
+          user,
+          database,
+          password,
+          _maxReadBuf: 10 << 20,
+          TimeZone: tz,
+          statement_timeout: '10s',
+          default_transaction_read_only: 'true',
+          search_path: 'pg_catalog',
+        },
+        this.pg_uri,
+      );
+
+      await pg0.query(/*sql*/ `
+        prepare resolve_rowdescr(jsonb) as
+        select jsonb_build_object(
+          'rel_name', regclass(target_reloid), -- TODO fix schema-qualify for pg_catalog.* tables
+          'cols', array(
+            select jsonb_strip_nulls(jsonb_build_object(
+              'name', "name",
+              'type', format_type("typeOid", "typeMod"),
+              'att_name', quote_ident(attname),
+              'att_key', attnum = any(target_key),
+              'att_notnull', attnotnull
+            ))
+            -- TODO ordinality
+            from jsonb_to_recordset($1) _ ("name" text, "typeOid" oid, "typeMod" int4, "tableOid" oid, "tableColumn" int2)
+            left join pg_attribute on (attrelid, attnum) = ("tableOid", "tableColumn") and attrelid = target_reloid
+          )
+        )
+        from (
+          select "tableOid", conkey
+          from jsonb_to_recordset($1) _ ("tableOid" oid, "tableColumn" int2)
+          join pg_constraint on conrelid = "tableOid" and contype = 'p'
+          group by "tableOid", conkey
+          having conkey <@ array_agg("tableColumn") filter (where "tableColumn" > 0)
+          union all
+          select null, null
+          order by 1 nulls last
+          limit 1
+        ) __ (target_reloid, target_key)
+      `);
 
       pg = pgconnection(
         { user, database, password },
@@ -209,109 +251,83 @@ class App {
       let nbytes = 0;
       let nrows = 0;
       const pg_stream = no_pgerror(pg.stream(sql, { signal }));
-      for await (const { tag, payload, rows } of pg_stream) {
+      for await (let { tag, payload, rows } of pg_stream) {
         if (
           nbytes >= (10 << 20) || // any chunk received when traffic limit is already reached
           rows.length && nrows >= 1000 // or new rows chunk received when rows limit is already reached
         ) {
-          // TODO epilog not received when aborted
-          // so partially loaded table is not editable
-          yield * suspend_stream('traffic_limit_exceeded');
+          yield * suspend('traffic_limit_exceeded');
           nbytes = 0;
           nrows = 0;
         }
+        let out_msg;
         switch (tag) {
-          case 'ReadyForQuery':
-            timeline.push(performance.now());
-            break;
           case 'RowDescription':
-            rowdescrs.push(payload);
+            // resolve row description eagerly to keep table editable when stream aborted
+            const [p] = await pg0.query({
+              message: 'Bind',
+              statementName: 'resolve_rowdescr',
+              params: [{ type: 'jsonb', value: payload }],
+            }, {
+              message: 'Execute',
+            }, {
+              signal,
+            });
+            out_msg = ['head', p];
             break;
+
+          case 'DataRow':
+            out_msg = ['rows', rows.map(it => it.raw)];
+            break;
+
+          case 'NoticeResponse':
+            out_msg = ['notice', payload];
+            break;
+
+          case 'ErrorResponse':
+            out_msg = ['error', payload];
+            break;
+
+          case 'CommandComplete':
+            out_msg = ['complete', payload];
+            break;
+
+          case 'PortalSuspended': // TODO impossible in simple query
+          case 'EmptyQueryResponse':
+            out_msg = ['complete', tag];
+            break;
+
+          default:
+            continue;
         }
-        const out_chunk = jsonl_enc({
-          tag,
-          payload,
-          rows: rows.map(it => it.raw),
-        });
-        nbytes += out_chunk.length;
+        const out_msg_b = jsonl_enc(out_msg);
+        nbytes += out_msg_b.length;
         nrows += rows.length;
-        yield out_chunk;
+        yield out_msg_b;
       }
 
-      // TODO duration is not usable,
-      // suspended stream affects duration.
-      // Measure time to first message only?
-      const [start_ts, end_ts] = timeline;
-      const duration = end_ts - start_ts;
-      yield jsonl_enc({ tag: 'duration', payload: duration });
-
-      if (!pg.queryable) return;
-
-      // TODO continue in separate connection?
-      if (pg.inTransaction == 0x45) {
-        await pg.query(/*sql*/ `rollback`);
-      }
-      // TODO do single statement simple query protocol to be more portable (replication=database)
-      // TODO abort by signal?
-      const [epilog] = await pg.query({
-        statement: /*sql*/ `set search_path = 'pg_catalog'`,
-      }, {
-        params: [{ type: 'jsonb', value: rowdescrs }],
-        statement: /*sql*/ `
-          select coalesce(jsonb_agg(rowdescr2 order by rowdescr_idx), '[]')
-          from jsonb_array_elements($1) with ordinality _ (rowdescr, rowdescr_idx)
-          left join lateral (
-            select "tableOid", conkey
-            from jsonb_to_recordset(rowdescr) _ ("tableOid" oid, "tableColumn" int2)
-            -- join pg_class on pg_class.oid = "tableOid"
-            join pg_constraint on conrelid = "tableOid" and contype = 'p'
-            group by "tableOid", conkey
-            having conkey <@ array_agg("tableColumn") filter (where "tableColumn" > 0)
-            limit 1
-          ) __ (target_reloid, target_key) on true
-          , jsonb_build_object(
-            'rel_name', regclass(target_reloid), -- TODO fix schema-qualify for pg_catalog.* tables
-            'cols', array(
-              select jsonb_strip_nulls(jsonb_build_object(
-                'type', format_type("typeOid", "typeMod"),
-                'att_name', quote_ident(attname),
-                'att_key', attnum = any(target_key),
-                'att_notnull', attnotnull
-              ))
-              -- TODO ordinality
-              from jsonb_to_recordset(rowdescr) _ ("typeOid" oid, "typeMod" int4, "tableOid" oid, "tableColumn" int2)
-              left join pg_attribute on (attrelid, attnum) = ("tableOid", "tableColumn") and attrelid = target_reloid
-              -- left join pg_class on pg_class.oid = "tableOid"
-            )
-          ) rowdescr2
-        `,
-      });
-
-      yield jsonl_enc({ tag: 'epilog', payload: epilog });
-
-      if (pg.inTransaction) {
-        yield * suspend_stream('idle_in_transaction');
+      if (pg.queryable && pg.inTransaction == 0x54) {
+        yield * suspend('idle_in_transaction');
         // TODO handle ErrorResponse case, but err.position will not point to user sql
         await pg.query('commit');
         // TODO create special message tag for succeded commit
-        yield jsonl_enc({ tag: 'CommandComplete', payload: 'COMMIT' });
+        yield jsonl_enc(['complete', 'COMMIT']);
       }
     } catch (ex) {
       console.error(ex); // TODO? if (signal.aborted)
       // TODO create dedicated message tag for client error
-      yield jsonl_enc({
-        tag: 'ErrorResponse',
-        payload: {
-          severity: 'client error',
-          message: String(ex),
-          // TODO fix err.cause not exposed (too big message)
-          // details: Deno.inspect(err),
-        },
-      });
+      yield jsonl_enc(['error', {
+        severity: 'ERROR', // TODO non localized
+        code: 'E_PGBB_BACKEND',
+        message: String(ex),
+        // TODO fix err.cause not exposed (too big message)
+        // detail: Deno.inspect(err),
+      }]);
     } finally {
       console.log('ending connection');
       this._wakers.delete(wake_token);
-      await pg?.end();
+      // TODO destroy if end timeout
+      await Promise.all([pg0?.end(), pg?.end()]);
     }
 
     function jsonl_enc(data) {
@@ -329,32 +345,19 @@ class App {
       }
     }
 
-    async function * suspend_stream(reason) {
+    async function * suspend(reason) {
       signal.throwIfAborted();
       const { promise, resolve, reject } = Promise.withResolvers();
       ctl.wake = resolve;
-      const payload = { wake_token, reason };
       const onabort = _ => reject(signal.reason);
       signal.addEventListener('abort', onabort);
       try {
-        yield jsonl_enc({ tag: 'suspended', payload });
+        yield jsonl_enc(['suspended', { wake_token, reason }]);
         await promise;
       } finally {
         signal.removeEventListener('abort', onabort);
       }
     }
-
-    // async function abortable_promise(/** @type {Promise} */ p, /** @type {AbortSignal} */ signal) {
-    //   signal.throwIfAborted();
-    //   const { promise, reject } = Promise.withResolvers();
-    //   const onabort = _ => reject(signal.reason);
-    //   signal.addEventListener('abort', onabort);
-    //   try {
-    //     return await Promise.race([promise, p]);
-    //   } finally {
-    //     signal.removeEventListener('abort', onabort);
-    //   }
-    // }
   }
 
   _api_wake(_req, { token }) {
