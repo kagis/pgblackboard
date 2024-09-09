@@ -1,6 +1,6 @@
 /**
  * MapLibre GL JS
- * @license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v4.6.0/LICENSE.txt
+ * @license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v4.7.0/LICENSE.txt
  */
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -55,7 +55,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol */
+/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
 
 var extendStatics = function(d, b) {
     extendStatics = Object.setPrototypeOf ||
@@ -166,8 +166,8 @@ function __awaiter(thisArg, _arguments, P, generator) {
 }
 
 function __generator(thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -271,7 +271,7 @@ function __await(v) {
 function __asyncGenerator(thisArg, _arguments, generator) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
     var g = generator.apply(thisArg, _arguments || []), i, q = [];
-    return i = {}, verb("next"), verb("throw"), verb("return", awaitReturn), i[Symbol.asyncIterator] = function () { return this; }, i;
+    return i = Object.create((typeof AsyncIterator === "function" ? AsyncIterator : Object).prototype), verb("next"), verb("throw"), verb("return", awaitReturn), i[Symbol.asyncIterator] = function () { return this; }, i;
     function awaitReturn(f) { return function (v) { return Promise.resolve(v).then(f, reject); }; }
     function verb(n, f) { if (g[n]) { i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; if (f) i[n] = f(i[n]); } }
     function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
@@ -370,17 +370,22 @@ function __disposeResources(env) {
         env.error = env.hasError ? new _SuppressedError(e, env.error, "An error was suppressed during disposal.") : e;
         env.hasError = true;
     }
+    var r, s = 0;
     function next() {
-        while (env.stack.length) {
-            var rec = env.stack.pop();
+        while (r = env.stack.pop()) {
             try {
-                var result = rec.dispose && rec.dispose.call(rec.value);
-                if (rec.async) return Promise.resolve(result).then(next, function(e) { fail(e); return next(); });
+                if (!r.async && s === 1) return s = 0, env.stack.push(r), Promise.resolve().then(next);
+                if (r.dispose) {
+                    var result = r.dispose.call(r.value);
+                    if (r.async) return s |= 2, Promise.resolve(result).then(next, function(e) { fail(e); return next(); });
+                }
+                else s |= 1;
             }
             catch (e) {
                 fail(e);
             }
         }
+        if (s === 1) return env.hasError ? Promise.reject(env.error) : Promise.resolve();
         if (env.hasError) throw env.error;
     }
     return next();
@@ -25202,6 +25207,7 @@ function renderColorRamp(params) {
     return image;
 }
 
+const HEATMAP_FULL_RENDER_FBO_KEY = 'big-fb';
 /**
  * A style layer that defines a heatmap
  */
@@ -25211,6 +25217,7 @@ class HeatmapStyleLayer extends StyleLayer {
     }
     constructor(layer) {
         super(layer, properties$7);
+        this.heatmapFbos = new Map();
         // make sure color ramp texture is generated for default heatmap color too
         this._updateColorRamp();
     }
@@ -25229,9 +25236,8 @@ class HeatmapStyleLayer extends StyleLayer {
         this.colorRampTexture = null;
     }
     resize() {
-        if (this.heatmapFbo) {
-            this.heatmapFbo.destroy();
-            this.heatmapFbo = null;
+        if (this.heatmapFbos.has(HEATMAP_FULL_RENDER_FBO_KEY)) {
+            this.heatmapFbos.delete(HEATMAP_FULL_RENDER_FBO_KEY);
         }
     }
     queryRadius() {
@@ -33269,6 +33275,7 @@ exports.FillBucket = FillBucket;
 exports.FillExtrusionBucket = FillExtrusionBucket;
 exports.GLOBAL_DISPATCHER_ID = GLOBAL_DISPATCHER_ID;
 exports.GeoJSONFeature = GeoJSONFeature;
+exports.HEATMAP_FULL_RENDER_FBO_KEY = HEATMAP_FULL_RENDER_FBO_KEY;
 exports.ImageAtlas = ImageAtlas;
 exports.ImagePosition = ImagePosition;
 exports.KDBush = KDBush;
@@ -36049,7 +36056,7 @@ define('index', ['exports', './shared'], (function (exports, performance$1) { 'u
 
 var name = "maplibre-gl";
 var description = "BSD licensed community fork of mapbox-gl, a WebGL interactive maps library";
-var version$2 = "4.6.0";
+var version$2 = "4.7.0";
 var main = "dist/maplibre-gl.js";
 var style = "dist/maplibre-gl.css";
 var license = "BSD-3-Clause";
@@ -36106,7 +36113,7 @@ var devDependencies = {
 	"@types/benchmark": "^2.1.5",
 	"@types/cssnano": "^5.0.0",
 	"@types/d3": "^7.4.3",
-	"@types/diff": "^5.2.1",
+	"@types/diff": "^5.2.2",
 	"@types/earcut": "^2.1.4",
 	"@types/eslint": "^8.56.7",
 	"@types/gl": "^6.0.5",
@@ -36116,11 +36123,11 @@ var devDependencies = {
 	"@types/minimist": "^1.2.5",
 	"@types/murmurhash-js": "^1.0.6",
 	"@types/nise": "^1.4.5",
-	"@types/node": "^22.5.0",
+	"@types/node": "^22.5.4",
 	"@types/offscreencanvas": "^2019.7.3",
 	"@types/pixelmatch": "^5.2.6",
 	"@types/pngjs": "^6.0.5",
-	"@types/react": "^18.3.4",
+	"@types/react": "^18.3.5",
 	"@types/react-dom": "^18.3.0",
 	"@types/request": "^2.48.12",
 	"@types/shuffle-seed": "^1.1.3",
@@ -36130,18 +36137,18 @@ var devDependencies = {
 	address: "^2.0.3",
 	benchmark: "^2.1.4",
 	canvas: "^2.11.2",
-	cssnano: "^7.0.5",
+	cssnano: "^7.0.6",
 	d3: "^7.9.0",
 	"d3-queue": "^3.0.7",
-	"devtools-protocol": "^0.0.1345247",
-	diff: "^5.2.0",
+	"devtools-protocol": "^0.0.1351223",
+	diff: "^6.0.0",
 	"dts-bundle-generator": "^9.5.1",
 	eslint: "^8.57.0",
 	"eslint-config-mourner": "^3.0.0",
 	"eslint-plugin-html": "^8.1.1",
-	"eslint-plugin-import": "^2.29.1",
-	"eslint-plugin-jest": "^28.8.0",
-	"eslint-plugin-react": "^7.35.0",
+	"eslint-plugin-import": "^2.30.0",
+	"eslint-plugin-jest": "^28.8.3",
+	"eslint-plugin-react": "^7.35.2",
 	"eslint-plugin-tsdoc": "0.3.0",
 	expect: "^29.7.0",
 	glob: "^11.0.0",
@@ -36151,7 +36158,7 @@ var devDependencies = {
 	"jest-junit": "^16.0.0",
 	"jest-monocart-coverage": "^1.1.1",
 	"jest-webgl-canvas-mock": "^2.5.3",
-	jsdom: "^24.1.1",
+	jsdom: "^25.0.0",
 	"junit-report-builder": "^5.0.0",
 	minimist: "^1.2.8",
 	"mock-geolocation": "^1.0.11",
@@ -36162,27 +36169,27 @@ var devDependencies = {
 	"pdf-merger-js": "^5.1.2",
 	pixelmatch: "^6.0.0",
 	pngjs: "^7.0.0",
-	postcss: "^8.4.41",
+	postcss: "^8.4.45",
 	"postcss-cli": "^11.0.0",
 	"postcss-inline-svg": "^6.0.0",
 	"pretty-bytes": "^6.1.1",
-	puppeteer: "^23.1.1",
+	puppeteer: "^23.3.0",
 	react: "^18.3.1",
 	"react-dom": "^18.3.1",
-	rollup: "^4.21.0",
+	rollup: "^4.21.2",
 	"rollup-plugin-sourcemaps": "^0.6.3",
 	rw: "^1.3.3",
 	semver: "^7.6.3",
 	"shuffle-seed": "^1.1.6",
 	"source-map-explorer": "^2.5.3",
 	st: "^3.0.0",
-	stylelint: "^16.8.2",
+	stylelint: "^16.9.0",
 	"stylelint-config-standard": "^36.0.1",
-	"ts-jest": "^29.2.4",
+	"ts-jest": "^29.2.5",
 	"ts-node": "^10.9.2",
-	tslib: "^2.6.3",
+	tslib: "^2.7.0",
 	typedoc: "^0.26.6",
-	"typedoc-plugin-markdown": "^4.2.5",
+	"typedoc-plugin-markdown": "^4.2.7",
 	"typedoc-plugin-missing-exports": "^3.0.0",
 	typescript: "^5.5.4"
 };
@@ -37520,6 +37527,8 @@ class Sky extends performance$1.Evented {
                 'sky-color': 'transparent',
                 'horizon-color': 'transparent',
                 'fog-color': 'transparent',
+                'fog-ground-blend': 1,
+                'atmosphere-blend': 0,
             };
         }
         for (const name in sky) {
@@ -38364,6 +38373,25 @@ class LngLatBounds {
         const latAccuracy = 360 * radius / earthCircumferenceInMetersAtEquator, lngAccuracy = latAccuracy / Math.cos((Math.PI / 180) * center.lat);
         return new LngLatBounds(new performance$1.LngLat(center.lng - lngAccuracy, center.lat - latAccuracy), new performance$1.LngLat(center.lng + lngAccuracy, center.lat + latAccuracy));
     }
+    /**
+     * Adjusts the given bounds to handle the case where the bounds cross the 180th meridian (antimeridian).
+     *
+     * @returns The adjusted LngLatBounds
+     * @example
+     * ```ts
+     * let bounds = new LngLatBounds([175.813127, -20.157768], [-178. 340903, -15.449124]);
+     * let adjustedBounds = bounds.adjustAntiMeridian();
+     * // adjustedBounds will be: [[175.813127, -20.157768], [181.659097, -15.449124]]
+     * ```
+     */
+    adjustAntiMeridian() {
+        const sw = new performance$1.LngLat(this._sw.lng, this._sw.lat);
+        const ne = new performance$1.LngLat(this._ne.lng, this._ne.lat);
+        if (sw.lng > ne.lng) {
+            return new LngLatBounds(sw, new performance$1.LngLat(ne.lng + 360, ne.lat));
+        }
+        return new LngLatBounds(sw, ne);
+    }
 }
 
 class TileBounds {
@@ -39024,6 +39052,9 @@ class GeoJSONSource extends performance$1.Evented {
             this.attribution = options.attribution;
         this.promoteId = options.promoteId;
         const scale = performance$1.EXTENT / this.tileSize;
+        if (options.clusterMaxZoom !== undefined && this.maxzoom <= options.clusterMaxZoom) {
+            performance$1.warnOnce(`The maxzoom value "${this.maxzoom}" is expected to be greater than the clusterMaxZoom value "${options.clusterMaxZoom}".`);
+        }
         // sent to the worker, along with `url: ...` or `data: literal geojson`,
         // so that it can load/parse/index the geojson data
         // extending with `options.workerOptions` helps to make it easy for
@@ -42006,14 +42037,14 @@ function getGlCoordMatrix(posMatrix, pitchWithMap, rotateWithMap, transform, pix
         return transform.glCoordMatrix;
     }
 }
-function project(point, matrix, getElevation) {
+function project(x, y, matrix, getElevation) {
     let pos;
     if (getElevation) { // slow because of handle z-index
-        pos = [point.x, point.y, getElevation(point.x, point.y), 1];
+        pos = [x, y, getElevation(x, y), 1];
         performance$1.transformMat4(pos, pos, matrix);
     }
     else { // fast because of ignore z-index
-        pos = [point.x, point.y, 0, 1];
+        pos = [x, y, 0, 1];
         xyTransformMat4(pos, pos, matrix);
     }
     const w = pos[3];
@@ -42060,7 +42091,7 @@ function updateLineLabels(bucket, posMatrix, painter, isText, labelPlaneMatrix, 
         }
         // Awkward... but we're counting on the paired "vertical" symbol coming immediately after its horizontal counterpart
         useVertical = false;
-        const anchorPos = project(new performance$1.Point(symbol.anchorX, symbol.anchorY), posMatrix, getElevation);
+        const anchorPos = project(symbol.anchorX, symbol.anchorY, posMatrix, getElevation);
         // Don't bother calculating the correct point for invisible labels.
         if (!isVisible(anchorPos.point, clippingBuffer)) {
             hideGlyphs(symbol.numGlyphs, dynamicLayoutVertexArray);
@@ -42170,8 +42201,8 @@ function placeGlyphsAlongLine(projectionContext, symbol, fontSize, flip, keepUpr
         if (!firstAndLastGlyph) {
             return { notEnoughRoom: true };
         }
-        const firstPoint = project(firstAndLastGlyph.first.point, glCoordMatrix, projectionContext.getElevation).point;
-        const lastPoint = project(firstAndLastGlyph.last.point, glCoordMatrix, projectionContext.getElevation).point;
+        const firstPoint = project(firstAndLastGlyph.first.point.x, firstAndLastGlyph.first.point.y, glCoordMatrix, projectionContext.getElevation).point;
+        const lastPoint = project(firstAndLastGlyph.last.point.x, firstAndLastGlyph.last.point.y, glCoordMatrix, projectionContext.getElevation).point;
         if (keepUpright && !flip) {
             const orientationChange = requiresOrientationChange(symbol.writingMode, firstPoint, lastPoint, aspectRatio);
             if (orientationChange) {
@@ -42189,10 +42220,10 @@ function placeGlyphsAlongLine(projectionContext, symbol, fontSize, flip, keepUpr
         // Only a single glyph to place
         // So, determine whether to flip based on projected angle of the line segment it's on
         if (keepUpright && !flip) {
-            const a = project(projectionContext.tileAnchorPoint, posMatrix, projectionContext.getElevation).point;
+            const a = project(projectionContext.tileAnchorPoint.x, projectionContext.tileAnchorPoint.y, posMatrix, projectionContext.getElevation).point;
             const tileVertexIndex = (symbol.lineStartIndex + symbol.segment + 1);
             const tileSegmentEnd = new performance$1.Point(projectionContext.lineVertexArray.getx(tileVertexIndex), projectionContext.lineVertexArray.gety(tileVertexIndex));
-            const projectedVertex = project(tileSegmentEnd, posMatrix, projectionContext.getElevation);
+            const projectedVertex = project(tileSegmentEnd.x, tileSegmentEnd.y, posMatrix, projectionContext.getElevation);
             // We know the anchor will be in the viewport, but the end of the line segment may be
             // behind the plane of the camera, in which case we can use a point at any arbitrary (closer)
             // point on the segment.
@@ -42257,7 +42288,7 @@ function _projectTruncatedLineSegment(previousTilePoint, currentTilePoint, previ
     // plane of the camera.
     const unitVertexToBeProjected = previousTilePoint.add(previousTilePoint.sub(currentTilePoint)._unit());
     const projectedUnitVertex = projectionMatrix !== undefined ?
-        project(unitVertexToBeProjected, projectionMatrix, projectionContext.getElevation).point :
+        project(unitVertexToBeProjected.x, unitVertexToBeProjected.y, projectionMatrix, projectionContext.getElevation).point :
         projectTileCoordinatesToViewport(unitVertexToBeProjected.x, unitVertexToBeProjected.y, projectionContext).point;
     const projectedUnitSegment = previousProjectedPoint.sub(projectedUnitVertex);
     return previousProjectedPoint.add(projectedUnitSegment._mult(minimumLength / projectedUnitSegment.mag()));
@@ -42300,7 +42331,7 @@ function projectTileCoordinatesToViewport(x, y, projectionContext) {
         projection.point.y = (-projection.point.y * 0.5 + 0.5) * projectionContext.height;
     }
     else {
-        projection = project(new performance$1.Point(translatedX, translatedY), projectionContext.labelPlaneMatrix, projectionContext.getElevation);
+        projection = project(translatedX, translatedY, projectionContext.labelPlaneMatrix, projectionContext.getElevation);
         projection.isOccluded = false;
     }
     return projection;
@@ -42503,7 +42534,25 @@ class CollisionIndex {
         const x = collisionBox.anchorPointX + translation[0];
         const y = collisionBox.anchorPointY + translation[1];
         const projectedPoint = this.projectAndGetPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation);
-        const projectedBox = this._projectCollisionBox(collisionBox, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift);
+        const tileToViewport = textPixelRatio * projectedPoint.perspectiveRatio;
+        let projectedBox;
+        if (!pitchWithMap && !rotateWithMap) {
+            // Fast path for common symbols
+            const pointX = projectedPoint.point.x + (shift ? shift.x * tileToViewport : 0);
+            const pointY = projectedPoint.point.y + (shift ? shift.y * tileToViewport : 0);
+            projectedBox = {
+                allPointsOccluded: false,
+                box: [
+                    pointX + collisionBox.x1 * tileToViewport,
+                    pointY + collisionBox.y1 * tileToViewport,
+                    pointX + collisionBox.x2 * tileToViewport,
+                    pointY + collisionBox.y2 * tileToViewport,
+                ]
+            };
+        }
+        else {
+            projectedBox = this._projectCollisionBox(collisionBox, tileToViewport, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift);
+        }
         const [tlX, tlY, brX, brY] = projectedBox.box;
         const projectionOccluded = this.mapProjection.useSpecialProjectionForSymbols ? (pitchWithMap ? projectedBox.allPointsOccluded : this.mapProjection.isOccluded(x, y, unwrappedTileID)) : false;
         if (projectionOccluded || projectedPoint.perspectiveRatio < this.perspectiveRatioCutoff || !this.isInsideGrid(tlX, tlY, brX, brY) ||
@@ -42647,7 +42696,7 @@ class CollisionIndex {
         };
     }
     projectPathToScreenSpace(projectedPath, projectionContext, labelToScreenMatrix) {
-        return projectedPath.map(p => project(p, labelToScreenMatrix, projectionContext.getElevation));
+        return projectedPath.map(p => project(p.x, p.y, labelToScreenMatrix, projectionContext.getElevation));
     }
     /**
      * Because the geometries in the CollisionIndex are an approximation of the shape of
@@ -42718,25 +42767,34 @@ class CollisionIndex {
             grid.insertCircle(key, collisionCircles[k], collisionCircles[k + 1], collisionCircles[k + 2]);
         }
     }
-    projectAndGetPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation) {
-        const projected = this.mapProjection.useSpecialProjectionForSymbols ?
-            this.mapProjection.projectTileCoordinates(x, y, unwrappedTileID, getElevation) :
-            project(new performance$1.Point(x, y), posMatrix, getElevation);
+    projectAndGetPerspectiveRatio(posMatrix, x, y, _unwrappedTileID, getElevation) {
+        // The code here is duplicated from "projection.ts" for performance.
+        // Code here is subject to change once globe is merged.
+        let pos;
+        if (getElevation) { // slow because of handle z-index
+            pos = [x, y, getElevation(x, y), 1];
+            performance$1.transformMat4(pos, pos, posMatrix);
+        }
+        else { // fast because of ignore z-index
+            pos = [x, y, 0, 1];
+            xyTransformMat4(pos, pos, posMatrix);
+        }
+        const w = pos[3];
         return {
-            point: new performance$1.Point((((projected.point.x + 1) / 2) * this.transform.width) + viewportPadding, (((-projected.point.y + 1) / 2) * this.transform.height) + viewportPadding),
+            point: new performance$1.Point((((pos[0] / w + 1) / 2) * this.transform.width) + viewportPadding, (((-pos[1] / w + 1) / 2) * this.transform.height) + viewportPadding),
             // See perspective ratio comment in symbol_sdf.vertex
             // We're doing collision detection in viewport space so we need
             // to scale down boxes in the distance
-            perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera),
-            isOccluded: projected.isOccluded,
-            signedDistanceFromCamera: projected.signedDistanceFromCamera
+            perspectiveRatio: 0.5 + 0.5 * (this.transform.cameraToCenterDistance / w),
+            isOccluded: false,
+            signedDistanceFromCamera: w
         };
     }
     getPerspectiveRatio(posMatrix, x, y, unwrappedTileID, getElevation) {
         // We don't care about the actual projected point, just its W component.
         const projected = this.mapProjection.useSpecialProjectionForSymbols ?
             this.mapProjection.projectTileCoordinates(x, y, unwrappedTileID, getElevation) :
-            project(new performance$1.Point(x, y), posMatrix, getElevation);
+            project(x, y, posMatrix, getElevation);
         return 0.5 + 0.5 * (this.transform.cameraToCenterDistance / projected.signedDistanceFromCamera);
     }
     isOffscreen(x1, y1, x2, y2) {
@@ -42758,8 +42816,7 @@ class CollisionIndex {
     /**
      * Applies all layout+paint properties of the given box in order to find as good approximation of its screen-space bounding box as possible.
      */
-    _projectCollisionBox(collisionBox, textPixelRatio, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift) {
-        const tileToViewport = textPixelRatio * projectedPoint.perspectiveRatio;
+    _projectCollisionBox(collisionBox, tileToViewport, posMatrix, unwrappedTileID, pitchWithMap, rotateWithMap, translation, projectedPoint, getElevation, shift) {
         // These vectors are valid both for screen space viewport-rotation-aligned texts and for pitch-align: map texts that are map-rotation-aligned.
         let vecEast = new performance$1.Point(1, 0);
         let vecSouth = new performance$1.Point(0, 1);
@@ -45593,7 +45650,7 @@ var clippingMaskVert = 'attribute vec2 a_pos;uniform mat4 u_matrix;void main() {
 var heatmapFrag = 'uniform highp float u_intensity;varying vec2 v_extrude;\n#pragma mapbox: define highp float weight\n#define GAUSS_COEF 0.3989422804014327\nvoid main() {\n#pragma mapbox: initialize highp float weight\nfloat d=-0.5*3.0*3.0*dot(v_extrude,v_extrude);float val=weight*u_intensity*GAUSS_COEF*exp(d);gl_FragColor=vec4(val,1.0,1.0,1.0);\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(1.0);\n#endif\n}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
-var heatmapVert = 'uniform mat4 u_matrix;uniform float u_extrude_scale;uniform float u_opacity;uniform float u_intensity;attribute vec2 a_pos;varying vec2 v_extrude;\n#pragma mapbox: define highp float weight\n#pragma mapbox: define mediump float radius\nconst highp float ZERO=1.0/255.0/16.0;\n#define GAUSS_COEF 0.3989422804014327\nvoid main(void) {\n#pragma mapbox: initialize highp float weight\n#pragma mapbox: initialize mediump float radius\nvec2 unscaled_extrude=vec2(mod(a_pos,2.0)*2.0-1.0);float S=sqrt(-2.0*log(ZERO/weight/u_intensity/GAUSS_COEF))/3.0;v_extrude=S*unscaled_extrude;vec2 extrude=v_extrude*radius*u_extrude_scale;vec4 pos=vec4(floor(a_pos*0.5)+extrude,0,1);gl_Position=u_matrix*pos;}';
+var heatmapVert = 'uniform mat4 u_matrix;uniform float u_extrude_scale;uniform float u_opacity;uniform float u_intensity;attribute vec2 a_pos;varying vec2 v_extrude;\n#pragma mapbox: define highp float weight\n#pragma mapbox: define mediump float radius\nconst highp float ZERO=1.0/255.0/16.0;\n#define GAUSS_COEF 0.3989422804014327\nvoid main(void) {\n#pragma mapbox: initialize highp float weight\n#pragma mapbox: initialize mediump float radius\nvec2 unscaled_extrude=vec2(mod(a_pos,2.0)*2.0-1.0);float S=sqrt(-2.0*log(ZERO/weight/u_intensity/GAUSS_COEF))/3.0;v_extrude=S*unscaled_extrude;vec2 extrude=v_extrude*radius*u_extrude_scale;vec4 pos=vec4(floor(a_pos*0.5)+extrude,get_elevation(floor(a_pos*0.5)),1);gl_Position=u_matrix*pos;}';
 
 // This file is generated. Edit build/generate-shaders.ts, then run `npm run codegen`.
 var heatmapTextureFrag = 'uniform sampler2D u_image;uniform sampler2D u_color_ramp;uniform float u_opacity;varying vec2 v_pos;void main() {float t=texture2D(u_image,v_pos).r;vec4 color=texture2D(u_color_ramp,vec2(t,0.5));gl_FragColor=color*u_opacity;\n#ifdef OVERDRAW_INSPECTOR\ngl_FragColor=vec4(0.0);\n#endif\n}';
@@ -47918,7 +47975,7 @@ function getShiftedAnchor(projectedAnchorPoint, projectionContext, rotateWithMap
             adjustedShift = adjustedShift.rotate(-transformAngle);
         }
         const tileAnchorShifted = translatedAnchor.add(adjustedShift);
-        return project(tileAnchorShifted, projectionContext.labelPlaneMatrix, projectionContext.getElevation).point;
+        return project(tileAnchorShifted.x, tileAnchorShifted.y, projectionContext.labelPlaneMatrix, projectionContext.getElevation).point;
     }
     else {
         if (rotateWithMap) {
@@ -47965,7 +48022,7 @@ function updateVariableAnchorsForBucket(bucket, rotateWithMap, pitchWithMap, var
                 unwrappedTileID
             };
             const projectedAnchor = pitchWithMap ?
-                project(tileAnchor, posMatrix, getElevation) :
+                project(tileAnchor.x, tileAnchor.y, posMatrix, getElevation) :
                 projectTileCoordinatesToViewport(tileAnchor.x, tileAnchor.y, projectionContext);
             const perspectiveRatio = getPerspectiveRatio(transform.cameraToCenterDistance, projectedAnchor.signedDistanceFromCamera);
             let renderTextSize = performance$1.evaluateSizeForFeature(bucket.textSizeData, size, symbol) * perspectiveRatio / performance$1.ONE_EM;
@@ -48242,92 +48299,164 @@ function drawCircles(painter, sourceCache, layer, coords) {
     }
 }
 
-function drawHeatmap(painter, sourceCache, layer, coords) {
+function drawHeatmap(painter, sourceCache, layer, tileIDs) {
     if (layer.paint.get('heatmap-opacity') === 0) {
         return;
     }
-    if (painter.renderPass === 'offscreen') {
-        const context = painter.context;
-        const gl = context.gl;
-        // Allow kernels to be drawn across boundaries, so that
-        // large kernels are not clipped to tiles
-        const stencilMode = StencilMode.disabled;
-        // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
-        const colorMode = new ColorMode([gl.ONE, gl.ONE], performance$1.Color.transparent, [true, true, true, true]);
-        bindFramebuffer(context, painter, layer);
-        context.clear({ color: performance$1.Color.transparent });
-        for (let i = 0; i < coords.length; i++) {
-            const coord = coords[i];
+    const context = painter.context;
+    if (painter.style.map.terrain) {
+        for (const coord of tileIDs) {
+            const tile = sourceCache.getTile(coord);
             // Skip tiles that have uncovered parents to avoid flickering; we don't need
             // to use complex tile masking here because the change between zoom levels is subtle,
             // so it's fine to simply render the parent until all its 4 children are loaded
             if (sourceCache.hasRenderableParent(coord))
                 continue;
-            const tile = sourceCache.getTile(coord);
-            const bucket = tile.getBucket(layer);
-            if (!bucket)
-                continue;
-            const programConfiguration = bucket.programConfigurations.get(layer.id);
-            const program = painter.useProgram('heatmap', programConfiguration);
-            const { zoom } = painter.transform;
-            program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled, heatmapUniformValues(coord.posMatrix, tile, zoom, layer.paint.get('heatmap-intensity')), null, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration);
+            if (painter.renderPass === 'offscreen') {
+                prepareHeatmapTerrain(painter, tile, layer, coord);
+            }
+            else if (painter.renderPass === 'translucent') {
+                renderHeatmapTerrain(painter, layer, coord);
+            }
         }
         context.viewport.set([0, 0, painter.width, painter.height]);
     }
-    else if (painter.renderPass === 'translucent') {
-        painter.context.setColorMode(painter.colorModeForRenderPass());
-        renderTextureToMap(painter, layer);
+    else {
+        if (painter.renderPass === 'offscreen') {
+            prepareHeatmapFlat(painter, sourceCache, layer, tileIDs);
+        }
+        else if (painter.renderPass === 'translucent') {
+            renderHeatmapFlat(painter, layer);
+        }
     }
+}
+function prepareHeatmapFlat(painter, sourceCache, layer, coords) {
+    const context = painter.context;
+    const gl = context.gl;
+    // Allow kernels to be drawn across boundaries, so that
+    // large kernels are not clipped to tiles
+    const stencilMode = StencilMode.disabled;
+    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
+    const colorMode = new ColorMode([gl.ONE, gl.ONE], performance$1.Color.transparent, [true, true, true, true]);
+    bindFramebuffer(context, painter, layer);
+    context.clear({ color: performance$1.Color.transparent });
+    for (let i = 0; i < coords.length; i++) {
+        const coord = coords[i];
+        // Skip tiles that have uncovered parents to avoid flickering; we don't need
+        // to use complex tile masking here because the change between zoom levels is subtle,
+        // so it's fine to simply render the parent until all its 4 children are loaded
+        if (sourceCache.hasRenderableParent(coord))
+            continue;
+        const tile = sourceCache.getTile(coord);
+        const bucket = tile.getBucket(layer);
+        if (!bucket)
+            continue;
+        const programConfiguration = bucket.programConfigurations.get(layer.id);
+        const program = painter.useProgram('heatmap', programConfiguration);
+        const { zoom } = painter.transform;
+        program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled, heatmapUniformValues(coord.posMatrix, tile, zoom, layer.paint.get('heatmap-intensity')), null, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration);
+    }
+    context.viewport.set([0, 0, painter.width, painter.height]);
+}
+function renderHeatmapFlat(painter, layer) {
+    const context = painter.context;
+    const gl = context.gl;
+    context.setColorMode(painter.colorModeForRenderPass());
+    // Here we bind two different textures from which we'll sample in drawing
+    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
+    // color ramp texture.
+    const fbo = layer.heatmapFbos.get(performance$1.HEATMAP_FULL_RENDER_FBO_KEY);
+    if (!fbo)
+        return;
+    context.activeTexture.set(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+    context.activeTexture.set(gl.TEXTURE1);
+    const colorRampTexture = getColorRampTexture(context, layer);
+    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, layer.id, painter.viewportBuffer, painter.quadTriangleIndexBuffer, painter.viewportSegments, layer.paint, painter.transform.zoom);
+}
+function prepareHeatmapTerrain(painter, tile, layer, coord) {
+    const context = painter.context;
+    const gl = context.gl;
+    const stencilMode = StencilMode.disabled;
+    // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
+    const colorMode = new ColorMode([gl.ONE, gl.ONE], performance$1.Color.transparent, [true, true, true, true]);
+    const bucket = tile.getBucket(layer);
+    if (!bucket)
+        return;
+    const tileKey = coord.key;
+    let fbo = layer.heatmapFbos.get(tileKey);
+    if (!fbo) {
+        fbo = createHeatmapFbo(context, tile.tileSize, tile.tileSize);
+        layer.heatmapFbos.set(tileKey, fbo);
+    }
+    context.bindFramebuffer.set(fbo.framebuffer);
+    context.viewport.set([0, 0, tile.tileSize, tile.tileSize]);
+    context.clear({ color: performance$1.Color.transparent });
+    const programConfiguration = bucket.programConfigurations.get(layer.id);
+    const program = painter.useProgram('heatmap', programConfiguration);
+    const terrainData = painter.style.map.terrain.getTerrainData(coord);
+    program.draw(context, gl.TRIANGLES, DepthMode.disabled, stencilMode, colorMode, CullFaceMode.disabled, heatmapUniformValues(coord.posMatrix, tile, painter.transform.zoom, layer.paint.get('heatmap-intensity')), terrainData, layer.id, bucket.layoutVertexBuffer, bucket.indexBuffer, bucket.segments, layer.paint, painter.transform.zoom, programConfiguration);
+}
+function renderHeatmapTerrain(painter, layer, coord) {
+    const context = painter.context;
+    const gl = context.gl;
+    context.setColorMode(painter.colorModeForRenderPass());
+    const colorRampTexture = getColorRampTexture(context, layer);
+    // Here we bind two different textures from which we'll sample in drawing
+    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
+    // color ramp texture.
+    const tileKey = coord.key;
+    const fbo = layer.heatmapFbos.get(tileKey);
+    if (!fbo)
+        return;
+    context.activeTexture.set(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
+    context.activeTexture.set(gl.TEXTURE1);
+    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
+    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, layer.id, painter.rasterBoundsBuffer, painter.quadTriangleIndexBuffer, painter.rasterBoundsSegments, layer.paint, painter.transform.zoom);
+    // destroy the FBO after rendering
+    fbo.destroy();
+    layer.heatmapFbos.delete(tileKey);
 }
 function bindFramebuffer(context, painter, layer) {
     const gl = context.gl;
     context.activeTexture.set(gl.TEXTURE1);
     // Use a 4x downscaled screen texture for better performance
     context.viewport.set([0, 0, painter.width / 4, painter.height / 4]);
-    let fbo = layer.heatmapFbo;
+    let fbo = layer.heatmapFbos.get(performance$1.HEATMAP_FULL_RENDER_FBO_KEY);
     if (!fbo) {
-        const texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        fbo = layer.heatmapFbo = context.createFramebuffer(painter.width / 4, painter.height / 4, false, false);
-        bindTextureToFramebuffer(context, painter, texture, fbo);
+        fbo = createHeatmapFbo(context, painter.width / 4, painter.height / 4);
+        layer.heatmapFbos.set(performance$1.HEATMAP_FULL_RENDER_FBO_KEY, fbo);
     }
     else {
         gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
         context.bindFramebuffer.set(fbo.framebuffer);
     }
 }
-function bindTextureToFramebuffer(context, painter, texture, fbo) {
+function createHeatmapFbo(context, width, height) {
     var _a, _b;
     const gl = context.gl;
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     // Use the higher precision half-float texture where available (producing much smoother looking heatmaps);
     // Otherwise, fall back to a low precision texture
     const numType = (_a = context.HALF_FLOAT) !== null && _a !== void 0 ? _a : gl.UNSIGNED_BYTE;
     const internalFormat = (_b = context.RGBA16F) !== null && _b !== void 0 ? _b : gl.RGBA;
-    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, painter.width / 4, painter.height / 4, 0, gl.RGBA, numType, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, gl.RGBA, numType, null);
+    const fbo = context.createFramebuffer(width, height, false, false);
     fbo.colorAttachment.set(texture);
+    return fbo;
 }
-function renderTextureToMap(painter, layer) {
-    const context = painter.context;
-    const gl = context.gl;
-    // Here we bind two different textures from which we'll sample in drawing
-    // heatmaps: the kernel texture, prepared in the offscreen pass, and a
-    // color ramp texture.
-    const fbo = layer.heatmapFbo;
-    if (!fbo)
-        return;
-    context.activeTexture.set(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, fbo.colorAttachment.get());
-    context.activeTexture.set(gl.TEXTURE1);
-    let colorRampTexture = layer.colorRampTexture;
-    if (!colorRampTexture) {
-        colorRampTexture = layer.colorRampTexture = new Texture(context, layer.colorRamp, gl.RGBA);
+function getColorRampTexture(context, layer) {
+    if (!layer.colorRampTexture) {
+        layer.colorRampTexture = new Texture(context, layer.colorRamp, context.gl.RGBA);
     }
-    colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
-    painter.useProgram('heatmapTexture').draw(context, gl.TRIANGLES, DepthMode.disabled, StencilMode.disabled, painter.colorModeForRenderPass(), CullFaceMode.disabled, heatmapTextureUniformValues(painter, layer, 0, 1), null, layer.id, painter.viewportBuffer, painter.quadTriangleIndexBuffer, painter.viewportSegments, layer.paint, painter.transform.zoom);
+    return layer.colorRampTexture;
 }
 
 function drawLine(painter, sourceCache, layer, coords) {
@@ -49760,6 +49889,7 @@ class Transform {
     apply(that) {
         this.tileSize = that.tileSize;
         this.latRange = that.latRange;
+        this.lngRange = that.lngRange;
         this.width = that.width;
         this.height = that.height;
         this._center = that._center;
@@ -53664,6 +53794,7 @@ class Camera extends performance$1.Evented {
      * @param bounds - Calculate the center for these bounds in the viewport and use
      * the highest zoom level up to and including `Map#getMaxZoom()` that fits
      * in the viewport. LngLatBounds represent a box that is always axis-aligned with bearing 0.
+     * Bounds will be taken in [sw, ne] order. Southwest point will always be to the left of the northeast point.
      * @param options - Options object
      * @returns If map is able to fit to provided bounds, returns `center`, `zoom`, and `bearing`.
      * If map is unable to fit, method will warn and return undefined.
@@ -53676,7 +53807,7 @@ class Camera extends performance$1.Evented {
      * ```
      */
     cameraForBounds(bounds, options) {
-        bounds = LngLatBounds.convert(bounds);
+        bounds = LngLatBounds.convert(bounds).adjustAntiMeridian();
         const bearing = options && options.bearing || 0;
         return this._cameraForBoxAndBearing(bounds.getNorthWest(), bounds.getSouthEast(), bearing, options);
     }
@@ -53773,6 +53904,7 @@ class Camera extends performance$1.Evented {
      *
      * @param bounds - Center these bounds in the viewport and use the highest
      * zoom level up to and including `Map#getMaxZoom()` that fits them in the viewport.
+     * Bounds will be taken in [sw, ne] order. Southwest point will always be to the left of the northeast point.
      * @param options - Options supports all properties from {@link AnimationOptions} and {@link CameraOptions} in addition to the fields below.
      * @param eventData - Additional properties to be added to event objects of events triggered by this method.
      * @example
@@ -55612,7 +55744,8 @@ let Map$1 = class Map extends Camera {
             let initialResizeEventCaptured = false;
             const throttledResizeCallback = throttle((entries) => {
                 if (this._trackResize && !this._removed) {
-                    this.resize(entries)._update();
+                    this.resize(entries);
+                    this.redraw();
                 }
             }, 50);
             this._resizeObserver = new ResizeObserver((entries) => {
@@ -56138,11 +56271,12 @@ let Map$1 = class Map extends Camera {
         var _a;
         return this._rotating || ((_a = this.handlers) === null || _a === void 0 ? void 0 : _a.isRotating());
     }
-    _createDelegatedListener(type, layerId, listener) {
+    _createDelegatedListener(type, layerIds, listener) {
         if (type === 'mouseenter' || type === 'mouseover') {
             let mousein = false;
             const mousemove = (e) => {
-                const features = this.getLayer(layerId) ? this.queryRenderedFeatures(e.point, { layers: [layerId] }) : [];
+                const existingLayers = layerIds.filter((layerId) => this.getLayer(layerId));
+                const features = existingLayers.length !== 0 ? this.queryRenderedFeatures(e.point, { layers: existingLayers }) : [];
                 if (!features.length) {
                     mousein = false;
                 }
@@ -56154,12 +56288,13 @@ let Map$1 = class Map extends Camera {
             const mouseout = () => {
                 mousein = false;
             };
-            return { layer: layerId, listener, delegates: { mousemove, mouseout } };
+            return { layers: layerIds, listener, delegates: { mousemove, mouseout } };
         }
         else if (type === 'mouseleave' || type === 'mouseout') {
             let mousein = false;
             const mousemove = (e) => {
-                const features = this.getLayer(layerId) ? this.queryRenderedFeatures(e.point, { layers: [layerId] }) : [];
+                const existingLayers = layerIds.filter((layerId) => this.getLayer(layerId));
+                const features = existingLayers.length !== 0 ? this.queryRenderedFeatures(e.point, { layers: existingLayers }) : [];
                 if (features.length) {
                     mousein = true;
                 }
@@ -56174,11 +56309,12 @@ let Map$1 = class Map extends Camera {
                     listener.call(this, new MapMouseEvent(type, this, e.originalEvent));
                 }
             };
-            return { layer: layerId, listener, delegates: { mousemove, mouseout } };
+            return { layers: layerIds, listener, delegates: { mousemove, mouseout } };
         }
         else {
             const delegate = (e) => {
-                const features = this.getLayer(layerId) ? this.queryRenderedFeatures(e.point, { layers: [layerId] }) : [];
+                const existingLayers = layerIds.filter((layerId) => this.getLayer(layerId));
+                const features = existingLayers.length !== 0 ? this.queryRenderedFeatures(e.point, { layers: existingLayers }) : [];
                 if (features.length) {
                     // Here we need to mutate the original event, so that preventDefault works as expected.
                     e.features = features;
@@ -56186,52 +56322,69 @@ let Map$1 = class Map extends Camera {
                     delete e.features;
                 }
             };
-            return { layer: layerId, listener, delegates: { [type]: delegate } };
+            return { layers: layerIds, listener, delegates: { [type]: delegate } };
         }
     }
-    on(type, layerIdOrListener, listener) {
-        if (listener === undefined) {
-            return super.on(type, layerIdOrListener);
-        }
-        const delegatedListener = this._createDelegatedListener(type, layerIdOrListener, listener);
+    _saveDelegatedListener(type, delegatedListener) {
         this._delegatedListeners = this._delegatedListeners || {};
         this._delegatedListeners[type] = this._delegatedListeners[type] || [];
         this._delegatedListeners[type].push(delegatedListener);
+    }
+    _removeDelegatedListener(type, layerIds, listener) {
+        if (!this._delegatedListeners || !this._delegatedListeners[type]) {
+            return;
+        }
+        const listeners = this._delegatedListeners[type];
+        for (let i = 0; i < listeners.length; i++) {
+            const delegatedListener = listeners[i];
+            if (delegatedListener.listener === listener &&
+                delegatedListener.layers.length === layerIds.length &&
+                delegatedListener.layers.every((layerId) => layerIds.includes(layerId))) {
+                for (const event in delegatedListener.delegates) {
+                    this.off(event, delegatedListener.delegates[event]);
+                }
+                listeners.splice(i, 1);
+                return;
+            }
+        }
+    }
+    on(type, layerIdsOrListener, listener) {
+        if (listener === undefined) {
+            return super.on(type, layerIdsOrListener);
+        }
+        const layerIds = typeof layerIdsOrListener === 'string' ? [layerIdsOrListener] : layerIdsOrListener;
+        const delegatedListener = this._createDelegatedListener(type, layerIds, listener);
+        this._saveDelegatedListener(type, delegatedListener);
         for (const event in delegatedListener.delegates) {
             this.on(event, delegatedListener.delegates[event]);
         }
         return this;
     }
-    once(type, layerIdOrListener, listener) {
+    once(type, layerIdsOrListener, listener) {
         if (listener === undefined) {
-            return super.once(type, layerIdOrListener);
+            return super.once(type, layerIdsOrListener);
         }
-        const delegatedListener = this._createDelegatedListener(type, layerIdOrListener, listener);
+        const layerIds = typeof layerIdsOrListener === 'string' ? [layerIdsOrListener] : layerIdsOrListener;
+        const delegatedListener = this._createDelegatedListener(type, layerIds, listener);
+        for (const key in delegatedListener.delegates) {
+            const delegate = delegatedListener.delegates[key];
+            delegatedListener.delegates[key] = (...args) => {
+                this._removeDelegatedListener(type, layerIds, listener);
+                delegate(...args);
+            };
+        }
+        this._saveDelegatedListener(type, delegatedListener);
         for (const event in delegatedListener.delegates) {
             this.once(event, delegatedListener.delegates[event]);
         }
         return this;
     }
-    off(type, layerIdOrListener, listener) {
+    off(type, layerIdsOrListener, listener) {
         if (listener === undefined) {
-            return super.off(type, layerIdOrListener);
+            return super.off(type, layerIdsOrListener);
         }
-        const removeDelegatedListener = (delegatedListeners) => {
-            const listeners = delegatedListeners[type];
-            for (let i = 0; i < listeners.length; i++) {
-                const delegatedListener = listeners[i];
-                if (delegatedListener.layer === layerIdOrListener && delegatedListener.listener === listener) {
-                    for (const event in delegatedListener.delegates) {
-                        this.off(event, delegatedListener.delegates[event]);
-                    }
-                    listeners.splice(i, 1);
-                    return this;
-                }
-            }
-        };
-        if (this._delegatedListeners && this._delegatedListeners[type]) {
-            removeDelegatedListener(this._delegatedListeners);
-        }
+        const layerIds = typeof layerIdsOrListener === 'string' ? [layerIdsOrListener] : layerIdsOrListener;
+        this._removeDelegatedListener(type, layerIds, listener);
         return this;
     }
     /**

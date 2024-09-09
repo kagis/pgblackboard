@@ -95,7 +95,8 @@ const methods = {
             {
               tag: 'span',
               class: 'log-prefix',
-              'data-iserror': kind == 'error' || null,
+              // 'data-iserror': kind == 'error' || null,
+              'data-severity': severityEn,
               inner: [
                 { tag: 'span', class: 'log-severity', innerText: severity },
                 code && code != '00000' && { tag: 'span', class: 'log-code', innerText: ' #' + code },

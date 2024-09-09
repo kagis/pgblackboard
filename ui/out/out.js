@@ -24,7 +24,7 @@ const methods = {
                 style: { width: col.width + 'px' },
                 'data-selected': col_is_selected(frame_idx, col_idx) || null,
               })),
-              { tag: 'col', class: 'out-col_last' },
+              { tag: 'col', class: 'out-col out-col_last' },
             ],
           }, // colgroup
 
@@ -81,10 +81,10 @@ const methods = {
                     'data-selected': cell_is_selected(frame_idx, row_idx, col_idx) || null,
                     'data-col_idx': col_idx,
                   })), // xTd
-                  frame_is_updatable(frame_idx) && {
+                  {
                     tag: 'td',
                     class: 'out-td_last',
-                    inner: [
+                    inner: !frame_is_updatable(frame_idx) ? [] : [
                       {
                         tag: 'button',
                         class: 'out-delete_row',
@@ -125,7 +125,7 @@ const methods = {
                 ],
               }, // tr.out-row--new
             ],
-          } // tbody
+          }, // tbody
         ],
       })), // table
     };

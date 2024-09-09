@@ -41,12 +41,6 @@ export class Store {
     // took_msec: 0,
   };
 
-  get_out_errors() {
-    return this.out.messages
-      .filter((m) => m.tag == 'error')
-      .map((m) => m.payload);
-  }
-
   resize_panes(update) {
     Object.assign(this.panes, update);
   }
@@ -536,6 +530,7 @@ export class Store {
       out.messages.push({
         tag: 'error',
         payload: {
+          severityEn: 'ERROR',
           severity: 'ERROR', // TODO non localized
           code: 'E_PGBB_FRONTEND',
           message: String(err),

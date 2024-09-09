@@ -317,6 +317,7 @@ class App {
       console.error(ex); // TODO? if (signal.aborted)
       // TODO create dedicated message tag for client error
       yield jsonl_enc(['error', {
+        severityEn: 'ERROR',
         severity: 'ERROR', // TODO non localized
         code: 'E_PGBB_BACKEND',
         message: String(ex),

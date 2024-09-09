@@ -287,8 +287,8 @@ export default {
 
       // TODO immediate?
       this.$watch(_ => this.$store.light_theme, this.set_theme);
-      this.$watch(_ => this.features, this.update_features_source);
-      this.$watch(_ => this._copmute_highlighted_features(), this.update_highlight_source);
+      this.$watch(_ => this.features, this.watch_features);
+      this.$watch(this._compute_highlighted_features, this.watch_highlight);
 
       this.$root.$el.addEventListener('req_map_navigate', this.on_req_map_navigate);
       this._ml.on('click', this.on_map_click);
@@ -301,7 +301,6 @@ export default {
       const golden_angle = 137.5077640500378546463487; // https://en.wikipedia.org/wiki/Golden_angle
       const granularity = 4 /*marker diameter px*/ / 512 /*world size px*/;
       const features = [];
-      // const dict = new Map();
       for (let frame_idx = 0; frame_idx < this.frames.length; frame_idx++) {
         const { rows, geom_col_idx } = this.frames[frame_idx];
         if (geom_col_idx < 0 || !rows) continue;
@@ -316,7 +315,7 @@ export default {
             const [w, s, e, n] = geojson_bbox(singular_geom);
             geojson_extend_bbox(bbox, w, s);
             geojson_extend_bbox(bbox, e, n);
-            if (singular_geom.type == 'Point') continue;
+            if (singular_geom.type == 'Point') continue; // TODO multipoint
             const lb = MercatorCoordinate.fromLngLat([w, s]);
             const rt = MercatorCoordinate.fromLngLat([e, n]);
             const span = Math.hypot(rt.x - lb.x, rt.y - lb.y);
@@ -339,7 +338,7 @@ export default {
       return features;
     },
 
-    _copmute_highlighted_features() {
+    _compute_highlighted_features() {
       return this.features.filter(({ properties: p }) => (
         p.frame_idx == this.curr_frame_idx &&
         p.row_idx == this.curr_row_idx
@@ -368,13 +367,13 @@ export default {
         for (const p in alt_layout) this._ml.setLayoutProperty(id, p, curr_layout[p]);
       }
     },
-    update_features_source(features) {
+    watch_features(features) {
       this._ml.getSource('features').setData({
         type: 'FeatureCollection',
         features,
       });
     },
-    update_highlight_source(features) {
+    watch_highlight(features) {
       this._ml.getSource('highlight').setData({
         type: 'FeatureCollection',
         features,
@@ -458,6 +457,7 @@ function geojson_bbox({ type, coordinates }) {
 }
 
 function geojson_extend_bbox(bbox, lng, lat) {
+  // TODO world wrap
   bbox[0] = Math.min(bbox[0], lng);
   bbox[1] = Math.min(bbox[1], lat);
   bbox[2] = Math.max(bbox[2], lng);

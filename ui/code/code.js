@@ -47,7 +47,11 @@ const methods = {
     );
 
     this.$watch(
-      _ => this.$store.get_out_errors(),
+      _ => (
+        this.$store.out.messages
+        .filter(m => m.tag == 'error' && m.payload.position > 0)
+        .map(m => m.payload)
+      ),
       this.watch_errors,
       { immediate: true },
     );
@@ -80,10 +84,10 @@ const methods = {
       this.$store.save_curr_draft();
     }
   },
-  watch_errors(errors) {
+  watch_errors(errors, old_errors = []) {
+    // if (errors.length == 0 && old_errors.length == 0) return; // ignore unchanged
     this._decorations.set(
       errors
-      .filter(e => e.position > 0)
       .map(e => this._editor.getModel().getPositionAt(e.position - 1))
       .map(({ lineNumber, column }) => ({
         range: {

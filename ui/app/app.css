@@ -175,6 +175,10 @@
   &::before {
     content: attr(aria-label);
   }
+  .light & {
+    background-color: hsl(330 60% 50%);
+    color: hsl(0 0 90%);
+  }
 }
 
 /* .app-map_btn {
