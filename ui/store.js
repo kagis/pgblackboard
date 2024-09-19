@@ -1,4 +1,4 @@
-import { editor, Uri } from './_lib/monaco.js';
+import { editor } from './_lib/monaco.js';
 
 export class Store {
   light_theme = false;
@@ -95,8 +95,12 @@ export class Store {
 
   _load_drafts() {
     const storage = globalThis.localStorage; // TODO dry dep injection
-    // TODO validate array
-    this.stored_draft_ids = JSON.parse(storage.getItem('pgbb:draft:_ids')) || [];
+    this.stored_draft_ids = (
+      Object.keys(storage)
+      .filter(k => /^pgblackboard_draft_/.test(k))
+      .sort()
+      .reverse()
+    );
     for (const id of this.stored_draft_ids) {
       this._add_draft(storage.getItem(id), id);
     }
@@ -106,11 +110,11 @@ export class Store {
     // TODO gc drafts
     if (!this.dirty_draft_ids) return;
     const storage = globalThis.localStorage; // TODO dry dep injection
-    storage.setItem('pgbb:draft:_ids', JSON.stringify(this.stored_draft_ids));
     for (const id in this.dirty_draft_ids) {
       if (this.stored_draft_ids.includes(id)) {
+        const value = editor.getModel(id).getValue();
         // TODO handle QuotaExceededError
-        storage.setItem(id, editor.getModel(id).getValue());
+        storage.setItem(id, value);
       } else {
         storage.removeItem(id);
       }
@@ -119,8 +123,13 @@ export class Store {
   }
 
   _add_draft(content, draft_id) {
-    draft_id ||= 'x://pgbb/draft_' + Date.now().toString(16).padStart(16, '0');
-    const editor_model = editor.createModel(content, 'sql', Uri.parse(draft_id));
+    draft_id ||= (
+      'pgblackboard_draft_' // legacy v2 prefix
+      + '_' // v2 suffix is not sortable because not zero padded, so push v3 drafts upper
+      + Date.now().toString(16).padStart(16, '0')
+    );
+    // TODO is Uri.parse(draft_id) required?
+    const editor_model = editor.createModel(content, 'sql', draft_id);
     this.drafts_kv[draft_id] = {
       id: draft_id,
       loading: false,
@@ -142,6 +151,15 @@ export class Store {
         endColumn: pos.column,
       });
       draft.caption = head.replace(/^\s*\\connect[\s\t]+[^\n]+\n/, '\u2026 ');
+    }
+  }
+
+  save_curr_draft() {
+    this.dirty_draft_ids ||= {};
+    this.dirty_draft_ids[this.curr_draft_id] = true;
+    if (!this.stored_draft_ids.includes(this.curr_draft_id)) {
+      this.stored_draft_ids.unshift(this.curr_draft_id);
+      this.curr_treenode_path = null;
     }
   }
 
@@ -236,16 +254,6 @@ export class Store {
       // TODO
       this.curr_draft_id = null;
     }
-  }
-
-  save_curr_draft() {
-    this.dirty_draft_ids ||= {};
-    this.dirty_draft_ids[this.curr_draft_id] = true;
-    if (!this.stored_draft_ids.includes(this.curr_draft_id)) {
-      this.stored_draft_ids.unshift(this.curr_draft_id);
-      this.curr_treenode_path = null;
-    }
-    // TODO schedule write to localStorage
   }
 
   resize_col(frame_idx, col_idx, width) {
