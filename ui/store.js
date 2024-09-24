@@ -78,7 +78,6 @@ export class Store {
   }
 
   async _load_tree_and_drafts() {
-    // this.drafts = this._load_drafts();
     await this.tree_toggle([]);
 
     const initial_draft_id = this._add_draft(
@@ -89,8 +88,8 @@ export class Store {
     this.curr_draft_id = initial_draft_id;
 
     this._load_drafts();
-    setInterval((_) => this._flush_drafts(), 10e3);
-    globalThis.addEventListener('unload', (_) => this._flush_drafts());
+    setInterval(_ => this._flush_drafts(), 10e3);
+    globalThis.addEventListener('unload', _ => this._flush_drafts());
   }
 
   _load_drafts() {
@@ -150,7 +149,9 @@ export class Store {
         endLineNumber: pos.lineNumber,
         endColumn: pos.column,
       });
-      draft.caption = head.replace(/^\s*\\connect[\s\t]+[^\n]+\n/, '\u2026 ');
+      const { sql } = extract_dbname_from_sql(head);
+      draft.caption = sql.trim();
+      // draft.caption = head.replace(/^\s*\\connect[\s\t]+[^\n]+\n/, '\u2026 ');
     }
   }
 
@@ -199,7 +200,7 @@ export class Store {
     const { u, key } = this.auth;
     const content = await this._api('defn', { u, db, node: id, key }).then(
       ({ result }) => result || '',
-      (err) => `/* ${err} */\n`,
+      err => `/* ${err} */\n`,
     );
     // TODO indicate dead treenode when treenode not found
     if (!editor_model.isDisposed()) {
@@ -215,7 +216,7 @@ export class Store {
       headers: { 'content-type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw Error(`${resp.status} error`);
+    if (!resp.ok) throw Error(`${resp.status} ${resp.statusText}`);
     return resp.json();
   }
 
@@ -343,7 +344,7 @@ export class Store {
       const key_idxs = frame.cols
         .map((col, i) => col.att_key && i)
         .filter(Number.isInteger);
-      const key_names = tuple_expr(key_idxs.map((i) => frame.cols[i].att_name));
+      const key_names = tuple_expr(key_idxs.map(i => frame.cols[i].att_name));
 
       const delete_keys = [];
       const update_keys = [];
@@ -356,7 +357,7 @@ export class Store {
         tuple,
         updates,
       } of frame.rows) {
-        const key_vals = tuple_expr(key_idxs.map((i) => literal(tuple[i])));
+        const key_vals = tuple_expr(key_idxs.map(i => literal(tuple[i])));
         if (will_delete) {
           delete_keys.push(key_vals);
           continue;
@@ -450,51 +451,50 @@ export class Store {
   }
 
   async run({ rw }) {
-    const draft = this.curr_draft;
-    const { cursor_pos, cursor_len } = draft;
-    const editor_model = editor.getModel(this.curr_draft_id);
-    let sql = editor_model.getValue();
-
-    const m = /^\s*\\connect\s+(\w+|("[^"]*")+)/.exec(sql);
-    const [, db] = m;
-    const cl = m[0].length;
-    // TODO database name can contain non ascii (more wide)
-    sql = ' '.repeat(cl) + sql.slice(cl);
-
-    if (cursor_len) {
-      const [from, to] = [cursor_pos, cursor_pos + cursor_len].sort((a, b) => a - b);
-      sql = '\n'.padStart(from, ' ') + sql.slice(from, to);
-    }
-
-    const aborter = new AbortController();
     this.out = {
-      db,
+      db: null,
       frames: [],
       messages: [],
       curr_frame_idx: null,
       curr_row_idx: null,
-      aborter,
+      aborter: new AbortController(),
       loading: true,
       suspended: null,
     };
     const out = this.out;
 
     try {
+      const draft = this.curr_draft;
+      const { cursor_pos, cursor_len } = draft;
+      const editor_model = editor.getModel(this.curr_draft_id);
+      const editor_text = editor_model.getValue();
+
+      let { db, sql } = extract_dbname_from_sql(editor_text);
+      if (db == null) {
+        throw Error(`missing \\connect meta-command in first line`);
+      }
+      out.db = db;
+
+      if (cursor_len) {
+        const [from, to] = [cursor_pos, cursor_pos + cursor_len].sort((a, b) => a - b);
+        sql = '\n'.padStart(from, ' ') + sql.slice(from, to);
+      }
+
       const { u, key } = this.auth;
       const qs = new URLSearchParams({ api: 'run', u, db, key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const body = JSON.stringify({ sql, tz, rw });
       const resp = await fetch('?' + qs, {
         method: 'POST',
-        signal: aborter.signal,
+        signal: out.aborter.signal,
         headers: { 'content-type': 'application/json; charset=utf-8' },
         body,
       });
-      if (!resp.ok) throw Error('HTTP Error', { cause: await resp.text() });
+      if (!resp.ok) throw Error(`HTTP ${resp.status} ${resp.statusText}`, { cause: await resp.text() });
       const msg_stream = iter_stream(
         resp.body
-          .pipeThrough(new TextDecoderStream())
-          .pipeThrough(new JSONDecodeStream()),
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new JSONDecodeStream()),
       );
       let frame = null;
       for await (const [tag, payload] of msg_stream) {
@@ -503,11 +503,9 @@ export class Store {
           case 'head':
             out.frames.push({
               rel_name: payload.rel_name,
-              cols: payload.cols.map((col) => ({ ...col, width: 150 })),
+              cols: payload.cols.map(col => ({ ...col, width: 150 })),
               curr_col_idx: Boolean(payload.cols.length) - 1,
-              geom_col_idx: payload.cols.findIndex((col) =>
-                /^st_asgeojson$/i.test(col.name),
-              ),
+              geom_col_idx: payload.cols.findIndex(col => /^st_asgeojson$/i.test(col.name)),
               rows: [],
             });
             frame = out.frames.at(-1);
@@ -515,14 +513,12 @@ export class Store {
           // TODO CopyData
           case 'rows':
             // TODO set selected frame_idx/row_idx/col_idx
-            frame.rows.push(
-              ...payload.map((tuple) => ({
-                tuple,
-                updates: [],
-                will_insert: false,
-                will_delete: false,
-              })),
-            );
+            frame.rows.push(...payload.map(tuple => ({
+              tuple,
+              updates: [],
+              will_insert: false,
+              will_delete: false,
+            })));
             break;
           case 'complete':
           case 'error':
@@ -584,4 +580,13 @@ async function* iter_stream(stream) {
   } finally {
     reader.releaseLock();
   }
+}
+
+function extract_dbname_from_sql(sql) {
+  let db;
+  sql = sql.replace(/^\s*\\connect\s+(\w+|("[^"]*")+)/, (a, q_dbname) => {
+    db = q_dbname; // TODO unquote
+    return ' '.repeat(a.length);
+  });
+  return { db, sql };
 }

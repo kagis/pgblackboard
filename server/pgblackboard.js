@@ -34,6 +34,7 @@ class App {
   // };
   pg_uri;
   _pwd_key;
+  _wakers = new Map();
 
   async init() {
     this._pwd_key = await crypto.subtle.generateKey(
@@ -62,10 +63,17 @@ class App {
     const { api } = qs;
     switch (api) {
       case 'auth': return this._api_auth(req, qs);
-      case 'tree': return this._api_tree(req, qs);
-      case 'defn': return this._api_defn(req, qs);
       case 'wake': return this._api_wake(req, qs);
-      case 'run': return this._api_run(req, qs);
+    }
+    const { key } = qs;
+    const password = await this._decrypt_pwd(key);
+    if (password == null) {
+      return Response.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    switch (api) {
+      case 'tree': return this._api_tree(req, qs, password);
+      case 'defn': return this._api_defn(req, qs, password);
+      case 'run': return this._api_run(req, qs, password);
     }
     return Response.json({ error: 'uknown api' }, { status: 400 });
   }
@@ -77,11 +85,11 @@ class App {
     const pg = pgconnection({ password, user: u, _debug: false }, this.pg_uri, { database: 'postgres' });
     try {
       await pg.query();
-    } catch (err) {
+    } catch (ex) {
       // console.error(err);
       // TODO respond network_error or postgres_auth_error,
       // do not expose string message
-      return Response.json({ ok: false, error: String(err) });
+      return Response.json({ ok: false, error: String(ex) });
     } finally {
       await pg.end();
     }
@@ -98,16 +106,21 @@ class App {
   }
 
   async _decrypt_pwd(cipher) {
-    cipher = cipher.replace(/-/g, '+').replace(/_/g, '/');
-    const key_u8 = Uint8Array.from(atob(cipher), x => x.charCodeAt());
-    const iv = key_u8.subarray(0, 12);
-    const pld = key_u8.subarray(12);
-    const utf8 = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, this._pwd_key, pld);
-    return new TextDecoder().decode(utf8);
+    try {
+      cipher = cipher.replace(/-/g, '+').replace(/_/g, '/');
+      const key_u8 = Uint8Array.from(atob(cipher), x => x.charCodeAt());
+      const iv = key_u8.subarray(0, 12);
+      const pld = key_u8.subarray(12);
+      const utf8 = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, this._pwd_key, pld);
+      return new TextDecoder().decode(utf8);
+    } catch (ex) {
+      // console.error(ex);
+      return null;
+    }
   }
 
-  async _api_tree(/** @type {Request} */ _req, { key, u: user, db: database, node }) {
-    const password = await this._decrypt_pwd(key);
+  /** @param {Request} _req */
+  async _api_tree(_req, { u: user, db: database, node }, password) {
     const node_arr = node?.split('.')?.map(decodeURIComponent);
     const pg = pgconnection({
       user,
@@ -134,8 +147,8 @@ class App {
     }
   }
 
-  async _api_defn(/** @type {Request} */ _req, { key, u: user, db: database, node }) {
-    const password = await this._decrypt_pwd(key);
+  /** @param {Request} _req */
+  async _api_defn(_req, { u: user, db: database, node }, password) {
     const node_arr = node.split('.').map(decodeURIComponent);
     const pg = pgconnection({
       user,
@@ -157,8 +170,8 @@ class App {
     }
   }
 
-  async _api_run(/** @type {Request} */ req, { key, u: user, db: database }) {
-    const password = await this._decrypt_pwd(key);
+  /** @param {Request} req */
+  async _api_run(req, { u: user, db: database }, password) {
     // TODO kill previous connection - prevent connections leak in case of abort lag
     const { signal } = req;
     const { sql, tz, rw } = await req.json();
@@ -174,8 +187,6 @@ class App {
     }));
     return new Response(resp_body, resp_init);
   }
-
-  _wakers = new Map();
 
   async * _api_run_body({ sql, user, password, database, tz, rw, signal }) {
     const wake_token = crypto.randomUUID();
@@ -198,6 +209,7 @@ class App {
         this.pg_uri,
       );
 
+      // TODO handle connection errors, no E_PGBB_BACKEND
       await pg0.query(/*sql*/ `
         prepare resolve_rowdescr(jsonb) as
         select jsonb_build_object(
