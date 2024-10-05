@@ -1,9 +1,9 @@
-import '../_lib/maplibre.js';
+import maplibregl from '../_vendor/maplibre.js';
 import ne_cities from './ne_cities.js';
 import ne_land from './ne_land.js';
 import glyphs from './glyphs.js';
 
-const { Map: MaplibreMap, LngLatBounds, MercatorCoordinate } = globalThis.maplibregl;
+const { Map: MaplibreMap, LngLatBounds, MercatorCoordinate } = maplibregl;
 
 const ne_land_blob = new Blob([JSON.stringify(ne_land)]);
 const ne_cities_blob = new Blob([JSON.stringify(ne_cities)]);
@@ -298,7 +298,7 @@ export default {
     },
 
     _compute_features() {
-      const golden_angle = 137.5077640500378546463487; // https://en.wikipedia.org/wiki/Golden_angle
+      const golden_angle = 180 * (3 - 5 ** .5); // https://en.wikipedia.org/wiki/Golden_angle
       const granularity = 4 /*marker diameter px*/ / 512 /*world size px*/;
       const features = [];
       for (let frame_idx = 0; frame_idx < this.frames.length; frame_idx++) {

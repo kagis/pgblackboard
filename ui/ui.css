@@ -1,0 +1,65 @@
+@import url('./_vendor/maplibre.css');
+@import url('./_vendor/monaco.css');
+
+@import url('./app/app.css');
+@import url('./auth/auth.css');
+@import url('./map/map.css');
+@import url('./code/code.css');
+@import url('./out/out.css');
+/* @import url('./table/table.css'); */
+@import url('./drafts/drafts.css');
+@import url('./tree/tree.css');
+@import url('./datum/datum.css');
+@import url('./log/log.css');
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 300 800;
+  font-stretch: 75% 100%;
+  /* enable serif on capital 'i' */
+  font-feature-settings: 'ss03';
+  src: url('./_vendor/opensans.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 300 800;
+  font-stretch: 75% 100%;
+  /* enable serif on capital 'i' */
+  font-feature-settings: 'ss03';
+  src: url('./_vendor/opensans-italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 100 700;
+  src: url('./_vendor/robotomono.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: italic;
+  font-weight: 100 700;
+  src: url('./_vendor/robotomono-italic.woff2') format('woff2');
+}
+
+:root {
+  line-height: 2;
+  font-family: 'Open Sans', 'Helvetica', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  font-stretch: semi-condensed;
+  font-variant-numeric: slashed-zero;
+  font-synthesis: none;
+}
+
+html, body {
+  padding: 0;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+/* https://www.figma.com/file/iXhXH3v4viImHt11HQ6f20/pgblackboard?type=design&node-id=0%3A1&mode=design&t=tGAfj19O5mQhQSRT-1 */

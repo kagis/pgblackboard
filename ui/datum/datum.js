@@ -1,4 +1,4 @@
-import { editor } from '../_lib/monaco.js';
+import { editor } from '../_vendor/monaco.js';
 
 const methods = {
   _render() {
