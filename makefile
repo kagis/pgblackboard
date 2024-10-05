@@ -21,7 +21,7 @@ build: \
 	mkdir -p .dist/ui
 
 ui/_vendor/vue.js:
-	curl -o $@ 'https://unpkg.com/vue@3.5.10/dist/vue.esm-browser.js'
+	curl -o $@ 'https://unpkg.com/vue@3.5.11/dist/vue.esm-browser.js'
 ui/_vendor/maplibre.css:
 	curl -o $@ 'https://esm.sh/maplibre-gl@4.7.1/dist/maplibre-gl.css'
 	# deno fmt $@
