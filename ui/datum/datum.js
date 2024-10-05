@@ -86,7 +86,7 @@ const methods = {
     const init_val = this._get_datum(frame_idx, row_idx, col_idx);
     const model = editor.createModel(
       init_val || '',
-      /^(json|jsonb)$/.test(type) ? 'json' : null
+      this._get_language_of_pgtype(type),
     );
 
     this._model?.dispose(); // TODO async concurency
@@ -122,6 +122,11 @@ const methods = {
   },
   _on_blur() {
     this.$store.sync_datum_focused(false);
+  },
+  _get_language_of_pgtype(type) {
+    if (type == 'json' || type == 'jsonb') return 'json';
+    if (type == 'xml') return 'xml';
+    return null;
   },
 };
 
