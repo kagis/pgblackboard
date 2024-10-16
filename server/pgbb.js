@@ -1,5 +1,6 @@
 import { parseArgs as parse_args } from './_vendor/parse_args.ts';
 import { pgconnection } from './_vendor/pgwire.js';
+import { psqlscan_split } from './psqlscan/mod.js';
 
 async function main(args) {
   const flags = parse_args(args, {
@@ -109,7 +110,7 @@ class App {
     try {
       await pg.query();
     } catch (ex) {
-      // console.error(err);
+      console.error(ex);
       // TODO respond network_error or postgres_auth_error,
       // do not expose string message
       return Response.json({ ok: false, error: String(ex) });
@@ -212,62 +213,19 @@ class App {
   }
 
   async * _api_run_body({ sql, user, password, database, tz, rw, signal }) {
-    const wake_token = crypto.randomUUID();
     const ctl = { wake() { } };
-    let pg, pg0;
+    const wake_token = crypto.randomUUID();
+    let pg;
+    let in_user_script = false;
+    let statement_pos = 0;
     try {
       this._wakers.set(wake_token, ctl);
-
-      pg0 = pgconnection(
-        {
-          user,
-          database,
-          password,
-          _maxReadBuf: 10 << 20,
-          TimeZone: tz,
-          statement_timeout: '10s',
-          default_transaction_read_only: 'true',
-          search_path: 'pg_catalog',
-        },
-        this.pg_uri,
-      );
-
-      // TODO handle connection errors, no E_PGBB_BACKEND
-      await pg0.query(/*sql*/ `
-        prepare resolve_rowdescr(jsonb) as
-        select jsonb_build_object(
-          'rel_name', regclass(target_reloid), -- TODO fix schema-qualify for pg_catalog.* tables
-          'cols', array(
-            select jsonb_strip_nulls(jsonb_build_object(
-              'name', "name",
-              'type', format_type("typeOid", "typeMod"),
-              'att_name', quote_ident(attname),
-              'att_key', attnum = any(target_key),
-              'att_notnull', attnotnull
-            ))
-            -- TODO ordinality
-            from jsonb_to_recordset($1) _ ("name" text, "typeOid" oid, "typeMod" int4, "tableOid" oid, "tableColumn" int2)
-            left join pg_attribute on (attrelid, attnum) = ("tableOid", "tableColumn") and attrelid = target_reloid
-          )
-        )
-        from (
-          select "tableOid", conkey
-          from jsonb_to_recordset($1) _ ("tableOid" oid, "tableColumn" int2)
-          join pg_constraint on conrelid = "tableOid" and contype = 'p'
-          group by "tableOid", conkey
-          having conkey <@ array_agg("tableColumn") filter (where "tableColumn" > 0)
-          union all
-          select null, null
-          order by 1 nulls last
-          limit 1
-        ) __ (target_reloid, target_key)
-      `);
 
       pg = pgconnection(
         { user, database, password },
         this.pg_uri,
         {
-          // _debug: true,
+          _debug: true,
           _maxReadBuf: 10 << 20,
           // TODO _wakeInterval: 0
           TimeZone: tz,
@@ -283,65 +241,163 @@ class App {
         },
       );
 
+      // report connection error in user script context
+      in_user_script = true;
+      await pg.query();
+      in_user_script = false;
+
+      // TODO force search_path = pg_catalog
+      await pg.query({
+        message: 'Parse',
+        paramTypes: ['jsonb'],
+        statementName: 'pgbb_resolve_rowdescr',
+        statement: /*sql*/ `
+          with col_cte as (
+            select coln, rec.*
+            from pg_catalog.jsonb_array_elements($1) with ordinality _(el, coln)
+            , pg_catalog.jsonb_to_record(el) rec("name" text, "typeOid" oid, "typeMod" int4, "tableOid" oid, "tableColumn" int2)
+          )
+          select pg_catalog.jsonb_build_object(
+            'rel_name', (
+              select pg_catalog.format('%I.%I', nspname, relname)
+              from pg_catalog.pg_class
+              join pg_catalog.pg_namespace on pg_namespace.oid = relnamespace
+              where pg_class.oid = target_reloid
+            ),
+            'cols', array(
+              select pg_catalog.jsonb_build_object(
+                'name', "name",
+                -- TODO full qualified type name
+                -- https://github.com/postgres/postgres/blob/064e04008533b2b8a82b5dbff7da10abd6e41565/src/backend/utils/adt/format_type.c#L60
+                'type', pg_catalog.format_type("typeOid", "typeMod"),
+                'att_name', pg_catalog.quote_ident(attname),
+                'att_key', attnum = any(target_key),
+                'att_notnull', attnotnull
+              )
+              from col_cte
+              left join pg_catalog.pg_attribute on (attrelid, attnum) = ("tableOid", "tableColumn") and attrelid = target_reloid
+              order by coln
+            )
+          )
+          from (
+            select "tableOid", conkey
+            from col_cte
+            -- TODO check unique index instead?
+            join pg_catalog.pg_constraint on conrelid = "tableOid" and contype = 'p'
+            group by "tableOid", conkey
+            having conkey operator(pg_catalog.<@) array_agg("tableColumn") filter (where "tableColumn" > 0)
+            union all
+            select null, null
+            order by 1 nulls last
+            limit 1
+          ) __ (target_reloid, target_key)
+        `,
+      });
+
       let nbytes = 0;
       let nrows = 0;
-      const pg_stream = no_pgerror(pg.stream(sql, { signal }));
-      for await (const { tag, payload, rows } of pg_stream) {
-        if (
-          nbytes >= (10 << 20) || // any chunk received when traffic limit is already reached
-          rows.length && nrows >= 1000 // or new rows chunk received when rows limit is already reached
-        ) {
-          yield * suspend('traffic_limit_exceeded');
-          nbytes = 0;
-          nrows = 0;
-        }
-        let out_msg;
-        switch (tag) {
-          case 'RowDescription':
-            // resolve row description eagerly to keep table editable when stream aborted
-            const [p] = await pg0.query({
+
+      // Why split statements rather than do simple query?
+      // - resolve columns types and editing info before sending rows to client
+      //   to keep table editable when stream aborted.
+      //   Resolve columns in separate connection is bad option because
+      //   resolution will be executed outside of user script transaction
+      //   and can loose newly created types and tables.
+      // - simple query buffers response so execution progress is not visible
+      // - use statement start position when postgres sends no error position
+      const splitted_statements = psqlscan_split(sql);
+
+      for (const statement of splitted_statements) {
+        // TODO yield start execution
+        //   +statement_pos
+        //   avoid ErrorResponse & NoticeResponse position modification
+        //   allow navigate to statement in code by click to log message
+
+        in_user_script = true;
+        // TODO fwd NoticeResponse?
+        const parse_res = await Array.fromAsync(pg.stream(
+          { message: 'Parse',  statement },
+          { message: 'DescribeStatement' },
+          { signal },
+        ));
+        in_user_script = false;
+
+        // TODO report error if statement has parameters (ParameterDescription msg)
+
+        const columns = (
+          parse_res
+          .filter(m => m.tag == 'RowDescription')
+          .slice(0, 1)
+          .flatMap(m => m.payload)
+        );
+
+        // resolve row description eagerly to keep table editable when stream aborted
+        let head_msg = { cols: [] };
+        if (columns.length) {
+          [head_msg] = await pg.query(
+            {
               message: 'Bind',
-              statementName: 'resolve_rowdescr',
-              params: [{ type: 'jsonb', value: payload }],
-            }, {
-              message: 'Execute',
-            }, {
-              signal,
-            });
-            out_msg = ['head', p];
-            break;
-
-          case 'DataRow':
-            out_msg = ['rows', rows.map(it => it.raw)];
-            break;
-
-          case 'NoticeResponse':
-            out_msg = ['notice', payload];
-            break;
-
-          case 'ErrorResponse':
-            out_msg = ['error', payload];
-            break;
-
-          case 'CommandComplete':
-            out_msg = ['complete', payload];
-            break;
-
-          case 'PortalSuspended': // TODO impossible in simple query
-          case 'EmptyQueryResponse':
-            out_msg = ['complete', tag];
-            break;
-
-          default:
-            continue;
+              statementName: 'pgbb_resolve_rowdescr',
+              params: [{ type: 'jsonb', value: columns }],
+            },
+            { message: 'Execute' },
+            { signal },
+          );
         }
-        const out_msg_b = jsonl_enc(out_msg);
-        nbytes += out_msg_b.length;
-        nrows += rows.length;
-        yield out_msg_b;
+
+        const pg_stream = pg.stream(
+          { message: 'Bind' },
+          { message: 'Execute' },
+          { signal },
+        );
+
+        in_user_script = true;
+        for await (const { tag, payload, rows } of pg_stream) {
+          if (
+            nbytes >= (10 << 20) || // any chunk received when traffic limit is already reached
+            rows.length && nrows >= 1000 // or new rows chunk received when rows limit is already reached
+          ) {
+            yield * suspend('traffic_limit_exceeded');
+            nbytes = 0;
+            nrows = 0;
+          }
+          let out_msg;
+          switch (tag) {
+            case 'RowDescription':
+              out_msg = ['head', head_msg];
+              break;
+
+            case 'DataRow':
+              out_msg = ['rows', rows.map(it => it.raw)];
+              break;
+
+            case 'NoticeResponse':
+              // TODO statement_position?
+              out_msg = ['notice', payload];
+              break;
+
+            case 'CommandComplete':
+              out_msg = ['complete', payload];
+              break;
+
+            case 'PortalSuspended': // TODO impossible in simple query
+            case 'EmptyQueryResponse':
+              out_msg = ['complete', tag];
+              break;
+
+            default:
+              continue;
+          }
+          const out_msg_b = jsonl_enc(out_msg);
+          nbytes += out_msg_b.length;
+          nrows += rows.length;
+          yield out_msg_b;
+        }
+        in_user_script = false;
+        statement_pos += statement.length;
       }
 
-      if (pg.queryable && pg.inTransaction == 0x54) {
+      if (pg.queryable && pg.inTransaction) {
         yield * suspend('idle_in_transaction');
         // TODO handle ErrorResponse case, but err.position will not point to user sql
         await pg.query('commit');
@@ -349,36 +405,35 @@ class App {
         yield jsonl_enc(['complete', 'COMMIT']);
       }
     } catch (ex) {
-      console.error(ex); // TODO? if (signal.aborted)
-      // TODO create dedicated message tag for client error
-      yield jsonl_enc(['error', {
-        severityEn: 'ERROR',
-        severity: 'ERROR', // TODO non localized
-        code: 'E_PGBB_BACKEND',
-        message: String(ex),
-        // TODO fix err.cause not exposed (too big message)
-        // detail: Deno.inspect(err),
-      }]);
+      if (in_user_script && /^PgError\b/.test(ex)) {
+        console.error(ex); // TODO? if (signal.aborted)
+
+        yield jsonl_enc(['error', {
+          ...ex.cause,
+          position: statement_pos + (ex.cause.position || 1),
+        }]);
+      } else {
+        console.error(ex); // TODO? if (signal.aborted)
+        // TODO create dedicated message tag for client error
+        yield jsonl_enc(['error', {
+          severityEn: 'ERROR',
+          severity: 'ERROR', // TODO non localized
+          code: 'E_PGBB_BACKEND',
+          message: String(ex),
+          // TODO fix err.cause not exposed (too big message)
+          // detail: Deno.inspect(err),
+        }]);
+      }
     } finally {
       console.log('ending connection');
       this._wakers.delete(wake_token);
       // TODO destroy if end timeout
-      await Promise.all([pg0?.end(), pg?.end()]);
+      await pg?.end();
     }
 
     function jsonl_enc(data) {
       const utf8enc = new TextEncoder();
       return utf8enc.encode(JSON.stringify(data) + '\n');
-    }
-
-    async function * no_pgerror(stream) {
-      try {
-        yield * stream;
-      } catch (err) {
-        if (!/^PgError\b/.test(err)) {
-          throw err;
-        }
-      }
     }
 
     async function * suspend(reason) {
@@ -507,7 +562,7 @@ const tree_sql = /*sql*/  `
   from arg, pg_attribute
   left join pg_constraint pk on pk.conrelid = attrelid and pk.contype = 'p'
   where ('rel', attrelid) = (a1, a2_oid)
-    and attnum > 0 and not attisdropped
+    and (attnum > 0 or attname = 'oid') and not attisdropped
 
   -- constraints
   union all
@@ -657,7 +712,7 @@ from arg, lateral (
       else '  %I'
       end
     ) col_fmt
-    where attrelid = pg_class.oid and attnum > 0 and not attisdropped
+    where attrelid = pg_class.oid and (attnum > 0 or attname = 'oid') and not attisdropped
   ) _(select_cols, orderby_cols)
   where ('rel', pg_class.oid) = (a1, a2_oid)
 

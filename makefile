@@ -38,6 +38,27 @@ ui/_vendor/monaco_json_worker.js:
 	curl -o $@ 'https://esm.sh/v135/monaco-editor@0.52.0/es2022/esm/vs/language/json/json.worker.development.bundle.js?worker'
 
 server/_vendor/pgwire.js:
-	curl -o $@ 'https://raw.githubusercontent.com/kagis/pgwire/a82f84a714c2f97ffd32487a84c527a41ab29c0f/mod.js'
+	curl -o $@ 'https://raw.githubusercontent.com/kagis/pgwire/3c66c97963bcd2c58b87279bb96c04e8ef4626fa/mod.js'
 server/_vendor/parse_args.ts:
 	curl -o $@ 'https://jsr.io/@std/cli/1.0.6/parse_args.ts'
+
+
+# docker run -it --rm -v $PWD:/app -w /app alpine:3.20
+# apk add --no-cache make clang17 wasi-sdk lld flex
+
+server/psqlscan/psqlscan.wasm.js: server/psqlscan/.psqlscan.wasm
+	base64 -w0 $< | awk '{ print "export default `" $$0 "`;"  }' > $@
+
+server/psqlscan/.psqlscan.wasm: server/psqlscan/.psqlscan.c
+	clang-17 --target=wasm32-wasi \
+		--sysroot=/usr/share/wasi-sysroot \
+		-nostartfiles \
+		-Wl,--export,psql_stmt_len \
+		-Wl,--export,malloc \
+		-Wl,--export,free \
+		-Wl,--no-entry \
+		-o $@ \
+		$<
+
+server/psqlscan/.psqlscan.c: server/psqlscan/psqlscan.l
+	flex -o $@ $<
