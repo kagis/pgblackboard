@@ -1,4 +1,4 @@
-import { editor } from './_vendor/monaco.js';
+import { editor, Uri } from './_vendor/monaco.js';
 
 export class Store {
   light_theme = false;
@@ -111,7 +111,7 @@ export class Store {
     const storage = globalThis.localStorage; // TODO dry dep injection
     for (const id in this.dirty_draft_ids) {
       if (this.stored_draft_ids.includes(id)) {
-        const value = editor.getModel(id).getValue();
+        const value = editor.getModel(this.get_draft_uri(id)).getValue();
         // TODO handle QuotaExceededError
         storage.setItem(id, value);
       } else {
@@ -127,8 +127,7 @@ export class Store {
       + '_' // v2 suffix is not sortable because not zero padded, so push v3 drafts upper
       + Date.now().toString(16).padStart(16, '0')
     );
-    // TODO is Uri.parse(draft_id) required?
-    const editor_model = editor.createModel(content, 'sql', draft_id);
+    const editor_model = editor.createModel(content, 'sql', this.get_draft_uri(draft_id));
     this.drafts_kv[draft_id] = {
       id: draft_id,
       loading: false,
@@ -153,6 +152,10 @@ export class Store {
       draft.caption = sql.trim();
       // draft.caption = head.replace(/^\s*\\connect[\s\t]+[^\n]+\n/, '\u2026 ');
     }
+  }
+
+  get_draft_uri(draft_id) {
+    return Uri.parse('//pgbb/' + draft_id);
   }
 
   save_curr_draft() {
@@ -188,7 +191,7 @@ export class Store {
     const draft_id = this._add_draft('-- loading --');
     const draft = this.drafts_kv[draft_id];
     draft.loading = true;
-    const editor_model = editor.getModel(draft_id);
+    const editor_model = editor.getModel(this.get_draft_uri(draft_id));
     this._unset_curr_draft();
     this.curr_draft_id = draft_id;
     this.curr_treenode_path = path;
@@ -234,7 +237,7 @@ export class Store {
       !this.stored_draft_ids.includes(this.curr_draft_id)
     ) {
       delete this.drafts_kv[this.curr_draft_id];
-      editor.getModel(this.curr_draft_id).dispose();
+      editor.getModel(this.get_draft_uri(this.curr_draft_id)).dispose();
     }
     this.curr_draft_id = null;
   }
@@ -248,7 +251,7 @@ export class Store {
     const idx = this.stored_draft_ids.indexOf(draft_id);
     this.stored_draft_ids.splice(idx, 1);
     delete this.drafts_kv[draft_id];
-    editor.getModel(draft_id).dispose();
+    editor.getModel(this.get_draft_uri(draft_id)).dispose();
     this.dirty_draft_ids ||= {};
     this.dirty_draft_ids[draft_id] = true;
     if (draft_id == this.curr_draft_id) {
@@ -466,7 +469,7 @@ export class Store {
     try {
       const draft = this.curr_draft;
       const { cursor_pos, cursor_len } = draft;
-      const editor_model = editor.getModel(this.curr_draft_id);
+      const editor_model = editor.getModel(this.get_draft_uri(this.curr_draft_id));
       const editor_text = editor_model.getValue();
 
       let { db, sql } = extract_dbname_from_sql(editor_text);

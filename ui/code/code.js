@@ -36,7 +36,7 @@ const methods = {
 
     this.$watch(
       _ => this.$store.curr_draft?.id,
-      this.watch_model_uri,
+      this.watch_draft_id,
       { immediate: true },
     );
 
@@ -63,8 +63,9 @@ const methods = {
     this._editor.dispose();
   },
 
-  watch_model_uri(uri) {
-    if (!uri) return this._editor.setModel(null);
+  watch_draft_id(draft_id) {
+    if (!draft_id) return this._editor.setModel(null);
+    const uri = this.$store.get_draft_uri(draft_id);
     const model = editor.getModel(uri);
     this._editor.setModel(model);
   },
