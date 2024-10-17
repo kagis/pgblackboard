@@ -2,7 +2,11 @@ import { editor } from '../_vendor/monaco.js';
 
 const methods = {
   _render() {
-    return { tag: 'div', class: 'datum' };
+    return {
+      tag: 'div',
+      class: 'datum',
+      'data-null': this.is_null || null,
+    };
   },
   _mounted() {
     this._model = editor.createModel('null', 'json');
@@ -42,15 +46,14 @@ const methods = {
     null_el.className = 'datum-null';
     null_el.textContent = 'NULL';
     this._editor.applyFontInfo(null_el);
-
-    this._null_hint = {
+    this._editor.addContentWidget({
       getId: _ => 'editor.widget.null_hint',
       getDomNode: _ => null_el,
       getPosition: _ => ({
         position: { lineNumber: 1, column: 1 },
         preference: [editor.ContentWidgetPositionPreference.EXACT],
       }),
-    };
+    });
 
     window.debug_editor_datum = this._editor;
 
@@ -97,20 +100,13 @@ const methods = {
     //   await this._editor.getAction('editor.action.formatDocument').run();
     // }
 
-    this._show_null_hint(init_val == null);
+    this.is_null = (init_val == null);
     const empty_val = att_notnull ? '' : null; // TODO how to set '' to nullable column?
     model.onDidChangeContent(_ => {
       const new_val = this._model.getValue() || empty_val;
-      this._show_null_hint(new_val == null);
+      this.is_null = (new_val == null);
       this.$store.edit_datum(frame_idx, row_idx, col_idx, new_val);
     });
-  },
-  _show_null_hint(show) {
-    if (show) {
-      this._editor.addContentWidget(this._null_hint);
-    } else {
-      this._editor.removeContentWidget(this._null_hint);
-    }
   },
   _on_req_datum_focus() {
     const full_range = this._model.getFullModelRange();
@@ -132,4 +128,7 @@ const methods = {
 
 export default {
   methods,
+  data: _ => ({
+    is_null: false,
+  }),
 };
