@@ -16,15 +16,3 @@
     --vscode-editorGutter-background: hsl(0 0% 95%);
   }
 }
-
-.datum-null {
-  width: max-content;
-  pointer-events: none;
-  font-style: italic !important;
-  font-weight: 300 !important;
-  opacity: 0;
-
-  .datum[data-null] & {
-    opacity: .5;
-  }
-}
