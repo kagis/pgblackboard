@@ -198,7 +198,7 @@ class App {
   async _api_run(req, { u: user, db: database }, password) {
     // TODO kill previous connection - prevent connections leak in case of abort lag
     const { signal } = req;
-    const { sql, tz, rw } = await req.json();
+    const req_body = await req.json();
     const resp_init = {
       headers: {
         'content-type': 'text/x-ndjson; charset=utf-8', // TODO application/json
@@ -207,12 +207,12 @@ class App {
       },
     };
     const resp_body = ReadableStream.from(this._api_run_body({
-      sql, user, password, database, tz, rw, signal,
+      ...req_body, user, password, database, signal,
     }));
     return new Response(resp_body, resp_init);
   }
 
-  async * _api_run_body({ sql, user, password, database, tz, rw, signal }) {
+  async * _api_run_body({ sql, tz, user, password, database, signal }) {
     const ctl = { wake() { } };
     const wake_token = crypto.randomUUID();
     let pg;
@@ -230,7 +230,6 @@ class App {
           // TODO _wakeInterval: 0
           TimeZone: tz,
           statement_timeout: '1min',
-          default_transaction_read_only: String(!rw),
 
           // notices flush rows after each statement
           client_min_messages: 'LOG',
@@ -292,6 +291,13 @@ class App {
             limit 1
           ) __ (target_reloid, target_key)
         `,
+      }, {
+        // we going to execute user script in transaction
+        // and ask user confirmation before commit changes.
+        statement: 'begin',
+        // TODO execute user script in single implicit transaction:
+        // - not all statemements can be executed in explicit transaction.
+        // - rollback/commit causes autocommit behavior
       });
 
       let nbytes = 0;
@@ -380,8 +386,8 @@ class App {
               out_msg = ['complete', payload];
               break;
 
-            case 'PortalSuspended': // TODO impossible in simple query
-            case 'EmptyQueryResponse':
+            // case 'EmptyQueryResponse':
+            case 'PortalSuspended': // TODO impossible?
               out_msg = ['complete', tag];
               break;
 
@@ -397,12 +403,14 @@ class App {
         statement_pos += statement.length;
       }
 
-      if (pg.queryable && pg.inTransaction) {
+      const [tx_has_changes] = await pg.query({
+        // TODO pg_current_xact_id_if_assigned (v13)
+        statement: /*sql*/ `select txid_current_if_assigned() is not null`,
+      });
+
+      if (tx_has_changes) {
         yield * suspend('idle_in_transaction');
-        // TODO handle ErrorResponse case, but err.position will not point to user sql
         await pg.query('commit');
-        // TODO create special message tag for succeded commit
-        yield jsonl_enc(['complete', 'COMMIT']);
       }
     } catch (ex) {
       if (in_user_script && /^PgError\b/.test(ex)) {
@@ -669,11 +677,26 @@ with arg (a1, a2, a3, a2_oid) as (
     and e.extname = 'postgis'
 )
 select format(e'\\connect %I\n\n%s', current_database(), def)
-from arg, lateral (
+from arg
+, substring(current_setting('server_version') from '\d+') pg_major_ver
+, lateral (
 
   -- database
-  select e'select ''hello world'';\n'
+  select concat_ws(e'\n'
+    , e'SELECT * FROM text(''hello world'');'
+    , ''
+    , format('-- https://www.postgresql.org/docs/%s/sql-alterdatabase.html', pg_major_ver)
+    , ''
+  )
   where a1 = 'db'
+
+  -- schema
+  union all
+  select concat_ws(e'\n'
+    , format('-- https://www.postgresql.org/docs/%s/sql-alterschema.html', pg_major_ver)
+    , ''
+  )
+  where a1 = 'ns'
 
   -- table
   union all
@@ -682,8 +705,12 @@ from arg, lateral (
     , format('FROM %I.%I', nspname, relname)
     , format('-- WHERE (%s) = ('''')', orderby_cols)
     , 'ORDER BY ' || orderby_cols
-    , 'LIMIT 10000', 'OFFSET 0'
-    , ';', '', '/*'
+    , 'LIMIT 1000'
+    , ';'
+    , ''
+    , format('-- https://www.postgresql.org/docs/%s/sql-altertable.html', pg_major_ver)
+    , ''
+    , '/*'
     , (
       case relkind
       -- view
@@ -722,13 +749,14 @@ from arg, lateral (
     '%s;\n'
     '\n'
     '/*\n'
-    'DROP FUNCTION %s(%s);\n'
+    'DROP %s;\n'
     '*/\n'
-    , pg_get_functiondef(pg_proc.oid)
-    , pg_proc.oid::regproc
-    , pg_get_function_identity_arguments(pg_proc.oid)
+    , create_fn_script
+    , fn_signature
   )
   from pg_proc left join pg_aggregate on aggfnoid = pg_proc.oid
+  , pg_get_functiondef(pg_proc.oid) create_fn_script
+  , substring(create_fn_script from 'CREATE OR REPLACE (.*?)\n') fn_signature
   where ('fn', pg_proc.oid) = (a1, a2_oid) and pg_aggregate is null
 
   -- aggregate
@@ -753,10 +781,8 @@ from arg, lateral (
   -- constraint
   union all
   select format(e''
-    'BEGIN;\n\n'
     'ALTER TABLE %s DROP CONSTRAINT %I;\n\n'
-    'ALTER TABLE %1$s ADD CONSTRAINT %2$I %3$s;\n\n'
-    'ROLLBACK;\n'
+    'ALTER TABLE %1$s ADD CONSTRAINT %2$I %3$s;\n'
     , conrelid::regclass
     , conname
     , pg_get_constraintdef(oid)
@@ -767,10 +793,8 @@ from arg, lateral (
   -- index
   union all
   select format(e''
-    'BEGIN;\n\n'
     'DROP INDEX %1$s;\n\n'
-    '%s\n\n'
-    'ROLLBACK;\n'
+    '%s\n'
     , oid::regclass
     , pg_get_indexdef(oid)
   )
@@ -780,10 +804,8 @@ from arg, lateral (
   -- trigger
   union all
   select format(e''
-    'BEGIN;\n\n'
     'DROP TRIGGER %I ON %s;\n\n'
-    '%s\n\n'
-    'ROLLBACK;\n'
+    '%s\n'
     , tgname
     , tgrelid::regclass
     , pg_get_triggerdef(oid, true)
@@ -793,10 +815,7 @@ from arg, lateral (
 
   -- file
   union all
-  select format(e''
-    'SELECT pg_read_file(%L, 0, 5000);\n'
-    , a2
-  )
+  select format(e'SELECT pg_read_file(%L, 0, 5000);\n', a2)
   where 'file' = a1
 
 ) _(def)

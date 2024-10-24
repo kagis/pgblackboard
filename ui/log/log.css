@@ -68,7 +68,7 @@
   cursor: pointer;
   background: hsl(0 0% 90%);
   color: hsl(0 0% 20%);
-  
+
   .light & {
     background: hsl(0 0% 20%);
     color: hsl(0 0% 95%);
@@ -163,6 +163,10 @@
   /* &[data-severity=WARNING i] {
     color: hsl(55, 60%, 70%);
   } */
+}
+
+.log-message {
+  white-space: wrap;
 }
 
 .log-detail {

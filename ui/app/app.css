@@ -153,13 +153,6 @@
   &::before {
     content: attr(aria-label);
   }
-  &[data-has_selection] {
-    background-color: hsl(200 65% 45%);
-    color: hsl(0 0% 95%);
-  }
-  &[data-has_selection]::before {
-    content: '[ ' attr(aria-label) ' ]';
-  }
 }
 
 .app-abort {

@@ -23,7 +23,6 @@ const methods = {
     }
 
     const { light_theme, panes } = this.$store;
-    const code_selected = this.$store.curr_draft?.cursor_len;
     const can_run = this.$store.can_run();
     const can_abort = this.$store.can_abort();
     const changes_num = this.$store.get_changes_num(); // TODO cache
@@ -62,7 +61,6 @@ const methods = {
               type: 'button',
               'aria-label': 'run',
               disabled: !can_run,
-              'data-has_selection': !!code_selected || null,
               onClick: this.run,
             },
             {
@@ -125,9 +123,9 @@ const methods = {
   },
 
   /** @param {MouseEvent} e */
-  run(e) {
+  run() {
     // TODO show confirm dialog if .out has unsaved edits
-    this.$store.run({ rw: e.altKey });
+    this.$store.run();
   },
   abort() {
     this.$store.abort();

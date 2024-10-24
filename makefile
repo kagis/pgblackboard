@@ -38,7 +38,7 @@ ui/_vendor/monaco_json_worker.js:
 	curl -o $@ 'https://esm.sh/v135/monaco-editor@0.52.0/es2022/esm/vs/language/json/json.worker.development.bundle.js?worker'
 
 server/_vendor/pgwire.js:
-	curl -o $@ 'https://raw.githubusercontent.com/kagis/pgwire/3c66c97963bcd2c58b87279bb96c04e8ef4626fa/mod.js'
+	curl -o $@ 'https://raw.githubusercontent.com/kagis/pgwire/b992f307097ac5bd350ba41ea4c85d194ccb611f/mod.js'
 server/_vendor/parse_args.ts:
 	curl -o $@ 'https://jsr.io/@std/cli/1.0.6/parse_args.ts'
 

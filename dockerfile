@@ -1,4 +1,4 @@
-FROM denoland/deno:alpine-2.0.0 AS deno
+FROM denoland/deno:alpine-2.0.2 AS deno
 EXPOSE 7890
 WORKDIR /app
 CMD ["pgbb", "postgres://postgres:5432"]
@@ -9,7 +9,7 @@ RUN echo \
     --allow-net \
     --v8-flags=--stack_trace_limit=30 \
     --no-config \
-    --no-remote\
+    --no-remote \
     --no-npm \
     /app/server/pgbb.js \
     '"$@"' \

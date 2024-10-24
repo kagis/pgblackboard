@@ -341,7 +341,7 @@ export class Store {
   }
 
   dump_changes() {
-    let script = `\\connect ${this.out.db}\n\nBEGIN READ WRITE;\n\n`;
+    let script = `\\connect ${this.out.db}\n\n`;
 
     for (const frame of this.out.frames) {
       const key_idxs = frame.cols
@@ -453,7 +453,7 @@ export class Store {
     return !this.out.loading && !this.curr_draft?.loading;
   }
 
-  async run({ rw }) {
+  async run({ selected } = 0) {
     this.out = {
       db: null,
       frames: [],
@@ -478,7 +478,7 @@ export class Store {
       }
       out.db = db;
 
-      if (cursor_len) {
+      if (selected) {
         const [from, to] = [cursor_pos, cursor_pos + cursor_len].sort((a, b) => a - b);
         sql = '\n'.padStart(from, ' ') + sql.slice(from, to);
       }
@@ -486,7 +486,7 @@ export class Store {
       const { u, key } = this.auth;
       const qs = new URLSearchParams({ api: 'run', u, db, key });
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const body = JSON.stringify({ sql, tz, rw });
+      const body = JSON.stringify({ sql, tz });
       const resp = await fetch('?' + qs, {
         method: 'POST',
         signal: out.aborter.signal,
@@ -497,10 +497,11 @@ export class Store {
       const msg_stream = iter_stream(
         resp.body
         .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new JSONDecodeStream()),
+        .pipeThrough(new LineSplitter()),
       );
       let frame = null;
-      for await (const [tag, payload] of msg_stream) {
+      for await (const line of msg_stream) {
+        const [tag, payload] = JSON.parse(line);
         out.suspended = null;
         switch (tag) {
           case 'head':
@@ -539,7 +540,7 @@ export class Store {
         payload: {
           severityEn: 'ERROR',
           severity: 'ERROR', // TODO non localized
-          code: 'E_PGBB_FRONTEND',
+          // code: 'E_PGBB_FRONTEND',
           message: String(err),
           detail: err?.stack, // TODO .cause
         },
@@ -552,21 +553,20 @@ export class Store {
   }
 }
 
-class JSONDecodeStream extends TransformStream {
+class LineSplitter extends TransformStream {
   constructor() {
+    let buffer = '';
     super({
-      _incomplete: '',
       async transform(chunk, ctl) {
-        chunk = this._incomplete + chunk;
-        for (;;) {
-          const eol_idx = chunk.indexOf('\n');
-          if (eol_idx < 0) break;
-          const line = chunk.slice(0, eol_idx + 1);
-          chunk = chunk.slice(eol_idx + 1);
-          ctl.enqueue(JSON.parse(line));
+        buffer += chunk;
+        let eol_idx, pos = 0;
+        while (0 <= (eol_idx = buffer.indexOf('\n', pos))) {
+          ctl.enqueue(buffer.slice(pos, eol_idx + 1));
+          pos = eol_idx + 1;
         }
-        this._incomplete = chunk;
+        buffer = buffer.slice(pos);
       },
+      // TODO flush incomplete line?
     });
   }
 }

@@ -32,6 +32,38 @@ const methods = {
 
     this._decorations = this._editor.createDecorationsCollection();
 
+    const ck_can_abort = this._editor.createContextKey('pgbb_can_abort', false);
+    this.$watch(_ => this.$store.can_abort(), val => ck_can_abort.set(val), { immediate: true });
+
+    const ck_can_run = this._editor.createContextKey('pgbb_can_run', false);
+    this.$watch(_ => this.$store.can_run(), val => ck_can_run.set(val), { immediate: true });
+
+    // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IActionDescriptor.html
+    this._editor.addAction({
+      id: 'pgbb.action.abort',
+      label: 'Abort',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 0,
+      precondition: 'pgbb_can_abort',
+      run: _ => this.$store.abort({}),
+    });
+    this._editor.addAction({
+      id: 'pgbb.action.run',
+      label: 'Run',
+      // contextMenuGroupId: 'navigation',
+      // contextMenuOrder: 2,
+      precondition: 'pgbb_can_run',
+      run: _ => this.$store.run({}),
+    });
+    this._editor.addAction({
+      id: 'pgbb.action.runSelection',
+      label: 'Run Selection',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 4,
+      precondition: 'pgbb_can_run && editorHasSelection && !editorHasMultipleSelections',
+      run: _ => this.$store.run({ selected: true }),
+    });
+
     window.debug_editor = this._editor;
 
     this.$watch(

@@ -95,7 +95,6 @@ const methods = {
             {
               tag: 'span',
               class: 'log-prefix',
-              // 'data-iserror': kind == 'error' || null,
               'data-severity': severityEn,
               inner: [
                 { tag: 'span', class: 'log-severity', innerText: severity },
@@ -103,7 +102,7 @@ const methods = {
                 { tag: 'span', innerHTML: '. ' },
               ],
             },
-            { tag: 'span', innerText: message },
+            { tag: 'span', class: 'log-message', inner: message },
           ]
         }, // summary
 
@@ -115,9 +114,9 @@ const methods = {
           inner: Object.entries(fields).map(([k, v]) => ({
             tag: 'div',
             inner: [
-              { tag: 'span', innerText: k },
+              { tag: 'span', inner: k },
               { tag: 'span', innerHTML: ':&nbsp;' },
-              { tag: 'span', innerText: v },
+              { tag: 'span', inner: v },
             ],
           })),
         },
